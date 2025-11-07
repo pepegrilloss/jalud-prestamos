@@ -1,0 +1,23 @@
+[33mcommit 55c3b1e811a5b3bc176650fd5ed24cf75defcdb3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: pepegrilloss <jvilcherrez.01@hotmail.com>
+Date:   Fri Nov 7 10:45:34 2025 -0500
+
+    Revierto cambio
+
+[33mcommit 472bdebbdeefcd2d52099d2fa8f6389cc6f959e0[m
+Author: pepegrilloss <jvilcherrez.01@hotmail.com>
+Date:   Fri Nov 7 10:44:19 2025 -0500
+
+    Prueba cambio de texto
+
+[33mcommit aac5c5dc02dec510583424317806b9985e567386[m
+Author: pepegrilloss <jvilcherrez.01@hotmail.com>
+Date:   Fri Nov 7 10:12:37 2025 -0500
+
+    Descripción corta del cambio
+
+[33mcommit a6c30b1204e1127c4233d81c5c1f57d1c0092250[m
+Author: Julio Mario Vilcherrez Purizaca <julio.vilcherrez@medlogpiura.pe>
+Date:   Fri Nov 7 10:02:48 2025 -0500
+
+    Primer commit del proyecto Laravel + Filament
