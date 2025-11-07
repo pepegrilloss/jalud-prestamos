@@ -25,7 +25,8 @@ class CiudadResource extends Resource
     protected static ?string $navigationLabel = 'Ciudades';
 
     protected static ?string $modelLabel = 'Ciudad';
-    protected static ?string $pluralModelLabel = 'Ciudades Te amo Ariana';
+
+    protected static ?string $pluralModelLabel = 'Ciudades';
 
     public static function form(Form $form): Form
     {
