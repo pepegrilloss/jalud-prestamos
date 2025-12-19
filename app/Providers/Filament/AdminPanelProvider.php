@@ -28,10 +28,12 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->brandLogoHeight('3rem') 
+            ->brandLogoHeight('3rem')
             ->sidebarCollapsibleOnDesktop()
             ->login(Login::class)
             ->maxContentWidth('full')
+            ->brandLogo(asset('images/logo.png'))
+            ->brandLogoHeight('3rem')
             ->colors([
                 'primary' => '#a4cb3b',
             ])
@@ -58,12 +60,12 @@ class AdminPanelProvider extends PanelProvider
                 \Hasnayeen\Themes\Http\Middleware\SetTheme::class,
 
             ])
-            
+
             ->plugins([
                 FilamentShieldPlugin::make(),
                 \Hasnayeen\Themes\ThemesPlugin::make(),
             ])
-             ->tenantMiddleware([
+            ->tenantMiddleware([
                 \Hasnayeen\Themes\Http\Middleware\SetTheme::class,
             ])
             ->authMiddleware([
