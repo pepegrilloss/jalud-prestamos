@@ -32,6 +32,18 @@ class User extends Authenticatable
         ];
     }
 
+    public function canAccessPanel(Panel $panel): bool
+    {
+        // Permitir acceso si tiene cualquier rol
+        return $this->roles()->exists();
+
+        // O si prefieres ser más específico:
+        // return $this->hasAnyRole(['super_admin', 'admin']);
+
+        // O simplemente permitir a todos los usuarios autenticados:
+        // return true;
+    }
+
     public function userNivelAprobacion()
     {
         return $this->hasOne(UserNivelAprobacion::class, 'UserID');
@@ -65,14 +77,14 @@ class User extends Authenticatable
         if (!$nivelActual) {
             return false;
         }
-        
+
         $nivelActualDB = $nivelActual->nivelAprobacion;
         $nivelRequeridoDB = NivelAprobacion::find($nivelAprobacionRequerido);
-        
+
         if (!$nivelRequeridoDB) {
             return false;
         }
-        
+
         // Comparar por Orden (mayor orden = mayor jerarquía)
         return $nivelActualDB->Orden >= $nivelRequeridoDB->Orden;
     }
