@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClienteProposicionResource\Pages;
-use App\Filament\Resources\ClienteProposicionResource\Widgets\ClienteProposicionStats;
 use App\Models\Cliente;
 use App\Models\ProposicionCredito;
 use App\Models\TipoCredito;
@@ -218,13 +217,6 @@ class ClienteProposicionResource extends Resource
         return [
             'index' => Pages\ListClienteProposicions::route('/'),
             'crear_proposicion' => Pages\CreateClienteProposicion::route('/crear-proposicion'),
-        ];
-    }
-
-    public static function getWidgets(): array
-    {
-        return [
-            ClienteProposicionStats::class,
         ];
     }
 
