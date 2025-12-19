@@ -30,8 +30,8 @@ class GenerarCreditoResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
     protected static ?int $navigationSort = 11;
     protected static ?string $navigationLabel = 'Generar Crédito';
-    protected static ?string $modelLabel = 'Proposición de Crédito';
-    protected static ?string $pluralModelLabel = 'Proposiciones de Crédito';
+    protected static ?string $modelLabel = 'Generar Crédito';
+    protected static ?string $pluralModelLabel = 'Generar Crédito';
 
     public static function form(Form $form): Form
     {
