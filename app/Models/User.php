@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
-use App\Traits\AprobacionMultiNivel;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
-    use HasFactory, Notifiable, HasRoles, AprobacionMultiNivel;
+    use HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
         'name',
@@ -32,14 +33,15 @@ class User extends Authenticatable
         ];
     }
 
+    // MÉTODO NUEVO - REQUERIDO POR FILAMENT
     public function canAccessPanel(Panel $panel): bool
     {
         // Permitir acceso si tiene cualquier rol
         return $this->roles()->exists();
-
+        
         // O si prefieres ser más específico:
         // return $this->hasAnyRole(['super_admin', 'admin']);
-
+        
         // O simplemente permitir a todos los usuarios autenticados:
         // return true;
     }
@@ -77,14 +79,14 @@ class User extends Authenticatable
         if (!$nivelActual) {
             return false;
         }
-
+        
         $nivelActualDB = $nivelActual->nivelAprobacion;
         $nivelRequeridoDB = NivelAprobacion::find($nivelAprobacionRequerido);
-
+        
         if (!$nivelRequeridoDB) {
             return false;
         }
-
+        
         // Comparar por Orden (mayor orden = mayor jerarquía)
         return $nivelActualDB->Orden >= $nivelRequeridoDB->Orden;
     }
