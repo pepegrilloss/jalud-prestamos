@@ -41,21 +41,18 @@ class CiudadResource extends Resource
                             ->columnSpanFull(),
                         
                         Forms\Components\Toggle::make('Activo')
-                            ->default(true)
-                            ->required(),
+                            ->hidden()
+                            ->default(true),
                         
                         Forms\Components\DateTimePicker::make('FechaCreacion')
                             ->label('Fecha Creación')
-                            ->default(now())
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->visible(fn ($livewire) => $livewire instanceof Pages\EditCiudad),
+                            ->hidden()
+                            ->default(now()),
                         
                         Forms\Components\DateTimePicker::make('FechaModificacion')
                             ->label('Fecha Modificación')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->visible(fn ($livewire) => $livewire instanceof Pages\EditCiudad),
+                            ->hidden()
+                            ->default(now()),
                     ])
                     ->columns(2),
             ]);
@@ -64,6 +61,7 @@ class CiudadResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('CiudadID')
                     ->label('ID')
@@ -117,12 +115,6 @@ class CiudadResource extends Resource
                         'FechaModificacion' => now()
                     ]))
                     ->successNotificationTitle('Ciudad desactivada correctamente'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn () => auth()->user()->can('delete_any_ciudad')),
-                ]),
             ])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);

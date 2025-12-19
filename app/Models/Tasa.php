@@ -8,14 +8,16 @@ class Tasa extends Model
 {
     protected $table = 'Tasa';
     protected $primaryKey = 'TasaID';
-    public $timestamps = false;
+    public $timestamps = true;
+    const CREATED_AT = 'FechaCreacion';
+    const UPDATED_AT = 'FechaModificacion';
 
     protected $fillable = [
         'Nombre',
         'Valor',
         'Activo',
-        'FechaCreacion',
-        'FechaModificacion'
+        'Dias',
+        'Cuotas',
     ];
 
     protected $casts = [
@@ -23,5 +25,7 @@ class Tasa extends Model
         'Valor' => 'decimal:2',
         'FechaCreacion' => 'datetime',
         'FechaModificacion' => 'datetime',
+        'Dias' => 'integer',
+        'Cuotas' => 'integer',
     ];
 }

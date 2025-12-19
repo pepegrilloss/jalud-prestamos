@@ -32,11 +32,17 @@ class TasaResource extends Resource
                 Forms\Components\TextInput::make('Valor')
                     ->required()
                     ->numeric(),
-                Forms\Components\DateTimePicker::make('FechaCreacion')
-                    ->required(),
-                Forms\Components\DateTimePicker::make('FechaModificacion')
-                    ->visible(fn($livewire) => $livewire instanceof Pages\EditTasa)
-                    ->required(),
+                Forms\Components\TextInput::make('Dias')
+                    ->required()
+                    ->numeric()
+                    ->integer(),
+                Forms\Components\TextInput::make('Cuotas')
+                    ->required()
+                    ->numeric()
+                    ->integer(),
+                Forms\Components\Toggle::make('Activo')
+                    ->hidden()
+                    ->default(true),
             ]);
     }
 
@@ -47,6 +53,12 @@ class TasaResource extends Resource
                 Tables\Columns\TextColumn::make('Nombre')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('Valor')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('Dias')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('Cuotas')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\IconColumn::make('Activo')
@@ -79,20 +91,8 @@ class TasaResource extends Resource
                     ->visible(fn() => auth()->user()->can('delete_tasa'))
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
-                        'FechaModificacion' => now()
                     ]))
                     ->successNotificationTitle('Tasa desactivada correctamente'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => auth()->user()->can('delete_any_tasa')),
-                ]),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ])
             ->bulkActions([])
             ->recordUrl(null)

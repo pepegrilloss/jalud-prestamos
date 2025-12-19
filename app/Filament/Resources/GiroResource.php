@@ -20,6 +20,7 @@ class GiroResource extends Resource
     protected static ?string $navigationGroup = 'Mantenimiento';
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
     protected static ?int $navigationSort = 3;
+    
 
     public static function form(Form $form): Form
     {
@@ -31,11 +32,15 @@ class GiroResource extends Resource
                 Forms\Components\TextInput::make('Descripcion')
                     ->required()
                     ->maxLength(400),
+                Forms\Components\Toggle::make('Activo')
+                    ->hidden()
+                    ->default(true),
                 Forms\Components\DateTimePicker::make('FechaCreacion')
-                    ->required(),
+                    ->hidden()
+                    ->default(now()),
                 Forms\Components\DateTimePicker::make('FechaModificacion')
-                    ->visible(fn($livewire) => $livewire instanceof Pages\EditGiro)
-                    ->required(),
+                    ->hidden()
+                    ->default(now()),
             ]);
     }
 
@@ -80,17 +85,6 @@ class GiroResource extends Resource
                         'FechaModificacion' => now()
                     ]))
                     ->successNotificationTitle('Giro desactivado correctamente'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => auth()->user()->can('delete_any_giro')),
-                ]),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ])
             ->bulkActions([])
             ->recordUrl(null)

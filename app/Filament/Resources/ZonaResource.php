@@ -36,10 +36,11 @@ class ZonaResource extends Resource
                     ->required()
                     ->maxLength(200),
                 Forms\Components\DateTimePicker::make('FechaCreacion')
-                    ->required(),
+                    ->hidden()
+                    ->default(now()),
                 Forms\Components\DateTimePicker::make('FechaModificacion')
-                    ->visible(fn($livewire) => $livewire instanceof Pages\EditZona)
-                    ->required(),
+                    ->hidden()
+                    ->default(now()),
             ]);
     }
 
@@ -86,17 +87,6 @@ class ZonaResource extends Resource
                         'FechaModificacion' => now()
                     ]))
                     ->successNotificationTitle('Zona desactivada correctamente'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => auth()->user()->can('delete_any_zona')),
-                ]),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ])
             ->bulkActions([])
             ->recordUrl(null)

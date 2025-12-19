@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use App\Traits\AprobacionMultiNivel;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, AprobacionMultiNivel;
 
     protected $fillable = [
         'name',
@@ -29,5 +30,60 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function userNivelAprobacion()
+    {
+        return $this->hasOne(UserNivelAprobacion::class, 'UserID');
+    }
+
+    public function nivelAprobacionActivo()
+    {
+        return $this->hasOne(UserNivelAprobacion::class, 'UserID')
+            ->where('Activo', true);
+    }
+
+    public function getNivelAprobacionActivo()
+    {
+        return $this->userNivelesAprobacion()
+            ->where('Activo', true)
+            ->with('nivelAprobacion')
+            ->first();
+    }
+
+    public function tieneNivelAprobacion($nivelAprobacionID)
+    {
+        return $this->userNivelesAprobacion()
+            ->where('NivelAprobacionID', $nivelAprobacionID)
+            ->where('Activo', true)
+            ->exists();
+    }
+
+    public function tieneNivelAprobacionSuperiorOIgual($nivelAprobacionRequerido)
+    {
+        $nivelActual = $this->getNivelAprobacionActivo();
+        if (!$nivelActual) {
+            return false;
+        }
+        
+        $nivelActualDB = $nivelActual->nivelAprobacion;
+        $nivelRequeridoDB = NivelAprobacion::find($nivelAprobacionRequerido);
+        
+        if (!$nivelRequeridoDB) {
+            return false;
+        }
+        
+        // Comparar por Orden (mayor orden = mayor jerarquía)
+        return $nivelActualDB->Orden >= $nivelRequeridoDB->Orden;
+    }
+
+    public function userNivelesAprobacion()
+    {
+        return $this->hasMany(UserNivelAprobacion::class, 'UserID', 'id');
+    }
+
+    public function esGerencia()
+    {
+        return $this->tieneNivelAprobacion(3);
     }
 }

@@ -1,0 +1,105 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\TipoPagoResource\Pages;
+use App\Models\TipoPago;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+
+class TipoPagoResource extends Resource
+{
+    protected static ?string $model = TipoPago::class;
+
+    protected static ?string $navigationGroup = 'Mantenimiento';
+
+    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static ?int $navigationSort = 7;
+    protected static ?string $label = 'Tipo de Pago';
+    protected static ?string $pluralLabel = 'Tipos de Pago';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\TextInput::make('Nombre')
+                    ->label('Nombre del Tipo de Pago')
+                    ->required()
+                    ->maxLength(50)
+                    ->unique(ignoreRecord: true),
+                Forms\Components\Toggle::make('Activo')
+                    ->label('Activo')
+                    ->default(true)
+                    ->hidden(fn (string $operation): bool => $operation === 'create'),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('Nombre')
+                    ->label('Nombre')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\IconColumn::make('Activo')
+                    ->label('Estado')
+                    ->boolean()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('FechaCreacion')
+                    ->label('Fecha Creación')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('FechaModificacion')
+                    ->label('Fecha Modificación')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\TernaryFilter::make('Activo')
+                    ->label('Estado')
+                    ->placeholder('Todos')
+                    ->trueLabel('Activos')
+                    ->falseLabel('Inactivos'),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('toggleActive')
+                    ->label(fn($record) => $record->Activo ? 'Desactivar' : 'Activar')
+                    ->color(fn($record) => $record->Activo ? 'danger' : 'success')
+                    ->icon(fn($record) => $record->Activo ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn($record) => $record->Activo ? 'Desactivar Tipo de Pago' : 'Activar Tipo de Pago')
+                    ->modalDescription(fn($record) => $record->Activo 
+                        ? '¿Está seguro que desea desactivar este tipo de pago?' 
+                        : '¿Está seguro que desea activar este tipo de pago?')
+                    ->modalSubmitActionLabel('Confirmar')
+                    ->action(fn($record) => $record->update([
+                        'Activo' => !$record->Activo,
+                    ]))
+                    ->successNotificationTitle(fn($record) => $record->Activo ? 'Tipo de Pago activado correctamente' : 'Tipo de Pago desactivado correctamente'),
+            ])
+            ->bulkActions([])
+            ->recordUrl(null)
+            ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListTipoPagos::route('/'),
+            'create' => Pages\CreateTipoPago::route('/create'),
+            'edit' => Pages\EditTipoPago::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+}

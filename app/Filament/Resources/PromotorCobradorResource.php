@@ -48,21 +48,18 @@ class PromotorCobradorResource extends Resource
                             ->maxLength(200),
                         
                         Forms\Components\Toggle::make('Activo')
-                            ->default(true)
-                            ->required(),
+                            ->hidden()
+                            ->default(true),
                         
                         Forms\Components\DateTimePicker::make('FechaCreacion')
                             ->label('Fecha Creación')
-                            ->default(now())
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->visible(fn ($livewire) => $livewire instanceof Pages\EditPromotorCobrador),
+                            ->hidden()
+                            ->default(now()),
                         
                         Forms\Components\DateTimePicker::make('FechaModificacion')
                             ->label('Fecha Modificación')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->visible(fn ($livewire) => $livewire instanceof Pages\EditPromotorCobrador),
+                            ->hidden()
+                            ->default(now()),
                     ])
                     ->columns(2),
             ]);
@@ -130,12 +127,6 @@ class PromotorCobradorResource extends Resource
                         'FechaModificacion' => now()
                     ]))
                     ->successNotificationTitle('Registro desactivado correctamente'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn () => auth()->user()->can('delete_any_promotor::cobrador')),
-                ]),
             ])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);

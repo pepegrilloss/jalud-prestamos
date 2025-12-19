@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use App\Models\NivelAprobacion;
+use App\Models\UserNivelAprobacion;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -76,6 +78,13 @@ class UserResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('nivelAprobacionActivo.nivelAprobacion.Nombre')
+                    ->label('Nivel de Aprobación')
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('Sin asignar')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('email_verified_at')
                     ->dateTime()
                     ->sortable()
@@ -87,7 +96,7 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('name')
-            ->recordUrl(null) // Esto deshabilita el clic en las celdas
+            ->recordUrl(null)
             ->filters([
                 Tables\Filters\SelectFilter::make('roles')
                     ->relationship('roles', 'name')
@@ -95,13 +104,52 @@ class UserResource extends Resource
                     ->preload(),
             ])
             ->actions([
+                Tables\Actions\Action::make('asignarNivel')
+                    ->label('Asignar Nivel')
+                    ->icon('heroicon-o-shield-check')
+                    ->form([
+                        Forms\Components\Select::make('NivelAprobacionID')
+                            ->label('Nivel de Aprobación')
+                            ->options(
+                                NivelAprobacion::where('Activo', true)
+                                    ->orderBy('Orden')
+                                    ->get()
+                                    ->mapWithKeys(fn($nivel) => [
+                                        $nivel->NivelAprobacionID => "{$nivel->Nombre} (S/ {$nivel->MontoMinimo} - S/ {$nivel->MontoMaximo})"
+                                    ])
+                            )
+                            ->required()
+                            ->searchable()
+                            ->native(false)
+                            ->label('Nivel de Aprobación'),
+                    ])
+                    ->action(function (User $record, array $data) {
+                        // Desactivar nivel anterior si existe
+                        UserNivelAprobacion::where('UserID', $record->id)
+                            ->where('Activo', true)
+                            ->update(['Activo' => false]);
+
+                        // Crear o actualizar el nuevo nivel
+                        UserNivelAprobacion::updateOrCreate(
+                            ['UserID' => $record->id],
+                            [
+                                'NivelAprobacionID' => $data['NivelAprobacionID'],
+                                'FechaAsignacion' => now(),
+                                'Activo' => true,
+                            ]
+                        );
+
+                        \Filament\Notifications\Notification::make()
+                            ->success()
+                            ->title('Nivel de Aprobación Asignado')
+                            ->body('El nivel de aprobación se asignó correctamente')
+                            ->send();
+                    })
+                    ->modalHeading('Asignar Nivel de Aprobación al Usuario')
+                    ->modalSubmitActionLabel('Asignar'),
+
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ]);
     }
 
