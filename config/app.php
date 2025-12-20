@@ -65,7 +65,8 @@ return [
     |
     */
 
-    'timezone' => 'America/Lima',
+    'timezone' => env('APP_TIMEZONE', 'America/Lima'),
+
 
     /*
     |--------------------------------------------------------------------------

@@ -64,6 +64,7 @@ class TipoCreditoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('Codigo')
                     ->label('Código')
@@ -83,13 +84,13 @@ class TipoCreditoResource extends Resource
                     ->label('Fecha Creación')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true), // ← Oculta por defecto pero disponible
 
                 Tables\Columns\TextColumn::make('FechaModificacion')
                     ->label('Fecha Modificación')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true), // ← Oculta por defecto pero disponible
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('Activo')
@@ -120,7 +121,6 @@ class TipoCreditoResource extends Resource
                     ->successNotificationTitle('Tipo de Crédito desactivado correctamente'),
             ])
             ->bulkActions([])
-            ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
     }
 
