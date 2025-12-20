@@ -27,6 +27,7 @@ class ClienteProposicionResource extends Resource
     protected static ?string $navigationLabel = 'Proposiciones';
     protected static ?string $modelLabel = 'Proposición';
     protected static ?string $pluralModelLabel = 'Proposiciones';
+    
 
     public static function form(Form $form): Form
     {
