@@ -23,7 +23,7 @@ class CrearProposicionCreditoResource extends Resource
     protected static ?string $model = ProposicionCredito::class;
     protected static ?string $navigationGroup = 'Créditos';
     protected static ?string $navigationIcon = 'heroicon-o-plus-circle';
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 5;
     protected static ?string $navigationLabel = 'Nueva Proposición';
     protected static ?string $modelLabel = 'Proposición de Crédito';
     protected static ?string $pluralModelLabel = 'Proposiciones de Crédito';
@@ -49,15 +49,6 @@ class CrearProposicionCreditoResource extends Resource
                             ->preload()
                             ->native(false)
                             ->columnSpanFull()
-                            ->default(function () {
-                                try {
-                                    if ($encrypted = request()->query('cliente')) {
-                                        session()->put('cliente_predefinido', true);
-                                        return Crypt::decrypt($encrypted);
-                                    }
-                                } catch (\Exception $e) { return null; }
-                            })
-                            ->disabled(fn() => session()->has('cliente_predefinido'))
                             ->dehydrated()
                             ->live(debounce: 0)
                             ->afterStateUpdated(function (Set $set, $state) {
@@ -146,6 +137,7 @@ class CrearProposicionCreditoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable(),
                 Tables\Columns\TextColumn::make('cliente.NombresApellidos')->label('Cliente')->searchable(),

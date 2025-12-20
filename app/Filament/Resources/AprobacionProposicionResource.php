@@ -17,7 +17,7 @@ class AprobacionProposicionResource extends Resource
 
     protected static ?string $navigationGroup = 'Créditos';
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 6;
     protected static ?string $label = 'Aprobación de Proposición';
     protected static ?string $pluralLabel = 'Aprobaciones de Proposiciones';
 

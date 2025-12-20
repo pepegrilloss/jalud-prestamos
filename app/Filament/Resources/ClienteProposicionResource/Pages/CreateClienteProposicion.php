@@ -12,6 +12,8 @@ class CreateClienteProposicion extends CreateRecord
 {
     protected static string $resource = ClienteProposicionResource::class;
 
+    protected ?bool $hasSkippableSteps = false;
+
     protected function handleRecordCreation(array $data): ProposicionCredito
     {
         // Si viene el cliente encriptado desde la URL, desencriptarlo

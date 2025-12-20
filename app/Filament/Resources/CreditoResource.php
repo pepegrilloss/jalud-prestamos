@@ -18,7 +18,7 @@ class CreditoResource extends Resource
 
     protected static ?string $navigationGroup = 'Créditos';
     protected static ?string $navigationIcon = 'heroicon-o-check-circle';
-    protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 8;
     protected static ?string $label = 'Créditos Generados';
     protected static ?string $pluralLabel = 'Créditos Generados';
 

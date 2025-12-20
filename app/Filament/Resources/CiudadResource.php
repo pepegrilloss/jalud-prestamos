@@ -20,7 +20,7 @@ class CiudadResource extends Resource
     protected static ?string $navigationGroup = 'Mantenimiento';
 
     protected static ?string $navigationIcon = 'heroicon-o-map';
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 1001;
 
     protected static ?string $navigationLabel = 'Ciudades';
 

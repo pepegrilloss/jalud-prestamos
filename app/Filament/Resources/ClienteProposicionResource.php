@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClienteProposicionResource\Pages;
-use App\Models\Cliente;
 use App\Models\ProposicionCredito;
 use App\Models\TipoCredito;
 use App\Models\Tasa;
@@ -15,19 +14,19 @@ use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Crypt;
 
 class ClienteProposicionResource extends Resource
 {
-    protected static ?string $model = Cliente::class;
+    protected static ?string $model = ProposicionCredito::class;
 
     protected static ?string $navigationGroup = 'Créditos';
-    protected static ?string $navigationIcon = 'heroicon-o-users';
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationGroupSort = 2;
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?int $navigationSort = 4;
 
-    protected static ?string $navigationLabel = 'Clientes - Nueva Proposición';
-    protected static ?string $modelLabel = 'Cliente';
-    protected static ?string $pluralModelLabel = 'Clientes para Proposición';
+    protected static ?string $navigationLabel = 'Proposiciones';
+    protected static ?string $modelLabel = 'Proposición';
+    protected static ?string $pluralModelLabel = 'Proposiciones';
 
     public static function form(Form $form): Form
     {
@@ -35,47 +34,17 @@ class ClienteProposicionResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Detalles del Crédito')
                     ->schema([
-                        Forms\Components\Select::make('ClienteID')
-                            ->label('Cliente')
-                            ->options(
-                                Cliente::where('Activo', true)
-                                    ->orderBy('NombresApellidos')
-                                    ->get()
-                                    ->mapWithKeys(fn($cliente) => [
-                                        $cliente->ClienteID => "{$cliente->NombresApellidos} (DNI: {$cliente->DNI})"
-                                    ])
-                            )
-                            ->required()
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-                            ->columnSpanFull()
-                            ->default(function () {
-                                try {
-                                    if ($encrypted = request()->query('cliente')) {
-                                        session()->put('cliente_predefinido', true);
-                                        return Crypt::decrypt($encrypted);
-                                    }
-                                } catch (\Exception $e) { return null; }
-                            })
-                            ->disabled(fn() => session()->has('cliente_predefinido'))
-                            ->dehydrated(true)
-                            ->live(debounce: 0)
-                            ->afterStateUpdated(function (Set $set, $state) {
-                                if ($state) {
-                                    $cliente = Cliente::find($state);
-                                    if ($cliente) {
-                                        $set('CodigoCliente', $cliente->DNI);
-                                        $set('ZonaID', $cliente->ZonaID);
-                                    }
-                                }
-                            }),
-
                         Forms\Components\TextInput::make('CodigoCredito')
                             ->label('Código de Crédito')
                             ->disabled()
                             ->dehydrated()
-                            ->default(fn() => ProposicionCredito::generarCodigoCredito())
+                            ->columnSpanFull(),
+
+                        Forms\Components\Select::make('ClienteID')
+                            ->label('Cliente')
+                            ->relationship('cliente', 'NombresApellidos')
+                            ->disabled()
+                            ->dehydrated(false)
                             ->columnSpanFull(),
 
                         Forms\Components\Select::make('TipoCreditoID')
@@ -115,16 +84,27 @@ class ClienteProposicionResource extends Resource
                         Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->prefix('S/')->disabled()->dehydrated(),
                         Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->prefix('S/')->disabled()->dehydrated(),
                         Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->prefix('S/')->disabled()->dehydrated(false),
-                        Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric()->default(0.50)->prefix('S/'),
+                        Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric()->prefix('S/'),
                     ])->columns(3),
 
                 Forms\Components\Section::make('Información Adicional')
                     ->schema([
                         Forms\Components\Select::make('ZonaID')
                             ->label('Zona')
-                            ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
-                            ->searchable(),
+                            ->relationship('zona', 'Nombre')
+                            ->disabled()
+                            ->dehydrated(false),
                         Forms\Components\Textarea::make('Observaciones')->rows(3)->columnSpanFull(),
+                        Forms\Components\Select::make('Estado')
+                            ->label('Estado')
+                            ->options([
+                                'PENDIENTE' => 'Pendiente',
+                                'APROBADO' => 'Aprobado',
+                                'RECHAZADO' => 'Rechazado',
+                            ])
+                            ->required()
+                            ->native(false)
+                            ->hidden(fn($record) => $record !== null),
                     ])->columns(2),
             ]);
     }
@@ -147,19 +127,33 @@ class ClienteProposicionResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
+            ->modifyQueryUsing(fn($query) => $query->where('Estado', '<>', 'APROBADO'))
             ->columns([
-                Tables\Columns\TextColumn::make('DNI')
-                    ->label('DNI')
+                Tables\Columns\TextColumn::make('CodigoCredito')
+                    ->label('Código Proposición')
                     ->searchable()
-                    ->sortable()
-                    ->copyable(),
+                    ->sortable(),
 
-                Tables\Columns\TextColumn::make('NombresApellidos')
-                    ->label('Nombres y Apellidos')
+                Tables\Columns\TextColumn::make('cliente.DNI')
+                    ->label('DNI Cliente')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('cliente.NombresApellidos')
+                    ->label('Cliente')
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
 
+                Tables\Columns\TextColumn::make('MontoTotal')
+                    ->label('Monto')
+                    ->money('PEN')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('NumeroCuotas')
+                    ->label('Cuotas')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('zona.Nombre')
                     ->label('Zona')
@@ -167,12 +161,15 @@ class ClienteProposicionResource extends Resource
                     ->sortable()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('proposiciones_count')
-                    ->label('Proposiciones')
-                    ->counts('proposiciones')
-                    ->sortable()
+                Tables\Columns\TextColumn::make('Estado')
                     ->badge()
-                    ->color('info'),
+                    ->color(fn (string $state): string => match ($state) {
+                        'APROBADO' => 'success',
+                        'RECHAZADO' => 'danger',
+                        'PENDIENTE' => 'warning',
+                        default => 'gray',
+                    })
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('ZonaID')
@@ -180,48 +177,51 @@ class ClienteProposicionResource extends Resource
                     ->relationship('zona', 'Nombre')
                     ->searchable(),
 
-                Tables\Filters\TernaryFilter::make('Activo')
+                Tables\Filters\SelectFilter::make('Estado')
                     ->label('Estado')
-                    ->placeholder('Todos')
-                    ->trueLabel('Activos')
-                    ->falseLabel('Inactivos'),
+                    ->options([
+                        'PENDIENTE' => 'Pendiente',
+                        'APROBADO' => 'Aprobado',
+                        'RECHAZADO' => 'Rechazado',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\Action::make('nueva_proposicion')
-                        ->label('Nueva Proposición')
-                        ->icon('heroicon-o-document-plus')
-                        ->color('success')
-                        ->url(fn (Cliente $record): string => 
-                            self::getUrl('crear_proposicion', ['cliente' => Crypt::encrypt($record->ClienteID)])
-                        )
-                        ->visible(fn (Cliente $record) => $record->Activo),
+                    Tables\Actions\ViewAction::make()
+                        ->label('Ver'),
 
-                    Tables\Actions\Action::make('ver_proposiciones')
-                        ->label('Ver Proposiciones')
-                        ->icon('heroicon-o-document-text')
-                        ->color('info')
-                        ->url(fn (Cliente $record): string => 
-                            self::getUrl('index') . '?tableFilters[cliente][value]=' . $record->ClienteID
-                        )
-                        ->visible(fn (Cliente $record) => $record->proposiciones_count > 0),
+                    Tables\Actions\EditAction::make()
+                        ->label('Editar'),
+
+                    Tables\Actions\DeleteAction::make()
+                        ->label('Eliminar'),
                 ]),
             ])
-            ->defaultSort('NombresApellidos', 'asc')
+            ->headerActions([
+                Tables\Actions\Action::make('crear_nueva_proposicion')
+                    ->label('Nueva Proposición')
+                    ->icon('heroicon-o-plus')
+                    ->size('lg')
+                    ->url(fn(): string => '/admin/crear-proposicion-creditos/create')
+                    ->openUrlInNewTab(false),
+
+            ])
+            ->defaultSort('CodigoCredito', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
-            ->poll('30s'); // Actualiza cada 30 segundos
+            ->poll('30s');
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListClienteProposicions::route('/'),
-            'crear_proposicion' => Pages\CreateClienteProposicion::route('/crear-proposicion'),
+            'view' => Pages\ViewClienteProposicion::route('/{record}'),
+            'edit' => Pages\EditClienteProposicion::route('/{record}/edit'),
         ];
     }
 
     public static function canCreate(): bool
     {
-        return true;
+        return false;
     }
 }

@@ -17,7 +17,7 @@ class NivelAprobacionResource extends Resource
     protected static ?string $navigationGroup = 'Mantenimiento';
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 1008;
 
     protected static ?string $navigationLabel = 'Niveles de Aprobación';
 

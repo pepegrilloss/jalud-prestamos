@@ -28,7 +28,7 @@ class GenerarCreditoResource extends Resource
     protected static ?string $model = ProposicionCredito::class;
     protected static ?string $navigationGroup = 'Créditos';
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 6;
     protected static ?string $navigationLabel = 'Generar Crédito';
     protected static ?string $modelLabel = 'Generar Crédito';
     protected static ?string $pluralModelLabel = 'Generar Crédito';
@@ -118,7 +118,7 @@ class GenerarCreditoResource extends Resource
 
                         Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->prefix('S/')->disabled()->dehydrated(),
                         Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->prefix('S/')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->prefix('S/')->disabled()->dehydrated(false),
+                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->prefix('S/')->disabled()->dehydrated(),
                         Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric()->default(0.50)->prefix('S/'),
                     ])->columns(3),
 
@@ -151,6 +151,7 @@ class GenerarCreditoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable(),
                 Tables\Columns\TextColumn::make('cliente.NombresApellidos')->label('Cliente')->searchable(),

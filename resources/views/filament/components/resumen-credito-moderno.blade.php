@@ -25,7 +25,7 @@
         <!-- Total a Pagar -->
         <div class="bg-green-50 rounded-lg p-4 border border-green-200">
             <p class="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Total a Pagar</p>
-            <p class="text-xl font-bold text-green-900">S/. {{ number_format($getRecord()->MontoTotalPagar, 2) }}</p>
+            <p class="text-xl font-bold text-green-900">S/. {{ number_format($getRecord()->MontoTotal + $getRecord()->MontoInteres, 2) }}</p>
         </div>
     </div>
 

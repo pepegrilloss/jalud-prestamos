@@ -17,7 +17,7 @@ class TipoPagoResource extends Resource
     protected static ?string $navigationGroup = 'Mantenimiento';
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 1007;
     protected static ?string $label = 'Tipo de Pago';
     protected static ?string $pluralLabel = 'Tipos de Pago';
 

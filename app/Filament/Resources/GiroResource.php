@@ -19,7 +19,7 @@ class GiroResource extends Resource
 
     protected static ?string $navigationGroup = 'Mantenimiento';
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1002;
     
 
     public static function form(Form $form): Form

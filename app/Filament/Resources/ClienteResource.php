@@ -23,10 +23,10 @@ use Illuminate\Database\Eloquent\Builder;
 class ClienteResource extends Resource
 {
     protected static ?string $model = Cliente::class;
+    protected static ?string $navigationGroup = 'Clientes';
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?string $navigationLabel = 'Clientes';
-    protected static ?string $modelLabel = 'Cliente';
-    protected static ?string $pluralModelLabel = 'Clientes';
+    protected static ?int $navigationGroupSort = 1;
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {

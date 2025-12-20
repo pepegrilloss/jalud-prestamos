@@ -17,7 +17,7 @@ class TipoCreditoResource extends Resource
     protected static ?string $navigationGroup = 'Mantenimiento';
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 1006;
 
     protected static ?string $navigationLabel = 'Tipos de Crédito';
 

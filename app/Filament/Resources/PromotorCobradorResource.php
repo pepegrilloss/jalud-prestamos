@@ -20,7 +20,7 @@ class PromotorCobradorResource extends Resource
     protected static ?string $navigationGroup = 'Mantenimiento';
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 1004;
 
     protected static ?string $navigationLabel = 'Promotores y Cobradores';
 

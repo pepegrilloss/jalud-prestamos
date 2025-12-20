@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\EvaluacionDeCredito\Resources;
 
-use App\Filament\Clusters\EvaluacionDeCredito;
 use App\Filament\Clusters\EvaluacionDeCredito\Resources\RegistrarEvaluacionDeCreditoResource\Pages;
 use App\Models\RegistrarEvaluacionDeCredito;
 use App\Models\EvaluacionCredito;
@@ -18,10 +17,13 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
 {
     protected static ?string $model = RegistrarEvaluacionDeCredito::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $cluster = EvaluacionDeCredito::class;
     protected static ?string $navigationLabel = 'Evaluación de Crédito';
     protected static ?string $modelLabel = 'Evaluación de Crédito';
     protected static ?string $pluralModelLabel = 'Evaluaciones de Crédito';
+
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $navigationGroup = 'Créditos';
 
     public static function form(Form $form): Form
     {
@@ -60,18 +62,8 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                     ->alignEnd()
                     ->weight('medium'),
 
-                Tables\Columns\TextColumn::make('evaluacionesCredito_count')
-                    ->label('Evaluaciones')
-                    ->counts('evaluacionesCredito')
-                    ->alignCenter()
-                    ->badge()
-                    ->color(fn($state) => $state > 0 ? 'success' : 'gray')
-                    ->icon(fn($state) => $state > 0 ? 'heroicon-m-document-check' : 'heroicon-m-document')
-                    ->sortable(),
             ])
-            ->filters([
-                //
-            ])
+
             ->actions([
                 Tables\Actions\Action::make('verEvaluaciones')
                     ->label('Ver Evaluaciones')
@@ -122,13 +114,8 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                             ->send();
                     })
                     ->successNotificationTitle('Evaluación registrada'),
-            ])
-            ->bulkActions([
-                //
-            ])
-            ->emptyStateHeading('No hay clientes registrados')
-            ->emptyStateDescription('Comienza registrando clientes para poder evaluar sus créditos.')
-            ->emptyStateIcon('heroicon-o-users');
+                ]);
+
     }
 
     public static function getRelations(): array

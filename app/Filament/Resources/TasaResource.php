@@ -20,7 +20,7 @@ class TasaResource extends Resource
     protected static ?string $navigationGroup = 'Mantenimiento';
 
     protected static ?string $navigationIcon = 'heroicon-o-calculator';
-    protected static ?int $navigationSort = 6;
+    protected static ?int $navigationSort = 1005;
 
     public static function form(Form $form): Form
     {
