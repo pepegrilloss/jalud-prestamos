@@ -262,10 +262,30 @@ class LibretaPagosExport
             $fechaActual->addDay(); 
         }
 
-        // Auto-ajuste de columnas
-        foreach (range('A', 'P') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
+        // Ajuste de anchos de columnas
+        // Columnas del BLOQUE 1 (A-F)
+        $sheet->getColumnDimension('A')->setWidth(26); 
+        $sheet->getColumnDimension('B')->setWidth(10); 
+        $sheet->getColumnDimension('C')->setWidth(10); 
+        $sheet->getColumnDimension('D')->setWidth(12); 
+        $sheet->getColumnDimension('E')->setWidth(12); 
+        $sheet->getColumnDimension('F')->setWidth(12); 
+
+        // Columnas del BLOQUE 2 (G-J)
+        $sheet->getColumnDimension('G')->setWidth(25); 
+        $sheet->getColumnDimension('H')->setWidth(15); 
+        $sheet->getColumnDimension('I')->setWidth(20); 
+        $sheet->getColumnDimension('J')->setWidth(12); 
+
+        // Columnas del BLOQUE 3 (K-N)
+        $sheet->getColumnDimension('K')->setWidth(25); 
+        $sheet->getColumnDimension('L')->setWidth(15); 
+        $sheet->getColumnDimension('M')->setWidth(20); 
+        $sheet->getColumnDimension('N')->setWidth(12); 
+
+        // Columnas adicionales
+        $sheet->getColumnDimension('O')->setWidth(12);
+        $sheet->getColumnDimension('P')->setWidth(12);
 
         $fileName = tempnam(sys_get_temp_dir(), 'libreta_');
         $writer = new Xlsx($spreadsheet);
