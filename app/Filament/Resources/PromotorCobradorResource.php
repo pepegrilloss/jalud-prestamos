@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\PromotorCobradorResource\Pages;
 use App\Filament\Resources\PromotorCobradorResource\RelationManagers;
 use App\Models\PromotorCobrador;
+use App\Models\Ciudad;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -26,6 +28,7 @@ class PromotorCobradorResource extends Resource
 
     protected static ?string $modelLabel = 'Promotor y Cobrador';
     protected static ?string $pluralModelLabel = 'Promotores y Cobradores';
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {
@@ -36,26 +39,32 @@ class PromotorCobradorResource extends Resource
                         Forms\Components\TextInput::make('Codigo')
                             ->label('Código')
                             ->required()
-                            ->maxLength(40),
-                        
+                            ->maxLength(40)
+                            ->unique(ignoreRecord: true)
+                            ->validationMessages([
+                                'unique' => 'Este código ya está registrado en el sistema.',
+                            ]),
+
                         Forms\Components\TextInput::make('Descripcion')
                             ->label('Descripción')
                             ->required()
                             ->maxLength(400)
                             ->columnSpanFull(),
-                        
-                        Forms\Components\TextInput::make('Ciudad')
-                            ->maxLength(200),
-                        
+
+                        Forms\Components\Select::make('CiudadID')
+                            ->label('Ciudad')
+                            ->options(Ciudad::where('Activo', true)->pluck('Nombre', 'CiudadID'))
+                            ->required(),
+
                         Forms\Components\Toggle::make('Activo')
                             ->hidden()
                             ->default(true),
-                        
+
                         Forms\Components\DateTimePicker::make('FechaCreacion')
                             ->label('Fecha Creación')
                             ->hidden()
                             ->default(now()),
-                        
+
                         Forms\Components\DateTimePicker::make('FechaModificacion')
                             ->label('Fecha Modificación')
                             ->hidden()
@@ -73,32 +82,30 @@ class PromotorCobradorResource extends Resource
                     ->label('Código')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('Descripcion')
                     ->label('Descripción')
                     ->searchable()
                     ->sortable()
                     ->wrap(),
-                
-                Tables\Columns\TextColumn::make('Ciudad')
+
+                Tables\Columns\TextColumn::make('ciudad.Nombre')
+                    ->label('Ciudad')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\IconColumn::make('Activo')
                     ->boolean()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('FechaCreacion')
-                    ->label('Fecha Creación')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                
+                    ->dateTime()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('FechaModificacion')
                     ->label('Fecha Modificación')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('Activo')
@@ -108,11 +115,11 @@ class PromotorCobradorResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
-                    ->visible(fn () => auth()->user()->can('view_promotor::cobrador')),
-                
+                    ->visible(fn() => auth()->user()->can('view_promotor::cobrador')),
+
                 Tables\Actions\EditAction::make()
-                    ->visible(fn () => auth()->user()->can('update_promotor::cobrador')),
-                
+                    ->visible(fn() => auth()->user()->can('update_promotor::cobrador')),
+
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
                     ->requiresConfirmation()
@@ -121,8 +128,8 @@ class PromotorCobradorResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn () => auth()->user()->can('delete_promotor::cobrador'))
-                    ->action(fn ($record) => $record->update([
+                    ->visible(fn() => auth()->user()->can('delete_promotor::cobrador'))
+                    ->action(fn($record) => $record->update([
                         'Activo' => false,
                         'FechaModificacion' => now()
                     ]))

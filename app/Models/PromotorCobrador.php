@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PromotorCobrador extends Model
 {
@@ -13,7 +14,7 @@ class PromotorCobrador extends Model
     protected $fillable = [
         'Codigo',
         'Descripcion',
-        'Ciudad',
+        'CiudadID',
         'Activo',
         'FechaCreacion',
         'FechaModificacion'
@@ -24,4 +25,9 @@ class PromotorCobrador extends Model
         'FechaCreacion' => 'datetime',
         'FechaModificacion' => 'datetime',
     ];
+
+    public function ciudad(): BelongsTo
+    {
+        return $this->belongsTo(Ciudad::class, 'CiudadID', 'CiudadID');
+    }
 }

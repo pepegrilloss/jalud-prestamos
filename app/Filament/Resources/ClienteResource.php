@@ -243,31 +243,8 @@ class ClienteResource extends Resource
                     ->collapsible()
                     ->visible(),
 
-                Forms\Components\Section::make('Ubicación y Domicilio')
+                Forms\Components\Section::make('Domicilio')
                     ->schema([
-                        Forms\Components\Grid::make(2)
-                            ->schema([
-                                Forms\Components\Select::make('CiudadID')
-                                    ->label('Ciudad')
-                                    ->options(Ciudad::where('Activo', 1)->pluck('Nombre', 'CiudadID'))
-                                    ->searchable()
-                                    ->native(false)
-                                    ->live()
-                                    ->afterStateUpdated(fn(Set $set) => $set('ZonaID', null)),
-
-                                Forms\Components\Select::make('ZonaID')
-                                    ->label('Zona')
-                                    ->options(
-                                        fn(Get $get) =>
-                                        Zona::where('CiudadID', $get('CiudadID'))
-                                            ->where('Activo', 1)
-                                            ->pluck('Nombre', 'ZonaID')
-                                    )
-                                    ->searchable()
-                                    ->native(false)
-                                    ->disabled(fn(Get $get) => !$get('CiudadID')),
-                            ], ),
-
                         Forms\Components\Textarea::make('Domicilio')
                             ->rows(3)
                             ->maxLength(500)
@@ -298,6 +275,19 @@ class ClienteResource extends Resource
                                     ->default(0.00)
                                     ->step(0.01),
 
+                                Forms\Components\Select::make('negocio.Calificacion')
+                                    ->label('Calificación')
+                                    ->options([
+                                        'MALO' => 'Malo',
+                                        'REGULAR' => 'Regular',
+                                        'BUENO' => 'Bueno',
+                                    ])
+                                    ->native(false)
+                                    ->placeholder('Seleccione'),
+                            ]),
+
+                        Forms\Components\Grid::make(1)
+                            ->schema([
                                 Forms\Components\Select::make('PromotorCobradorID')
                                     ->label('Promotor/Cobrador')
                                     ->options(
@@ -315,6 +305,29 @@ class ClienteResource extends Resource
 
                 Forms\Components\Section::make('Información del Negocio')
                     ->schema([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\Select::make('negocio.CiudadID')
+                                    ->label('Ciudad')
+                                    ->options(Ciudad::where('Activo', 1)->pluck('Nombre', 'CiudadID'))
+                                    ->searchable()
+                                    ->native(false)
+                                    ->live()
+                                    ->afterStateUpdated(fn(Set $set) => $set('negocio.ZonaID', null)),
+
+                                Forms\Components\Select::make('negocio.ZonaID')
+                                    ->label('Zona')
+                                    ->options(
+                                        fn(Get $get) =>
+                                        Zona::where('CiudadID', $get('negocio.CiudadID'))
+                                            ->where('Activo', 1)
+                                            ->pluck('Nombre', 'ZonaID')
+                                    )
+                                    ->searchable()
+                                    ->native(false)
+                                    ->disabled(fn(Get $get) => !$get('negocio.CiudadID')),
+                            ]),
+
                         Forms\Components\Textarea::make('negocio.DireccionNegocio')
                             ->label('Dirección del Negocio')
                             ->required()
@@ -322,7 +335,7 @@ class ClienteResource extends Resource
                             ->maxLength(500)
                             ->placeholder('Dirección completa del negocio'),
 
-                        Forms\Components\Grid::make(5)
+                        Forms\Components\Grid::make(3)
                             ->schema([
                                 Forms\Components\TextInput::make('negocio.Antiguedad')
                                     ->label('Antigüedad (años)')
@@ -355,26 +368,6 @@ class ClienteResource extends Resource
                                     ->searchable()
                                     ->native(false)
                                     ->disabled(fn(Get $get) => !$get('negocio.GiroID')),
-
-                                Forms\Components\Select::make('negocio.Ubicacion')
-                                    ->label('Ubicación')
-                                    ->options([
-                                        'MALO' => 'Malo',
-                                        'REGULAR' => 'Regular',
-                                        'BUENO' => 'Bueno',
-                                    ])
-                                    ->native(false)
-                                    ->placeholder('Seleccione'),
-
-                                Forms\Components\Select::make('negocio.Mantenimiento')
-                                    ->label('Mantenimiento')
-                                    ->options([
-                                        'MALO' => 'Malo',
-                                        'REGULAR' => 'Regular',
-                                        'BUENO' => 'Bueno',
-                                    ])
-                                    ->native(false)
-                                    ->placeholder('Seleccione'),
                             ]),
 
                         Forms\Components\Repeater::make('negocio.telefonos')
@@ -591,13 +584,13 @@ class ClienteResource extends Resource
                     ->sortable()
                     ->wrap(),
 
-                Tables\Columns\TextColumn::make('ciudad.Nombre')
+                Tables\Columns\TextColumn::make('negocio.ciudad.Nombre')
                     ->label('Ciudad')
                     ->searchable()
                     ->sortable()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('zona.Nombre')
+                Tables\Columns\TextColumn::make('negocio.zona.Nombre')
                     ->label('Zona')
                     ->searchable()
                     ->toggleable(),
@@ -655,7 +648,8 @@ class ClienteResource extends Resource
                 Tables\Filters\SelectFilter::make('CiudadID')
                     ->label('Ciudad')
                     ->options(Ciudad::where('Activo', 1)->pluck('Nombre', 'CiudadID'))
-                    ->searchable(),
+                    ->searchable()
+                    ->attribute('negocio.CiudadID'),
 
                 Tables\Filters\SelectFilter::make('ZonaID')
                     ->label('Zona')
@@ -663,7 +657,8 @@ class ClienteResource extends Resource
                         fn() =>
                         Zona::where('Activo', 1)->pluck('Nombre', 'ZonaID')
                     )
-                    ->searchable(),
+                    ->searchable()
+                    ->attribute('negocio.ZonaID'),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([

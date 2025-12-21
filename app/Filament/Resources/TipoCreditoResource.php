@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TipoCreditoResource\Pages;
 use App\Models\TipoCredito;
 use Filament\Forms;
@@ -24,6 +25,7 @@ class TipoCreditoResource extends Resource
     protected static ?string $modelLabel = 'Tipo de Crédito';
 
     protected static ?string $pluralModelLabel = 'Tipos de Crédito';
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {
@@ -35,7 +37,10 @@ class TipoCreditoResource extends Resource
                             ->required()
                             ->maxLength(10)
                             ->unique(ignoreRecord: true)
-                            ->label('Código'),
+                            ->label('Código')
+                            ->validationMessages([
+                                'unique' => 'Este código ya está registrado en el sistema.',
+                            ]),
 
                         Forms\Components\TextInput::make('Descripcion')
                             ->required()
@@ -82,15 +87,13 @@ class TipoCreditoResource extends Resource
 
                 Tables\Columns\TextColumn::make('FechaCreacion')
                     ->label('Fecha Creación')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true), // ← Oculta por defecto pero disponible
+                    ->dateTime()
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('FechaModificacion')
                     ->label('Fecha Modificación')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true), // ← Oculta por defecto pero disponible
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('Activo')

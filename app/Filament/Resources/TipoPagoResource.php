@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TipoPagoResource\Pages;
 use App\Models\TipoPago;
 use Filament\Forms;
@@ -20,6 +21,7 @@ class TipoPagoResource extends Resource
     protected static ?int $navigationSort = 1007;
     protected static ?string $label = 'Tipo de Pago';
     protected static ?string $pluralLabel = 'Tipos de Pago';
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {

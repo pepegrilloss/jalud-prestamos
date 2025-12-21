@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\NivelAprobacionResource\Pages;
 use App\Models\NivelAprobacion;
 use Filament\Forms;
@@ -24,6 +25,7 @@ class NivelAprobacionResource extends Resource
     protected static ?string $modelLabel = 'Nivel de Aprobación';
 
     protected static ?string $pluralModelLabel = 'Niveles de Aprobación';
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {
@@ -57,7 +59,7 @@ class NivelAprobacionResource extends Resource
                                     ->placeholder('0.00')
                                     ->afterStateUpdated(function (Forms\Set $set, $state, Forms\Get $get) {
                                         if ($state && $get('MontoMinimo')) {
-                                            if ((float)$state < (float)$get('MontoMinimo')) {
+                                            if ((float) $state < (float) $get('MontoMinimo')) {
                                                 $set('MontoMaximo', $get('MontoMinimo'));
                                             }
                                         }
@@ -129,15 +131,13 @@ class NivelAprobacionResource extends Resource
 
                 Tables\Columns\TextColumn::make('FechaCreacion')
                     ->label('Fecha Creación')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->dateTime()
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('FechaModificacion')
                     ->label('Fecha Modificación')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('Activo')

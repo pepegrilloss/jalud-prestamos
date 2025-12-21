@@ -203,7 +203,9 @@ class EditCliente extends EditRecord
                 'GiroID' => $negocio->GiroID,
                 'SubGiroID' => $negocio->SubGiroID,
                 'Ubicacion' => $negocio->Ubicacion,
-                'Mantenimiento' => $negocio->Mantenimiento,
+                'CiudadID' => $negocio->CiudadID,
+                'ZonaID' => $negocio->ZonaID,
+                'Calificacion' => $negocio->Calificacion,
                 'telefonos' => $negocio->telefonos->map(function ($tel) {
                     return [
                         'Telefono' => $tel->Telefono,

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\GiroResource\Pages;
 use App\Filament\Resources\GiroResource\RelationManagers;
 use App\Models\Giro;
@@ -20,7 +21,7 @@ class GiroResource extends Resource
     protected static ?string $navigationGroup = 'Mantenimiento';
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
     protected static ?int $navigationSort = 1002;
-    
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {
@@ -28,7 +29,11 @@ class GiroResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('Codigo')
                     ->required()
-                    ->maxLength(20),
+                    ->maxLength(20)
+                    ->unique(ignoreRecord: true)
+                    ->validationMessages([
+                        'unique' => 'Este código ya está registrado en el sistema.',
+                    ]),
                 Forms\Components\TextInput::make('Descripcion')
                     ->required()
                     ->maxLength(400),

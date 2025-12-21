@@ -232,15 +232,6 @@ class ViewCliente extends ViewRecord
                                         'MALO' => 'danger',
                                         default => 'gray',
                                     }),
-                                Components\TextEntry::make('negocio.Mantenimiento')
-                                    ->label('Mantenimiento')
-                                    ->badge()
-                                    ->color(fn($state) => match ($state) {
-                                        'BUENO' => 'success',
-                                        'REGULAR' => 'warning',
-                                        'MALO' => 'danger',
-                                        default => 'gray',
-                                    }),
                             ]),
                         Components\RepeatableEntry::make('negocio.telefonos')
                             ->label('Teléfonos')

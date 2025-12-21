@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\ZonaResource\Pages;
 use App\Filament\Resources\ZonaResource\RelationManagers;
 use App\Models\Zona;
@@ -22,6 +23,7 @@ class ZonaResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
     protected static ?int $navigationSort = 1009;
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {

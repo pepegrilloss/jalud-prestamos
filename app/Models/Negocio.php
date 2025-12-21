@@ -14,12 +14,13 @@ class Negocio extends Model
 
     protected $fillable = [
         'ClienteID',
+        'CiudadID',
+        'ZonaID',
         'DireccionNegocio',
         'Antiguedad',
         'GiroID',
         'SubGiroID',
-        'Ubicacion',        // NUEVO
-        'Mantenimiento',    // NUEVO
+        'Ubicacion',
         'Activo',
     ];
 
@@ -43,6 +44,16 @@ class Negocio extends Model
     public function subGiro(): BelongsTo
     {
         return $this->belongsTo(SubGiro::class, 'SubGiroID', 'SubGiroID');
+    }
+
+    public function ciudad(): BelongsTo
+    {
+        return $this->belongsTo(Ciudad::class, 'CiudadID', 'CiudadID');
+    }
+
+    public function zona(): BelongsTo
+    {
+        return $this->belongsTo(Zona::class, 'ZonaID', 'ZonaID');
     }
 
     public function telefonos(): HasMany

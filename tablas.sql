@@ -346,7 +346,6 @@ CREATE TABLE [dbo].[Negocio](
 	[GiroID] [int] NULL,
 	[SubGiroID] [int] NULL,
 	[Ubicacion] [nvarchar](20) NULL,
-	[Mantenimiento] [nvarchar](20) NULL,
 	[Activo] [bit] NOT NULL,
 	[FechaCreacion] [datetime] NOT NULL,
 	[FechaModificacion] [datetime] NULL,
@@ -1000,8 +999,6 @@ GO
 ALTER TABLE [dbo].[Cliente]  WITH CHECK ADD CHECK  (([Sexo]='F' OR [Sexo]='M'))
 GO
 ALTER TABLE [dbo].[DocumentoCliente]  WITH CHECK ADD CHECK  (([TipoDocumento]='OTROS' OR [TipoDocumento]='RECIBO_SERVICIO' OR [TipoDocumento]='DNI'))
-GO
-ALTER TABLE [dbo].[Negocio]  WITH CHECK ADD CHECK  (([Mantenimiento]='REGULAR' OR [Mantenimiento]='BUENO' OR [Mantenimiento]='MALO'))
 GO
 ALTER TABLE [dbo].[Negocio]  WITH CHECK ADD CHECK  (([Ubicacion]='REGULAR' OR [Ubicacion]='BUENO' OR [Ubicacion]='MALO'))
 GO

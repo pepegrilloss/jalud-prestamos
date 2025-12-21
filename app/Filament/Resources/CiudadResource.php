@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\CiudadResource\Pages;
 use App\Filament\Resources\CiudadResource\RelationManagers;
 use App\Models\Ciudad;
@@ -12,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+
 
 class CiudadResource extends Resource
 {
@@ -27,6 +29,9 @@ class CiudadResource extends Resource
     protected static ?string $modelLabel = 'Ciudad';
 
     protected static ?string $pluralModelLabel = 'Ciudades';
+
+    protected static ?string $cluster = Mantenimiento::class;
+
     
 
     public static function form(Form $form): Form
@@ -79,15 +84,13 @@ class CiudadResource extends Resource
                 
                 Tables\Columns\TextColumn::make('FechaCreacion')
                     ->label('Fecha Creación')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                     ->dateTime()
+                    ->sortable(),
                 
                 Tables\Columns\TextColumn::make('FechaModificacion')
                     ->label('Fecha Modificación')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                     ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('Activo')

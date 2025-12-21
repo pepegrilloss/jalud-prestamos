@@ -21,8 +21,6 @@ class Cliente extends Model
         'Estado',
         'ConyugeDNI',
         'ConyugeNombresApellidos',
-        'CiudadID',
-        'ZonaID',
         'Domicilio',
         'TasaID',
         'MontoMaxRecomendado',
@@ -43,16 +41,6 @@ class Cliente extends Model
     ];
 
     // Relaciones
-    public function ciudad(): BelongsTo
-    {
-        return $this->belongsTo(Ciudad::class, 'CiudadID', 'CiudadID');
-    }
-
-    public function zona(): BelongsTo
-    {
-        return $this->belongsTo(Zona::class, 'ZonaID', 'ZonaID');
-    }
-
     public function tasa(): BelongsTo
     {
         return $this->belongsTo(Tasa::class, 'TasaID', 'TasaID');

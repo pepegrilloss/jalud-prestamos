@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TasaResource\Pages;
 use App\Filament\Resources\TasaResource\RelationManagers;
 use App\Models\Tasa;
@@ -21,6 +22,7 @@ class TasaResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-calculator';
     protected static ?int $navigationSort = 1005;
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {

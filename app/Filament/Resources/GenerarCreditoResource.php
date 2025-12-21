@@ -194,7 +194,7 @@ class GenerarCreditoResource extends Resource
                         Forms\Components\Section::make('Datos de Formalización')
                             ->schema([
                                 Forms\Components\Select::make('TipoPagoID')
-                                    ->label('Método de Desembolso')
+                                    ->label('Frecuencia de Pago')
                                     ->options(TipoPago::where('Activo', true)->pluck('Nombre', 'TipoPagoID'))
                                     ->required()
                                     ->native(false),

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\SubGiroResource\Pages;
 use App\Filament\Resources\SubGiroResource\RelationManagers;
 use App\Models\SubGiro;
@@ -22,6 +23,7 @@ class SubGiroResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?int $navigationSort = 1003;
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {
