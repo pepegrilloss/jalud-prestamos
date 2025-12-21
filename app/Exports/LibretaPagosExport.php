@@ -156,23 +156,23 @@ class LibretaPagosExport
             
             $i = $indiceFila;
             
-            // Lógica de bloques: 18 a la izquierda, 26 al medio, resto a la derecha
-            if ($i < 18) {
+            // Lógica de bloques: 20 a la izquierda, 28 al medio, resto a la derecha
+            if ($i < 20) {
                 $colOffset = 'A';
                 $currentRow = 17 + $i;
                 $headerRow = 16;
-            } elseif ($i < 44) {
+            } elseif ($i < 48) {
                 $colOffset = 'G';
-                $currentRow = 9 + ($i - 18);
+                $currentRow = 9 + ($i - 20);
                 $headerRow = 8;
             } else {
                 $colOffset = 'K';
-                $currentRow = 13 + ($i - 44);
+                $currentRow = 13 + ($i - 48);
                 $headerRow = 12;
             }
 
             // Dibujar encabezados de tabla si es el inicio del bloque
-            if ($i == 0 || $i == 18 || $i == 44) {
+            if ($i == 0 || $i == 20 || $i == 48) {
                 // FECHA - Columna A
                 $sheet->setCellValue($colOffset . $headerRow, 'FECHA');
                 $sheet->getStyle($colOffset . $headerRow)->applyFromArray($styleHeaderTable);
@@ -236,7 +236,7 @@ class LibretaPagosExport
                 $sheet->getStyle($colOffset . $currentRow)->getFont()->setColor(new Color('FF0000'));
             }
             
-            if ($i < 18) {
+            if ($i < 20) {
                 // BLOQUE 1 - Columnas combinadas
                 // EFECTIVO - Columnas B y C combinadas
                 $efectivoCol1 = $this->nextCol($colOffset, 1);
