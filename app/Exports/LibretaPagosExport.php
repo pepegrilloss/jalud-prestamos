@@ -33,13 +33,25 @@ class LibretaPagosExport
         $montoTotal = $proposicion->MontoTotal;
         $plazo = $proposicion->Plazo;
 
-        // Obtener días feriados de Perú
+        // Obtener días feriados de Perú (años que cubra el crédito)
         $feriadosData = [];
         try {
-            $response = file_get_contents('https://date.nager.at/api/v3/PublicHolidays/2025/PE');
-            $feriados = json_decode($response, true);
-            foreach ($feriados as $feriado) {
-                $feriadosData[$feriado['date']] = $feriado['localName'];
+            $fechaInicio = Carbon::parse($credito->FechaGeneracion);
+            $fechaFin = $fechaInicio->copy()->addDays($cuotas);
+            $annoInicio = $fechaInicio->year;
+            $annoFin = $fechaFin->year;
+            
+            // Obtener feriados de todos los años que cubre el crédito
+            for ($anno = $annoInicio; $anno <= $annoFin; $anno++) {
+                try {
+                    $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
+                    $feriados = json_decode($response, true);
+                    foreach ($feriados as $feriado) {
+                        $feriadosData[$feriado['date']] = $feriado['localName'];
+                    }
+                } catch (\Exception $e) {
+                    // Si falla para un año, continuar con los siguientes
+                }
             }
         } catch (\Exception $e) {
             // Si falla la API, continuamos sin feriados
@@ -133,19 +145,23 @@ class LibretaPagosExport
         $cuotasTotal = $cuotas + $cuotasExtra;
         
         for ($i = 0; $i < $cuotasTotal; $i++) {
-            // Lógica de bloques: 18 a la izquierda, resto a la derecha
+            // Lógica de bloques: 18 a la izquierda, 26 al medio, resto a la derecha
             if ($i < 18) {
                 $colOffset = 'A';
                 $currentRow = 17 + $i;
                 $headerRow = 16;
-            } else {
+            } elseif ($i < 44) {
                 $colOffset = 'G';
                 $currentRow = 9 + ($i - 18);
                 $headerRow = 8;
+            } else {
+                $colOffset = 'M';
+                $currentRow = 13 + ($i - 44);
+                $headerRow = 12;
             }
 
             // Dibujar encabezados de tabla si es el inicio del bloque
-            if ($i == 0 || $i == 18) {
+            if ($i == 0 || $i == 18 || $i == 44) {
                 // FECHA - Columna A
                 $sheet->setCellValue($colOffset . $headerRow, 'FECHA');
                 $sheet->getStyle($colOffset . $headerRow)->applyFromArray($styleHeaderTable);
