@@ -142,9 +142,20 @@ class LibretaPagosExport
         // --- GENERACIÓN DE TABLAS ---
         $fechaActual = $fechaInicio->copy()->addDay(); 
         $dias = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
-        $cuotasTotal = $cuotas + $cuotasExtra;
+        $cuotasReales = 0; // Contador de cuotas reales (sin domingos ni feriados)
+        $indiceFila = 0; // Índice para la posición en la tabla (incluyendo domingos/feriados)
         
-        for ($i = 0; $i < $cuotasTotal; $i++) {
+        while ($cuotasReales < $cuotas + $cuotasExtra) {
+            $esDomingo = $fechaActual->dayOfWeek == 0;
+            $esFeriado = isset($feriadosData[$fechaActual->format('Y-m-d')]);
+            
+            // Si NO es domingo ni feriado, es una cuota real
+            if (!$esDomingo && !$esFeriado) {
+                $cuotasReales++;
+            }
+            
+            $i = $indiceFila;
+            
             // Lógica de bloques: 18 a la izquierda, 26 al medio, resto a la derecha
             if ($i < 18) {
                 $colOffset = 'A';
@@ -208,8 +219,6 @@ class LibretaPagosExport
             // Formato de fecha con día de la semana
             $nombreDia = $dias[$fechaActual->dayOfWeek];
             $fechaFormato = $fechaActual->format('d/m/Y') . ' - ' . $nombreDia;
-            $esDomingo = $fechaActual->dayOfWeek == 0;
-            $esFeriado = isset($feriadosData[$fechaActual->format('Y-m-d')]);
             
             // Si es feriado, agregar al texto
             if ($esFeriado) {
@@ -259,7 +268,8 @@ class LibretaPagosExport
                 $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
             }
 
-            $fechaActual->addDay(); 
+            $fechaActual->addDay();
+            $indiceFila++;
         }
 
         // Ajuste de anchos de columnas
