@@ -43,4 +43,9 @@ class Credito extends Model
     {
         return $this->hasMany(Pago::class, 'CreditoID');
     }
+
+    public function cuotas()
+    {
+        return $this->hasMany(Cuota::class, 'CreditoID', 'CreditoID');
+    }
 }

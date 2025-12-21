@@ -12,9 +12,9 @@ class ClienteProposicionStats extends BaseWidget
     {
         return [
             Stat::make('Total Créditos Propuestos', 'S/ ' . number_format(
-                ProposicionCredito::sum('MontoTotal'), 2
+                ProposicionCredito::where('Estado', '!=', 'APROBADO')->sum('MontoTotal'), 2
             ))
-                ->description('Suma de todos los montos totales propuestos')
+                ->description('Suma de proposiciones no aprobadas')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
         ];

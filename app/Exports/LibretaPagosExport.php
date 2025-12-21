@@ -27,35 +27,20 @@ class LibretaPagosExport
         $cliente = $proposicion->cliente;
         $zona = $cliente->negocio->zona->Nombre ?? 'N/A';
 
+        // Obtener las cuotas reales de la BD
+        $cuotas = $credito->cuotas()
+            ->orderBy('FechaVencimiento')
+            ->get();
+
+        if ($cuotas->isEmpty()) {
+            throw new \Exception('No hay cuotas generadas para este crédito');
+        }
+
         $fechaInicio = Carbon::parse($credito->FechaGeneracion);
-        $cuotas = $proposicion->NumeroCuotas;
+        $numeroCuotas = $cuotas->count();
         $montoCuota = $proposicion->MontoCuota;
         $montoTotal = $proposicion->MontoTotal;
         $plazo = $proposicion->Plazo;
-
-        // Obtener días feriados de Perú (años que cubra el crédito)
-        $feriadosData = [];
-        try {
-            $fechaInicio = Carbon::parse($credito->FechaGeneracion);
-            $fechaFin = $fechaInicio->copy()->addDays($cuotas);
-            $annoInicio = $fechaInicio->year;
-            $annoFin = $fechaFin->year;
-            
-            // Obtener feriados de todos los años que cubre el crédito
-            for ($anno = $annoInicio; $anno <= $annoFin; $anno++) {
-                try {
-                    $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
-                    $feriados = json_decode($response, true);
-                    foreach ($feriados as $feriado) {
-                        $feriadosData[$feriado['date']] = $feriado['localName'];
-                    }
-                } catch (\Exception $e) {
-                    // Si falla para un año, continuar con los siguientes
-                }
-            }
-        } catch (\Exception $e) {
-            // Si falla la API, continuamos sin feriados
-        }
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -77,7 +62,7 @@ class LibretaPagosExport
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '008000']]],
         ];
 
-        // --- 1. TÍTULO "CONTROL DE PAGOS" (Filas 8-9, Columnas B-E combinadas) ---
+        // --- 1. TÍTULO "CONTROL DE PAGOS" ---
         $sheet->mergeCells('B8:E9');
         $sheet->setCellValue('B8', 'CONTROL DE PAGOS');
         $sheet->getStyle('B8')->getFont()
@@ -89,36 +74,32 @@ class LibretaPagosExport
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
             ->setVertical(Alignment::VERTICAL_CENTER);
 
-        // --- 2. NOMBRE DEL CLIENTE (Fila 10, Columnas A-F combinadas) ---
+        // --- 2. NOMBRE DEL CLIENTE ---
         $sheet->mergeCells('A10:F10');
         $sheet->setCellValue('A10', $cliente->NombresApellidos);
         $sheet->getStyle('A10')->applyFromArray($styleVerdeBold);
         $sheet->getStyle('A10')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        // --- 3. FECHA FE (Fila 11, Columnas A-B combinadas) ---
+        // --- 3. FECHA FE ---
         $sheet->mergeCells('A11:B11');
         $sheet->setCellValue('A11', 'FE: ' . $fechaInicio->format('d/m/Y'));
         $sheet->getStyle('A11')->applyFromArray($styleVerdeBold);
 
-        // --- 4. FECHA FV (Fila 12, Columnas A-B combinadas) ---
+        // --- 4. FECHA FV ---
         $sheet->mergeCells('A12:B12');
-        $fechaFV = $fechaInicio->copy()->addDays($cuotas);
-        $cuotasExtra = 0;
-        // Si la FV cae en domingo, se agregará una cuota extra para el lunes
-        if ($fechaFV->dayOfWeek == 0) {
-            $cuotasExtra = 1;
-        }
+        $ultimaCuota = $cuotas->last();
+        $fechaFV = Carbon::parse($ultimaCuota->FechaVencimiento);
         $sheet->setCellValue('A12', 'FV: ' . $fechaFV->format('d/m/Y'));
         $sheet->getStyle('A12')->applyFromArray($styleVerdeBold);
 
-        // --- 5. BLOQUE DE DATOS DE CRÉDITO (Columna E labels, Columna F valores) ---
+        // --- 5. BLOQUE DE DATOS DE CRÉDITO ---
         $sheet->setCellValue('E11', 'PRINCIPAL');
         $sheet->setCellValue('E12', 'MONTO');
         $sheet->setCellValue('F12', number_format($montoTotal, 2));
         $sheet->setCellValue('E13', 'CUOTA');
         $sheet->setCellValue('F13', number_format($montoCuota, 2));
         $sheet->setCellValue('E14', 'N° DE CUOTAS');
-        $sheet->setCellValue('F14', $cuotas);
+        $sheet->setCellValue('F14', $numeroCuotas);
         $sheet->setCellValue('E15', 'PLAZO');
         $sheet->setCellValue('F15', $plazo);
         
@@ -126,34 +107,33 @@ class LibretaPagosExport
         $sheet->getStyle('F12:F15')->getFont()->setBold(true);
         $sheet->getStyle('F12:F15')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
-        // --- 6. ZONA (Fila 13, Columnas A-B combinadas) ---
+        // --- 6. ZONA ---
         $sheet->mergeCells('A13:B13');
         $sheet->setCellValue('A13', $zona); 
         $sheet->getStyle('A13')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFFF00');
         $sheet->getStyle('A13')->getFont()->setBold(true)->setColor(new Color('FF0000'));
         $sheet->getStyle('A13')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-        // --- INFO BANCARIA (Derecha) ---
+        // --- INFO BANCARIA ---
         $sheet->setCellValue('K8', 'BCP CUENTA SOLES  305-4198556-0-62');
         $sheet->setCellValue('K9', 'CCI 00230500419855606216');
         $sheet->setCellValue('K10', 'JALUD SOCIEDAD ANONIMA CERRADA');
         $sheet->getStyle('K8:K10')->getFont()->setColor(new Color('FF0000'))->setSize(9);
 
-        // --- GENERACIÓN DE TABLAS ---
-        $fechaActual = $fechaInicio->copy()->addDay(); 
+        // --- GENERACIÓN DE TABLAS CON CUOTAS REALES ---
         $dias = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
-        $cuotasReales = 0; // Contador de cuotas reales (sin domingos ni feriados)
-        $indiceFila = 0; // Índice para la posición en la tabla (incluyendo domingos/feriados)
+        $indiceFila = 0;
         
-        while ($cuotasReales < $cuotas + $cuotasExtra) {
-            $esDomingo = $fechaActual->dayOfWeek == 0;
-            $esFeriado = isset($feriadosData[$fechaActual->format('Y-m-d')]);
-            
-            // Si NO es domingo ni feriado, es una cuota real
-            if (!$esDomingo && !$esFeriado) {
-                $cuotasReales++;
+        // Obtener pagos agrupados por cuota
+        $pagosData = [];
+        foreach ($credito->pagos as $pago) {
+            if (!isset($pagosData[$pago->CuotaID])) {
+                $pagosData[$pago->CuotaID] = [];
             }
-            
+            $pagosData[$pago->CuotaID][] = $pago;
+        }
+        
+        foreach ($cuotas as $cuota) {
             $i = $indiceFila;
             
             // Lógica de bloques: 20 a la izquierda, 28 al medio, resto a la derecha
@@ -173,43 +153,34 @@ class LibretaPagosExport
 
             // Dibujar encabezados de tabla si es el inicio del bloque
             if ($i == 0 || $i == 20 || $i == 48) {
-                // FECHA - Columna A
                 $sheet->setCellValue($colOffset . $headerRow, 'FECHA');
                 $sheet->getStyle($colOffset . $headerRow)->applyFromArray($styleHeaderTable);
                 
                 if ($i == 0) {
-                    // BLOQUE 1 - Columnas combinadas
-                    // EFECTIVO - Columnas B y C combinadas
                     $efectivoCol1 = $this->nextCol($colOffset, 1);
                     $efectivoCol2 = $this->nextCol($colOffset, 2);
                     $sheet->mergeCells($efectivoCol1 . $headerRow . ':' . $efectivoCol2 . $headerRow);
                     $sheet->setCellValue($efectivoCol1 . $headerRow, 'EFECTIVO');
                     $sheet->getStyle($efectivoCol1 . $headerRow . ':' . $efectivoCol2 . $headerRow)->applyFromArray($styleHeaderTable);
                     
-                    // YAPE - TRANSFERENCIA - Columnas D y E combinadas
                     $yapeCol1 = $this->nextCol($colOffset, 3);
                     $yapeCol2 = $this->nextCol($colOffset, 4);
                     $sheet->mergeCells($yapeCol1 . $headerRow . ':' . $yapeCol2 . $headerRow);
                     $sheet->setCellValue($yapeCol1 . $headerRow, 'YAPE - TRANSFERENCIA');
                     $sheet->getStyle($yapeCol1 . $headerRow . ':' . $yapeCol2 . $headerRow)->applyFromArray($styleHeaderTable);
                     
-                    // SALDO - Columna F
                     $saldoCol = $this->nextCol($colOffset, 5);
                     $sheet->setCellValue($saldoCol . $headerRow, 'SALDO');
                     $sheet->getStyle($saldoCol . $headerRow)->applyFromArray($styleHeaderTable);
                 } else {
-                    // BLOQUES 2 y 3 - Columnas simples
-                    // EFECTIVO - Columna B
                     $efectivoCol = $this->nextCol($colOffset, 1);
                     $sheet->setCellValue($efectivoCol . $headerRow, 'EFECTIVO');
                     $sheet->getStyle($efectivoCol . $headerRow)->applyFromArray($styleHeaderTable);
                     
-                    // YAPE - TRANSFERENCIA - Columna C
                     $yapeCol = $this->nextCol($colOffset, 2);
                     $sheet->setCellValue($yapeCol . $headerRow, 'YAPE - TRANSFERENCIA');
                     $sheet->getStyle($yapeCol . $headerRow)->applyFromArray($styleHeaderTable);
                     
-                    // SALDO - Columna D
                     $saldoCol = $this->nextCol($colOffset, 3);
                     $sheet->setCellValue($saldoCol . $headerRow, 'SALDO');
                     $sheet->getStyle($saldoCol . $headerRow)->applyFromArray($styleHeaderTable);
@@ -217,83 +188,108 @@ class LibretaPagosExport
             }
 
             // Formato de fecha con día de la semana
-            $nombreDia = $dias[$fechaActual->dayOfWeek];
-            $fechaFormato = $fechaActual->format('d/m/Y') . ' - ' . $nombreDia;
+            $fechaCuota = Carbon::parse($cuota->FechaVencimiento);
+            $nombreDia = $dias[$fechaCuota->dayOfWeek];
             
-            // Si es feriado, agregar al texto
-            if ($esFeriado) {
-                $fechaFormato .= ' - FERIADO';
+            // Determinar si es domingo o feriado y construir el formato
+            $esDomingo = $cuota->Estado === 'DOMINGO';
+            $esFeriado = $cuota->Estado === 'FERIADO';
+            
+            if ($esDomingo) {
+                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia;
+            } elseif ($esFeriado) {
+                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia . ' - FERIADO';
+            } else {
+                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia;
             }
 
             // Datos y bordes verdes
-            // FECHA - Columna A
             $sheet->setCellValue($colOffset . $currentRow, $fechaFormato);
             $sheet->getStyle($colOffset . $currentRow)->applyFromArray($styleBordeVerde);
             $sheet->getStyle($colOffset . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
             
-            // Si es domingo o feriado, color rojo
+            // Si es domingo o feriado, marcar en rojo
             if ($esDomingo || $esFeriado) {
                 $sheet->getStyle($colOffset . $currentRow)->getFont()->setColor(new Color('FF0000'));
             }
             
+            // Calcular efectivo (sumar pagos de tipo EFECTIVO)
+            $montoEfectivo = 0;
+            $montoOtros = 0;
+            if (isset($pagosData[$cuota->CuotaID])) {
+                foreach ($pagosData[$cuota->CuotaID] as $pago) {
+                    // Asumiendo que existe un campo en Pago que indique si es efectivo
+                    // Por ahora, suponemos que todos los pagos son efectivo
+                    $montoEfectivo += $pago->MontoPagado;
+                }
+            }
+
+            $saldoPendiente = $cuota->SaldoPendiente ?? ($cuota->MontoCuota - $cuota->MontoPagado);
+
             if ($i < 20) {
                 // BLOQUE 1 - Columnas combinadas
-                // EFECTIVO - Columnas B y C combinadas
                 $efectivoCol1 = $this->nextCol($colOffset, 1);
                 $efectivoCol2 = $this->nextCol($colOffset, 2);
                 $sheet->mergeCells($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow);
+                if ($montoEfectivo > 0) {
+                    $sheet->setCellValue($efectivoCol1 . $currentRow, number_format($montoEfectivo, 2));
+                    $sheet->getStyle($efectivoCol1 . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                }
                 $sheet->getStyle($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow)->applyFromArray($styleBordeVerde);
                 
-                // YAPE - Columnas D y E combinadas
                 $yapeCol1 = $this->nextCol($colOffset, 3);
                 $yapeCol2 = $this->nextCol($colOffset, 4);
                 $sheet->mergeCells($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow);
+                if ($montoOtros > 0) {
+                    $sheet->setCellValue($yapeCol1 . $currentRow, number_format($montoOtros, 2));
+                    $sheet->getStyle($yapeCol1 . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                }
                 $sheet->getStyle($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow)->applyFromArray($styleBordeVerde);
                 
-                // SALDO - Columna F
                 $saldoCol = $this->nextCol($colOffset, 5);
+                $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoPendiente, 2));
+                $sheet->getStyle($saldoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
             } else {
                 // BLOQUES 2 y 3 - Columnas simples
-                // EFECTIVO - Columna B
                 $efectivoCol = $this->nextCol($colOffset, 1);
+                if ($montoEfectivo > 0) {
+                    $sheet->setCellValue($efectivoCol . $currentRow, number_format($montoEfectivo, 2));
+                    $sheet->getStyle($efectivoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                }
                 $sheet->getStyle($efectivoCol . $currentRow)->applyFromArray($styleBordeVerde);
                 
-                // YAPE - Columna C
                 $yapeCol = $this->nextCol($colOffset, 2);
+                if ($montoOtros > 0) {
+                    $sheet->setCellValue($yapeCol . $currentRow, number_format($montoOtros, 2));
+                    $sheet->getStyle($yapeCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                }
                 $sheet->getStyle($yapeCol . $currentRow)->applyFromArray($styleBordeVerde);
                 
-                // SALDO - Columna D
                 $saldoCol = $this->nextCol($colOffset, 3);
+                $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoPendiente, 2));
+                $sheet->getStyle($saldoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
             }
 
-            $fechaActual->addDay();
             $indiceFila++;
         }
 
         // Ajuste de anchos de columnas
-        // Columnas del BLOQUE 1 (A-F)
         $sheet->getColumnDimension('A')->setWidth(26); 
         $sheet->getColumnDimension('B')->setWidth(10); 
         $sheet->getColumnDimension('C')->setWidth(10); 
         $sheet->getColumnDimension('D')->setWidth(12); 
         $sheet->getColumnDimension('E')->setWidth(12); 
         $sheet->getColumnDimension('F')->setWidth(12); 
-
-        // Columnas del BLOQUE 2 (G-J)
         $sheet->getColumnDimension('G')->setWidth(25); 
         $sheet->getColumnDimension('H')->setWidth(15); 
         $sheet->getColumnDimension('I')->setWidth(20); 
         $sheet->getColumnDimension('J')->setWidth(12); 
-
-        // Columnas del BLOQUE 3 (K-N)
         $sheet->getColumnDimension('K')->setWidth(25); 
         $sheet->getColumnDimension('L')->setWidth(15); 
         $sheet->getColumnDimension('M')->setWidth(20); 
         $sheet->getColumnDimension('N')->setWidth(12); 
-
-        // Columnas adicionales
         $sheet->getColumnDimension('O')->setWidth(12);
         $sheet->getColumnDimension('P')->setWidth(12);
 
