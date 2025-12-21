@@ -167,8 +167,8 @@ class LibretaPagosExport
                 $headerRow = 8;
             } else {
                 $colOffset = 'K';
-                $currentRow = 13 + ($i - 48);
-                $headerRow = 12;
+                $currentRow = 12 + ($i - 48);
+                $headerRow = 11;
             }
 
             // Dibujar encabezados de tabla si es el inicio del bloque
