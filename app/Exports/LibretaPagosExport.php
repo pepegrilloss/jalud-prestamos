@@ -134,10 +134,10 @@ class LibretaPagosExport
         $sheet->getStyle('A13')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         // --- INFO BANCARIA (Derecha) ---
-        $sheet->setCellValue('M8', 'BCP CUENTA SOLES  305-4198556-0-62');
-        $sheet->setCellValue('M9', 'CCI 00230500419855606216');
-        $sheet->setCellValue('M10', 'JALUD SOCIEDAD ANONIMA CERRADA');
-        $sheet->getStyle('M8:M10')->getFont()->setColor(new Color('FF0000'))->setSize(9);
+        $sheet->setCellValue('K8', 'BCP CUENTA SOLES  305-4198556-0-62');
+        $sheet->setCellValue('K9', 'CCI 00230500419855606216');
+        $sheet->setCellValue('K10', 'JALUD SOCIEDAD ANONIMA CERRADA');
+        $sheet->getStyle('K8:K10')->getFont()->setColor(new Color('FF0000'))->setSize(9);
 
         // --- GENERACIÓN DE TABLAS ---
         $fechaActual = $fechaInicio->copy()->addDay(); 
@@ -155,7 +155,7 @@ class LibretaPagosExport
                 $currentRow = 9 + ($i - 18);
                 $headerRow = 8;
             } else {
-                $colOffset = 'M';
+                $colOffset = 'K';
                 $currentRow = 13 + ($i - 44);
                 $headerRow = 12;
             }
@@ -166,24 +166,43 @@ class LibretaPagosExport
                 $sheet->setCellValue($colOffset . $headerRow, 'FECHA');
                 $sheet->getStyle($colOffset . $headerRow)->applyFromArray($styleHeaderTable);
                 
-                // EFECTIVO - Columnas B y C combinadas
-                $efectivoCol1 = $this->nextCol($colOffset, 1);
-                $efectivoCol2 = $this->nextCol($colOffset, 2);
-                $sheet->mergeCells($efectivoCol1 . $headerRow . ':' . $efectivoCol2 . $headerRow);
-                $sheet->setCellValue($efectivoCol1 . $headerRow, 'EFECTIVO');
-                $sheet->getStyle($efectivoCol1 . $headerRow . ':' . $efectivoCol2 . $headerRow)->applyFromArray($styleHeaderTable);
-                
-                // YAPE - TRANSFERENCIA - Columnas D y E combinadas
-                $yapeCol1 = $this->nextCol($colOffset, 3);
-                $yapeCol2 = $this->nextCol($colOffset, 4);
-                $sheet->mergeCells($yapeCol1 . $headerRow . ':' . $yapeCol2 . $headerRow);
-                $sheet->setCellValue($yapeCol1 . $headerRow, 'YAPE - TRANSFERENCIA');
-                $sheet->getStyle($yapeCol1 . $headerRow . ':' . $yapeCol2 . $headerRow)->applyFromArray($styleHeaderTable);
-                
-                // SALDO - Columna F
-                $saldoCol = $this->nextCol($colOffset, 5);
-                $sheet->setCellValue($saldoCol . $headerRow, 'SALDO');
-                $sheet->getStyle($saldoCol . $headerRow)->applyFromArray($styleHeaderTable);
+                if ($i == 0) {
+                    // BLOQUE 1 - Columnas combinadas
+                    // EFECTIVO - Columnas B y C combinadas
+                    $efectivoCol1 = $this->nextCol($colOffset, 1);
+                    $efectivoCol2 = $this->nextCol($colOffset, 2);
+                    $sheet->mergeCells($efectivoCol1 . $headerRow . ':' . $efectivoCol2 . $headerRow);
+                    $sheet->setCellValue($efectivoCol1 . $headerRow, 'EFECTIVO');
+                    $sheet->getStyle($efectivoCol1 . $headerRow . ':' . $efectivoCol2 . $headerRow)->applyFromArray($styleHeaderTable);
+                    
+                    // YAPE - TRANSFERENCIA - Columnas D y E combinadas
+                    $yapeCol1 = $this->nextCol($colOffset, 3);
+                    $yapeCol2 = $this->nextCol($colOffset, 4);
+                    $sheet->mergeCells($yapeCol1 . $headerRow . ':' . $yapeCol2 . $headerRow);
+                    $sheet->setCellValue($yapeCol1 . $headerRow, 'YAPE - TRANSFERENCIA');
+                    $sheet->getStyle($yapeCol1 . $headerRow . ':' . $yapeCol2 . $headerRow)->applyFromArray($styleHeaderTable);
+                    
+                    // SALDO - Columna F
+                    $saldoCol = $this->nextCol($colOffset, 5);
+                    $sheet->setCellValue($saldoCol . $headerRow, 'SALDO');
+                    $sheet->getStyle($saldoCol . $headerRow)->applyFromArray($styleHeaderTable);
+                } else {
+                    // BLOQUES 2 y 3 - Columnas simples
+                    // EFECTIVO - Columna B
+                    $efectivoCol = $this->nextCol($colOffset, 1);
+                    $sheet->setCellValue($efectivoCol . $headerRow, 'EFECTIVO');
+                    $sheet->getStyle($efectivoCol . $headerRow)->applyFromArray($styleHeaderTable);
+                    
+                    // YAPE - TRANSFERENCIA - Columna C
+                    $yapeCol = $this->nextCol($colOffset, 2);
+                    $sheet->setCellValue($yapeCol . $headerRow, 'YAPE - TRANSFERENCIA');
+                    $sheet->getStyle($yapeCol . $headerRow)->applyFromArray($styleHeaderTable);
+                    
+                    // SALDO - Columna D
+                    $saldoCol = $this->nextCol($colOffset, 3);
+                    $sheet->setCellValue($saldoCol . $headerRow, 'SALDO');
+                    $sheet->getStyle($saldoCol . $headerRow)->applyFromArray($styleHeaderTable);
+                }
             }
 
             // Formato de fecha con día de la semana
@@ -201,33 +220,50 @@ class LibretaPagosExport
             // FECHA - Columna A
             $sheet->setCellValue($colOffset . $currentRow, $fechaFormato);
             $sheet->getStyle($colOffset . $currentRow)->applyFromArray($styleBordeVerde);
+            $sheet->getStyle($colOffset . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
             
             // Si es domingo o feriado, color rojo
             if ($esDomingo || $esFeriado) {
                 $sheet->getStyle($colOffset . $currentRow)->getFont()->setColor(new Color('FF0000'));
             }
             
-            // EFECTIVO - Columnas B y C combinadas
-            $efectivoCol1 = $this->nextCol($colOffset, 1);
-            $efectivoCol2 = $this->nextCol($colOffset, 2);
-            $sheet->mergeCells($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow);
-            $sheet->getStyle($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow)->applyFromArray($styleBordeVerde);
-            
-            // YAPE - Columnas D y E combinadas
-            $yapeCol1 = $this->nextCol($colOffset, 3);
-            $yapeCol2 = $this->nextCol($colOffset, 4);
-            $sheet->mergeCells($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow);
-            $sheet->getStyle($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow)->applyFromArray($styleBordeVerde);
-            
-            // SALDO - Columna F
-            $saldoCol = $this->nextCol($colOffset, 5);
-            $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
+            if ($i < 18) {
+                // BLOQUE 1 - Columnas combinadas
+                // EFECTIVO - Columnas B y C combinadas
+                $efectivoCol1 = $this->nextCol($colOffset, 1);
+                $efectivoCol2 = $this->nextCol($colOffset, 2);
+                $sheet->mergeCells($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow);
+                $sheet->getStyle($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow)->applyFromArray($styleBordeVerde);
+                
+                // YAPE - Columnas D y E combinadas
+                $yapeCol1 = $this->nextCol($colOffset, 3);
+                $yapeCol2 = $this->nextCol($colOffset, 4);
+                $sheet->mergeCells($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow);
+                $sheet->getStyle($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow)->applyFromArray($styleBordeVerde);
+                
+                // SALDO - Columna F
+                $saldoCol = $this->nextCol($colOffset, 5);
+                $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
+            } else {
+                // BLOQUES 2 y 3 - Columnas simples
+                // EFECTIVO - Columna B
+                $efectivoCol = $this->nextCol($colOffset, 1);
+                $sheet->getStyle($efectivoCol . $currentRow)->applyFromArray($styleBordeVerde);
+                
+                // YAPE - Columna C
+                $yapeCol = $this->nextCol($colOffset, 2);
+                $sheet->getStyle($yapeCol . $currentRow)->applyFromArray($styleBordeVerde);
+                
+                // SALDO - Columna D
+                $saldoCol = $this->nextCol($colOffset, 3);
+                $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
+            }
 
             $fechaActual->addDay(); 
         }
 
         // Auto-ajuste de columnas
-        foreach (range('A', 'N') as $col) {
+        foreach (range('A', 'P') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
