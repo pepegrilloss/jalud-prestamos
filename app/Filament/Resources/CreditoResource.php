@@ -135,6 +135,11 @@ class CreditoResource extends Resource
             })
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\Action::make('descargar_libreta')
+                    ->label('Descargar Libreta de Pagos')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn($record) => route('libreta-pagos.descargar', $record->CreditoID))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([])
             ->defaultSort('FechaGeneracion', 'desc')
