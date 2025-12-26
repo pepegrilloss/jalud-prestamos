@@ -14,6 +14,7 @@ use App\Models\AnalisisEconomico;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Forms\Get;
@@ -271,9 +272,7 @@ class ClienteResource extends Resource
                                 Forms\Components\TextInput::make('MontoMaxRecomendado')
                                     ->label('Monto Máximo Recomendado')
                                     ->numeric()
-                                    ->prefix('S/')
-                                    ->default(0.00)
-                                    ->step(0.01),
+                                    ->default(0.00),
 
                                 Forms\Components\Select::make('negocio.Calificacion')
                                     ->label('Calificación')
@@ -419,16 +418,12 @@ class ClienteResource extends Resource
                                         Forms\Components\TextInput::make('analisis_economico.CapitalManifestado')
                                             ->label('Capital Manifestado por el Cliente')
                                             ->numeric()
-                                            ->prefix('S/')
-                                            ->step(0.01)
                                             ->placeholder('Ej: 2000.00')
                                             ->helperText('Monto que el cliente indica como capital'),
 
                                         Forms\Components\TextInput::make('analisis_economico.CapitalEstimado')
                                             ->label('Capital Estimado por el Jefe de Oficina')
                                             ->numeric()
-                                            ->prefix('S/')
-                                            ->step(0.01)
                                             ->placeholder('Ej: 4000.00')
                                             ->helperText('Estimación del jefe de oficina'),
                                     ]),
@@ -438,24 +433,18 @@ class ClienteResource extends Resource
                                         Forms\Components\TextInput::make('analisis_economico.VentaManifestadaMin')
                                             ->label('Venta Manifestada Mínima')
                                             ->numeric()
-                                            ->prefix('S/')
-                                            ->step(0.01)
                                             ->placeholder('Ej: 500.00')
                                             ->helperText('Venta mínima declarada'),
 
                                         Forms\Components\TextInput::make('analisis_economico.VentaManifestadaMax')
                                             ->label('Venta Manifestada Máxima')
                                             ->numeric()
-                                            ->prefix('S/')
-                                            ->step(0.01)
                                             ->placeholder('Ej: 800.00')
                                             ->helperText('Venta máxima declarada'),
 
                                         Forms\Components\TextInput::make('analisis_economico.VentaEstimada')
                                             ->label('Venta Estimada por Jefe de Oficina')
                                             ->numeric()
-                                            ->prefix('S/')
-                                            ->step(0.01)
                                             ->placeholder('Ej: 400.00')
                                             ->helperText('Estimación del jefe de oficina'),
                                     ]),

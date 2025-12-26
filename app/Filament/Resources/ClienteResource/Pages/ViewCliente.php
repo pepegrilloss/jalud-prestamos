@@ -40,14 +40,12 @@ class ViewCliente extends ViewRecord
                                     Forms\Components\TextInput::make('CapitalManifestado')
                                         ->label('Capital Manifestado por el Cliente')
                                         ->numeric()
-                                        ->prefix('S/')
                                         ->step(0.01)
                                         ->disabled(),
 
                                     Forms\Components\TextInput::make('CapitalEstimado')
                                         ->label('Capital Estimado por el Jefe de Oficina')
                                         ->numeric()
-                                        ->prefix('S/')
                                         ->step(0.01)
                                         ->disabled(),
                                 ]),
@@ -57,21 +55,18 @@ class ViewCliente extends ViewRecord
                                     Forms\Components\TextInput::make('VentaManifestadaMin')
                                         ->label('Venta Manifestada Mínima por el cliente')
                                         ->numeric()
-                                        ->prefix('S/')
                                         ->step(0.01)
                                         ->disabled(),
 
                                     Forms\Components\TextInput::make('VentaManifestadaMax')
                                         ->label('Venta Manifestada Máxima por el cliente')
                                         ->numeric()
-                                        ->prefix('S/')
                                         ->step(0.01)
                                         ->disabled(),
 
                                     Forms\Components\TextInput::make('VentaEstimada')
                                         ->label('Venta Estimada por Jefe de Oficina')
                                         ->numeric()
-                                        ->prefix('S/')
                                         ->step(0.01)
                                         ->disabled(),
                                 ]),

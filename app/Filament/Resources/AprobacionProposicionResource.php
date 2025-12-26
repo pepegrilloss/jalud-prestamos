@@ -37,8 +37,7 @@ class AprobacionProposicionResource extends Resource
 
                         Forms\Components\TextInput::make('MontoTotal')
                             ->label('Monto Total')
-                            ->disabled()
-                            ->prefix('S/.'),
+                            ->disabled(),
 
                         Forms\Components\TextInput::make('Estado')
                             ->label('Estado General')

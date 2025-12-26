@@ -12,6 +12,7 @@ use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
+use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -59,7 +60,6 @@ class ClienteProposicionResource extends Resource
                             ->label('Monto Total')
                             ->required()
                             ->numeric()
-                            ->prefix('S/')
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn(Set $set, Get $get, $state) => static::calcularTotales($set, $get, $state)),
 
@@ -82,10 +82,10 @@ class ClienteProposicionResource extends Resource
                         Forms\Components\TextInput::make('NumeroCuotas')->label('N° Cuotas')->required()->numeric()
                             ->live(onBlur: true)->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
 
-                        Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->prefix('S/')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->prefix('S/')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->prefix('S/')->disabled()->dehydrated(false),
-                        Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric()->prefix('S/'),
+                        Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->numeric()->required()->dehydrated(),
+                        Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->disabled()->dehydrated(),
+                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->disabled()->dehydrated(false),
+                        Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric(),
                     ])->columns(3),
 
                 Forms\Components\Section::make('Información Adicional')

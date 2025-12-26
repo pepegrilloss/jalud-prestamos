@@ -8,6 +8,7 @@ use App\Models\NivelAprobacion;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -45,16 +46,12 @@ class NivelAprobacionResource extends Resource
                                 Forms\Components\TextInput::make('MontoMinimo')
                                     ->required()
                                     ->numeric()
-                                    ->prefix('S/')
-                                    ->step(0.01)
                                     ->label('Monto Mínimo')
                                     ->placeholder('0.00'),
 
                                 Forms\Components\TextInput::make('MontoMaximo')
                                     ->required()
                                     ->numeric()
-                                    ->prefix('S/')
-                                    ->step(0.01)
                                     ->label('Monto Máximo')
                                     ->placeholder('0.00')
                                     ->afterStateUpdated(function (Forms\Set $set, $state, Forms\Get $get) {

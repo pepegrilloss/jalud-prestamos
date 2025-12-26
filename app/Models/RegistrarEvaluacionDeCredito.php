@@ -3,6 +3,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RegistrarEvaluacionDeCredito extends Model
 {
@@ -28,5 +29,12 @@ class RegistrarEvaluacionDeCredito extends Model
     public function evaluacionesCredito(): HasMany
     {
         return $this->hasMany(EvaluacionCredito::class, 'ClienteID', 'ClienteID');
+    }
+
+    public function analisisEconomico(): HasOne
+    {
+        return $this->hasOne(AnalisisEconomico::class, 'ClienteID', 'ClienteID')
+            ->where('Activo', 1)
+            ->latest('FechaAnalisis');
     }
 }

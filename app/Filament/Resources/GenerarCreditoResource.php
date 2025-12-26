@@ -15,6 +15,7 @@ use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
+use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Actions\Action;
@@ -93,7 +94,6 @@ class GenerarCreditoResource extends Resource
                             ->label('Monto Total')
                             ->required()
                             ->numeric()
-                            ->prefix('S/')
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn(Set $set, Get $get, $state) => static::calcularTotales($set, $get, $state)),
 
@@ -116,10 +116,10 @@ class GenerarCreditoResource extends Resource
                         Forms\Components\TextInput::make('NumeroCuotas')->label('N° Cuotas')->required()->numeric()
                             ->live(onBlur: true)->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
 
-                        Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->prefix('S/')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->prefix('S/')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->prefix('S/')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric()->default(0.50)->prefix('S/'),
+                        Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->disabled()->dehydrated(),
+                        Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->disabled()->dehydrated(),
+                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->disabled()->dehydrated(),
+                        Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric()->default(0.50),
                     ])->columns(3),
 
                 Forms\Components\Section::make('Información Adicional')
@@ -153,15 +153,27 @@ class GenerarCreditoResource extends Resource
         return $table
             ->recordUrl(null)
             ->columns([
-                Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable(),
-                Tables\Columns\TextColumn::make('cliente.NombresApellidos')->label('Cliente')->searchable(),
-                Tables\Columns\TextColumn::make('MontoTotal')->label('Monto')->money('PEN'),
-                Tables\Columns\TextColumn::make('NumeroCuotas')->label('Cuotas'),
-                Tables\Columns\TextColumn::make('MontoCuota')->label('Cuota')->money('PEN'),
+                Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('cliente.NombresApellidos')->label('Cliente')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('MontoTotal')->label('Monto')->money('PEN')->sortable(),
+                Tables\Columns\TextColumn::make('TasaInteres')->label('Tasa (%)')->formatStateUsing(fn($state) => number_format((float)$state, 2, '.', '') . ' %')->sortable(),
+                Tables\Columns\TextColumn::make('MontoInteres')
+                    ->label('Intereses')
+                    ->sortable()
+                    ->getStateUsing(fn($record) => (float)(($record->MontoTotal ?? 0) * (($record->TasaInteres ?? 0) / 100)))
+                    ->formatStateUsing(fn($state) => 'S/ ' . number_format((float)$state, 2, '.', '')),
+
+                Tables\Columns\TextColumn::make('MontoTotalPagar')
+                    ->label('Monto Total')
+                    ->sortable()
+                    ->getStateUsing(fn($record) => (float)(($record->MontoTotal ?? 0) + (($record->MontoTotal ?? 0) * (($record->TasaInteres ?? 0) / 100))))
+                    ->formatStateUsing(fn($state) => 'S/ ' . number_format((float)$state, 2, '.', '')),
+                Tables\Columns\TextColumn::make('NumeroCuotas')->label('Cuotas')->sortable(),
+                Tables\Columns\TextColumn::make('Plazo')->label('Días')->sortable(),
                 Tables\Columns\TextColumn::make('Estado')->badge()->color(fn (string $state): string => match ($state) {
                     'APROBADO' => 'success',
                     default => 'gray',
-                }),
+                })->sortable(),
             ])
             // CORRECCIÓN: Se cambió $q por $query para evitar el error de resolución
             ->modifyQueryUsing(function (Builder $query) {

@@ -45,11 +45,16 @@ class CreatePago extends CreateRecord
                         
                         $cliente = $credito->proposicion->cliente;
                         $monto = number_format($data['MontoPagado'], 2);
-                        
-                        return "¿ESTÁ SEGURO DE REGISTRAR ESTE PAGO?\n\n" .
-                               "👤 Cliente: {$cliente->NombresApellidos}\n" .
-                               "🆔 DNI: {$cliente->NumeroDocumento}\n" .
-                               "💰 Monto: S/ {$monto}";
+
+                        $nombre = e($cliente->NombresApellidos ?? '');
+                        $dni = e($cliente->DNI ?? $cliente->NumeroDocumento ?? '');
+
+                        return new \Illuminate\Support\HtmlString(
+                            '<div><strong>¿ESTÁ SEGURO DE REGISTRAR ESTE PAGO?</strong></div>' .
+                            '<div style="margin-top:8px">👤 Cliente: <strong>' . $nombre . '</strong></div>' .
+                            '<div>🆔 DNI: <strong>' . $dni . '</strong></div>' .
+                            '<div>💰 Monto: S/ ' . $monto . '</div>'
+                        );
                                
                     } catch (\Exception $e) {
                         return 'Error al cargar los datos.';

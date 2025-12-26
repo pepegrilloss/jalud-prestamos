@@ -10,6 +10,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Support\RawJs;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 
 class PagoResource extends Resource
 {
@@ -28,20 +31,20 @@ class PagoResource extends Resource
                 Forms\Components\Section::make('Información del Pago')
                     ->schema([
                         Forms\Components\Select::make('CreditoID')
-                            ->label('Cliente - Crédito')
+                            ->label('Cliente - Dni - Crédito')
                             ->options(
                                 Credito::with('proposicion.cliente')
                                     ->where('Activo', 1)
                                     ->get()
                                     ->mapWithKeys(fn($credito) => [
-                                        $credito->CreditoID => "{$credito->proposicion->cliente->NombresApellidos} - {$credito->proposicion->CodigoCredito}"
+                                        $credito->CreditoID => "{$credito->proposicion->cliente->NombresApellidos} - {$credito->proposicion->cliente->DNI} - {$credito->proposicion->CodigoCredito}"
                                     ])
                             )
                             ->required()
                             ->searchable()
                             ->native(false)
                             ->live()
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            ->afterStateUpdated(function (Set $set, $state) {
                                 $set('CuotaID', null);
                             }),
 
@@ -94,8 +97,6 @@ class PagoResource extends Resource
                             ->label('Monto Pagado')
                             ->numeric()
                             ->required()
-                            ->prefix('S/')
-                            ->step(0.01)
                             ->placeholder('Ingrese el monto del pago'),
 
                         Forms\Components\DatePicker::make('FechaPago')
@@ -110,15 +111,15 @@ class PagoResource extends Resource
                 Forms\Components\Section::make('Flags de Pago')
                     ->schema([
                         Forms\Components\Checkbox::make('EsMora')
-                            ->label('¿Es Mora?')
+                            ->label('Es Mora')
                             ->default(false),
 
                         Forms\Components\Checkbox::make('EsPagoAMayor')
-                            ->label('¿Es Mayor a la Cuota?')
+                            ->label('Es A Mayor')
                             ->default(false),
 
                         Forms\Components\Checkbox::make('EsPagoForzado')
-                            ->label('¿Es Pago Forzado?')
+                            ->label('Pago Forzado')
                             ->default(false),
                     ])->columns(3),
 
@@ -156,7 +157,7 @@ class PagoResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\BooleanColumn::make('EsMora')
-                    ->label('¿Mora?')
+                    ->label('Es Mora')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('FechaPago')
@@ -183,9 +184,12 @@ class PagoResource extends Resource
                     ->label('Es Pago Forzado'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
