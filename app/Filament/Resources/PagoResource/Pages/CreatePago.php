@@ -206,4 +206,9 @@ class CreatePago extends CreateRecord
                 ->send();
         }
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }
