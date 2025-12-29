@@ -19,6 +19,7 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'username',
+        'PromotorCobradorID',
     ];
 
     protected $hidden = [
@@ -97,8 +98,8 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(UserNivelAprobacion::class, 'UserID', 'id');
     }
 
-    public function esGerencia()
+    public function promotorCobrador()
     {
-        return $this->tieneNivelAprobacion(3);
+        return $this->belongsTo(\App\Models\PromotorCobrador::class, 'PromotorCobradorID', 'PromotorCobradorID');
     }
 }

@@ -56,6 +56,14 @@ class UserResource extends Resource
                             ->searchable()
                             ->required()
                             ->label('Roles'),
+
+                        Forms\Components\Select::make('PromotorCobradorID')
+                            ->relationship('promotorCobrador', 'Descripcion')
+                            ->label('Promotor Cobrador')
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->helperText('Asignar un promotor cobrador a este usuario'),
                     ])
                     ->columns(2),
             ]);

@@ -117,10 +117,7 @@ class PagoResource extends Resource
                         Forms\Components\Checkbox::make('EsPagoAMayor')
                             ->label('Es A Mayor')
                             ->default(false),
-
-                        Forms\Components\Checkbox::make('EsPagoForzado')
-                            ->label('Pago Forzado')
-                            ->default(false),
+      
                     ])->columns(3),
 
                 Forms\Components\Section::make('Comentarios')
@@ -136,6 +133,7 @@ class PagoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('cuota.credito.proposicion.cliente.NombresApellidos')
                     ->label('Cliente')
@@ -169,12 +167,14 @@ class PagoResource extends Resource
                     ->label('Usuario Registro')
                     ->searchable()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn () => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\IconColumn::make('Activo')
                     ->boolean()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn () => !auth()->user()?->hasRole('Promotor Cobrador')),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('EsMora')
@@ -184,18 +184,14 @@ class PagoResource extends Resource
                     ->label('Es Pago Forzado'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
-                Tables\Actions\EditAction::make()
-                    ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
-                Tables\Actions\DeleteAction::make()
-                    ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                    Tables\Actions\ViewAction::make()
+                        ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    Tables\Actions\EditAction::make()
+                        ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    Tables\Actions\DeleteAction::make()
+                        ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
             ]);
+           
     }
 
     public static function getRelations(): array

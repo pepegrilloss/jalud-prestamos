@@ -577,12 +577,14 @@ class ClienteResource extends Resource
                     ->label('Ciudad')
                     ->searchable()
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\TextColumn::make('negocio.zona.Nombre')
                     ->label('Zona')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\TextColumn::make('Estado')
                     ->badge()
@@ -590,34 +592,54 @@ class ClienteResource extends Resource
                         'NO OBSERVADO' => 'success',
                         'OBSERVADO' => 'warning',
                     })
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\TextColumn::make('MontoMaxRecomendado')
                     ->label('Monto Máx.')
                     ->money('PEN')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\TextColumn::make('promotorCobrador.Descripcion')
                     ->label('Promotor/Cobrador')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\TextColumn::make('garante.NombresApellidos')
                     ->label('Garante')
                     ->searchable()
                     ->toggleable()
-                    ->placeholder('Sin garante'),
+                    ->placeholder('Sin garante')
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\IconColumn::make('Activo')
                     ->boolean()
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\TextColumn::make('FechaRegistro')
                     ->label('Fecha Registro')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+
+                // Direcciones y teléfonos: visibles para todos (promotor verá solo estas junto al nombre)
+                Tables\Columns\TextColumn::make('Domicilio')
+                    ->label('Domicilio')
+                    ->wrap(),
+
+                Tables\Columns\TextColumn::make('negocio.DireccionNegocio')
+                    ->label('Dirección Negocio')
+                    ->wrap(),
+
+                Tables\Columns\TextColumn::make('telefonos')
+                    ->label('Teléfonos')
+                    ->getStateUsing(fn($record) => optional($record->negocio)->telefonos->pluck('Telefono')->implode(', '))
+                    ->wrap(),
             ])
             ->filters([
                 Tables\Filters\Filter::make('NombresApellidos')
@@ -652,7 +674,8 @@ class ClienteResource extends Resource
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
-                        ->label('Ver'),
+                        ->label('Ver')
+                        ->visible(fn () => !auth()->user()?->hasRole('Promotor Cobrador')),
                     Tables\Actions\EditAction::make()
                         ->label('Editar'),
 

@@ -24,6 +24,14 @@ class ListPagos extends ListRecords
         $query = parent::getTableQuery();
 
         if (auth()->user()?->hasRole('Promotor Cobrador')) {
+            $pcId = auth()->user()->PromotorCobradorID ?? \App\Models\PromotorCobrador::where('Codigo', auth()->user()->username)
+                ->orWhere('Descripcion', auth()->user()->name)
+                ->value('PromotorCobradorID');
+
+            if ($pcId) {
+                return $query->where('PromotorCobradorID', $pcId);
+            }
+
             return $query->whereRaw('1 = 0');
         }
 

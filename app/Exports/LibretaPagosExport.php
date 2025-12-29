@@ -41,6 +41,7 @@ class LibretaPagosExport
         $montoCuota = $proposicion->MontoCuota;
         $montoTotal = $proposicion->MontoTotal;
         $plazo = $proposicion->Plazo;
+        $totalInteres = $proposicion->MontoInteres ?? 0;
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -95,7 +96,7 @@ class LibretaPagosExport
         // --- 5. BLOQUE DE DATOS DE CRÉDITO ---
         $sheet->setCellValue('E11', 'PRINCIPAL');
         $sheet->setCellValue('E12', 'MONTO');
-        $sheet->setCellValue('F12', number_format($montoTotal, 2));
+        $sheet->setCellValue('F12', number_format($montoTotal + $totalInteres, 2));
         $sheet->setCellValue('E13', 'CUOTA');
         $sheet->setCellValue('F13', number_format($montoCuota, 2));
         $sheet->setCellValue('E14', 'N° DE CUOTAS');
@@ -124,6 +125,12 @@ class LibretaPagosExport
         $dias = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
         $indiceFila = 0;
         
+        // Calcular total pagado en TODO el crédito
+        $totalPagadoEnCredito = 0;
+        foreach ($credito->pagos as $pago) {
+            $totalPagadoEnCredito += $pago->MontoPagado;
+        }
+        
         // Obtener pagos agrupados por cuota
         $pagosData = [];
         foreach ($credito->pagos as $pago) {
@@ -132,6 +139,8 @@ class LibretaPagosExport
             }
             $pagosData[$pago->CuotaID][] = $pago;
         }
+        
+        $saldoAcumulativo = $montoTotal + $totalInteres; // Comienza con el monto total
         
         foreach ($cuotas as $cuota) {
             $i = $indiceFila;
@@ -224,7 +233,9 @@ class LibretaPagosExport
                 }
             }
 
-            $saldoPendiente = $cuota->SaldoPendiente ?? ($cuota->MontoCuota - $cuota->MontoPagado);
+            // Restar los pagos de esta cuota del saldo acumulativo
+            $saldoAcumulativo -= $montoEfectivo;
+            $saldoTotalCredito = max(0, $saldoAcumulativo); // No permitir negativos
 
             if ($i < 20) {
                 // BLOQUE 1 - Columnas combinadas
@@ -247,7 +258,7 @@ class LibretaPagosExport
                 $sheet->getStyle($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow)->applyFromArray($styleBordeVerde);
                 
                 $saldoCol = $this->nextCol($colOffset, 5);
-                $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoPendiente, 2));
+                $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoTotalCredito, 2));
                 $sheet->getStyle($saldoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
             } else {
@@ -267,7 +278,7 @@ class LibretaPagosExport
                 $sheet->getStyle($yapeCol . $currentRow)->applyFromArray($styleBordeVerde);
                 
                 $saldoCol = $this->nextCol($colOffset, 3);
-                $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoPendiente, 2));
+                $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoTotalCredito, 2));
                 $sheet->getStyle($saldoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
             }

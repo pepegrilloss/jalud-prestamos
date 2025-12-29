@@ -15,6 +15,10 @@ class ClientePolicy
      */
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole('Promotor Cobrador')) {
+            return true;
+        }
+
         return $user->can('view_any_cliente::proposicion');
     }
 
@@ -23,6 +27,18 @@ class ClientePolicy
      */
     public function view(User $user, Cliente $cliente): bool
     {
+        if ($user->hasRole('Promotor Cobrador')) {
+            $pcId = $user->PromotorCobradorID ?? \App\Models\PromotorCobrador::where('Codigo', $user->username)
+                ->orWhere('Descripcion', $user->name)
+                ->value('PromotorCobradorID');
+
+            if ($pcId) {
+                return $cliente->PromotorCobradorID == $pcId;
+            }
+
+            return false;
+        }
+
         return $user->can('view_cliente::proposicion');
     }
 
