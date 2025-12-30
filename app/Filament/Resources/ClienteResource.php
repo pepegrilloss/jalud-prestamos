@@ -630,11 +630,13 @@ class ClienteResource extends Resource
                 // Direcciones y teléfonos: visibles para todos (promotor verá solo estas junto al nombre)
                 Tables\Columns\TextColumn::make('Domicilio')
                     ->label('Domicilio')
-                    ->wrap(),
+                    ->limit(40)
+                    ->tooltip(fn($record) => $record->Domicilio),
 
                 Tables\Columns\TextColumn::make('negocio.DireccionNegocio')
                     ->label('Dirección Negocio')
-                    ->wrap(),
+                    ->limit(40)
+                    ->tooltip(fn($record) => $record->negocio?->DireccionNegocio),
 
                 Tables\Columns\TextColumn::make('telefonos')
                     ->label('Teléfonos')
