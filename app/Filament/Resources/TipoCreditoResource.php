@@ -69,7 +69,6 @@ class TipoCreditoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('Codigo')
                     ->label('Código')
@@ -102,26 +101,13 @@ class TipoCreditoResource extends Resource
                     ->falseLabel('Inactivos'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->visible(fn() => auth()->user()->can('view_tipo_credito')),
+                Tables\Actions\ViewAction::make(),
 
-                Tables\Actions\EditAction::make()
-                    ->visible(fn() => auth()->user()->can('update_tipo_credito')),
+                Tables\Actions\EditAction::make(),
 
-                Tables\Actions\Action::make('delete')
+                Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
-                    ->requiresConfirmation()
-                    ->modalHeading('Desactivar Tipo de Crédito')
-                    ->modalDescription('¿Está seguro que desea desactivar este tipo de crédito?')
-                    ->modalSubmitActionLabel('Sí, desactivar')
-                    ->color('danger')
-                    ->icon('heroicon-o-trash')
-                    ->visible(fn() => auth()->user()->can('delete_tipo_credito'))
-                    ->action(fn($record) => $record->update([
-                        'Activo' => false,
-                        'FechaModificacion' => now()
-                    ]))
-                    ->successNotificationTitle('Tipo de Crédito desactivado correctamente'),
+                    ->successNotificationTitle('Tipo de Crédito eliminado correctamente'),
             ])
             ->bulkActions([])
             ->paginationPageOptions([10, 25, 50]);

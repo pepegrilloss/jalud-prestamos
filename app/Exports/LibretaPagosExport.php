@@ -100,7 +100,7 @@ class LibretaPagosExport
         $sheet->setCellValue('E13', 'CUOTA');
         $sheet->setCellValue('F13', number_format($montoCuota, 2));
         $sheet->setCellValue('E14', 'N° DE CUOTAS');
-        $sheet->setCellValue('F14', $numeroCuotas);
+        $sheet->setCellValue('F14', $proposicion->NumeroCuotas);
         $sheet->setCellValue('E15', 'PLAZO');
         $sheet->setCellValue('F15', $plazo);
         

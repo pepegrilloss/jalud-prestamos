@@ -35,6 +35,12 @@ class PagoResource extends Resource
                             ->options(
                                 Credito::with('proposicion.cliente')
                                     ->where('Activo', 1)
+                                    ->whereHas('proposicion.cliente', function ($query) {
+                                        $promotorCobradorID = auth()->user()?->PromotorCobradorID;
+                                        if ($promotorCobradorID) {
+                                            $query->where('PromotorCobradorID', $promotorCobradorID);
+                                        }
+                                    })
                                     ->get()
                                     ->mapWithKeys(fn($credito) => [
                                         $credito->CreditoID => "{$credito->proposicion->cliente->NombresApellidos} - {$credito->proposicion->cliente->DNI} - {$credito->proposicion->CodigoCredito}"
