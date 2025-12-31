@@ -33,6 +33,17 @@ class CrearProposicionCreditoResource extends Resource
     {
         return $form
             ->schema([
+                // Banner de advertencia si el cliente tiene crédito corriendo
+                Forms\Components\Placeholder::make('alerta_credito_corriendo')
+                    ->label('')
+                    ->content(
+                        fn(Get $get) => self::verificarCreditoCorriendo($get)
+                    )
+                    ->visible(fn(Get $get) => $get('ClienteID') && self::clienteTieneCreditoCorriendo($get('ClienteID')))
+                    ->extraAttributes([
+                        'class' => 'text-danger-600 font-bold text-center p-4 bg-danger-50 rounded-lg border-2 border-danger-600'
+                    ]),
+
                 Forms\Components\Section::make('Detalles del Crédito')
                     ->schema([
                         Forms\Components\Select::make('ClienteID')
@@ -58,6 +69,17 @@ class CrearProposicionCreditoResource extends Resource
                                     if ($cliente) {
                                         $set('CodigoCliente', $cliente->DNI);
                                         $set('ZonaID', $cliente->ZonaID);
+                                        
+                                        // Contar proposiciones activas del cliente
+                                        $proposicionesActivas = ProposicionCredito::contarProposicionesActivas($state);
+                                        
+                                        if ($proposicionesActivas >= 2) {
+                                            \Filament\Notifications\Notification::make()
+                                                ->title('⚠️ Límite de Proposiciones Alcanzado')
+                                                ->body("El cliente ya tiene {$proposicionesActivas} proposiciones activas. Se permite un máximo de 2 proposiciones simultáneas.")
+                                                ->warning()
+                                                ->send();
+                                        }
                                     }
                                 }
                             }),
@@ -71,7 +93,17 @@ class CrearProposicionCreditoResource extends Resource
 
                         Forms\Components\Select::make('TipoCreditoID')
                             ->label('Tipo de Crédito')
-                            ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID'))
+                            ->options(function (Get $get) {
+                                if (self::clienteTieneCreditoCorriendo($get('ClienteID'))) {
+                                    // Si el cliente tiene crédito corriendo, mostrar solo "Cuenta Paralela"
+                                    $cuentaParalela = TipoCredito::where('Activo', true)
+                                        ->where('Descripcion', 'LIKE', '%Cuenta Paralela%')
+                                        ->get()
+                                        ->mapWithKeys(fn($tc) => [$tc->TipoCreditoID => $tc->Descripcion]);
+                                    return $cuentaParalela;
+                                }
+                                return TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID');
+                            })
                             ->required()
                             ->searchable()
                             ->native(false),
@@ -117,6 +149,38 @@ class CrearProposicionCreditoResource extends Resource
                         Forms\Components\Textarea::make('Observaciones')->rows(3)->columnSpanFull(),
                     ])->columns(2),
             ]);
+    }
+
+    protected static function verificarCreditoCorriendo(Get $get): string
+    {
+        $clienteID = $get('ClienteID');
+        if (!$clienteID || !self::clienteTieneCreditoCorriendo($clienteID)) {
+            return '';
+        }
+
+        $cliente = Cliente::find($clienteID);
+        $creditoCorriendo = $cliente->obtenerCreditoCorriendo();
+        
+        if ($creditoCorriendo && $creditoCorriendo->credito) {
+            $saldoTotal = $creditoCorriendo->credito->cuotas()
+                ->where('Activo', true)
+                ->where('Estado', '!=', 'PAGADA')
+                ->sum('SaldoPendiente');
+            
+            return "🔴 Este cliente tiene un crédito corriendo con saldo pendiente de S/ {$saldoTotal}";
+        }
+
+        return '🔴 Este cliente tiene un crédito corriendo';
+    }
+
+    protected static function clienteTieneCreditoCorriendo($clienteID): bool
+    {
+        if (!$clienteID) {
+            return false;
+        }
+
+        $cliente = Cliente::find($clienteID);
+        return $cliente && $cliente->tieneCreditoCorriendo();
     }
 
     protected static function calcularTotales(Set $set, Get $get, $monto): void

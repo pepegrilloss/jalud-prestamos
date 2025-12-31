@@ -5,7 +5,9 @@ namespace App\Filament\Resources\CrearProposicionCreditoResource\Pages;
 use App\Filament\Resources\CrearProposicionCreditoResource;
 use App\Filament\Resources\ClienteProposicionResource;
 use App\Models\Cliente;
+use App\Models\ProposicionCredito;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Crypt;
 
 class CreateCrearProposicionCredito extends CreateRecord
@@ -14,7 +16,24 @@ class CreateCrearProposicionCredito extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Si viene el cliente encriptado desde la URL, desencriptarlo
+        // Validar que el cliente no tenga más de 2 proposiciones activas
+        $clienteID = $data['ClienteID'] ?? null;
+        
+        if ($clienteID) {
+            $proposicionesActivas = ProposicionCredito::contarProposicionesActivas($clienteID);
+            
+            if ($proposicionesActivas >= 2) {
+                $cliente = Cliente::find($clienteID);
+                Notification::make()
+                    ->title('❌ No se puede crear proposición')
+                    ->body("El cliente '{$cliente->NombresApellidos}' ya tiene 2 proposiciones activas. Se permite un máximo de 2 proposiciones simultáneas.")
+                    ->danger()
+                    ->send();
+                
+                $this->halt();
+            }
+        }
+
         if ($encrypted = request()->query('cliente')) {
             try {
                 $data['ClienteID'] = Crypt::decrypt($encrypted);

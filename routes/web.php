@@ -27,3 +27,6 @@ Route::get('/pdf/acta-creditos', function () {
 
 Route::get('/libreta-pagos/{credito}', [App\Http\Controllers\LibretaPagosController::class, 'descargar'])
     ->name('libreta-pagos.descargar');
+
+Route::get('/ticket/{credito}', [App\Http\Controllers\TicketDescargarController::class, 'descargar'])
+    ->name('ticket.descargar');

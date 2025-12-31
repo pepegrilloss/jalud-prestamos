@@ -105,18 +105,34 @@ class CreditoResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('proposicion.cliente.DNI')
-                    ->label('DNI')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('proposicion.tipoCredito.Descripcion')
+                    ->label('Tipo de Crédito')
+                    ->searchable()
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('proposicion.MontoTotal')
                     ->label('Monto')
                     ->money('PEN')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('tipoPago.Nombre')
-                    ->label('Tipo de Pago')
-                    ->searchable()
+                Tables\Columns\TextColumn::make('MontoConInteres')
+                    ->label('Monto + Interés')
+                    ->getStateUsing(function ($record) {
+                        $montoTotal = $record->proposicion->MontoTotal ?? 0;
+                        $interes = $record->proposicion->MontoInteres ?? 0;
+                        return $montoTotal + $interes;
+                    })
+                    ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('SaldoPendiente')
+                    ->label('Saldo Pendiente')
+                    ->getStateUsing(function ($record) {
+                        $totalPagado = $record->cuotas()->sum('MontoPagado');
+                        $saldo = ($record->proposicion->MontoTotal ?? 0) - $totalPagado;
+                        return max(0, $saldo);
+                    })
+                    ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('FechaGeneracion')
@@ -139,6 +155,12 @@ class CreditoResource extends Resource
                     ->label('Descargar Libreta de Pagos')
                     ->icon('heroicon-o-document-arrow-down')
                     ->url(fn($record) => route('libreta-pagos.descargar', $record->CreditoID))
+                    ->openUrlInNewTab(),
+                Tables\Actions\Action::make('descargar_ticket')
+                    ->label('Descargar Ticket')
+                    ->icon('heroicon-o-ticket')
+                    ->color('danger')
+                    ->url(fn($record) => route('ticket.descargar', $record->CreditoID))
                     ->openUrlInNewTab(),
             ])
             ->bulkActions([])

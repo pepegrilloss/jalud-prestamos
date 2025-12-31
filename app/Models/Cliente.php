@@ -111,4 +111,45 @@ class Cliente extends Model
         return $this->hasMany(EvaluacionCredito::class, 'ClienteID', 'ClienteID')
             ->orderBy('FechaRegistro', 'desc');
     }
+
+    /**
+     * Obtener créditos activos con saldo pendiente
+     */
+    public function creditosConSaldo()
+    {
+        return $this->proposiciones()
+            ->whereHas('credito', function ($query) {
+                $query->where('Activo', true);
+            })
+            ->with(['credito.cuotas' => function ($query) {
+                $query->where('Activo', true);
+            }])
+            ->get()
+            ->filter(function ($proposicion) {
+                if (!$proposicion->credito) {
+                    return false;
+                }
+                // Verificar si hay cuotas pendientes
+                return $proposicion->credito->cuotas()
+                    ->where('Activo', true)
+                    ->where('Estado', '!=', 'PAGADA')
+                    ->exists();
+            });
+    }
+
+    /**
+     * Verificar si el cliente tiene un crédito corriendo (con saldo pendiente)
+     */
+    public function tieneCreditoCorriendo(): bool
+    {
+        return $this->creditosConSaldo()->count() > 0;
+    }
+
+    /**
+     * Obtener el crédito corriendo del cliente (el primero con saldo)
+     */
+    public function obtenerCreditoCorriendo()
+    {
+        return $this->creditosConSaldo()->first();
+    }
 }

@@ -28,6 +28,7 @@ class ProposicionCredito extends Model
         'MontoInteres',
         'TasaMora',
         'ZonaID',
+        'CuentaParalela',
         'Observaciones',
         'UserProponenteID',
         'FechaPropuesta',
@@ -99,6 +100,17 @@ class ProposicionCredito extends Model
         $ultimo = self::orderBy('ProposicionCreditoID', 'desc')->first();
         $numero = ($ultimo ? (int)substr($ultimo->CodigoCredito, 2) + 1 : 1);
         return 'C-' . str_pad($numero, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Contar proposiciones activas (no aprobadas ni rechazadas) para un cliente
+     */
+    public static function contarProposicionesActivas($clienteID): int
+    {
+        return self::where('ClienteID', $clienteID)
+            ->where('Activo', true)
+            ->whereNotIn('Estado', ['APROBADO', 'RECHAZADO'])
+            ->count();
     }
 
     public function crearAprobacionesRequeridas(): void
