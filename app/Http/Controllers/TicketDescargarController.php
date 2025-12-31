@@ -15,7 +15,7 @@ class TicketDescargarController extends Controller
         $promotorCobrador = $cliente->promotorCobrador;
         $zona = $cliente->negocio->zona->Nombre ?? 'N/A';
 
-        $fecha = now()->format('d/m/Y');
+        $fecha = $credito->FechaGeneracion->format('d/m/Y');
         $monto = number_format($proposicion->MontoTotal, 2, '.', ',');
         $plazo = $proposicion->Plazo;
         $nombreCliente = $cliente->NombresApellidos;
