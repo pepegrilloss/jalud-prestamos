@@ -71,6 +71,13 @@ class ViewCliente extends ViewRecord
                                         ->disabled(),
                                 ]),
 
+                            Forms\Components\TextInput::make('MontoMaxRecomendado')
+                                ->label('Monto Máximo Recomendado (MMR)')
+                                ->numeric()
+                                ->step(0.01)
+                                ->disabled()
+                                ->columnSpanFull(),
+
                             // Resumen visual
                             Forms\Components\Placeholder::make('resumen')
                                 ->label('📋 Resumen del Análisis')
@@ -167,13 +174,6 @@ class ViewCliente extends ViewRecord
 
                 Components\Section::make('Ubicación')
                     ->schema([
-                        Components\Grid::make(2)
-                            ->schema([
-                                Components\TextEntry::make('ciudad.Nombre')
-                                    ->label('Ciudad'),
-                                Components\TextEntry::make('zona.Nombre')
-                                    ->label('Zona'),
-                            ]),
                         Components\TextEntry::make('Domicilio')
                             ->columnSpanFull(),
                     ])
@@ -181,7 +181,7 @@ class ViewCliente extends ViewRecord
 
                 Components\Section::make('Información Financiera')
                     ->schema([
-                        Components\Grid::make(3)
+                        Components\Grid::make(2)
                             ->schema([
                                 Components\TextEntry::make('tasa.Nombre')
                                     ->label('Tasa de Interés')
@@ -189,9 +189,6 @@ class ViewCliente extends ViewRecord
                                         fn($record) =>
                                         $record->tasa ? "{$record->tasa->Nombre} - {$record->tasa->Valor}%" : 'No asignada'
                                     ),
-                                Components\TextEntry::make('MontoMaxRecomendado')
-                                    ->label('Monto Máximo Recomendado')
-                                    ->money('PEN'),
                                 Components\TextEntry::make('promotorCobrador.Descripcion')
                                     ->label('Promotor/Cobrador')
                                     ->formatStateUsing(
@@ -218,15 +215,6 @@ class ViewCliente extends ViewRecord
                                     ->label('Giro'),
                                 Components\TextEntry::make('negocio.subGiro.Descripcion')
                                     ->label('Sub Giro'),
-                                Components\TextEntry::make('negocio.Ubicacion')
-                                    ->label('Ubicación')
-                                    ->badge()
-                                    ->color(fn($state) => match ($state) {
-                                        'BUENO' => 'success',
-                                        'REGULAR' => 'warning',
-                                        'MALO' => 'danger',
-                                        default => 'gray',
-                                    }),
                             ]),
                         Components\RepeatableEntry::make('negocio.telefonos')
                             ->label('Teléfonos')
