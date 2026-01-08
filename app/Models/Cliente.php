@@ -28,7 +28,9 @@ class Cliente extends Model
         'Observaciones',
         'PromotorCobradorID',
         'UsuarioRegistro',
+        'FechaRegistro',
         'UsuarioModificacion',
+        'FechaModificacion',
         'Activo',
     ];
 

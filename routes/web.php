@@ -9,15 +9,17 @@ Route::get('/', function () {
 });
 
 Route::get('/pdf/acta-creditos', function () {
+    $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+    
     $proposiciones = ProposicionCredito::with(['cliente', 'zona', 'tipoCredito', 'tasa'])
         ->where('Activo', true)
-        ->where('Estado', '<>', 'APROBADO')
+        ->whereDate('FechaPropuesta', '=', $fecha)
         ->orderBy('CodigoCredito')
         ->get();
 
     $pdf = Pdf::loadView('pdf.acta-creditos', [
         'proposiciones' => $proposiciones,
-        'fecha' => now()->format('d/m/Y'),
+        'fecha' => $fecha->format('d/m/Y'),
     ]);
 
     $pdf->setPaper('a3', 'landscape');

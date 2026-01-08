@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PagoResource\Pages;
 use App\Models\Pago;
 use App\Models\Credito;
+use App\Models\Zona;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,6 +14,7 @@ use Filament\Tables\Table;
 use Filament\Support\RawJs;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Illuminate\Database\Eloquent\Builder;
 
 class PagoResource extends Resource
 {
@@ -169,6 +171,13 @@ class PagoResource extends Resource
                     ->date('d/m/Y')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('HoraPago')
+                    ->label('Hora de Pago')
+                    ->getStateUsing(function ($record) {
+                        return $record->FechaCreacion ? \Carbon\Carbon::parse($record->FechaCreacion)->format('H:i:s') : 'N/A';
+                    })
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('UsuarioRegistro')
                     ->label('Usuario Registro')
                     ->searchable()
@@ -188,6 +197,37 @@ class PagoResource extends Resource
 
                 Tables\Filters\TernaryFilter::make('EsPagoForzado')
                     ->label('Es Pago Forzado'),
+
+                Tables\Filters\SelectFilter::make('zona')
+                    ->label('Zona')
+                    ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
+                        );
+                    })
+                    ->native(false),
+
+                Tables\Filters\Filter::make('FechaPago')
+                    ->label('Fecha de Pago')
+                    ->form([
+                        Forms\Components\DatePicker::make('FechaPago_from')
+                            ->label('Desde'),
+                        Forms\Components\DatePicker::make('FechaPago_to')
+                            ->label('Hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['FechaPago_from'],
+                                fn(Builder $q) => $q->whereDate('FechaPago', '>=', $data['FechaPago_from']),
+                            )
+                            ->when(
+                                $data['FechaPago_to'],
+                                fn(Builder $q) => $q->whereDate('FechaPago', '<=', $data['FechaPago_to']),
+                            );
+                    }),
             ])
             ->actions([
                     Tables\Actions\ViewAction::make()

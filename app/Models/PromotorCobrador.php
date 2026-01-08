@@ -15,6 +15,7 @@ class PromotorCobrador extends Model
         'Codigo',
         'Descripcion',
         'CiudadID',
+        'ZonaID',
         'Activo',
         'FechaCreacion',
         'FechaModificacion'
@@ -29,5 +30,10 @@ class PromotorCobrador extends Model
     public function ciudad(): BelongsTo
     {
         return $this->belongsTo(Ciudad::class, 'CiudadID', 'CiudadID');
+    }
+
+    public function zona(): BelongsTo
+    {
+        return $this->belongsTo(Zona::class, 'ZonaID', 'ZonaID');
     }
 }

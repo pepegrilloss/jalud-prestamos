@@ -90,6 +90,16 @@ class EditCliente extends EditRecord
                                         ->placeholder('Ej: 400.00')
                                 ]),
 
+                            Forms\Components\TextInput::make('MontoMaxRecomendado')
+                                ->label('Monto Máximo Recomendado')
+                                ->required()
+                                ->numeric()
+                                ->minValue(0)
+                                ->step(0.01)
+                                ->placeholder('Ej: 5000.00')
+                                ->helperText('Monto máximo que se recomienda prestar a este cliente')
+                                ->live(),
+
                             // Resumen visual
                             Forms\Components\Placeholder::make('resumen')
                                 ->label('📋 Resumen del Análisis')
@@ -127,6 +137,7 @@ class EditCliente extends EditRecord
                     'VentaManifestadaMin' => $this->record->analisisEconomico?->VentaManifestadaMin ?? 0,
                     'VentaManifestadaMax' => $this->record->analisisEconomico?->VentaManifestadaMax ?? 0,
                     'VentaEstimada' => $this->record->analisisEconomico?->VentaEstimada ?? 0,
+                    'MontoMaxRecomendado' => $this->record->analisisEconomico?->MontoMaxRecomendado ?? 0,
                 ])
                 ->action(function (array $data) {
                     try {
@@ -147,6 +158,7 @@ class EditCliente extends EditRecord
                             'VentaManifestadaMin' => $data['VentaManifestadaMin'],
                             'VentaManifestadaMax' => $data['VentaManifestadaMax'],
                             'VentaEstimada' => $data['VentaEstimada'],
+                            'MontoMaxRecomendado' => $data['MontoMaxRecomendado'],
                             'UsuarioAnalisis' => auth()->user()->name ?? 'Sistema',
                             'FechaAnalisis' => now(),
                             'Activo' => 1,
@@ -236,6 +248,10 @@ class EditCliente extends EditRecord
         
         // Remover datos que no pertenecen a la tabla Cliente
         unset($data['negocio'], $data['documentos']);
+        
+        // Asegurar que se guarden los datos de auditoría
+        $data['UsuarioModificacion'] = auth()->user()->name ?? 'Sistema';
+        $data['FechaModificacion'] = now();
         
         // Actualizar el cliente
         $record->update($data);

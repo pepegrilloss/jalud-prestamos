@@ -69,17 +69,6 @@ class CrearProposicionCreditoResource extends Resource
                                     if ($cliente) {
                                         $set('CodigoCliente', $cliente->DNI);
                                         $set('ZonaID', $cliente->ZonaID);
-                                        
-                                        // Contar proposiciones activas del cliente
-                                        $proposicionesActivas = ProposicionCredito::contarProposicionesActivas($state);
-                                        
-                                        if ($proposicionesActivas >= 2) {
-                                            \Filament\Notifications\Notification::make()
-                                                ->title('⚠️ Límite de Proposiciones Alcanzado')
-                                                ->body("El cliente ya tiene {$proposicionesActivas} proposiciones activas. Se permite un máximo de 2 proposiciones simultáneas.")
-                                                ->warning()
-                                                ->send();
-                                        }
                                     }
                                 }
                             }),
@@ -112,8 +101,54 @@ class CrearProposicionCreditoResource extends Resource
                             ->label('Monto Total')
                             ->required()
                             ->numeric()
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn(Set $set, Get $get, $state) => static::calcularTotales($set, $get, $state)),
+                            ->live()
+                            ->afterStateUpdated(function(Set $set, Get $get, $state) {
+                                static::calcularTotales($set, $get, $state);
+                                static::validarMontoMaximo($set, $get, $state);
+                            })
+                            ->helperText(function(Get $get, $state) {
+                                if (!$state || !$get('ClienteID')) {
+                                    return '';
+                                }
+                                $cliente = Cliente::find($get('ClienteID'));
+                                if (!$cliente || !$cliente->analisisEconomico) {
+                                    return '';
+                                }
+                                $montoMax = (float)$cliente->analisisEconomico->MontoMaxRecomendado;
+                                $montoActual = (float)$state;
+                                if ($montoActual > $montoMax) {
+                                    return "❌ Excede el máximo de S/ {$montoMax}";
+                                }
+                                return "✓ Máximo recomendado: S/ {$montoMax}";
+                            })
+                            ->suffixIcon(function(Get $get, $state) {
+                                if (!$state || !$get('ClienteID')) {
+                                    return null;
+                                }
+                                $cliente = Cliente::find($get('ClienteID'));
+                                if (!$cliente || !$cliente->analisisEconomico) {
+                                    return null;
+                                }
+                                $montoMax = (float)$cliente->analisisEconomico->MontoMaxRecomendado;
+                                $montoActual = (float)$state;
+                                return $montoActual > $montoMax ? 'heroicon-s-exclamation-circle' : 'heroicon-s-check-circle';
+                            })
+                            ->rules([
+                                function(Get $get) {
+                                    return function($attribute, $value, $fail) use ($get) {
+                                        $clienteID = $get('ClienteID');
+                                        if ($clienteID) {
+                                            $cliente = Cliente::find($clienteID);
+                                            if ($cliente && $cliente->analisisEconomico) {
+                                                $montoMax = $cliente->analisisEconomico->MontoMaxRecomendado;
+                                                if ((float)$value > (float)$montoMax) {
+                                                    $fail("El monto total no puede exceder el monto máximo recomendado de S/ {$montoMax}");
+                                                }
+                                            }
+                                        }
+                                    };
+                                }
+                            ]),
 
                         Forms\Components\Select::make('TasaID')
                             ->label('Tasa de Interés')
@@ -195,6 +230,30 @@ class CrearProposicionCreditoResource extends Resource
             $set('MontoInteres', round($interes, 2));
             $set('MontoTotalPagar', round($total, 2));
             $set('MontoCuota', round($total / $cuotasVal, 2));
+        }
+    }
+
+    protected static function validarMontoMaximo(Set $set, Get $get, $monto): void
+    {
+        $clienteID = $get('ClienteID');
+        if (!$clienteID) {
+            return;
+        }
+
+        $cliente = Cliente::find($clienteID);
+        if (!$cliente || !$cliente->analisisEconomico) {
+            return;
+        }
+
+        $montoMax = (float)$cliente->analisisEconomico->MontoMaxRecomendado;
+        $montoTotal = (float)$monto;
+
+        if ($montoTotal > $montoMax) {
+            \Filament\Notifications\Notification::make()
+                ->warning()
+                ->title('⚠️ Monto Excede el Límite')
+                ->body("El monto de S/ {$montoTotal} excede el máximo recomendado de S/ {$montoMax}")
+                ->send();
         }
     }
 

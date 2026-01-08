@@ -7,6 +7,7 @@ use App\Filament\Resources\PromotorCobradorResource\Pages;
 use App\Filament\Resources\PromotorCobradorResource\RelationManagers;
 use App\Models\PromotorCobrador;
 use App\Models\Ciudad;
+use App\Models\Zona;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -56,6 +57,11 @@ class PromotorCobradorResource extends Resource
                             ->options(Ciudad::where('Activo', true)->pluck('Nombre', 'CiudadID'))
                             ->required(),
 
+                        Forms\Components\Select::make('ZonaID')
+                            ->label('Zona')
+                            ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
+                            ->required(),
+
                         Forms\Components\Toggle::make('Activo')
                             ->hidden()
                             ->default(true),
@@ -91,6 +97,11 @@ class PromotorCobradorResource extends Resource
 
                 Tables\Columns\TextColumn::make('ciudad.Nombre')
                     ->label('Ciudad')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('zona.Nombre')
+                    ->label('Zona')
                     ->searchable()
                     ->sortable(),
 

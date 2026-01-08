@@ -190,35 +190,45 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->placeholder('Ej: 400.00')
                                         ]),
 
-                                    // Resumen visual
-                                    Forms\Components\Placeholder::make('resumen')
-                                        ->label('📋 Resumen del Análisis')
-                                        ->content(function (Forms\Get $get) {
-                                            $capManifestado = (float) ($get('CapitalManifestado') ?? 0);
-                                            $capEstimado = (float) ($get('CapitalEstimado') ?? 0);
-                                            $ventaMin = (float) ($get('VentaManifestadaMin') ?? 0);
-                                            $ventaMax = (float) ($get('VentaManifestadaMax') ?? 0);
-                                            $ventaEst = (float) ($get('VentaEstimada') ?? 0);
+                                Forms\Components\TextInput::make('MontoMaxRecomendado')
+                                    ->label('Monto Máximo Recomendado')
+                                    ->required()
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->step(0.01)
+                                    ->placeholder('Ej: 5000.00')
+                                    ->helperText('Monto máximo que se recomienda prestar a este cliente')
+                                    ->live(),
 
-                                            if ($capManifestado > 0 || $capEstimado > 0) {
-                                                return new \Illuminate\Support\HtmlString('
-                                                    <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                                        <div>
-                                                            <div class="text-sm text-gray-500 dark:text-gray-400">Capital Manifestado vs Estimado</div>
-                                                            <div class="text-lg font-semibold">S/ ' . number_format($capManifestado, 2) . ' → S/ ' . number_format($capEstimado, 2) . '</div>
-                                                            <div class="text-xs text-gray-500">Diferencia: S/ ' . number_format($capEstimado - $capManifestado, 2) . '</div>
-                                                        </div>
-                                                        <div>
-                                                            <div class="text-sm text-gray-500 dark:text-gray-400">Rango de Ventas Manifestadas</div>
-                                                            <div class="text-lg font-semibold">S/ ' . number_format($ventaMin, 2) . ' - S/ ' . number_format($ventaMax, 2) . '</div>
-                                                            <div class="text-xs text-gray-500">Venta Estimada: S/ ' . number_format($ventaEst, 2) . '</div>
-                                                        </div>
+                                // Resumen visual
+                                Forms\Components\Placeholder::make('resumen')
+                                    ->label('📋 Resumen del Análisis')
+                                    ->content(function (Forms\Get $get) {
+                                        $capManifestado = (float) ($get('CapitalManifestado') ?? 0);
+                                        $capEstimado = (float) ($get('CapitalEstimado') ?? 0);
+                                        $ventaMin = (float) ($get('VentaManifestadaMin') ?? 0);
+                                        $ventaMax = (float) ($get('VentaManifestadaMax') ?? 0);
+                                        $ventaEst = (float) ($get('VentaEstimada') ?? 0);
+
+                                        if ($capManifestado > 0 || $capEstimado > 0) {
+                                            return new \Illuminate\Support\HtmlString('
+                                                <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                                    <div>
+                                                        <div class="text-sm text-gray-500 dark:text-gray-400">Capital Manifestado vs Estimado</div>
+                                                        <div class="text-lg font-semibold">S/ ' . number_format($capManifestado, 2) . ' → S/ ' . number_format($capEstimado, 2) . '</div>
+                                                        <div class="text-xs text-gray-500">Diferencia: S/ ' . number_format($capEstimado - $capManifestado, 2) . '</div>
                                                     </div>
-                                                ');
-                                            }
-                                            return 'Complete los campos para ver el resumen';
-                                        })
-                                        ->columnSpanFull(),
+                                                    <div>
+                                                        <div class="text-sm text-gray-500 dark:text-gray-400">Rango de Ventas Manifestadas</div>
+                                                        <div class="text-lg font-semibold">S/ ' . number_format($ventaMin, 2) . ' - S/ ' . number_format($ventaMax, 2) . '</div>
+                                                        <div class="text-xs text-gray-500">Venta Estimada: S/ ' . number_format($ventaEst, 2) . '</div>
+                                                    </div>
+                                                </div>
+                                            ');
+                                        }
+                                        return 'Complete los campos para ver el resumen';
+                                    })
+                                    ->columnSpanFull(),
                                 ]),
                         ])
                         ->fillForm(fn($record) => [
@@ -227,6 +237,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                             'VentaManifestadaMin' => $record->analisisEconomico?->VentaManifestadaMin ?? 0,
                             'VentaManifestadaMax' => $record->analisisEconomico?->VentaManifestadaMax ?? 0,
                             'VentaEstimada' => $record->analisisEconomico?->VentaEstimada ?? 0,
+                            'MontoMaxRecomendado' => $record->analisisEconomico?->MontoMaxRecomendado ?? 0,
                         ])
                         ->action(function ($record, array $data) {
                             try {
@@ -247,6 +258,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                     'VentaManifestadaMin' => $data['VentaManifestadaMin'],
                                     'VentaManifestadaMax' => $data['VentaManifestadaMax'],
                                     'VentaEstimada' => $data['VentaEstimada'],
+                                    'MontoMaxRecomendado' => $data['MontoMaxRecomendado'],
                                     'UsuarioAnalisis' => auth()->user()->name ?? 'Sistema',
                                     'FechaAnalisis' => now(),
                                     'Activo' => 1,

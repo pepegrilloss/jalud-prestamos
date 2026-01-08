@@ -6,11 +6,14 @@ use App\Filament\Resources\CreditoResource\Pages;
 use App\Models\Credito;
 use App\Models\ProposicionCredito;
 use App\Models\TipoPago;
+use App\Models\Zona;
+use App\Models\TipoCredito;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class CreditoResource extends Resource
 {
@@ -145,6 +148,26 @@ class CreditoResource extends Resource
                 Tables\Filters\SelectFilter::make('TipoPagoID')
                     ->label('Tipo de Pago')
                     ->relationship('tipoPago', 'Nombre'),
+                Tables\Filters\SelectFilter::make('zona')
+                    ->label('Zona')
+                    ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
+                        );
+                    })
+                    ->native(false),
+                Tables\Filters\SelectFilter::make('tipoCredito')
+                    ->label('Tipo de Crédito')
+                    ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID')->toArray())
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('TipoCreditoID', $data['value']))
+                        );
+                    })
+                    ->native(false),
             ])
             ->modifyQueryUsing(function ($query) {
                 return $query->with(['proposicion', 'tipoPago']);

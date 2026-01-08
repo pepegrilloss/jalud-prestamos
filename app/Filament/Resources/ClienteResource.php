@@ -144,6 +144,7 @@ class ClienteResource extends Resource
                                     ->native(false),
 
                                 Forms\Components\DatePicker::make('FechaNacimiento')
+                                    ->required()
                                     ->label('Fecha de Nacimiento')
                                     ->native(false)
                                     ->displayFormat('d/m/Y')
@@ -166,6 +167,7 @@ class ClienteResource extends Resource
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('ConyugeDNI')
+                                    ->required()
                                     ->maxLength(20)
                                     ->label('DNI del Cónyuge')
                                     ->placeholder('Ingrese DNI del cónyuge')
@@ -236,6 +238,7 @@ class ClienteResource extends Resource
                                     ),
 
                                 Forms\Components\TextInput::make('ConyugeNombresApellidos')
+                                    ->required()
                                     ->maxLength(200)
                                     ->label('Nombres y Apellidos del Cónyuge')
                                     ->placeholder('Se llenará automáticamente con RENIEC'),
@@ -247,6 +250,7 @@ class ClienteResource extends Resource
                 Forms\Components\Section::make('Domicilio')
                     ->schema([
                         Forms\Components\Textarea::make('Domicilio')
+                            ->required()
                             ->rows(3)
                             ->maxLength(500)
                             ->placeholder('Dirección completa del domicilio del cliente'),
@@ -255,9 +259,10 @@ class ClienteResource extends Resource
 
                 Forms\Components\Section::make('Información Financiera')
                     ->schema([
-                        Forms\Components\Grid::make(3)
+                        Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\Select::make('TasaID')
+                                    ->required()
                                     ->label('Tasa de Interés')
                                     ->options(
                                         Tasa::where('Activo', 1)
@@ -269,12 +274,8 @@ class ClienteResource extends Resource
                                     ->searchable()
                                     ->native(false),
 
-                                Forms\Components\TextInput::make('MontoMaxRecomendado')
-                                    ->label('Monto Máximo Recomendado')
-                                    ->numeric()
-                                    ->default(0.00),
-
                                 Forms\Components\Select::make('negocio.Calificacion')
+                                    ->required()
                                     ->label('Calificación')
                                     ->options([
                                         'MALO' => 'Malo',
@@ -288,6 +289,7 @@ class ClienteResource extends Resource
                         Forms\Components\Grid::make(1)
                             ->schema([
                                 Forms\Components\Select::make('PromotorCobradorID')
+                                    ->required()
                                     ->label('Promotor/Cobrador')
                                     ->options(
                                         PromotorCobrador::where('Activo', 1)
@@ -307,6 +309,7 @@ class ClienteResource extends Resource
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\Select::make('negocio.CiudadID')
+                                    ->required()
                                     ->label('Ciudad')
                                     ->options(Ciudad::where('Activo', 1)->pluck('Nombre', 'CiudadID'))
                                     ->searchable()
@@ -315,6 +318,7 @@ class ClienteResource extends Resource
                                     ->afterStateUpdated(fn(Set $set) => $set('negocio.ZonaID', null)),
 
                                 Forms\Components\Select::make('negocio.ZonaID')
+                                    ->required()
                                     ->label('Zona')
                                     ->options(
                                         fn(Get $get) =>
@@ -337,12 +341,14 @@ class ClienteResource extends Resource
                         Forms\Components\Grid::make(3)
                             ->schema([
                                 Forms\Components\TextInput::make('negocio.Antiguedad')
+                                    ->required()
                                     ->label('Antigüedad (años)')
                                     ->numeric()
                                     ->step(0.1)
                                     ->suffix('años'),
 
                                 Forms\Components\Select::make('negocio.GiroID')
+                                    ->required()
                                     ->label('Giro')
                                     ->options(
                                         Giro::where('Activo', 1)
@@ -357,6 +363,7 @@ class ClienteResource extends Resource
                                     ->afterStateUpdated(fn(Set $set) => $set('negocio.SubGiroID', null)),
 
                                 Forms\Components\Select::make('negocio.SubGiroID')
+                                    ->required()
                                     ->label('Sub Giro')
                                     ->options(
                                         fn(Get $get) =>
@@ -411,44 +418,54 @@ class ClienteResource extends Resource
 
                 Forms\Components\Section::make('Análisis Económico')
                     ->schema([
-                        Forms\Components\Section::make('Parte Económica del Cliente')
+                        Forms\Components\Grid::make(2)
                             ->schema([
-                                Forms\Components\Grid::make(2)
-                                    ->schema([
-                                        Forms\Components\TextInput::make('analisis_economico.CapitalManifestado')
-                                            ->label('Capital Manifestado por el Cliente')
-                                            ->numeric()
-                                            ->placeholder('Ej: 2000.00')
-                                            ->helperText('Monto que el cliente indica como capital'),
+                                Forms\Components\TextInput::make('analisis_economico.CapitalManifestado')
+                                    ->required()
+                                    ->label('Capital Manifestado por el Cliente')
+                                    ->numeric()
+                                    ->placeholder('Ej: 2000.00')
+                                    ->helperText('Monto que el cliente indica como capital'),
 
-                                        Forms\Components\TextInput::make('analisis_economico.CapitalEstimado')
-                                            ->label('Capital Estimado por el Jefe de Oficina')
-                                            ->numeric()
-                                            ->placeholder('Ej: 4000.00')
-                                            ->helperText('Estimación del jefe de oficina'),
-                                    ]),
-
-                                Forms\Components\Grid::make(3)
-                                    ->schema([
-                                        Forms\Components\TextInput::make('analisis_economico.VentaManifestadaMin')
-                                            ->label('Venta Manifestada Mínima')
-                                            ->numeric()
-                                            ->placeholder('Ej: 500.00')
-                                            ->helperText('Venta mínima declarada'),
-
-                                        Forms\Components\TextInput::make('analisis_economico.VentaManifestadaMax')
-                                            ->label('Venta Manifestada Máxima')
-                                            ->numeric()
-                                            ->placeholder('Ej: 800.00')
-                                            ->helperText('Venta máxima declarada'),
-
-                                        Forms\Components\TextInput::make('analisis_economico.VentaEstimada')
-                                            ->label('Venta Estimada por Jefe de Oficina')
-                                            ->numeric()
-                                            ->placeholder('Ej: 400.00')
-                                            ->helperText('Estimación del jefe de oficina'),
-                                    ]),
+                                Forms\Components\TextInput::make('analisis_economico.CapitalEstimado')
+                                    ->required()
+                                    ->label('Capital Estimado por el Jefe de Oficina')
+                                    ->numeric()
+                                    ->placeholder('Ej: 4000.00')
+                                    ->helperText('Estimación del jefe de oficina'),
                             ]),
+
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('analisis_economico.VentaManifestadaMin')
+                                    ->required()
+                                    ->label('Venta Manifestada Mínima')
+                                    ->numeric()
+                                    ->placeholder('Ej: 500.00')
+                                    ->helperText('Venta mínima declarada'),
+
+                                Forms\Components\TextInput::make('analisis_economico.VentaManifestadaMax')
+                                    ->required()
+                                    ->label('Venta Manifestada Máxima')
+                                    ->numeric()
+                                    ->placeholder('Ej: 800.00')
+                                    ->helperText('Venta máxima declarada'),
+
+                                Forms\Components\TextInput::make('analisis_economico.VentaEstimada')
+                                    ->required()
+                                    ->label('Venta Estimada por Jefe de Oficina')
+                                    ->numeric()
+                                    ->placeholder('Ej: 400.00')
+                                    ->helperText('Estimación del jefe de oficina'),
+                            ]),
+
+                        Forms\Components\TextInput::make('analisis_economico.MontoMaxRecomendado')
+                            ->required()
+                            ->label('Monto Máximo Recomendado')
+                            ->numeric()
+                            ->step(0.01)
+                            ->placeholder('Ej: 5000.00')
+                            ->helperText('Monto máximo que se recomienda prestar a este cliente'),
                     ])
                     ->collapsible()
                     ->visible(fn($livewire) => $livewire instanceof \App\Filament\Resources\ClienteResource\Pages\CreateCliente),
@@ -472,6 +489,7 @@ class ClienteResource extends Resource
                                             ->visible(fn($livewire) => !($livewire instanceof \App\Filament\Resources\ClienteResource\Pages\CreateCliente)),
 
                                         Forms\Components\FileUpload::make('documentos.dni')
+                                            ->required()
                                             ->label('Foto del DNI')
                                             ->image()
                                             ->imageEditor()
@@ -505,6 +523,7 @@ class ClienteResource extends Resource
                                             ->visible(fn($livewire) => !($livewire instanceof \App\Filament\Resources\ClienteResource\Pages\CreateCliente)),
 
                                         Forms\Components\FileUpload::make('documentos.recibo_servicio')
+                                            ->required()
                                             ->label('Recibo de Servicio (Luz/Agua)')
                                             ->image()
                                             ->imageEditor()
@@ -593,13 +612,6 @@ class ClienteResource extends Resource
                         'OBSERVADO' => 'warning',
                     })
                     ->sortable()
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
-
-                Tables\Columns\TextColumn::make('MontoMaxRecomendado')
-                    ->label('Monto Máx.')
-                    ->money('PEN')
-                    ->sortable()
-                    ->toggleable()
                     ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\TextColumn::make('promotorCobrador.Descripcion')
