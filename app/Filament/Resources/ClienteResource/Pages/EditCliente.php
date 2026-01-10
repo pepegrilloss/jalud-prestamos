@@ -163,7 +163,7 @@ class EditCliente extends EditRecord
                             'FechaAnalisis' => now(),
                             'Activo' => 1,
                         ]);
-
+ 
                         \Filament\Notifications\Notification::make()
                             ->success()
                             ->title('✅ Análisis Económico Registrado')

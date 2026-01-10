@@ -82,17 +82,7 @@ class CrearProposicionCreditoResource extends Resource
 
                         Forms\Components\Select::make('TipoCreditoID')
                             ->label('Tipo de Crédito')
-                            ->options(function (Get $get) {
-                                if (self::clienteTieneCreditoCorriendo($get('ClienteID'))) {
-                                    // Si el cliente tiene crédito corriendo, mostrar solo "Cuenta Paralela"
-                                    $cuentaParalela = TipoCredito::where('Activo', true)
-                                        ->where('Descripcion', 'LIKE', '%Cuenta Paralela%')
-                                        ->get()
-                                        ->mapWithKeys(fn($tc) => [$tc->TipoCreditoID => $tc->Descripcion]);
-                                    return $cuentaParalela;
-                                }
-                                return TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID');
-                            })
+                            ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID'))
                             ->required()
                             ->searchable()
                             ->native(false),
@@ -180,6 +170,7 @@ class CrearProposicionCreditoResource extends Resource
                         Forms\Components\Select::make('ZonaID')
                             ->label('Zona')
                             ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
+                            ->required()
                             ->searchable(),
                         Forms\Components\Textarea::make('Observaciones')->rows(3)->columnSpanFull(),
                     ])->columns(2),

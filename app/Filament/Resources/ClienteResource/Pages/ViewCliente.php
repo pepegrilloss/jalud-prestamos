@@ -115,6 +115,7 @@ class ViewCliente extends ViewRecord
                     'VentaManifestadaMin' => $this->record->analisisEconomico?->VentaManifestadaMin ?? 0,
                     'VentaManifestadaMax' => $this->record->analisisEconomico?->VentaManifestadaMax ?? 0,
                     'VentaEstimada' => $this->record->analisisEconomico?->VentaEstimada ?? 0,
+                    'MontoMaxRecomendado' => $this->record->analisisEconomico?->MontoMaxRecomendado ?? 0,
                 ])
                 ->visible(fn() => $this->record->analisisEconomico !== null)
                 ->modalSubmitAction(false)

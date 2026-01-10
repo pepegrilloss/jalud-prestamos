@@ -23,7 +23,6 @@ class Cliente extends Model
         'ConyugeNombresApellidos',
         'Domicilio',
         'TasaID',
-        'MontoMaxRecomendado',
         'GaranteID',
         'Observaciones',
         'PromotorCobradorID',
@@ -39,7 +38,6 @@ class Cliente extends Model
         'FechaRegistro' => 'datetime',
         'FechaModificacion' => 'datetime',
         'Activo' => 'boolean',
-        'MontoMaxRecomendado' => 'decimal:2',
     ];
 
     // Relaciones

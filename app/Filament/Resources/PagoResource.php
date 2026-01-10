@@ -54,7 +54,24 @@ class PagoResource extends Resource
                             ->live()
                             ->afterStateUpdated(function (Set $set, $state) {
                                 $set('CuotaID', null);
+                                // Actualizar el tipo de crédito cuando se cambia el crédito
+                                if ($state) {
+                                    $credito = Credito::with('proposicion.tipoCredito')->find($state);
+                                    if ($credito && $credito->proposicion && $credito->proposicion->tipoCredito) {
+                                        $set('TipoCredito', $credito->proposicion->tipoCredito->Descripcion ?? 'N/A');
+                                    } else {
+                                        $set('TipoCredito', 'N/A');
+                                    }
+                                } else {
+                                    $set('TipoCredito', null);
+                                }
                             }),
+
+                        Forms\Components\TextInput::make('TipoCredito')
+                            ->label('Tipo de Crédito')
+                            ->disabled()
+                            ->placeholder('Se actualizará al seleccionar el crédito')
+                            ->default(null),
 
                         Forms\Components\Select::make('CuotaID')
                             ->label('Cuota - Control de Pagos')
@@ -192,12 +209,6 @@ class PagoResource extends Resource
                     ->visible(fn () => !auth()->user()?->hasRole('Promotor Cobrador')),
             ])
             ->filters([
-                Tables\Filters\TernaryFilter::make('EsMora')
-                    ->label('Es Mora'),
-
-                Tables\Filters\TernaryFilter::make('EsPagoForzado')
-                    ->label('Es Pago Forzado'),
-
                 Tables\Filters\SelectFilter::make('zona')
                     ->label('Zona')
                     ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())

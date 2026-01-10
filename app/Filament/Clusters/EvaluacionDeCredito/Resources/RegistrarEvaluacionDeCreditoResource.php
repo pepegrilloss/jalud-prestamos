@@ -56,7 +56,19 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                     ->weight('semibold')
                     ->wrap(),
 
-                Tables\Columns\TextColumn::make('MontoMaxRecomendado')
+                Tables\Columns\TextColumn::make('negocio.ciudad.Nombre')
+                    ->label('Ciudad')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('negocio.zona.Nombre')
+                    ->label('Zona')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('analisisEconomico.MontoMaxRecomendado')
                     ->label('Monto Máx. Recomendado')
                     ->money('PEN')
                     ->sortable()

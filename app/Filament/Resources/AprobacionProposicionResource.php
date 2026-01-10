@@ -36,8 +36,16 @@ class AprobacionProposicionResource extends Resource
                             ->disabled(),
 
                         Forms\Components\TextInput::make('MontoTotal')
-                            ->label('Monto Total')
-                            ->disabled(),
+                            ->label('Monto solicitado')
+                            ->disabled()
+                            ->numeric(),
+
+                        Forms\Components\TextInput::make('MMR')
+                            ->label('MMR (Monto Máximo Recomendado)')
+                            ->state(fn ($record) => $record->cliente?->analisisEconomico?->MontoMaxRecomendado ?? 0)
+                            ->disabled()
+                            ->numeric()
+                            ->helperText('Dato obtenido del último Análisis Económico del cliente.'),
 
                         Forms\Components\TextInput::make('Estado')
                             ->label('Estado General')
@@ -78,9 +86,16 @@ class AprobacionProposicionResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('MontoTotal')
-                    ->label('Monto')
+                    ->label('Monto solicitado')
                     ->money('PEN')
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('MMR')
+                    ->label('MMR')
+                    ->state(fn ($record) => $record->cliente?->analisisEconomico?->MontoMaxRecomendado ?? 0)
+                    ->money('PEN')
+                    ->sortable()
+                    ->alignment('right'),
 
                 Tables\Columns\TextColumn::make('TasaInteres')
                     ->label('Tasa (%)')

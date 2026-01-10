@@ -144,7 +144,6 @@ class ClienteResource extends Resource
                                     ->native(false),
 
                                 Forms\Components\DatePicker::make('FechaNacimiento')
-                                    ->required()
                                     ->label('Fecha de Nacimiento')
                                     ->native(false)
                                     ->displayFormat('d/m/Y')
@@ -167,7 +166,6 @@ class ClienteResource extends Resource
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('ConyugeDNI')
-                                    ->required()
                                     ->maxLength(20)
                                     ->label('DNI del Cónyuge')
                                     ->placeholder('Ingrese DNI del cónyuge')
@@ -238,7 +236,6 @@ class ClienteResource extends Resource
                                     ),
 
                                 Forms\Components\TextInput::make('ConyugeNombresApellidos')
-                                    ->required()
                                     ->maxLength(200)
                                     ->label('Nombres y Apellidos del Cónyuge')
                                     ->placeholder('Se llenará automáticamente con RENIEC'),
@@ -250,7 +247,6 @@ class ClienteResource extends Resource
                 Forms\Components\Section::make('Domicilio')
                     ->schema([
                         Forms\Components\Textarea::make('Domicilio')
-                            ->required()
                             ->rows(3)
                             ->maxLength(500)
                             ->placeholder('Dirección completa del domicilio del cliente'),
@@ -341,7 +337,6 @@ class ClienteResource extends Resource
                         Forms\Components\Grid::make(3)
                             ->schema([
                                 Forms\Components\TextInput::make('negocio.Antiguedad')
-                                    ->required()
                                     ->label('Antigüedad (años)')
                                     ->numeric()
                                     ->step(0.1)
@@ -363,7 +358,6 @@ class ClienteResource extends Resource
                                     ->afterStateUpdated(fn(Set $set) => $set('negocio.SubGiroID', null)),
 
                                 Forms\Components\Select::make('negocio.SubGiroID')
-                                    ->required()
                                     ->label('Sub Giro')
                                     ->options(
                                         fn(Get $get) =>
@@ -489,7 +483,6 @@ class ClienteResource extends Resource
                                             ->visible(fn($livewire) => !($livewire instanceof \App\Filament\Resources\ClienteResource\Pages\CreateCliente)),
 
                                         Forms\Components\FileUpload::make('documentos.dni')
-                                            ->required()
                                             ->label('Foto del DNI')
                                             ->image()
                                             ->imageEditor()
@@ -523,7 +516,6 @@ class ClienteResource extends Resource
                                             ->visible(fn($livewire) => !($livewire instanceof \App\Filament\Resources\ClienteResource\Pages\CreateCliente)),
 
                                         Forms\Components\FileUpload::make('documentos.recibo_servicio')
-                                            ->required()
                                             ->label('Recibo de Servicio (Luz/Agua)')
                                             ->image()
                                             ->imageEditor()

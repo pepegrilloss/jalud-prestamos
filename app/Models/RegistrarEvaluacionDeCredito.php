@@ -37,4 +37,9 @@ class RegistrarEvaluacionDeCredito extends Model
             ->where('Activo', 1)
             ->latest('FechaAnalisis');
     }
+
+    public function negocio(): HasOne
+    {
+        return $this->hasOne(Negocio::class, 'ClienteID', 'ClienteID');
+    }
 }

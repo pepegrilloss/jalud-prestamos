@@ -12,7 +12,7 @@ class TicketDescargarController extends Controller
         $credito = Credito::findOrFail($creditoID);
         $proposicion = $credito->proposicion;
         $cliente = $proposicion->cliente;
-        $promotorCobrador = $cliente->promotorCobrador;
+        $negocio = $cliente->negocio;
         $zona = $cliente->negocio->zona->Nombre ?? 'N/A';
 
         $fecha = $credito->FechaGeneracion->format('d/m/Y');
@@ -20,7 +20,25 @@ class TicketDescargarController extends Controller
         $plazo = $proposicion->Plazo;
         $nombreCliente = $cliente->NombresApellidos;
         $dni = $cliente->DNI;
-        $telefono = $promotorCobrador->Telefono ?? '';
+        
+        // Obtener el teléfono del negocio (preferentemente el principal)
+        $telefono = '';
+        if ($negocio && $negocio->telefonos()->exists()) {
+            // Buscar el teléfono principal primero
+            $telefonoPrincipal = $negocio->telefonos()
+                ->where('TipoTelefono', 'PRINCIPAL')
+                ->first();
+            
+            if ($telefonoPrincipal) {
+                $telefono = $telefonoPrincipal->Telefono;
+            } else {
+                // Si no hay principal, obtener el primero disponible
+                $telefonoPrincipal = $negocio->telefonos()->first();
+                if ($telefonoPrincipal) {
+                    $telefono = $telefonoPrincipal->Telefono;
+                }
+            }
+        }
 
         // Dividir nombres en apellidos y nombres
         $partes = explode(' ', $nombreCliente);

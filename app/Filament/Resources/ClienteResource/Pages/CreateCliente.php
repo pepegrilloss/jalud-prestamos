@@ -118,7 +118,7 @@ class CreateCliente extends CreateRecord
     protected function guardarAnalisisEconomico(int $clienteID, array $analisis): void
     {
         // Guardar análisis económico si hay datos
-        if (!empty($analisis['CapitalManifestado']) || !empty($analisis['CapitalEstimado'])) {
+        if (!empty($analisis['CapitalManifestado']) || !empty($analisis['CapitalEstimado']) || !empty($analisis['MontoMaxRecomendado'])) {
             AnalisisEconomico::create([
                 'ClienteID' => $clienteID,
                 'CapitalManifestado' => $analisis['CapitalManifestado'] ?? 0,
@@ -126,6 +126,7 @@ class CreateCliente extends CreateRecord
                 'VentaManifestadaMin' => $analisis['VentaManifestadaMin'] ?? 0,
                 'VentaManifestadaMax' => $analisis['VentaManifestadaMax'] ?? 0,
                 'VentaEstimada' => $analisis['VentaEstimada'] ?? 0,
+                'MontoMaxRecomendado' => $analisis['MontoMaxRecomendado'] ?? 0,
                 'UsuarioAnalisis' => auth()->user()->name ?? 'Sistema',
                 'FechaAnalisis' => now(),
                 'Activo' => 1,
