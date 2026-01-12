@@ -175,9 +175,17 @@ class CreditoResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\Action::make('descargar_libreta')
-                    ->label('Descargar Libreta de Pagos')
+                    ->label('Excel')
+                    ->tooltip('Descargar Libreta de Pagos (Excel)')
                     ->icon('heroicon-o-document-arrow-down')
                     ->url(fn($record) => route('libreta-pagos.descargar', $record->CreditoID))
+                    ->openUrlInNewTab(),
+                Tables\Actions\Action::make('descargar_libreta_html')
+                    ->label('Imprimir')
+                    ->tooltip('Ver Libreta de Pagos para Imprimir')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->url(fn($record) => route('libreta-pagos.html', $record->CreditoID))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('descargar_ticket')
                     ->label('Descargar Ticket')

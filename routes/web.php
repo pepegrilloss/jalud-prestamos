@@ -10,7 +10,7 @@ Route::get('/', function () {
 
 Route::get('/pdf/acta-creditos', function () {
     $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
-    
+
     $proposiciones = ProposicionCredito::with(['cliente', 'zona', 'tipoCredito', 'tasa'])
         ->where('Activo', true)
         ->whereDate('FechaPropuesta', '=', $fecha)
@@ -29,6 +29,12 @@ Route::get('/pdf/acta-creditos', function () {
 
 Route::get('/libreta-pagos/{credito}', [App\Http\Controllers\LibretaPagosController::class, 'descargar'])
     ->name('libreta-pagos.descargar');
+
+Route::get('/libreta-pagos/{credito}/pdf', [App\Http\Controllers\LibretaPagosController::class, 'descargarPdf'])
+    ->name('libreta-pagos.descargar-pdf');
+
+Route::get('/libreta-pagos/{credito}/html', [App\Http\Controllers\LibretaPagosController::class, 'verHtml'])
+    ->name('libreta-pagos.html');
 
 Route::get('/ticket/{credito}', [App\Http\Controllers\TicketDescargarController::class, 'descargar'])
     ->name('ticket.descargar');
