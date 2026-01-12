@@ -53,24 +53,6 @@ class LibretaPagosController extends Controller
             return "Error al generar PDF: " . $e->getMessage();
         }
     }
-
-    public function verHtml($creditoId)
-    {
-        $credito = Credito::with(['proposicion.cliente', 'proposicion.tasa', 'cuotas', 'pagos'])
-            ->findOrFail($creditoId);
-
-        $proposicion = $credito->proposicion;
-        $cliente = $proposicion->cliente;
-        $zona = $cliente->negocio->zona->Nombre ?? 'N/A';
-        $cuotas = $credito->cuotas()->orderBy('FechaVencimiento')->get();
-
-        $pagosData = [];
-        foreach ($credito->pagos as $pago) {
-            $pagosData[$pago->CuotaID] = ($pagosData[$pago->CuotaID] ?? 0) + $pago->MontoPagado;
-        }
-
-        return view('pdf.libreta-pagos', compact('credito', 'proposicion', 'cliente', 'zona', 'cuotas', 'pagosData'));
-    }
 }
 
 

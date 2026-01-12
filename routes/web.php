@@ -33,7 +33,7 @@ Route::get('/libreta-pagos/{credito}', [App\Http\Controllers\LibretaPagosControl
 Route::get('/libreta-pagos/{credito}/pdf', [App\Http\Controllers\LibretaPagosController::class, 'descargarPdf'])
     ->name('libreta-pagos.descargar-pdf');
 
-Route::get('/libreta-pagos/{credito}/html', [App\Http\Controllers\LibretaPagosController::class, 'verHtml'])
+Route::get('/libreta-pagos/{credito}/html', [App\Http\Controllers\LibretaPagosController::class, 'descargarPdf'])
     ->name('libreta-pagos.html');
 
 Route::get('/ticket/{credito}', [App\Http\Controllers\TicketDescargarController::class, 'descargar'])
