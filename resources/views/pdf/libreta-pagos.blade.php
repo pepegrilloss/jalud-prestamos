@@ -140,7 +140,7 @@
 
             <div class="resumen-prestamo">
                 <table>
-                    <tr><td class="etiqueta-verde">PRINCIPAL</td><td style="text-align:right">{{ number_format($proposicion->MontoSolicitado, 2) }}</td></tr>
+                    <tr><td class="etiqueta-verde">PRINCIPAL</td></tr>
                     <tr><td class="etiqueta-verde">MONTO</td><td style="text-align:right">{{ number_format(($proposicion->MontoTotal + $proposicion->MontoInteres), 2) }}</td></tr>
                     <tr><td class="etiqueta-verde">CUOTA</td><td style="text-align:right">{{ number_format($proposicion->MontoCuota, 2) }}</td></tr>
                     <tr><td class="etiqueta-verde">N° DE CUOTAS</td><td style="text-align:right">{{ $proposicion->NumeroCuotas }}</td></tr>
