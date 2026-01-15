@@ -80,9 +80,22 @@ class PagoResource extends Resource
                                         if ($creditosActivos == 1) {
                                             $proposicion = $cliente->proposiciones->first();
                                             if ($proposicion->credito) {
-                                                $set('CreditoID', $proposicion->credito->CreditoID);
+                                                $creditoID = $proposicion->credito->CreditoID;
+                                                $set('CreditoID', $creditoID);
                                                 $tipo = $proposicion->tipoCredito?->Descripcion ?? 'N/A';
                                                 $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito}");
+
+                                                // Auto-seleccionar la primera cuota pendiente
+                                                $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
+                                                    ->where('Activo', 1)
+                                                    ->where('NumeroCuota', '>', 0)
+                                                    ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
+                                                    ->orderBy('NumeroCuota')
+                                                    ->first();
+
+                                                if ($primeraCuota) {
+                                                    $set('CuotaID', $primeraCuota->CuotaID);
+                                                }
                                             }
                                         }
                                     }
@@ -118,11 +131,12 @@ class PagoResource extends Resource
                                     ]);
                             })
                             ->searchable()
+                            ->searchable()
                             ->native(false)
-                            ->hidden(function (Forms\Get $get) {
+                            ->visible(function (Forms\Get $get) {
                                 $clienteID = $get('ClienteID');
                                 if (!$clienteID) {
-                                    return true;
+                                    return false;
                                 }
 
                                 $cliente = \App\Models\Cliente::find($clienteID);
@@ -130,9 +144,10 @@ class PagoResource extends Resource
                                     $q->where('ClienteID', $cliente->ClienteID);
                                 })->where('Activo', 1)->count();
 
-                                return $creditosActivos < 2;
+                                return $creditosActivos >= 2;
                             })
                             ->disabled(fn(Forms\Get $get) => !$get('ClienteID'))
+                            ->dehydrated()
                             ->afterStateUpdated(function (Forms\Set $set, $state) {
                                 $set('CuotaID', null);
                             })
@@ -181,6 +196,7 @@ class PagoResource extends Resource
                             ->searchable()
                             ->native(false)
                             ->hidden()
+                            ->dehydrated()
                             ->disabled(fn(Forms\Get $get) => !$get('CreditoID'))
                             ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
                                 // Si es la primera vez que se abre el formulario, auto-seleccionar la primera cuota pendiente

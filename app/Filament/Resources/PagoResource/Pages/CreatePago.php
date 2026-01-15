@@ -88,26 +88,45 @@ class CreatePago extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Si CuotaID no está establecido, obtener la primera cuota pendiente (solo cuotas reales)
-        if (!isset($data['CuotaID']) || empty($data['CuotaID'])) {
-            $primeraCuota = \App\Models\Cuota::where('CreditoID', $data['CreditoID'])
-                ->where('Activo', 1)
-                ->where('NumeroCuota', '>', 0)
-                ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
-                ->orderBy('NumeroCuota')
-                ->first();
+        // 1. Asegurar primero el CreditoID (por si Filament lo quitó al estar oculto)
+        if (!isset($data['CreditoID']) || empty($data['CreditoID'])) {
+            $clienteID = $data['ClienteID'] ?? null;
+            if ($clienteID) {
+                $creditoUnico = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID) {
+                    $q->where('ClienteID', $clienteID);
+                })->where('Activo', 1)->first();
 
-            if ($primeraCuota) {
-                $data['CuotaID'] = $primeraCuota->CuotaID;
+                if ($creditoUnico) {
+                    $data['CreditoID'] = $creditoUnico->CreditoID;
+                }
             }
         }
 
-        // Obtener el PromotorCobradorID del cliente del crédito
-        $credito = \App\Models\Credito::find($data['CreditoID']);
-        if ($credito && $credito->proposicion) {
-            $cliente = $credito->proposicion->cliente;
-            if ($cliente && $cliente->PromotorCobradorID) {
-                $data['PromotorCobradorID'] = $cliente->PromotorCobradorID;
+        // 2. Ahora que tenemos seguro el CreditoID, asegurar la CuotaID
+        if (!isset($data['CuotaID']) || empty($data['CuotaID'])) {
+            $creditoID = $data['CreditoID'] ?? null;
+            if ($creditoID) {
+                $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
+                    ->where('Activo', 1)
+                    ->where('NumeroCuota', '>', 0)
+                    ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
+                    ->orderBy('NumeroCuota')
+                    ->first();
+
+                if ($primeraCuota) {
+                    $data['CuotaID'] = $primeraCuota->CuotaID;
+                }
+            }
+        }
+
+        // 3. Obtener el PromotorCobradorID del cliente del crédito
+        if (isset($data['CreditoID'])) {
+            $credito = \App\Models\Credito::find($data['CreditoID']);
+            if ($credito && $credito->proposicion) {
+                $cliente = $credito->proposicion->cliente;
+                if ($cliente && $cliente->PromotorCobradorID) {
+                    $data['PromotorCobradorID'] = $cliente->PromotorCobradorID;
+                }
             }
         }
 
