@@ -44,7 +44,7 @@ class PagoResource extends Resource
                                         'proposiciones' => function ($query) {
                                             $query->whereHas('credito', function ($q) {
                                                 $q->where('Activo', 1);
-                                            });
+                                            })->with('tipoCredito');
                                         }
                                     ])
                                     ->when($promotorCobradorID, function ($query) use ($promotorCobradorID) {
@@ -52,14 +52,7 @@ class PagoResource extends Resource
                                     })
                                     ->get()
                                     ->mapWithKeys(function ($cliente) {
-                                        $label = "{$cliente->NombresApellidos} - {$cliente->DNI}";
-
-                                        // Solo mostrar el código si tiene un único crédito activo
-                                        if ($cliente->proposiciones->count() === 1) {
-                                            $label .= " - " . $cliente->proposiciones->first()->CodigoCredito;
-                                        }
-
-                                        return [$cliente->ClienteID => $label];
+                                        return [$cliente->ClienteID => "{$cliente->NombresApellidos} - {$cliente->DNI}"];
                                     });
                             })
                             ->required()
@@ -72,20 +65,24 @@ class PagoResource extends Resource
                                 $set('CuotaID', null);
 
                                 if ($state) {
-                                    $cliente = \App\Models\Cliente::find($state);
+                                    $cliente = \App\Models\Cliente::with([
+                                        'proposiciones' => function ($q) {
+                                            $q->whereHas('credito', function ($sq) {
+                                                $sq->where('Activo', 1);
+                                            })->with('tipoCredito');
+                                        }
+                                    ])->find($state);
+
                                     if ($cliente) {
-                                        $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
-                                            $q->where('ClienteID', $cliente->ClienteID);
-                                        })->where('Activo', 1)->count();
+                                        $creditosActivos = $cliente->proposiciones->count();
 
-                                        // Si el cliente tiene solo 1 crédito, seleccionarlo automáticamente
+                                        // Si el cliente tiene solo 1 crédito, seleccionarlo y mostrar el tipo con el código
                                         if ($creditosActivos == 1) {
-                                            $creditoUnico = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
-                                                $q->where('ClienteID', $cliente->ClienteID);
-                                            })->where('Activo', 1)->first();
-
-                                            if ($creditoUnico) {
-                                                $set('CreditoID', $creditoUnico->CreditoID);
+                                            $proposicion = $cliente->proposiciones->first();
+                                            if ($proposicion->credito) {
+                                                $set('CreditoID', $proposicion->credito->CreditoID);
+                                                $tipo = $proposicion->tipoCredito?->Descripcion ?? 'N/A';
+                                                $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito}");
                                             }
                                         }
                                     }
@@ -93,7 +90,7 @@ class PagoResource extends Resource
                             }),
 
                         Forms\Components\Select::make('CreditoID')
-                            ->label('Tipo de Crédito')
+                            ->label('Seleccionar Crédito')
                             ->options(function (Forms\Get $get) {
                                 $clienteID = $get('ClienteID');
                                 if (!$clienteID) {
@@ -136,16 +133,29 @@ class PagoResource extends Resource
                                 return $creditosActivos < 2;
                             })
                             ->disabled(fn(Forms\Get $get) => !$get('ClienteID'))
-                            ->afterStateUpdated(function (Forms\Set $set) {
+                            ->afterStateUpdated(function (Forms\Set $set, $state) {
                                 $set('CuotaID', null);
-                            }),
+                            })
+                            ->live(),
 
                         Forms\Components\TextInput::make('TipoCredito')
                             ->label('Tipo de Crédito')
                             ->disabled()
-                            ->placeholder('Se actualizará al seleccionar el crédito')
-                            ->default(null)
-                            ->hidden(),
+                            ->dehydrated(false)
+                            ->placeholder('Información del crédito')
+                            ->visible(function (Forms\Get $get) {
+                                $clienteID = $get('ClienteID');
+                                if (!$clienteID)
+                                    return true;
+
+                                $cliente = \App\Models\Cliente::find($clienteID);
+                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
+                                    $q->where('ClienteID', $cliente->ClienteID);
+                                })->where('Activo', 1)->count();
+
+                                // Solo visible si tiene 1 crédito. Si tiene 2+, se usa el Select anterior y este se oculta por redundancia.
+                                return $creditosActivos < 2;
+                            }),
 
                         Forms\Components\Select::make('CuotaID')
                             ->label('Cuota - Control de Pagos')

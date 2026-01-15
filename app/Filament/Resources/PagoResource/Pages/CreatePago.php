@@ -31,13 +31,18 @@ class CreatePago extends CreateRecord
                 ->modalHeading('⚠️ Confirmar Registro de Pago')
                 ->modalDescription(function () {
                     try {
-                        $data = $this->form->getState();
+                        // Usamos getRawFormData() o accedemos al estado de los componentes directamente
+                        // para asegurar que el modal tenga los datos antes de la validación final
+                        $data = $this->form->getRawState();
 
-                        if (!isset($data['CreditoID']) || !isset($data['MontoPagado'])) {
-                            return 'Por favor complete todos los campos requeridos.';
+                        $creditoID = $data['CreditoID'] ?? null;
+                        $montoPagado = $data['MontoPagado'] ?? null;
+
+                        if (!$creditoID || !$montoPagado) {
+                            return 'Por favor complete todos los campos requeridos (Cliente y Monto).';
                         }
 
-                        $credito = \App\Models\Credito::with(['proposicion.cliente', 'proposicion.tipoCredito'])->find($data['CreditoID']);
+                        $credito = \App\Models\Credito::with(['proposicion.cliente', 'proposicion.tipoCredito'])->find($creditoID);
 
                         if (!$credito || !$credito->proposicion || !$credito->proposicion->cliente) {
                             return 'No se pudo cargar la información del crédito o cliente.';
@@ -45,7 +50,7 @@ class CreatePago extends CreateRecord
 
                         $cliente = $credito->proposicion->cliente;
                         $tipoCredito = e($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A');
-                        $monto = number_format($data['MontoPagado'], 2);
+                        $monto = number_format($montoPagado, 2);
 
                         $nombre = e($cliente->NombresApellidos ?? '');
 

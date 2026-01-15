@@ -61,7 +61,9 @@ class GenerarCreditoResource extends Resource
                                         session()->put('cliente_predefinido', true);
                                         return Crypt::decrypt($encrypted);
                                     }
-                                } catch (\Exception $e) { return null; }
+                                } catch (\Exception $e) {
+                                    return null;
+                                }
                             })
                             ->disabled(fn() => session()->has('cliente_predefinido'))
                             ->dehydrated()
@@ -135,9 +137,9 @@ class GenerarCreditoResource extends Resource
 
     protected static function calcularTotales(Set $set, Get $get, $monto): void
     {
-        $montoVal = (float)$monto;
-        $tasaVal = (float)$get('TasaInteres');
-        $cuotasVal = (int)$get('NumeroCuotas');
+        $montoVal = (float) $monto;
+        $tasaVal = (float) $get('TasaInteres');
+        $cuotasVal = (int) $get('NumeroCuotas');
 
         if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
             $interes = $montoVal * ($tasaVal / 100);
@@ -150,9 +152,9 @@ class GenerarCreditoResource extends Resource
 
     protected static function recalcularTotales(Set $set, Get $get): void
     {
-        $montoVal = (float)($get('MontoTotal') ?? 0);
-        $tasaVal = (float)($get('TasaInteres') ?? 0);
-        $cuotasVal = (int)($get('NumeroCuotas') ?? 0);
+        $montoVal = (float) ($get('MontoTotal') ?? 0);
+        $tasaVal = (float) ($get('TasaInteres') ?? 0);
+        $cuotasVal = (int) ($get('NumeroCuotas') ?? 0);
 
         if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
             $interes = $montoVal * ($tasaVal / 100);
@@ -169,21 +171,21 @@ class GenerarCreditoResource extends Resource
                 Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('cliente.NombresApellidos')->label('Cliente')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('MontoTotal')->label('Monto')->money('PEN')->sortable(),
-                Tables\Columns\TextColumn::make('TasaInteres')->label('Tasa (%)')->formatStateUsing(fn($state) => number_format((float)$state, 2, '.', '') . ' %')->sortable(),
+                Tables\Columns\TextColumn::make('TasaInteres')->label('Tasa (%)')->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', '') . ' %')->sortable(),
                 Tables\Columns\TextColumn::make('MontoInteres')
                     ->label('Intereses')
                     ->sortable()
-                    ->getStateUsing(fn($record) => (float)(($record->MontoTotal ?? 0) * (($record->TasaInteres ?? 0) / 100)))
-                    ->formatStateUsing(fn($state) => 'S/ ' . number_format((float)$state, 2, '.', '')),
+                    ->getStateUsing(fn($record) => (float) (($record->MontoTotal ?? 0) * (($record->TasaInteres ?? 0) / 100)))
+                    ->formatStateUsing(fn($state) => 'S/ ' . number_format((float) $state, 2, '.', '')),
 
                 Tables\Columns\TextColumn::make('MontoTotalPagar')
                     ->label('Monto Total')
                     ->sortable()
-                    ->getStateUsing(fn($record) => (float)(($record->MontoTotal ?? 0) + (($record->MontoTotal ?? 0) * (($record->TasaInteres ?? 0) / 100))))
-                    ->formatStateUsing(fn($state) => 'S/ ' . number_format((float)$state, 2, '.', '')),
+                    ->getStateUsing(fn($record) => (float) (($record->MontoTotal ?? 0) + (($record->MontoTotal ?? 0) * (($record->TasaInteres ?? 0) / 100))))
+                    ->formatStateUsing(fn($state) => 'S/ ' . number_format((float) $state, 2, '.', '')),
                 Tables\Columns\TextColumn::make('NumeroCuotas')->label('Cuotas')->sortable(),
                 Tables\Columns\TextColumn::make('Plazo')->label('Días')->sortable(),
-                Tables\Columns\TextColumn::make('Estado')->badge()->color(fn (string $state): string => match ($state) {
+                Tables\Columns\TextColumn::make('Estado')->badge()->color(fn(string $state): string => match ($state) {
                     'APROBADO' => 'success',
                     default => 'gray',
                 })->sortable(),
@@ -191,7 +193,7 @@ class GenerarCreditoResource extends Resource
             // CORRECCIÓN: Se cambió $q por $query para evitar el error de resolución
             ->modifyQueryUsing(function (Builder $query) {
                 return $query->where('Estado', 'APROBADO')
-                             ->whereDoesntHave('credito');
+                    ->whereDoesntHave('credito');
             })
             ->actions([
                 Tables\Actions\Action::make('ver_comentarios')
@@ -200,9 +202,9 @@ class GenerarCreditoResource extends Resource
                     ->color('info')
                     ->modalHeading('Historial de Evaluación')
                     ->modalSubmitAction(false)
-                    ->form([ 
+                    ->form([
                         Forms\Components\ViewField::make('evaluaciones')
-                            ->view('filament.components.evaluaciones-credito') 
+                            ->view('filament.components.evaluaciones-credito')
                     ]),
 
                 Action::make('editar_datos')
@@ -245,24 +247,27 @@ class GenerarCreditoResource extends Resource
                                             ->label('Tasa %')
                                             ->numeric()
                                             ->step(0.01)
-                                            ->disabled(),
+                                            ->disabled()
+                                            ->dehydrated(),
 
                                         Forms\Components\TextInput::make('Plazo')
                                             ->label('Plazo (días)')
                                             ->numeric()
-                                            ->disabled(),
+                                            ->required(),
 
                                         Forms\Components\TextInput::make('NumeroCuotas')
                                             ->label('N° cuotas')
                                             ->numeric()
-                                            ->disabled(),
+                                            ->required()
+                                            ->live(debounce: 300)
+                                            ->afterStateUpdated(fn(Set $set, Get $get) => static::recalcularTotales($set, $get)),
                                     ]),
 
                                 Forms\Components\TextInput::make('MontoCuota')
                                     ->label('Monto por cuota')
                                     ->numeric()
                                     ->step(0.01)
-                                    ->disabled(),
+                                    ->required(),
                             ]),
                     ])
                     ->fillForm(fn(ProposicionCredito $record) => [
@@ -274,30 +279,15 @@ class GenerarCreditoResource extends Resource
                         'MontoCuota' => $record->MontoCuota,
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
-                        // Actualizar Monto
-                        $update = ['MontoTotal' => $data['MontoTotal'] ?? $record->MontoTotal];
-                        
-                        // Si se cambió la TasaID, obtener los datos de la tasa y recalcular
-                        if (isset($data['TasaID'])) {
-                            if ($tasa = Tasa::find($data['TasaID'])) {
-                                $update['TasaInteres'] = $tasa->Valor;
-                                $update['Plazo'] = $tasa->Dias;
-                                $update['NumeroCuotas'] = $tasa->Cuotas;
-                                
-                                // Recalcular MontoCuota
-                                $montoVal = (float)($data['MontoTotal'] ?? $record->MontoTotal);
-                                $cuotasVal = (int)$tasa->Cuotas;
-                                if ($montoVal > 0 && $cuotasVal > 0) {
-                                    $interes = $montoVal * ($tasa->Valor / 100);
-                                    $total = $montoVal + $interes;
-                                    $update['MontoCuota'] = round($total / $cuotasVal, 2);
-                                }
-                            }
-                        }
-                        
-                        if (!empty($update)) {
-                            $record->update($update);
-                        }
+                        $record->update([
+                            'MontoTotal' => $data['MontoTotal'] ?? $record->MontoTotal,
+                            'TasaID' => $data['TasaID'] ?? $record->TasaID,
+                            'TasaInteres' => $data['TasaInteres'] ?? $record->TasaInteres,
+                            'Plazo' => $data['Plazo'] ?? $record->Plazo,
+                            'NumeroCuotas' => $data['NumeroCuotas'] ?? $record->NumeroCuotas,
+                            'MontoCuota' => $data['MontoCuota'] ?? $record->MontoCuota,
+                        ]);
+
                         Notification::make()->title('Datos actualizados')->success()->send();
                     }),
 
