@@ -148,6 +148,19 @@ class GenerarCreditoResource extends Resource
         }
     }
 
+    protected static function recalcularTotales(Set $set, Get $get): void
+    {
+        $montoVal = (float)($get('MontoTotal') ?? 0);
+        $tasaVal = (float)($get('TasaInteres') ?? 0);
+        $cuotasVal = (int)($get('NumeroCuotas') ?? 0);
+
+        if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
+            $interes = $montoVal * ($tasaVal / 100);
+            $total = $montoVal + $interes;
+            $set('MontoCuota', round($total / $cuotasVal, 2));
+        }
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -191,6 +204,102 @@ class GenerarCreditoResource extends Resource
                         Forms\Components\ViewField::make('evaluaciones')
                             ->view('filament.components.evaluaciones-credito') 
                     ]),
+
+                Action::make('editar_datos')
+                    ->label('Editar')
+                    ->icon('heroicon-o-pencil')
+                    ->modalHeading('Editar Datos del Crédito')
+                    ->modalWidth('2xl')
+                    ->form([
+                        Forms\Components\Section::make('Valores del Crédito')
+                            ->schema([
+                                Forms\Components\Grid::make(2)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('MontoTotal')
+                                            ->label('Monto')
+                                            ->numeric()
+                                            ->step(0.01)
+                                            ->required()
+                                            ->live(debounce: 300)
+                                            ->afterStateUpdated(fn(Set $set, Get $get) => static::recalcularTotales($set, $get)),
+
+                                        Forms\Components\Select::make('TasaID')
+                                            ->label('Tasa de Interés')
+                                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
+                                            ->required()
+                                            ->searchable()
+                                            ->live()
+                                            ->afterStateUpdated(function (Set $set, $state, Get $get) {
+                                                if ($tasa = Tasa::find($state)) {
+                                                    $set('TasaInteres', $tasa->Valor);
+                                                    $set('Plazo', $tasa->Dias);
+                                                    $set('NumeroCuotas', $tasa->Cuotas);
+                                                    static::recalcularTotales($set, $get);
+                                                }
+                                            }),
+                                    ]),
+
+                                Forms\Components\Grid::make(3)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('TasaInteres')
+                                            ->label('Tasa %')
+                                            ->numeric()
+                                            ->step(0.01)
+                                            ->disabled(),
+
+                                        Forms\Components\TextInput::make('Plazo')
+                                            ->label('Plazo (días)')
+                                            ->numeric()
+                                            ->disabled(),
+
+                                        Forms\Components\TextInput::make('NumeroCuotas')
+                                            ->label('N° cuotas')
+                                            ->numeric()
+                                            ->disabled(),
+                                    ]),
+
+                                Forms\Components\TextInput::make('MontoCuota')
+                                    ->label('Monto por cuota')
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->disabled(),
+                            ]),
+                    ])
+                    ->fillForm(fn(ProposicionCredito $record) => [
+                        'MontoTotal' => $record->MontoTotal,
+                        'TasaID' => Tasa::where('Valor', $record->TasaInteres)->where('Activo', true)->first()?->TasaID,
+                        'TasaInteres' => $record->TasaInteres,
+                        'Plazo' => $record->Plazo,
+                        'NumeroCuotas' => $record->NumeroCuotas,
+                        'MontoCuota' => $record->MontoCuota,
+                    ])
+                    ->action(function (ProposicionCredito $record, array $data) {
+                        // Actualizar Monto
+                        $update = ['MontoTotal' => $data['MontoTotal'] ?? $record->MontoTotal];
+                        
+                        // Si se cambió la TasaID, obtener los datos de la tasa y recalcular
+                        if (isset($data['TasaID'])) {
+                            if ($tasa = Tasa::find($data['TasaID'])) {
+                                $update['TasaInteres'] = $tasa->Valor;
+                                $update['Plazo'] = $tasa->Dias;
+                                $update['NumeroCuotas'] = $tasa->Cuotas;
+                                
+                                // Recalcular MontoCuota
+                                $montoVal = (float)($data['MontoTotal'] ?? $record->MontoTotal);
+                                $cuotasVal = (int)$tasa->Cuotas;
+                                if ($montoVal > 0 && $cuotasVal > 0) {
+                                    $interes = $montoVal * ($tasa->Valor / 100);
+                                    $total = $montoVal + $interes;
+                                    $update['MontoCuota'] = round($total / $cuotasVal, 2);
+                                }
+                            }
+                        }
+                        
+                        if (!empty($update)) {
+                            $record->update($update);
+                        }
+                        Notification::make()->title('Datos actualizados')->success()->send();
+                    }),
 
                 Action::make('generar_credito')
                     ->label('Generar Crédito')

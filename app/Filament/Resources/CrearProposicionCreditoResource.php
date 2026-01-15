@@ -68,7 +68,8 @@ class CrearProposicionCreditoResource extends Resource
                                     $cliente = Cliente::find($state);
                                     if ($cliente) {
                                         $set('CodigoCliente', $cliente->DNI);
-                                        $set('ZonaID', $cliente->ZonaID);
+                                        // Tomar la zona desde el negocio relacionado del cliente
+                                        $set('ZonaID', $cliente->negocio?->ZonaID ?? null);
                                     }
                                 }
                             }),
@@ -171,7 +172,9 @@ class CrearProposicionCreditoResource extends Resource
                             ->label('Zona')
                             ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
                             ->required()
-                            ->searchable(),
+                            ->searchable()
+                            ->disabled()
+                            ->helperText('Se asigna automáticamente desde el negocio del cliente'),
                         Forms\Components\Textarea::make('Observaciones')->rows(3)->columnSpanFull(),
                     ])->columns(2),
             ]);

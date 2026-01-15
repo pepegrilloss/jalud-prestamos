@@ -216,6 +216,14 @@ class ViewCliente extends ViewRecord
                                     ->label('Giro'),
                                 Components\TextEntry::make('negocio.subGiro.Descripcion')
                                     ->label('Sub Giro'),
+                                // Mostrar Ciudad y Zona del negocio
+                                Components\TextEntry::make('negocio.ciudad.Nombre')
+                                    ->label('Ciudad')
+                                    ->placeholder('No registrada'),
+
+                                Components\TextEntry::make('negocio.zona.Nombre')
+                                    ->label('Zona')
+                                    ->placeholder('No registrada'),
                             ]),
                         Components\RepeatableEntry::make('negocio.telefonos')
                             ->label('Teléfonos')

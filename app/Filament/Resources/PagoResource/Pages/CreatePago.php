@@ -32,40 +32,40 @@ class CreatePago extends CreateRecord
                 ->modalDescription(function () {
                     try {
                         $data = $this->form->getState();
-                        
+
                         if (!isset($data['CreditoID']) || !isset($data['MontoPagado'])) {
                             return 'Por favor complete todos los campos requeridos.';
                         }
-                        
-                        $credito = \App\Models\Credito::with('proposicion.cliente')->find($data['CreditoID']);
-                        
+
+                        $credito = \App\Models\Credito::with(['proposicion.cliente', 'proposicion.tipoCredito'])->find($data['CreditoID']);
+
                         if (!$credito || !$credito->proposicion || !$credito->proposicion->cliente) {
-                            return 'No se pudo cargar la información del cliente.';
+                            return 'No se pudo cargar la información del crédito o cliente.';
                         }
-                        
+
                         $cliente = $credito->proposicion->cliente;
+                        $tipoCredito = e($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A');
                         $monto = number_format($data['MontoPagado'], 2);
 
                         $nombre = e($cliente->NombresApellidos ?? '');
-                        $dni = e($cliente->DNI ?? $cliente->NumeroDocumento ?? '');
 
                         return new \Illuminate\Support\HtmlString(
                             '<div style="text-align:center; padding: 10px 0;">' .
-                                '<div style="font-size: 1.1rem; color: #666; margin-bottom: 4px;">👤 Cliente:</div>' .
-                                '<div style="font-size: 2.25rem; line-height: 2.5rem; font-weight: 800; color: #111; margin-bottom: 20px; text-transform: uppercase; letter-spacing: -0.025em;">' . $nombre . '</div>' .
-                                '<div style="display: flex; justify-content: center; gap: 40px; border-top: 1px solid #eee; pt-4; margin-top: 10px; padding-top: 20px;">' .
-                                    '<div>' .
-                                        '<div style="font-size: 0.875rem; color: #666;">🆔 DNI</div>' .
-                                        '<div style="font-size: 1.25rem; font-weight: 600;">' . $dni . '</div>' .
-                                    '</div>' .
-                                    '<div>' .
-                                        '<div style="font-size: 0.875rem; color: #666;">💰 Monto a Pagar</div>' .
-                                        '<div style="font-size: 1.5rem; font-weight: 700; color: #059669;">S/ ' . $monto . '</div>' .
-                                    '</div>' .
-                                '</div>' .
+                            '<div style="font-size: 1.1rem; color: #666; margin-bottom: 4px;">👤 Cliente:</div>' .
+                            '<div style="font-size: 2.25rem; line-height: 2.5rem; font-weight: 800; color: #111; margin-bottom: 20px; text-transform: uppercase; letter-spacing: -0.025em;">' . $nombre . '</div>' .
+                            '<div style="display: flex; justify-content: center; gap: 40px; border-top: 1px solid #eee; pt-4; margin-top: 10px; padding-top: 20px;">' .
+                            '<div>' .
+                            '<div style="font-size: 0.875rem; color: #666;">📝 Tipo de Crédito</div>' .
+                            '<div style="font-size: 1.25rem; font-weight: 600;">' . $tipoCredito . '</div>' .
+                            '</div>' .
+                            '<div>' .
+                            '<div style="font-size: 0.875rem; color: #666;">💰 Monto a Pagar</div>' .
+                            '<div style="font-size: 1.5rem; font-weight: 700; color: #059669;">S/ ' . $monto . '</div>' .
+                            '</div>' .
+                            '</div>' .
                             '</div>'
                         );
-                               
+
                     } catch (\Exception $e) {
                         return 'Error al cargar los datos.';
                     }
@@ -76,7 +76,7 @@ class CreatePago extends CreateRecord
                     // Crear el registro
                     $this->create();
                 }),
-            
+
             $this->getCancelFormAction(),
         ];
     }
@@ -91,7 +91,7 @@ class CreatePago extends CreateRecord
                 ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
                 ->orderBy('NumeroCuota')
                 ->first();
-            
+
             if ($primeraCuota) {
                 $data['CuotaID'] = $primeraCuota->CuotaID;
             }
@@ -117,15 +117,15 @@ class CreatePago extends CreateRecord
     {
         try {
             $pagoOriginal = $this->record;
-            
+
             if (!$pagoOriginal || !$pagoOriginal->CreditoID || !$pagoOriginal->CuotaID) {
                 \Log::warning('CreatePago::afterCreate - No pago, CreditoID or CuotaID', ['pago' => $pagoOriginal]);
                 return;
             }
-            
+
             // Asegurar que FechaPago tenga un valor
             $fechaPago = $pagoOriginal->FechaPago ?? now();
-            
+
             \Log::info('CreatePago::afterCreate - Starting', [
                 'PagoID' => $pagoOriginal->PagoID,
                 'CreditoID' => $pagoOriginal->CreditoID,
@@ -133,9 +133,9 @@ class CreatePago extends CreateRecord
                 'MontoPagado' => $pagoOriginal->MontoPagado,
                 'FechaPago' => $fechaPago
             ]);
-            
+
             $credito = \App\Models\Credito::find($pagoOriginal->CreditoID);
-            
+
             if (!$credito) {
                 \Log::error('CreatePago::afterCreate - Credito not found', ['CreditoID' => $pagoOriginal->CreditoID]);
                 return;
@@ -143,7 +143,7 @@ class CreatePago extends CreateRecord
 
             // Obtener solo la cuota seleccionada
             $cuota = Cuota::find($pagoOriginal->CuotaID);
-            
+
             if (!$cuota) {
                 \Log::error('CreatePago::afterCreate - Cuota not found', ['CuotaID' => $pagoOriginal->CuotaID]);
                 return;
@@ -152,7 +152,7 @@ class CreatePago extends CreateRecord
             // Aplicar el pago SOLO a la cuota seleccionada, sin prorrateo
             $saldoActual = $cuota->SaldoPendiente ?? $cuota->MontoCuota;
             $montoPagadoEnCuota = $pagoOriginal->MontoPagado;
-            
+
             \Log::info('CreatePago::afterCreate - Procesando cuota', [
                 'CuotaID' => $cuota->CuotaID,
                 'NumeroCuota' => $cuota->NumeroCuota,
@@ -206,12 +206,12 @@ class CreatePago extends CreateRecord
                 ->title('✅ Pago Registrado')
                 ->body("Pago de S/ {$pagoOriginal->MontoPagado} registrado en la cuota #{$cuota->NumeroCuota} correctamente.")
                 ->send();
-                
+
         } catch (\Exception $e) {
             \Log::error('CreatePago::afterCreate - Exception: ' . $e->getMessage(), [
                 'exception' => $e->getTraceAsString()
             ]);
-            
+
             Notification::make()
                 ->danger()
                 ->title('Error al procesar pago')

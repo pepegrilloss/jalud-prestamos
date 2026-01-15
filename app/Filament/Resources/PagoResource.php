@@ -32,46 +32,120 @@ class PagoResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Información del Pago')
                     ->schema([
-                        Forms\Components\Select::make('CreditoID')
-                            ->label('Cliente - Dni - Crédito')
-                            ->options(
-                                Credito::with('proposicion.cliente')
-                                    ->where('Activo', 1)
-                                    ->whereHas('proposicion.cliente', function ($query) {
-                                        $promotorCobradorID = auth()->user()?->PromotorCobradorID;
-                                        if ($promotorCobradorID) {
-                                            $query->where('PromotorCobradorID', $promotorCobradorID);
+                        Forms\Components\Select::make('ClienteID')
+                            ->label('Cliente - DNI')
+                            ->options(function () {
+                                $promotorCobradorID = auth()->user()?->PromotorCobradorID;
+
+                                return \App\Models\Cliente::whereHas('proposiciones.credito', function ($query) {
+                                    $query->where('Activo', 1);
+                                })
+                                    ->with([
+                                        'proposiciones' => function ($query) {
+                                            $query->whereHas('credito', function ($q) {
+                                                $q->where('Activo', 1);
+                                            });
                                         }
+                                    ])
+                                    ->when($promotorCobradorID, function ($query) use ($promotorCobradorID) {
+                                        $query->where('PromotorCobradorID', $promotorCobradorID);
                                     })
                                     ->get()
-                                    ->mapWithKeys(fn($credito) => [
-                                        $credito->CreditoID => "{$credito->proposicion->cliente->NombresApellidos} - {$credito->proposicion->cliente->DNI} - {$credito->proposicion->CodigoCredito}"
-                                    ])
-                            )
+                                    ->mapWithKeys(function ($cliente) {
+                                        $label = "{$cliente->NombresApellidos} - {$cliente->DNI}";
+
+                                        // Solo mostrar el código si tiene un único crédito activo
+                                        if ($cliente->proposiciones->count() === 1) {
+                                            $label .= " - " . $cliente->proposiciones->first()->CodigoCredito;
+                                        }
+
+                                        return [$cliente->ClienteID => $label];
+                                    });
+                            })
                             ->required()
                             ->searchable()
                             ->native(false)
                             ->live()
                             ->afterStateUpdated(function (Set $set, $state) {
+                                $set('CreditoID', null);
+                                $set('TipoCredito', null);
                                 $set('CuotaID', null);
-                                // Actualizar el tipo de crédito cuando se cambia el crédito
+
                                 if ($state) {
-                                    $credito = Credito::with('proposicion.tipoCredito')->find($state);
-                                    if ($credito && $credito->proposicion && $credito->proposicion->tipoCredito) {
-                                        $set('TipoCredito', $credito->proposicion->tipoCredito->Descripcion ?? 'N/A');
-                                    } else {
-                                        $set('TipoCredito', 'N/A');
+                                    $cliente = \App\Models\Cliente::find($state);
+                                    if ($cliente) {
+                                        $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
+                                            $q->where('ClienteID', $cliente->ClienteID);
+                                        })->where('Activo', 1)->count();
+
+                                        // Si el cliente tiene solo 1 crédito, seleccionarlo automáticamente
+                                        if ($creditosActivos == 1) {
+                                            $creditoUnico = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
+                                                $q->where('ClienteID', $cliente->ClienteID);
+                                            })->where('Activo', 1)->first();
+
+                                            if ($creditoUnico) {
+                                                $set('CreditoID', $creditoUnico->CreditoID);
+                                            }
+                                        }
                                     }
-                                } else {
-                                    $set('TipoCredito', null);
                                 }
+                            }),
+
+                        Forms\Components\Select::make('CreditoID')
+                            ->label('Tipo de Crédito')
+                            ->options(function (Forms\Get $get) {
+                                $clienteID = $get('ClienteID');
+                                if (!$clienteID) {
+                                    return [];
+                                }
+
+                                $cliente = \App\Models\Cliente::find($clienteID);
+                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
+                                    $q->where('ClienteID', $cliente->ClienteID);
+                                })->where('Activo', 1)->count();
+
+                                // Solo mostrar este select si hay 2+ créditos
+                                if ($creditosActivos < 2) {
+                                    return [];
+                                }
+
+                                return \App\Models\Credito::with('proposicion.tipoCredito')
+                                    ->whereHas('proposicion', function ($q) use ($clienteID) {
+                                        $q->where('ClienteID', $clienteID);
+                                    })
+                                    ->where('Activo', 1)
+                                    ->get()
+                                    ->mapWithKeys(fn($credito) => [
+                                        $credito->CreditoID => ($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A') . "  {$credito->proposicion->CodigoCredito}"
+                                    ]);
+                            })
+                            ->searchable()
+                            ->native(false)
+                            ->hidden(function (Forms\Get $get) {
+                                $clienteID = $get('ClienteID');
+                                if (!$clienteID) {
+                                    return true;
+                                }
+
+                                $cliente = \App\Models\Cliente::find($clienteID);
+                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
+                                    $q->where('ClienteID', $cliente->ClienteID);
+                                })->where('Activo', 1)->count();
+
+                                return $creditosActivos < 2;
+                            })
+                            ->disabled(fn(Forms\Get $get) => !$get('ClienteID'))
+                            ->afterStateUpdated(function (Forms\Set $set) {
+                                $set('CuotaID', null);
                             }),
 
                         Forms\Components\TextInput::make('TipoCredito')
                             ->label('Tipo de Crédito')
                             ->disabled()
                             ->placeholder('Se actualizará al seleccionar el crédito')
-                            ->default(null),
+                            ->default(null)
+                            ->hidden(),
 
                         Forms\Components\Select::make('CuotaID')
                             ->label('Cuota - Control de Pagos')
@@ -80,7 +154,7 @@ class PagoResource extends Resource
                                 if (!$creditoID) {
                                     return [];
                                 }
-                                
+
                                 return \App\Models\Cuota::where('CreditoID', $creditoID)
                                     ->where('Activo', 1)
                                     ->where('NumeroCuota', '>', 0)
@@ -88,8 +162,8 @@ class PagoResource extends Resource
                                     ->orderBy('NumeroCuota')
                                     ->get()
                                     ->mapWithKeys(fn($cuota) => [
-                                        $cuota->CuotaID => "Cuota #{$cuota->NumeroCuota} - " . 
-                                            (\Carbon\Carbon::parse($cuota->FechaVencimiento)->format('d/m/Y')) . 
+                                        $cuota->CuotaID => "Cuota #{$cuota->NumeroCuota} - " .
+                                            (\Carbon\Carbon::parse($cuota->FechaVencimiento)->format('d/m/Y')) .
                                             " - S/ {$cuota->MontoCuota}"
                                     ]);
                             })
@@ -108,7 +182,7 @@ class PagoResource extends Resource
                                         ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
                                         ->orderBy('NumeroCuota')
                                         ->first();
-                                    
+
                                     if ($primeraCuota) {
                                         $set('CuotaID', $primeraCuota->CuotaID);
                                     }
@@ -142,7 +216,7 @@ class PagoResource extends Resource
                         Forms\Components\Checkbox::make('EsPagoAMayor')
                             ->label('Es A Mayor')
                             ->default(false),
-      
+
                     ])->columns(3),
 
                 Forms\Components\Section::make('Comentarios')
@@ -200,13 +274,13 @@ class PagoResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->visible(fn () => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
                 Tables\Columns\IconColumn::make('Activo')
                     ->boolean()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->visible(fn () => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('zona')
@@ -241,14 +315,14 @@ class PagoResource extends Resource
                     }),
             ])
             ->actions([
-                    Tables\Actions\ViewAction::make()
-                        ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
-                    Tables\Actions\EditAction::make()
-                        ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
-                    Tables\Actions\DeleteAction::make()
-                        ->visible(fn ($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
+                Tables\Actions\ViewAction::make()
+                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
             ]);
-           
+
     }
 
     public static function getRelations(): array
