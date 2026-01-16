@@ -94,7 +94,7 @@ class CrearProposicionCreditoResource extends Resource
                                 // Si se selecciona Refinanciamiento, crear una acción
                                 if ($state) {
                                     $tipoCredito = TipoCredito::find($state);
-                                    if ($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'REFINANCIAMIENTO') {
+                                    if ($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'Refinanciamiento') {
                                         $clienteID = $get('ClienteID');
                                         if (!$clienteID) {
                                             Notification::make()
@@ -129,7 +129,7 @@ class CrearProposicionCreditoResource extends Resource
                                 $tipoID = $get('TipoCreditoID');
                                 if ($tipoID) {
                                     $tipoCredito = TipoCredito::find($tipoID);
-                                    if ($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'REFINANCIAMIENTO') {
+                                    if ($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'Refinanciamiento') {
                                         $clienteID = $get('ClienteID');
                                         if ($clienteID) {
                                             $creditosDisponibles = ProposicionCredito::obtenerCreditosActivosConSaldo($clienteID);
@@ -152,7 +152,7 @@ class CrearProposicionCreditoResource extends Resource
                                 $tipoID = $get('TipoCreditoID');
                                 if (!$tipoID) return false;
                                 $tipoCredito = TipoCredito::find($tipoID);
-                                return $tipoCredito && strtoupper($tipoCredito->Descripcion) === 'REFINANCIAMIENTO';
+                                return $tipoCredito && strtoupper($tipoCredito->Descripcion) === 'Refinanciamiento';
                             })
                             ->schema([
                                 Forms\Components\Placeholder::make('credito_seleccionado')
@@ -243,7 +243,7 @@ class CrearProposicionCreditoResource extends Resource
                                 $tipoID = $get('TipoCreditoID');
                                 if ($tipoID) {
                                     $tipoCredito = TipoCredito::find($tipoID);
-                                    if (!($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'REFINANCIAMIENTO')) {
+                                    if (!($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'Refinanciamiento')) {
                                         static::validarMontoMaximo($set, $get, $state);
                                     }
                                 }
@@ -272,7 +272,7 @@ class CrearProposicionCreditoResource extends Resource
                                 $tipoID = $get('TipoCreditoID');
                                 if ($tipoID) {
                                     $tipoCredito = TipoCredito::find($tipoID);
-                                    if ($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'REFINANCIAMIENTO') {
+                                    if ($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'Refinanciamiento') {
                                         return 'heroicon-s-check-circle';
                                     }
                                 }
@@ -295,7 +295,7 @@ class CrearProposicionCreditoResource extends Resource
                                         $tipoID = $get('TipoCreditoID');
                                         if ($tipoID) {
                                             $tipoCredito = TipoCredito::find($tipoID);
-                                            if ($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'REFINANCIAMIENTO') {
+                                            if ($tipoCredito && strtoupper($tipoCredito->Descripcion) === 'Refinanciamiento') {
                                                 return;
                                             }
                                         }
