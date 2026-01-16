@@ -2,11 +2,23 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Models\ProposicionCredito;
+use App\Http\Controllers\RefinanciamientoController;
+use App\Http\Controllers\Api\RefinanciamientoApiController;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 Route::get('/', function () {
     return redirect('/admin/login');
 });
+
+Route::get('/api/refinanciamiento/cuentas-disponibles/{clienteID}', [RefinanciamientoApiController::class, 'obtenerCuentasDisponibles']);
+
+Route::get('/api/refinanciamiento/datos-cuenta/{proposicionCreditoID}', [RefinanciamientoApiController::class, 'obtenerDatosCuenta']);
+
+Route::get('/refinanciamiento/cuentas-disponibles/{clienteID}', [RefinanciamientoController::class, 'obtenerCuentasDisponibles'])
+    ->name('refinanciamiento.cuentas-disponibles');
+
+Route::get('/refinanciamiento/datos-cuenta/{proposicionCreditoID}', [RefinanciamientoController::class, 'obtenerDatosCuenta'])
+    ->name('refinanciamiento.datos-cuenta');
 
 Route::get('/pdf/acta-creditos', function () {
     $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();

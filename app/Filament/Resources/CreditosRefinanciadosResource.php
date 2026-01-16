@@ -2,10 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\CreditoResource\Pages;
+use App\Filament\Resources\CreditosRefinanciadosResource\Pages;
 use App\Models\Credito;
-use App\Models\ProposicionCredito;
-use App\Models\TipoPago;
 use App\Models\Zona;
 use App\Models\TipoCredito;
 use Filament\Forms;
@@ -15,15 +13,15 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class CreditoResource extends Resource
+class CreditosRefinanciadosResource extends Resource
 {
     protected static ?string $model = Credito::class;
 
     protected static ?string $navigationGroup = 'Créditos';
-    protected static ?string $navigationIcon = 'heroicon-o-check-circle';
-    protected static ?int $navigationSort = 8;
-    protected static ?string $label = 'Créditos Generados';
-    protected static ?string $pluralLabel = 'Créditos Generados';
+    protected static ?string $navigationIcon = 'heroicon-o-arrow-path';
+    protected static ?int $navigationSort = 9;
+    protected static ?string $label = 'Créditos Refinanciados';
+    protected static ?string $pluralLabel = 'Créditos Refinanciados';
 
     public static function form(Form $form): Form
     {
@@ -138,16 +136,13 @@ class CreditoResource extends Resource
                     ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('FechaGeneracion')
+                Tables\Columns\TextColumn::make('proposicion.FechaPropuesta')
                     ->label('Fecha Generación')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('TipoPagoID')
-                    ->label('Tipo de Pago')
-                    ->relationship('tipoPago', 'Nombre'),
                 Tables\Filters\SelectFilter::make('zona')
                     ->label('Zona')
                     ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
@@ -158,6 +153,7 @@ class CreditoResource extends Resource
                         );
                     })
                     ->native(false),
+
                 Tables\Filters\SelectFilter::make('tipoCredito')
                     ->label('Tipo de Crédito')
                     ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID')->toArray())
@@ -170,44 +166,29 @@ class CreditoResource extends Resource
                     ->native(false),
             ])
             ->modifyQueryUsing(function ($query) {
-                return $query->with(['proposicion', 'tipoPago'])
-                    // Excluir créditos de proposiciones refinanciadas
-                    ->whereHas('proposicion', function (Builder $q) {
-                        $q->where('FueRefinanciada', 0);
-                    });
+                // Mostrar SOLO créditos de proposiciones refinanciadas
+                return $query->whereHas('proposicion', function (Builder $q) {
+                    $q->where('FueRefinanciada', 1);
+                });
             })
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('descargar_libreta')
-                    ->label('Excel')
-                    ->tooltip('Descargar Libreta de Pagos (Excel)')
-                    ->icon('heroicon-o-document-arrow-down')
-                    ->url(fn($record) => route('libreta-pagos.descargar', $record->CreditoID))
-                    ->openUrlInNewTab(),
-                Tables\Actions\Action::make('descargar_libreta_html')
-                    ->label('Imprimir')
-                    ->tooltip('Ver Libreta de Pagos para Imprimir')
-                    ->icon('heroicon-o-printer')
-                    ->color('success')
-                    ->url(fn($record) => route('libreta-pagos.html', $record->CreditoID))
-                    ->openUrlInNewTab(),
-                Tables\Actions\Action::make('descargar_ticket')
-                    ->label('Descargar Ticket')
-                    ->icon('heroicon-o-ticket')
-                    ->color('danger')
-                    ->url(fn($record) => route('ticket.descargar', $record->CreditoID))
-                    ->openUrlInNewTab(),
             ])
             ->bulkActions([])
-            ->defaultSort('FechaGeneracion', 'desc')
+            ->defaultSort('proposicion.FechaPropuesta', 'desc')
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCreditos::route('/'),
-            'view' => Pages\ViewCredito::route('/{record}'),
+            'index' => Pages\ListCreditosRefinanciados::route('/'),
+            'view' => Pages\ViewCreditoRefinanciado::route('/{record}'),
         ];
     }
 }

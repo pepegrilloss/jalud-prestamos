@@ -40,11 +40,18 @@ class PagoResource extends Resource
                                 return \App\Models\Cliente::whereHas('proposiciones.credito', function ($query) {
                                     $query->where('Activo', 1);
                                 })
+                                    // Excluir clientes que tienen proposiciones refinanciadas
+                                    ->whereDoesntHave('proposiciones', function ($query) {
+                                        $query->where('FueRefinanciada', 1);
+                                    })
                                     ->with([
                                         'proposiciones' => function ($query) {
                                             $query->whereHas('credito', function ($q) {
                                                 $q->where('Activo', 1);
-                                            })->with('tipoCredito');
+                                            })
+                                            // Excluir proposiciones refinanciadas
+                                            ->where('FueRefinanciada', 0)
+                                            ->with('tipoCredito');
                                         }
                                     ])
                                     ->when($promotorCobradorID, function ($query) use ($promotorCobradorID) {
@@ -69,7 +76,10 @@ class PagoResource extends Resource
                                         'proposiciones' => function ($q) {
                                             $q->whereHas('credito', function ($sq) {
                                                 $sq->where('Activo', 1);
-                                            })->with('tipoCredito');
+                                            })
+                                            // Excluir proposiciones refinanciadas
+                                            ->where('FueRefinanciada', 0)
+                                            ->with('tipoCredito');
                                         }
                                     ])->find($state);
 
@@ -340,6 +350,12 @@ class PagoResource extends Resource
                             );
                     }),
             ])
+            ->modifyQueryUsing(function (Builder $query) {
+                // Excluir pagos de créditos que fueron refinanciados
+                return $query->whereHas('cuota.credito.proposicion', function (Builder $q) {
+                    $q->where('FueRefinanciada', 0);
+                });
+            })
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador')),

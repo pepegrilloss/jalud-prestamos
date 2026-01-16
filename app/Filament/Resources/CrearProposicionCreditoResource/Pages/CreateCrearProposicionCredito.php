@@ -16,13 +16,15 @@ class CreateCrearProposicionCredito extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Validar que el cliente no tenga más de 2 proposiciones activas
         $clienteID = $data['ClienteID'] ?? null;
+        $esRefinanciamiento = isset($data['ProposicionCreditoAnteriorID']) && $data['ProposicionCreditoAnteriorID'];
         
+        // Validar que el cliente no tenga más de 2 proposiciones activas (EXCEPTO si es refinanciamiento)
         if ($clienteID) {
             $proposicionesActivas = ProposicionCredito::contarProposicionesActivas($clienteID);
             
-            if ($proposicionesActivas >= 2) {
+            // Si NO es refinanciamiento, aplicar el límite de 2
+            if (!$esRefinanciamiento && $proposicionesActivas >= 2) {
                 $cliente = Cliente::find($clienteID);
                 Notification::make()
                     ->title('❌ No se puede crear proposición')
@@ -32,6 +34,30 @@ class CreateCrearProposicionCredito extends CreateRecord
                 
                 $this->halt();
             }
+        }
+
+        // Manejar Refinanciamiento
+        if ($esRefinanciamiento) {
+            $proposicionAnterior = ProposicionCredito::find($data['ProposicionCreditoAnteriorID']);
+            
+            if (!$proposicionAnterior) {
+                Notification::make()
+                    ->title('❌ Error')
+                    ->body("No se encontró el crédito a refinanciar.")
+                    ->danger()
+                    ->send();
+                $this->halt();
+            }
+
+            // Obtener información del crédito anterior
+            $infoRefinanciamiento = $proposicionAnterior->obtenerInfoRefinanciamiento();
+            
+            // Establecer MontoTotal desde el saldo pendiente
+            $data['MontoTotal'] = $infoRefinanciamiento['SaldoPendiente'];
+            $data['MontoTotalPagar'] = $infoRefinanciamiento['SaldoPendiente'];
+            $data['EsRefinanciamiento'] = true;
+            
+            // Ya vienen cargados: TasaID, TasaInteres, Plazo, NumeroCuotas, TasaMora
         }
 
         if ($encrypted = request()->query('cliente')) {

@@ -26,6 +26,7 @@ class ProposicionCredito extends Model
         'NumeroCuotas',
         'MontoCuota',
         'MontoInteres',
+        'MontoTotalPagar',
         'TasaMora',
         'ZonaID',
         'CuentaParalela',
@@ -42,6 +43,9 @@ class ProposicionCredito extends Model
         'FechaModificacion',
         'UserModificacionID',
         'Activo',
+        'EsRefinanciamiento',
+        'ProposicionCreditoAnteriorID',
+        'FueRefinanciada',
     ];
 
     protected $casts = [
@@ -49,12 +53,15 @@ class ProposicionCredito extends Model
         'TasaInteres' => 'decimal:2',
         'MontoCuota' => 'decimal:2',
         'MontoInteres' => 'decimal:2',
+        'MontoTotalPagar' => 'decimal:2',
         'TasaMora' => 'decimal:2',
         'FechaPropuesta' => 'datetime',
         'FechaAprobacion' => 'datetime',
         'FechaDesembolso' => 'datetime',
         'FechaModificacion' => 'datetime',
         'Activo' => 'boolean',
+        'EsRefinanciamiento' => 'boolean',
+        'FueRefinanciada' => 'boolean',
     ];
 
     /**
@@ -73,17 +80,70 @@ class ProposicionCredito extends Model
 
     // --- Relaciones ---
 
-    public function cliente() { return $this->belongsTo(Cliente::class, 'ClienteID'); }
-    public function tipoCredito() { return $this->belongsTo(TipoCredito::class, 'TipoCreditoID'); }
-    public function tasa() { return $this->belongsTo(Tasa::class, 'TasaID'); }
-    public function zona() { return $this->belongsTo(Zona::class, 'ZonaID'); }
-    public function nivelAprobacion() { return $this->belongsTo(NivelAprobacion::class, 'NivelAprobacionRequerido', 'NivelAprobacionID'); }
-    public function userProponente() { return $this->belongsTo(User::class, 'UserProponenteID'); }
-    public function userAprobador() { return $this->belongsTo(User::class, 'UserAprobadorID'); }
-    public function userDesembolso() { return $this->belongsTo(User::class, 'UserDesembolsoID'); }
-    public function userModificacion() { return $this->belongsTo(User::class, 'UserModificacionID'); }
-    public function aprobaciones() { return $this->hasMany(AprobacionProposicion::class, 'ProposicionCreditoID', 'ProposicionCreditoID'); }
-    public function credito() { return $this->hasOne(Credito::class, 'ProposicionCreditoID', 'ProposicionCreditoID'); }
+    public function cliente() 
+    { 
+        return $this->belongsTo(Cliente::class, 'ClienteID'); 
+    }
+    
+    public function tipoCredito() 
+    { 
+        return $this->belongsTo(TipoCredito::class, 'TipoCreditoID'); 
+    }
+    
+    public function tasa() 
+    { 
+        return $this->belongsTo(Tasa::class, 'TasaID'); 
+    }
+    
+    public function zona() 
+    { 
+        return $this->belongsTo(Zona::class, 'ZonaID'); 
+    }
+    
+    public function nivelAprobacion() 
+    { 
+        return $this->belongsTo(NivelAprobacion::class, 'NivelAprobacionRequerido', 'NivelAprobacionID'); 
+    }
+    
+    public function userProponente() 
+    { 
+        return $this->belongsTo(User::class, 'UserProponenteID'); 
+    }
+    
+    public function userAprobador() 
+    { 
+        return $this->belongsTo(User::class, 'UserAprobadorID'); 
+    }
+    
+    public function userDesembolso() 
+    { 
+        return $this->belongsTo(User::class, 'UserDesembolsoID'); 
+    }
+    
+    public function userModificacion() 
+    { 
+        return $this->belongsTo(User::class, 'UserModificacionID'); 
+    }
+    
+    public function aprobaciones() 
+    { 
+        return $this->hasMany(AprobacionProposicion::class, 'ProposicionCreditoID', 'ProposicionCreditoID'); 
+    }
+    
+    public function credito() 
+    { 
+        return $this->hasOne(Credito::class, 'ProposicionCreditoID', 'ProposicionCreditoID'); 
+    }
+    
+    public function proposicionAnterior() 
+    { 
+        return $this->belongsTo(ProposicionCredito::class, 'ProposicionCreditoAnteriorID', 'ProposicionCreditoID'); 
+    }
+    
+    public function refinanciamientos() 
+    { 
+        return $this->hasMany(ProposicionCredito::class, 'ProposicionCreditoAnteriorID', 'ProposicionCreditoID'); 
+    }
 
     // --- Métodos de Lógica ---
 
@@ -190,6 +250,112 @@ class ProposicionCredito extends Model
             $this->UserAprobadorID = $ultimaAprobacion?->UserAprobadorID;
             $this->FechaModificacion = now();
             $this->save();
+            
+            // Si es un refinanciamiento aprobado, desactivar y marcar como refinanciada la proposición anterior
+            $this->desactivarProposicionRefinanciada();
         }
+    }
+
+    /**
+     * Desactivar y marcar como refinanciada la proposición anterior si aplica
+     */
+    public function desactivarProposicionRefinanciada(): void
+    {
+        // Si tiene proposición anterior para refinanciar
+        if ($this->ProposicionCreditoAnteriorID) {
+            $proposicionAnterior = ProposicionCredito::find($this->ProposicionCreditoAnteriorID);
+            
+            if ($proposicionAnterior) {
+                $proposicionAnterior->Activo = false;
+                $proposicionAnterior->FueRefinanciada = true;
+                $proposicionAnterior->FechaModificacion = now();
+                $proposicionAnterior->save();
+            }
+        }
+    }
+
+    /**
+     * Obtener todos los créditos activos con saldo pendiente para un cliente
+     */
+    public static function obtenerCreditosActivosConSaldo($clienteID)
+    {
+        return self::where('ClienteID', $clienteID)
+            ->where('Activo', true)
+            ->where('Estado', 'APROBADO')
+            ->has('credito')
+            ->with(['credito' => function ($query) {
+                $query->where('Activo', true);
+            }])
+            ->get()
+            ->filter(function ($proposicion) {
+                return self::calcularSaldoPendiente($proposicion->ProposicionCreditoID) > 0;
+            });
+    }
+
+    /**
+     * Calcular el saldo pendiente de una proposición basado en sus cuotas
+     */
+    /**
+     * Calcular el saldo pendiente de una proposición basado en sus cuotas
+     * Usa la misma lógica que CreditoResource: MontoTotal - Sum(MontoPagado)
+     */
+    public static function calcularSaldoPendiente($proposicionCreditoID)
+    {
+        $credito = Credito::where('ProposicionCreditoID', $proposicionCreditoID)
+            ->where('Activo', true)
+            ->first();
+
+        if (!$credito) {
+            return 0;
+        }
+
+        // Obtener proposición para el MontoTotal
+        $proposicion = ProposicionCredito::find($proposicionCreditoID);
+        if (!$proposicion) {
+            return 0;
+        }
+
+        // Calcular: MontoTotal - Sum(MontoPagado)
+        $montoTotal = (float)$proposicion->MontoTotal;
+        $totalPagado = $credito->cuotas()
+            ->where('Activo', true)
+            ->sum('MontoPagado');
+
+        return max(0, $montoTotal - $totalPagado);
+    }
+
+    /**
+     * Obtener información formateada de un crédito para el modal de refinanciamiento
+     */
+    public function obtenerInfoRefinanciamiento()
+    {
+        $saldoPendiente = self::calcularSaldoPendiente($this->ProposicionCreditoID);
+        
+        // Contar cuotas pendientes
+        $credito = Credito::where('ProposicionCreditoID', $this->ProposicionCreditoID)
+            ->where('Activo', true)
+            ->first();
+        
+        $cuotasPendientes = 0;
+        if ($credito) {
+            $cuotasPendientes = $credito->cuotas()
+                ->where('Activo', true)
+                ->whereIn('Estado', ['PENDIENTE', 'VENCIDA', 'MORA'])
+                ->count();
+        }
+        
+        return [
+            'ProposicionCreditoID' => $this->ProposicionCreditoID,
+            'CodigoCredito' => $this->CodigoCredito,
+            'MontoOriginal' => (float)$this->MontoTotal,
+            'SaldoPendiente' => (float)$saldoPendiente,
+            'CuotasPendientes' => (int)$cuotasPendientes,
+            'TasaInteres' => (float)$this->TasaInteres,
+            'Plazo' => (int)$this->Plazo,
+            'NumeroCuotas' => (int)$this->NumeroCuotas,
+            'TasaMora' => (float)$this->TasaMora,
+            'TipoCreditoID' => $this->TipoCreditoID,
+            'TasaID' => $this->TasaID,
+        ];
     }
 }

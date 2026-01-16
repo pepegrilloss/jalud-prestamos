@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClienteProposicionResource\Pages;
+use App\Filament\Resources\ClienteProposicionResource\Widgets\ClienteProposicionStats;
 use App\Models\ProposicionCredito;
 use App\Models\TipoCredito;
 use App\Models\Tasa;
@@ -28,7 +29,7 @@ class ClienteProposicionResource extends Resource
     protected static ?string $navigationLabel = 'Proposiciones';
     protected static ?string $modelLabel = 'Proposición';
     protected static ?string $pluralModelLabel = 'Proposiciones';
-    
+
 
     public static function form(Form $form): Form
     {
@@ -112,9 +113,9 @@ class ClienteProposicionResource extends Resource
 
     protected static function calcularTotales(Set $set, Get $get, $monto): void
     {
-        $montoVal = (float)$monto;
-        $tasaVal = (float)$get('TasaInteres');
-        $cuotasVal = (int)$get('NumeroCuotas');
+        $montoVal = (float) $monto;
+        $tasaVal = (float) $get('TasaInteres');
+        $cuotasVal = (int) $get('NumeroCuotas');
 
         if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
             $interes = $montoVal * ($tasaVal / 100);
@@ -164,7 +165,7 @@ class ClienteProposicionResource extends Resource
 
                 Tables\Columns\TextColumn::make('Estado')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'APROBADO' => 'success',
                         'RECHAZADO' => 'danger',
                         'PENDIENTE' => 'warning',
@@ -210,6 +211,13 @@ class ClienteProposicionResource extends Resource
             ->defaultSort('CodigoCredito', 'desc')
             ->paginationPageOptions([10, 25, 50, 100])
             ->poll('30s');
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            ClienteProposicionStats::class,
+        ];
     }
 
     public static function getPages(): array

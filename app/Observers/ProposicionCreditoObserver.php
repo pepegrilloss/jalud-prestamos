@@ -26,6 +26,11 @@ class ProposicionCreditoObserver
             
             // Crear las aprobaciones requeridas
             $proposicionCredito->crearAprobacionesRequeridas();
+            
+            // Si es un refinanciamiento, desactivar y marcar la proposición anterior
+            if ($proposicionCredito->EsRefinanciamiento && $proposicionCredito->ProposicionCreditoAnteriorID) {
+                $proposicionCredito->desactivarProposicionRefinanciada();
+            }
         }, attempts: 3);
     }
 
@@ -34,7 +39,7 @@ class ProposicionCreditoObserver
      */
     public function updated(ProposicionCredito $proposicionCredito): void
     {
-        //
+        // Sin lógica adicional en actualización
     }
 
     /**
