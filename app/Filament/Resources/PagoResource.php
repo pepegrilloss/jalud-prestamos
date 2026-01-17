@@ -36,19 +36,19 @@ class PagoResource extends Resource
                             ->label('Cliente')
                             ->disabled()
                             ->dehydrated(false)
-                            ->default(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->NombresApellidos ?? 'N/A'),
+                            ->getStateUsing(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->NombresApellidos ?? ''),
 
                         Forms\Components\TextInput::make('zona_info')
                             ->label('Zona')
                             ->disabled()
                             ->dehydrated(false)
-                            ->default(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->negocio?->zona?->Nombre ?? 'N/A'),
+                            ->getStateUsing(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->negocio?->zona?->Nombre ?? ''),
 
                         Forms\Components\TextInput::make('promotor_info')
                             ->label('Promotor Cobrador')
                             ->disabled()
                             ->dehydrated(false)
-                            ->default(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->promotorCobrador?->Usuario ?? 'N/A'),
+                            ->getStateUsing(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->promotorCobrador?->Usuario ?? ''),
 
                         Forms\Components\Select::make('ClienteID')
                             ->label('Cliente - DNI')
