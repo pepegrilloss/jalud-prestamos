@@ -28,20 +28,34 @@ class CobranzaStats extends BaseWidget
         $cobradoDiario = $pagosQuery->sum('MontoPagado');
         $pagosCount = $pagosQuery->count();
 
-        // 2. Créditos (Cuotas) que vencen hoy
-        $vencenQuery = Cuota::where('Activo', true)
-            ->whereDate('FechaVencimiento', now())
+        // 2. Créditos que vencen hoy (última cuota de cada crédito con vencimiento hoy, sin domingo ni feriado)
+        // Obtener todos los créditos activos no refinanciados
+        $creditosConUltimaCuota = Cuota::where('Activo', true)
             ->where('Estado', '!=', 'PAGADA')
+            ->where('Estado', '!=', 'DOMINGO')
+            ->where('Estado', '!=', 'FERIADO')
             ->whereHas('credito.proposicion', function ($q) {
                 $q->where('FueRefinanciada', 0);
             });
 
         if ($promotorID) {
-            $vencenQuery->whereHas('credito.proposicion.cliente', function ($q) use ($promotorID) {
+            $creditosConUltimaCuota->whereHas('credito.proposicion.cliente', function ($q) use ($promotorID) {
                 $q->where('PromotorCobradorID', $promotorID);
             });
         }
-        $vencenHoy = $vencenQuery->count();
+
+        // Agrupar por CreditoID y obtener la cuota con mayor FechaVencimiento
+        $cuotasUltimas = $creditosConUltimaCuota->selectRaw('CreditoID, MAX(FechaVencimiento) as FechaVencimiento')
+            ->groupBy('CreditoID')
+            ->get();
+
+        // Contar cuántas de esas cuotas tienen FechaVencimiento = hoy
+        $vencenHoy = 0;
+        foreach ($cuotasUltimas as $cuota) {
+            if ($cuota->FechaVencimiento && \Carbon\Carbon::parse($cuota->FechaVencimiento)->isToday()) {
+                $vencenHoy++;
+            }
+        }
 
         return [
             Stat::make('Cobrado Diario', 'S/ ' . number_format($cobradoDiario, 2))
