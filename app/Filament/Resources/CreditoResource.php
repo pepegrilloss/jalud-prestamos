@@ -158,6 +158,11 @@ class CreditoResource extends Resource
                         );
                     })
                     ->native(false),
+                Tables\Filters\SelectFilter::make('cliente')
+                    ->label('Cliente')
+                    ->relationship('proposicion.cliente', 'NombresApellidos')
+                    ->searchable()
+                    ->native(false),
                 Tables\Filters\SelectFilter::make('tipoCredito')
                     ->label('Tipo de Crédito')
                     ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID')->toArray())
