@@ -105,9 +105,9 @@ class CrearProposicionCreditoResource extends Resource
                                             $set('TipoCreditoID', null);
                                             return;
                                         }
-                                        
+
                                         $creditosDisponibles = ProposicionCredito::obtenerCreditosActivosConSaldo($clienteID);
-                                        
+
                                         if ($creditosDisponibles->isEmpty()) {
                                             Notification::make()
                                                 ->warning()
@@ -117,15 +117,16 @@ class CrearProposicionCreditoResource extends Resource
                                             $set('TipoCreditoID', null);
                                             return;
                                         }
-                                        
+
                                         // Guardar datos en sesión para mostrar opciones
-                                        session()->put('creditos_refinanciamiento', 
+                                        session()->put(
+                                            'creditos_refinanciamiento',
                                             $creditosDisponibles->map(fn($p) => $p->obtenerInfoRefinanciamiento())->toArray()
                                         );
                                     }
                                 }
                             })
-                            ->hint(function(Get $get) {
+                            ->hint(function (Get $get) {
                                 $tipoID = $get('TipoCreditoID');
                                 if ($tipoID) {
                                     $tipoCredito = TipoCredito::find($tipoID);
@@ -148,22 +149,24 @@ class CrearProposicionCreditoResource extends Resource
 
                         // Sección visible solo para refinanciamiento con Modal
                         Forms\Components\Section::make('Crédito a Refinanciar')
-                            ->visible(function(Get $get) {
+                            ->visible(function (Get $get) {
                                 $tipoID = $get('TipoCreditoID');
-                                if (!$tipoID) return false;
+                                if (!$tipoID)
+                                    return false;
                                 $tipoCredito = TipoCredito::find($tipoID);
                                 return $tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento';
                             })
                             ->schema([
                                 Forms\Components\Placeholder::make('credito_seleccionado')
                                     ->label('Crédito Seleccionado')
-                                    ->content(function(Get $get) {
+                                    ->content(function (Get $get) {
                                         $proposicionID = $get('ProposicionCreditoAnteriorID');
                                         if (!$proposicionID) {
                                             return '❌ No se ha seleccionado un crédito';
                                         }
                                         $proposicion = ProposicionCredito::find($proposicionID);
-                                        if (!$proposicion) return '❌ Crédito no encontrado';
+                                        if (!$proposicion)
+                                            return '❌ Crédito no encontrado';
                                         $info = $proposicion->obtenerInfoRefinanciamiento();
                                         return "✓ {$proposicion->CodigoCredito} | Saldo: S/ " . number_format($info['SaldoPendiente'], 2) . " | Cuotas Pendientes: {$info['CuotasPendientes']}";
                                     })
@@ -174,7 +177,7 @@ class CrearProposicionCreditoResource extends Resource
                                         ->label('🔍 Seleccionar Crédito')
                                         ->modalHeading('Seleccionar Crédito a Refinanciar')
                                         ->modalDescription('Seleccione el crédito que desea refinanciar')
-                                        ->form(function(Get $get) {
+                                        ->form(function (Get $get) {
                                             $clienteID = $get('ClienteID');
                                             $creditosDisponibles = [];
 
@@ -183,8 +186,8 @@ class CrearProposicionCreditoResource extends Resource
                                                     ->mapWithKeys(function ($proposicion) {
                                                         $info = $proposicion->obtenerInfoRefinanciamiento();
                                                         return [
-                                                            $proposicion->ProposicionCreditoID => 
-                                                            "📌 {$proposicion->CodigoCredito} | Saldo: S/ " . number_format($info['SaldoPendiente'], 2) . " | Cuotas: {$info['CuotasPendientes']} | Tasa: {$info['TasaInteres']}% | Plazo: {$info['Plazo']} días"
+                                                            $proposicion->ProposicionCreditoID =>
+                                                                "📌 {$proposicion->CodigoCredito} | Saldo: S/ " . number_format($info['SaldoPendiente'], 2) . " | Cuotas: {$info['CuotasPendientes']} | Tasa: {$info['TasaInteres']}% | Plazo: {$info['Plazo']} días"
                                                         ];
                                                     })
                                                     ->toArray();
@@ -200,12 +203,12 @@ class CrearProposicionCreditoResource extends Resource
                                                     ->columnSpanFull(),
                                             ];
                                         })
-                                        ->fillForm(function(Get $get) {
+                                        ->fillForm(function (Get $get) {
                                             return [
                                                 'credito_seleccionado_modal' => $get('ProposicionCreditoAnteriorID'),
                                             ];
                                         })
-                                        ->after(function(Set $set, Get $get, array $data) {
+                                        ->after(function (Set $set, Get $get, array $data) {
                                             if (isset($data['credito_seleccionado_modal']) && $data['credito_seleccionado_modal']) {
                                                 self::cargarDatosRefinanciamiento($set, $get, $data['credito_seleccionado_modal']);
                                             }
@@ -235,10 +238,10 @@ class CrearProposicionCreditoResource extends Resource
                             ->numeric()
                             ->columnSpan(1)
                             ->live()
-                            ->afterStateUpdated(function(Set $set, Get $get, $state) {
+                            ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                 // Calcular totales siempre
                                 static::calcularTotales($set, $get, $state);
-                                
+
                                 // Solo validar máximo si NO es refinanciamiento
                                 $tipoID = $get('TipoCreditoID');
                                 if ($tipoID) {
@@ -248,12 +251,12 @@ class CrearProposicionCreditoResource extends Resource
                                     }
                                 }
                             })
-                            ->helperText(function(Get $get, $state) {
+                            ->helperText(function (Get $get, $state) {
                                 $tipoID = $get('TipoCreditoID');
                                 if ($tipoID) {
                                     $tipoCredito = TipoCredito::find($tipoID);
                                 }
-                                
+
                                 if (!$state || !$get('ClienteID')) {
                                     return '';
                                 }
@@ -261,14 +264,14 @@ class CrearProposicionCreditoResource extends Resource
                                 if (!$cliente || !$cliente->analisisEconomico) {
                                     return '';
                                 }
-                                $montoMax = (float)$cliente->analisisEconomico->MontoMaxRecomendado;
-                                $montoActual = (float)$state;
+                                $montoMax = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
+                                $montoActual = (float) $state;
                                 if ($montoActual > $montoMax) {
                                     return "❌ Excede el máximo de S/ {$montoMax}";
                                 }
                                 return "✓ Máximo recomendado: S/ {$montoMax}";
                             })
-                            ->suffixIcon(function(Get $get, $state) {
+                            ->suffixIcon(function (Get $get, $state) {
                                 $tipoID = $get('TipoCreditoID');
                                 if ($tipoID) {
                                     $tipoCredito = TipoCredito::find($tipoID);
@@ -276,7 +279,7 @@ class CrearProposicionCreditoResource extends Resource
                                         return 'heroicon-s-check-circle';
                                     }
                                 }
-                                
+
                                 if (!$state || !$get('ClienteID')) {
                                     return null;
                                 }
@@ -284,13 +287,13 @@ class CrearProposicionCreditoResource extends Resource
                                 if (!$cliente || !$cliente->analisisEconomico) {
                                     return null;
                                 }
-                                $montoMax = (float)$cliente->analisisEconomico->MontoMaxRecomendado;
-                                $montoActual = (float)$state;
+                                $montoMax = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
+                                $montoActual = (float) $state;
                                 return $montoActual > $montoMax ? 'heroicon-s-exclamation-circle' : 'heroicon-s-check-circle';
                             })
                             ->rules([
-                                function(Get $get) {
-                                    return function($attribute, $value, $fail) use ($get) {
+                                function (Get $get) {
+                                    return function ($attribute, $value, $fail) use ($get) {
                                         // No validar máximo si es refinanciamiento
                                         $tipoID = $get('TipoCreditoID');
                                         if ($tipoID) {
@@ -299,13 +302,13 @@ class CrearProposicionCreditoResource extends Resource
                                                 return;
                                             }
                                         }
-                                        
+
                                         $clienteID = $get('ClienteID');
                                         if ($clienteID) {
                                             $cliente = Cliente::find($clienteID);
                                             if ($cliente && $cliente->analisisEconomico) {
                                                 $montoMax = $cliente->analisisEconomico->MontoMaxRecomendado;
-                                                if ((float)$value > (float)$montoMax) {
+                                                if ((float) $value > (float) $montoMax) {
                                                     $fail("El monto total no puede exceder el monto máximo recomendado de S/ {$montoMax}");
                                                 }
                                             }
@@ -348,13 +351,11 @@ class CrearProposicionCreditoResource extends Resource
 
         $cliente = Cliente::find($clienteID);
         $creditoCorriendo = $cliente->obtenerCreditoCorriendo();
-        
+
         if ($creditoCorriendo && $creditoCorriendo->credito) {
-            $saldoTotal = $creditoCorriendo->credito->cuotas()
-                ->where('Activo', true)
-                ->where('Estado', '!=', 'PAGADA')
-                ->sum('SaldoPendiente');
-            
+            $totalPagado = $creditoCorriendo->credito->cuotas()->sum('MontoPagado');
+            $saldoTotal = number_format(max(0, ($creditoCorriendo->MontoTotal ?? 0) - $totalPagado), 2);
+
             return "🔴 Este cliente tiene un crédito corriendo con saldo pendiente de S/ {$saldoTotal}";
         }
 
@@ -373,9 +374,9 @@ class CrearProposicionCreditoResource extends Resource
 
     protected static function calcularTotales(Set $set, Get $get, $monto): void
     {
-        $montoVal = (float)$monto;
-        $tasaVal = (float)$get('TasaInteres');
-        $cuotasVal = (int)$get('NumeroCuotas');
+        $montoVal = (float) $monto;
+        $tasaVal = (float) $get('TasaInteres');
+        $cuotasVal = (int) $get('NumeroCuotas');
 
         if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
             $interes = $montoVal * ($tasaVal / 100);
@@ -398,8 +399,8 @@ class CrearProposicionCreditoResource extends Resource
             return;
         }
 
-        $montoMax = (float)$cliente->analisisEconomico->MontoMaxRecomendado;
-        $montoTotal = (float)$monto;
+        $montoMax = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
+        $montoTotal = (float) $monto;
 
         if ($montoTotal > $montoMax) {
             Notification::make()
@@ -491,7 +492,7 @@ class CrearProposicionCreditoResource extends Resource
                 Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable(),
                 Tables\Columns\TextColumn::make('cliente.NombresApellidos')->label('Cliente')->searchable(),
                 Tables\Columns\TextColumn::make('MontoTotal')->label('Monto')->money('PEN'),
-                Tables\Columns\TextColumn::make('Estado')->badge()->color(fn (string $state): string => match ($state) {
+                Tables\Columns\TextColumn::make('Estado')->badge()->color(fn(string $state): string => match ($state) {
                     'PENDIENTE' => 'warning',
                     'APROBADO' => 'success',
                     'RECHAZADO' => 'danger',

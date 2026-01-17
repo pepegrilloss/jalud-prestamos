@@ -31,7 +31,10 @@ class CobranzaStats extends BaseWidget
         // 2. Créditos (Cuotas) que vencen hoy
         $vencenQuery = Cuota::where('Activo', true)
             ->whereDate('FechaVencimiento', now())
-            ->where('Estado', '!=', 'PAGADA');
+            ->where('Estado', '!=', 'PAGADA')
+            ->whereHas('credito.proposicion', function ($q) {
+                $q->where('FueRefinanciada', 0);
+            });
 
         if ($promotorID) {
             $vencenQuery->whereHas('credito.proposicion.cliente', function ($q) use ($promotorID) {

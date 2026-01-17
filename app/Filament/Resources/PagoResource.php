@@ -40,18 +40,15 @@ class PagoResource extends Resource
                                 return \App\Models\Cliente::whereHas('proposiciones.credito', function ($query) {
                                     $query->where('Activo', 1);
                                 })
-                                    // Excluir clientes que tienen proposiciones refinanciadas
-                                    ->whereDoesntHave('proposiciones', function ($query) {
-                                        $query->where('FueRefinanciada', 1);
-                                    })
+
                                     ->with([
                                         'proposiciones' => function ($query) {
                                             $query->whereHas('credito', function ($q) {
                                                 $q->where('Activo', 1);
                                             })
-                                            // Excluir proposiciones refinanciadas
-                                            ->where('FueRefinanciada', 0)
-                                            ->with('tipoCredito');
+                                                // Excluir proposiciones refinanciadas
+                                                ->where('FueRefinanciada', 0)
+                                                ->with('tipoCredito');
                                         }
                                     ])
                                     ->when($promotorCobradorID, function ($query) use ($promotorCobradorID) {
@@ -77,9 +74,9 @@ class PagoResource extends Resource
                                             $q->whereHas('credito', function ($sq) {
                                                 $sq->where('Activo', 1);
                                             })
-                                            // Excluir proposiciones refinanciadas
-                                            ->where('FueRefinanciada', 0)
-                                            ->with('tipoCredito');
+                                                // Excluir proposiciones refinanciadas
+                                                ->where('FueRefinanciada', 0)
+                                                ->with('tipoCredito');
                                         }
                                     ])->find($state);
 
@@ -122,7 +119,8 @@ class PagoResource extends Resource
 
                                 $cliente = \App\Models\Cliente::find($clienteID);
                                 $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
-                                    $q->where('ClienteID', $cliente->ClienteID);
+                                    $q->where('ClienteID', $cliente->ClienteID)
+                                        ->where('FueRefinanciada', 0);
                                 })->where('Activo', 1)->count();
 
                                 // Solo mostrar este select si hay 2+ créditos
@@ -132,7 +130,8 @@ class PagoResource extends Resource
 
                                 return \App\Models\Credito::with('proposicion.tipoCredito')
                                     ->whereHas('proposicion', function ($q) use ($clienteID) {
-                                        $q->where('ClienteID', $clienteID);
+                                        $q->where('ClienteID', $clienteID)
+                                            ->where('FueRefinanciada', 0);
                                     })
                                     ->where('Activo', 1)
                                     ->get()
@@ -151,7 +150,8 @@ class PagoResource extends Resource
 
                                 $cliente = \App\Models\Cliente::find($clienteID);
                                 $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
-                                    $q->where('ClienteID', $cliente->ClienteID);
+                                    $q->where('ClienteID', $cliente->ClienteID)
+                                        ->where('FueRefinanciada', 0);
                                 })->where('Activo', 1)->count();
 
                                 return $creditosActivos >= 2;
@@ -175,7 +175,8 @@ class PagoResource extends Resource
 
                                 $cliente = \App\Models\Cliente::find($clienteID);
                                 $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
-                                    $q->where('ClienteID', $cliente->ClienteID);
+                                    $q->where('ClienteID', $cliente->ClienteID)
+                                        ->where('FueRefinanciada', 0);
                                 })->where('Activo', 1)->count();
 
                                 // Solo visible si tiene 1 crédito. Si tiene 2+, se usa el Select anterior y este se oculta por redundancia.

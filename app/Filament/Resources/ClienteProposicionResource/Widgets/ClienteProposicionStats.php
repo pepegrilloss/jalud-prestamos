@@ -25,7 +25,11 @@ class ClienteProposicionStats extends BaseWidget
 
         // 2. MIS PRESTAMOS ACTIVOS
         // Se asume que un préstamo activo es un Crédito con Activo = true
-        $creditosQuery = Credito::where('Activo', true);
+        // Excluir créditos que fueron refinanciados (FueRefinanciada = 1)
+        $creditosQuery = Credito::where('Activo', true)
+            ->whereHas('proposicion', function ($q) {
+                $q->where('FueRefinanciada', 0);
+            });
         if ($promotorID) {
             $creditosQuery->whereHas('proposicion.cliente', function ($q) use ($promotorID) {
                 $q->where('PromotorCobradorID', $promotorID);
@@ -35,9 +39,11 @@ class ClienteProposicionStats extends BaseWidget
 
         // 3. MI TOTAL PRESTADO
         // Suma del MontoTotal de las proposiciones asociadas a créditos activos
-        $totalPrestadoQuery = ProposicionCredito::whereHas('credito', function ($q) {
-            $q->where('Activo', true);
-        });
+        // Excluir créditos que fueron refinanciados (FueRefinanciada = 1)
+        $totalPrestadoQuery = ProposicionCredito::where('FueRefinanciada', 0)
+            ->whereHas('credito', function ($q) {
+                $q->where('Activo', true);
+            });
         if ($promotorID) {
             $totalPrestadoQuery->whereHas('cliente', function ($q) use ($promotorID) {
                 $q->where('PromotorCobradorID', $promotorID);

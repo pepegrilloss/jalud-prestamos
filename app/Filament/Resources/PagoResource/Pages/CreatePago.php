@@ -93,7 +93,8 @@ class CreatePago extends CreateRecord
             $clienteID = $data['ClienteID'] ?? null;
             if ($clienteID) {
                 $creditoUnico = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID) {
-                    $q->where('ClienteID', $clienteID);
+                    $q->where('ClienteID', $clienteID)
+                        ->where('FueRefinanciada', 0);
                 })->where('Activo', 1)->first();
 
                 if ($creditoUnico) {

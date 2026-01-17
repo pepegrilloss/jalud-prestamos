@@ -276,12 +276,14 @@ class ProposicionCredito extends Model
 
     /**
      * Obtener todos los créditos activos con saldo pendiente para un cliente
+     * Excluye créditos que fueron refinanciados (FueRefinanciada = 1)
      */
     public static function obtenerCreditosActivosConSaldo($clienteID)
     {
         return self::where('ClienteID', $clienteID)
             ->where('Activo', true)
             ->where('Estado', 'APROBADO')
+            ->where('FueRefinanciada', 0)
             ->has('credito')
             ->with(['credito' => function ($query) {
                 $query->where('Activo', true);
