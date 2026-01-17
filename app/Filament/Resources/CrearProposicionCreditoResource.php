@@ -217,21 +217,6 @@ class CrearProposicionCreditoResource extends Resource
                             ])->columns(1)
                             ->columnSpanFull(),
 
-                        Forms\Components\Select::make('TasaID')
-                            ->label('Tasa de Interés')
-                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
-                            ->required()
-                            ->live()
-                            ->columnSpan(1)
-                            ->afterStateUpdated(function (Set $set, $state, Get $get) {
-                                if ($tasa = Tasa::find($state)) {
-                                    $set('TasaInteres', $tasa->Valor);
-                                    $set('Plazo', $tasa->Dias);
-                                    $set('NumeroCuotas', $tasa->Cuotas);
-                                    static::calcularTotales($set, $get, $get('MontoTotal'));
-                                }
-                            }),
-
                         Forms\Components\TextInput::make('MontoTotal')
                             ->label('Monto Total')
                             ->required()
@@ -316,6 +301,21 @@ class CrearProposicionCreditoResource extends Resource
                                     };
                                 }
                             ]),
+
+                        Forms\Components\Select::make('TasaID')
+                            ->label('Tasa de Interés')
+                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
+                            ->required()
+                            ->live()
+                            ->columnSpan(1)
+                            ->afterStateUpdated(function (Set $set, $state, Get $get) {
+                                if ($tasa = Tasa::find($state)) {
+                                    $set('TasaInteres', $tasa->Valor);
+                                    $set('Plazo', $tasa->Dias);
+                                    $set('NumeroCuotas', $tasa->Cuotas);
+                                    static::calcularTotales($set, $get, $get('MontoTotal'));
+                                }
+                            }),
 
                         Forms\Components\TextInput::make('TasaInteres')->label('Tasa (%)')->disabled()->dehydrated(),
                         Forms\Components\TextInput::make('Plazo')->label('Plazo (días)')->required()->numeric(),
