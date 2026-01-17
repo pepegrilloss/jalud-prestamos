@@ -32,6 +32,24 @@ class PagoResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Información del Pago')
                     ->schema([
+                        Forms\Components\TextInput::make('cliente_info')
+                            ->label('Cliente')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->default(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->NombresApellidos ?? 'N/A'),
+
+                        Forms\Components\TextInput::make('zona_info')
+                            ->label('Zona')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->default(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->negocio?->zona?->Nombre ?? 'N/A'),
+
+                        Forms\Components\TextInput::make('promotor_info')
+                            ->label('Promotor Cobrador')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->default(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->promotorCobrador?->Usuario ?? 'N/A'),
+
                         Forms\Components\Select::make('ClienteID')
                             ->label('Cliente - DNI')
                             ->options(function () {
