@@ -32,23 +32,20 @@ class PagoResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Información del Pago')
                     ->schema([
-                        Forms\Components\TextInput::make('cliente_info')
+                        Forms\Components\Placeholder::make('cliente_info')
                             ->label('Cliente')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->getStateUsing(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->NombresApellidos ?? ''),
+                            ->content(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->NombresApellidos ?? '-')
+                            ->visible(fn() => request()->routeIs('*.view')),
 
-                        Forms\Components\TextInput::make('zona_info')
+                        Forms\Components\Placeholder::make('zona_info')
                             ->label('Zona')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->getStateUsing(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->negocio?->zona?->Nombre ?? ''),
+                            ->content(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->negocio?->zona?->Nombre ?? '-')
+                            ->visible(fn() => request()->routeIs('*.view')),
 
-                        Forms\Components\TextInput::make('promotor_info')
+                        Forms\Components\Placeholder::make('promotor_info')
                             ->label('Promotor Cobrador')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->getStateUsing(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->promotorCobrador?->Usuario ?? ''),
+                            ->content(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->promotorCobrador?->Usuario ?? '-')
+                            ->visible(fn() => request()->routeIs('*.view')),
 
                         Forms\Components\Select::make('ClienteID')
                             ->label('Cliente - DNI')
@@ -81,6 +78,7 @@ class PagoResource extends Resource
                             ->searchable()
                             ->native(false)
                             ->live()
+                            ->visible(fn() => !request()->routeIs('*.view'))
                             ->afterStateUpdated(function (Set $set, $state) {
                                 $set('CreditoID', null);
                                 $set('TipoCredito', null);
@@ -187,6 +185,11 @@ class PagoResource extends Resource
                             ->dehydrated(false)
                             ->placeholder('Información del crédito')
                             ->visible(function (Forms\Get $get) {
+                                // No mostrar en view, solo en edit/create
+                                if (request()->routeIs('*.view')) {
+                                    return false;
+                                }
+
                                 $clienteID = $get('ClienteID');
                                 if (!$clienteID)
                                     return true;
@@ -200,6 +203,11 @@ class PagoResource extends Resource
                                 // Solo visible si tiene 1 crédito. Si tiene 2+, se usa el Select anterior y este se oculta por redundancia.
                                 return $creditosActivos < 2;
                             }),
+
+                        Forms\Components\Placeholder::make('tipo_credito_view')
+                            ->label('Tipo de Crédito')
+                            ->content(fn($record) => $record?->cuota?->credito?->proposicion?->tipoCredito?->Descripcion ?? '-')
+                            ->visible(fn() => request()->routeIs('*.view')),
 
                         Forms\Components\Select::make('CuotaID')
                             ->label('Cuota - Control de Pagos')
