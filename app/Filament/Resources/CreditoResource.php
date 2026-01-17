@@ -160,7 +160,18 @@ class CreditoResource extends Resource
                     ->native(false),
                 Tables\Filters\SelectFilter::make('cliente')
                     ->label('Cliente')
-                    ->relationship('proposicion.cliente', 'NombresApellidos')
+                    ->options(function () {
+                        return \App\Models\Cliente::where('Activo', true)
+                            ->whereHas('proposiciones.credito')
+                            ->pluck('NombresApellidos', 'ClienteID')
+                            ->toArray();
+                    })
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('proposicion.cliente', fn(Builder $subQ) => $subQ->where('ClienteID', $data['value']))
+                        );
+                    })
                     ->searchable()
                     ->native(false),
                 Tables\Filters\SelectFilter::make('tipoCredito')
