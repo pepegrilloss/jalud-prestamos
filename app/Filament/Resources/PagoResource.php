@@ -326,7 +326,7 @@ class PagoResource extends Resource
                     ->query(function (Builder $query, array $data) {
                         return $query->when(
                             $data['value'] ?? null,
-                            fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
+                            fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente.negocio', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
                         );
                     })
                     ->native(false),

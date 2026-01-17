@@ -154,7 +154,7 @@ class CreditoResource extends Resource
                     ->query(function (Builder $query, array $data) {
                         return $query->when(
                             $data['value'] ?? null,
-                            fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
+                            fn(Builder $q) => $q->whereHas('proposicion.cliente.negocio', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
                         );
                     })
                     ->native(false),
