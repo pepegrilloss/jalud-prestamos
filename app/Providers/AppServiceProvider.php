@@ -5,8 +5,10 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Models\ProposicionCredito;
 use App\Models\Credito;
+use App\Models\Pago;
 use App\Observers\ProposicionCreditoObserver;
 use App\Observers\CreditoObserver;
+use App\Observers\PagoObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
     {
         ProposicionCredito::observe(ProposicionCreditoObserver::class);
         Credito::observe(CreditoObserver::class);
+        Pago::observe(PagoObserver::class);
     }
 }
 

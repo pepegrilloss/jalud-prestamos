@@ -49,40 +49,34 @@ class ViewCreditoRefinanciado extends ViewRecord
                     ])
                     ->columns(2),
 
-                Infolists\Components\Section::make('Historial de Pagos')
+                Infolists\Components\Section::make('Pagos Realizados')
                     ->schema([
-                        Infolists\Components\RepeatableEntry::make('cuotas')
+                        Infolists\Components\RepeatableEntry::make('pagos')
                             ->schema([
-                                Infolists\Components\TextEntry::make('NumeroCuota')
-                                    ->label('Cuota #'),
-                                
-                                Infolists\Components\TextEntry::make('MontoCuota')
+                                Infolists\Components\TextEntry::make('MontoPagado')
                                     ->label('Monto')
                                     ->money('PEN'),
                                 
-                                Infolists\Components\TextEntry::make('MontoPagado')
-                                    ->label('Pagado')
-                                    ->money('PEN'),
-                                
-                                Infolists\Components\TextEntry::make('SaldoPendiente')
-                                    ->label('Saldo')
-                                    ->money('PEN'),
-                                
-                                Infolists\Components\TextEntry::make('Estado')
-                                    ->label('Estado')
-                                    ->badge()
-                                    ->color(fn(string $state): string => match($state) {
-                                        'PAGADA' => 'success',
-                                        'PENDIENTE' => 'warning',
-                                        'VENCIDA' => 'danger',
-                                        'MORA' => 'danger',
-                                        default => 'gray',
-                                    }),
-                                
                                 Infolists\Components\TextEntry::make('FechaPago')
                                     ->label('Fecha Pago')
-                                    ->dateTime('d/m/Y')
-                                    ->placeholder('Sin pago'),
+                                    ->dateTime('d/m/Y H:i'),
+                                
+                                Infolists\Components\TextEntry::make('EsPagoAMayor')
+                                    ->label('Tipo')
+                                    ->formatStateUsing(fn($state) => $state ? 'Pago a Mayor' : 'Pago Normal'),
+                                
+                                Infolists\Components\TextEntry::make('EsMora')
+                                    ->label('Es Mora')
+                                    ->badge()
+                                    ->color(fn($state) => $state ? 'danger' : 'success')
+                                    ->formatStateUsing(fn($state) => $state ? 'Sí' : 'No'),
+                                
+                                Infolists\Components\TextEntry::make('UsuarioRegistro')
+                                    ->label('Usuario'),
+                                
+                                Infolists\Components\TextEntry::make('Comentario')
+                                    ->label('Comentario')
+                                    ->columnSpanFull(),
                             ])
                             ->columns(5),
                     ]),

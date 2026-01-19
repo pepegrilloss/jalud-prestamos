@@ -94,12 +94,10 @@ class CreditosRefinanciadosResource extends Resource
                         Forms\Components\View::make('components.pagos-table')
                             ->label('')
                             ->viewData([
-                                'pagos' => fn($record) => $record?->cuotas()
-                                    ->with('pagos')
-                                    ->get()
-                                    ->flatMap(fn($cuota) => $cuota->pagos)
-                                    ->sortBy(fn($pago) => $pago->cuota?->NumeroCuota)
-                                    ->values(),
+                                'pagos' => fn($record) => $record?->pagos()
+                                    ->where('Activo', true)
+                                    ->orderByDesc('FechaPago')
+                                    ->get(),
                             ]),
                     ]),
             ]);

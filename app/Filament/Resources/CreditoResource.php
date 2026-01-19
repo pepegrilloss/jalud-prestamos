@@ -89,19 +89,6 @@ class CreditoResource extends Resource
                             ->disabled(),
                     ])
                     ->columns(2),
-
-                Forms\Components\Section::make('Pagos Realizados')
-                    ->visible(fn() => request()->routeIs('*.view'))
-                    ->schema([
-                        Forms\Components\View::make('components.pagos-table')                            ->label('')                            ->viewData([
-                                'pagos' => fn($record) => $record?->cuotas()
-                                    ->with('pagos')
-                                    ->get()
-                                    ->flatMap(fn($cuota) => $cuota->pagos)
-                                    ->sortByDesc('FechaPago')
-                                    ->values(),
-                            ]),
-                    ]),
             ]);
     }
 

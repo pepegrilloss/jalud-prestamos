@@ -27,6 +27,7 @@ class ProposicionCredito extends Model
         'MontoCuota',
         'MontoInteres',
         'MontoTotalPagar',
+        'SaldoPendiente',
         'TasaMora',
         'ZonaID',
         'CuentaParalela',

@@ -16,7 +16,7 @@ class TicketDescargarController extends Controller
         $zona = $cliente->negocio->zona->Nombre ?? 'N/A';
 
         $fecha = $credito->FechaGeneracion->format('d/m/Y');
-        $monto = number_format($proposicion->MontoTotal, 2, '.', ',');
+        $monto = number_format($proposicion->MontoTotalPagar, 2, '.', ',');
         $plazo = $proposicion->Plazo;
         $nombreCliente = $cliente->NombresApellidos;
         $dni = $cliente->DNI;

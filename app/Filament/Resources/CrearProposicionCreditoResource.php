@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\TipoCredito;
 use App\Models\Tasa;
 use App\Models\Zona;
+use App\Models\Credito;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -222,7 +223,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->required()
                             ->numeric()
                             ->columnSpan(1)
-                            ->live()
+                            ->live(debounce: 500)
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                 // Calcular totales siempre
                                 static::calcularTotales($set, $get, $state);
@@ -237,14 +238,6 @@ class CrearProposicionCreditoResource extends Resource
                                 }
                             })
                             ->helperText(function (Get $get, $state) {
-                                $tipoID = $get('TipoCreditoID');
-                                if ($tipoID) {
-                                    $tipoCredito = TipoCredito::find($tipoID);
-                                    if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
-                                        return '✓ Validación de monto desactivada para refinanciamiento';
-                                    }
-                                }
-
                                 if (!$state || !$get('ClienteID')) {
                                     return '';
                                 }
@@ -263,14 +256,6 @@ class CrearProposicionCreditoResource extends Resource
                                 return "✓ Disponible: S/ {$disponible['montoDisponible']} (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
                             })
                             ->suffixIcon(function (Get $get, $state) {
-                                $tipoID = $get('TipoCreditoID');
-                                if ($tipoID) {
-                                    $tipoCredito = TipoCredito::find($tipoID);
-                                    if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
-                                        return 'heroicon-s-check-circle';
-                                    }
-                                }
-
                                 if (!$state || !$get('ClienteID')) {
                                     return null;
                                 }
@@ -283,20 +268,11 @@ class CrearProposicionCreditoResource extends Resource
                             ->rules([
                                 function (Get $get) {
                                     return function ($attribute, $value, $fail) use ($get) {
-                                        // No validar máximo si es refinanciamiento
-                                        $tipoID = $get('TipoCreditoID');
-                                        if ($tipoID) {
-                                            $tipoCredito = TipoCredito::find($tipoID);
-                                            if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
-                                                return;
-                                            }
-                                        }
-
                                         $clienteID = $get('ClienteID');
                                         if ($clienteID) {
                                             $disponible = self::calcularMontoDisponible($clienteID);
                                             if ((float) $value > (float) $disponible['montoDisponible']) {
-                                                $fail("El monto total no puede exceder el monto disponible de S/ {$disponible['montoDisponible']}. (Máximo recomendado: S/ {$disponible['montoMaximoRecomendado']}, Ya utilizado: S/ {$disponible['montoUtilizado']})");
+                                                $fail("Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo recomendado: S/ {$disponible['montoMaximoRecomendado']}, Ya utilizado: S/ {$disponible['montoUtilizado']})");
                                             }
                                         }
                                     };
@@ -325,7 +301,7 @@ class CrearProposicionCreditoResource extends Resource
 
                         Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->dehydrated(),
                         Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->disabled()->dehydrated(false),
+                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->disabled()->dehydrated(),
                         Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric()->default(0.50),
                     ])->columns(3),
 
@@ -402,13 +378,13 @@ class CrearProposicionCreditoResource extends Resource
 
         $montoMaximoRecomendado = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
 
-        // Obtener todas las proposiciones ACTIVAS del cliente (excluyendo refinanciamientos que han sido refinanciados)
+        // Obtener todas las proposiciones ACTIVAS del cliente (excluyendo rechazadas y refinanciadas)
         $montoUtilizado = (float) ProposicionCredito::where('ClienteID', $clienteID)
             ->where('Activo', true)
             ->whereNotIn('Estado', ['RECHAZADO']) // Excluir rechazadas
-            ->where(function ($query) {
+            ->where(function ($subquery) {
                 // Excluir proposiciones que fueron refinanciadas
-                $query->where('FueRefinanciada', false)
+                $subquery->where('FueRefinanciada', false)
                     ->orWhereNull('FueRefinanciada');
             })
             ->sum('MontoTotal');
