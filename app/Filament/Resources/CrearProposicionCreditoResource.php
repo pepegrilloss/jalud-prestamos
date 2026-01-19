@@ -47,6 +47,18 @@ class CrearProposicionCreditoResource extends Resource
                         'class' => 'text-danger-600 font-bold text-center p-4 bg-danger-50 rounded-lg border-2 border-danger-600'
                     ]),
 
+                // Banner de verificación de cuotas al día
+                Forms\Components\Placeholder::make('estado_cuotas')
+                    ->label('')
+                    ->content(
+                        fn(Get $get) => self::verificarEstadoCuotas($get)
+                    )
+                    ->visible(fn(Get $get) => $get('ClienteID') && $get('TipoCreditoID') && self::clienteTieneCreditoCorriendo($get('ClienteID')))
+                    ->extraAttributes([
+                        'class' => 'font-bold text-center p-3 rounded-lg border-2',
+                        'id' => 'estado-cuotas-badge'
+                    ]),
+
                 Forms\Components\Section::make('Detalles del Crédito')
                     ->schema([
                         Forms\Components\Select::make('ClienteID')
@@ -348,6 +360,54 @@ class CrearProposicionCreditoResource extends Resource
 
         $cliente = Cliente::find($clienteID);
         return $cliente && $cliente->tieneCreditoCorriendo();
+    }
+
+    protected static function verificarEstadoCuotas(Get $get): string
+    {
+        $clienteID = $get('ClienteID');
+        if (!$clienteID || !self::clienteTieneCreditoCorriendo($clienteID)) {
+            return '';
+        }
+
+        try {
+            $hoy = \Carbon\Carbon::now();
+            
+            // Obtener todos los créditos activos del cliente
+            $creditos = Credito::whereHas('proposicion', function ($query) use ($clienteID) {
+                $query->where('ClienteID', $clienteID)->where('Activo', true);
+            })->where('Activo', true)->get();
+            
+            foreach ($creditos as $credito) {
+                // Obtener cuotas vencidas (FechaVencimiento <= hoy)
+                $cuotasVencidas = $credito->cuotas()
+                    ->where('FechaVencimiento', '<=', $hoy)
+                    ->where('Estado', '!=', 'PAGADO')
+                    ->get();
+                
+                if ($cuotasVencidas->isEmpty()) {
+                    continue; // Sin cuotas vencidas, cliente está al día en este crédito
+                }
+                
+                // Calcular el monto total de cuotas que deberían estar pagadas
+                $montoCuotasEsperadas = $cuotasVencidas->sum('MontoCuota');
+                
+                // Calcular el total de pagos realizados en este crédito
+                $totalPagos = $credito->pagos()
+                    ->where('Activo', true)
+                    ->where('FechaPago', '<=', $hoy)
+                    ->sum('MontoPagado');
+                
+                // Si el total de pagos es menor a lo esperado, el cliente NO está al día
+                if ($totalPagos < $montoCuotasEsperadas) {
+                    $deuda = number_format($montoCuotasEsperadas - $totalPagos, 2);
+                    return "❌ Cliente NO está al día. Deuda en cuotas: S/ {$deuda}";
+                }
+            }
+            
+            return "✅ Cliente está al día en el pago de sus cuotas";
+        } catch (\Exception $e) {
+            return "⚠️ Error al verificar estado de cuotas";
+        }
     }
 
     protected static function calcularTotales(Set $set, Get $get, $monto): void
