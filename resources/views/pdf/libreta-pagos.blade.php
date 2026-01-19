@@ -59,16 +59,9 @@
         .resumen-prestamo { position: absolute; top: 14mm; left: 63mm; width: 40mm; }
         .resumen-prestamo td { font-size: 7.5pt; font-weight: bold; padding: 0px 0; line-height: 1; }
 
-        /* AJUSTE SOLICITADO: Movido a la izquierda y alineado a la izquierda */
+        /* AJUSTE SOLICITADO: Removido */
         .bancos { 
-            position: absolute; 
-            top: 2mm; 
-            left: 195mm; 
-            text-align: left; 
-            color: red; 
-            font-size: 7pt; 
-            font-weight: normal; 
-            line-height: 1.2;
+            display: none;
         }
 
         /* --- CONTENEDOR DE LA REJILLA UNIFICADA --- */
@@ -90,8 +83,8 @@
 
         /* Alineación con la imagen de referencia */
         .col-1 { margin-top: 32mm; } 
-        .col-2 { margin-top: 1.3mm; }  
-        .col-3 { margin-top: 12.8mm; } 
+        .col-2 { margin-top: -0.4mm; }  
+        .col-3 { margin-top: -0.4mm; } 
 
         table.tabla-datos {
             width: 100%;
@@ -100,21 +93,21 @@
         }
         table.tabla-datos th {
             border: 1.5px solid #008542;
-            color: #008542; font-size: 7pt; padding: 0 3px;
+            color: #008542; font-size: 7pt; padding: 2px 3px;
             background: white;
-            height: 13px;
-            line-height: 1;
+            height: 19px;
+            line-height: 1.2;
             vertical-align: middle;
         }
         table.tabla-datos tr {
-            height: 13px;
+            height: 19px;
         }
         table.tabla-datos td {
             border: 1.5px solid #008542;
-            height: 13px; 
+            height: 19px; 
             text-align: center; font-size: 7.2pt; font-weight: normal;
-            padding: 0 3px;
-            line-height: 1;
+            padding: 2px 3px;
+            line-height: 1.2;
             vertical-align: middle;
         }
         .marcado-rojo { color: red !important; }
@@ -147,18 +140,12 @@
                     <tr><td class="etiqueta-verde">PLAZO</td><td style="text-align:right">{{ $proposicion->Plazo }}</td></tr>
                 </table>
             </div>
-
-            <div class="bancos">
-                BCP CUENTA SOLES 305-4198556-0-62<br>
-                CCI 00230500419855606216<br>
-                JALUD SOCIEDAD ANONIMA CERRADA
-            </div>
         </div>
 
         <div class="contenedor-rejilla">
             @php 
                 $saldoFicticio = ($proposicion->MontoTotal + $proposicion->MontoInteres); 
-                $filasConfig = [20, 28, 25]; 
+                $filasConfig = [13, 18, 18]; 
                 $offsetGeneral = 0;
             @endphp
 
