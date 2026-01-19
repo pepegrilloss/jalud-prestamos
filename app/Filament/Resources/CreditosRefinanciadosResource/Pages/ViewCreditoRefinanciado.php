@@ -54,7 +54,7 @@ class ViewCreditoRefinanciado extends ViewRecord
                         Infolists\Components\RepeatableEntry::make('pagos')
                             ->schema([
                                 Infolists\Components\TextEntry::make('MontoPagado')
-                                    ->label('Monto')
+                                    ->label('Cuota')
                                     ->money('PEN'),
                                 
                                 Infolists\Components\TextEntry::make('FechaPago')
