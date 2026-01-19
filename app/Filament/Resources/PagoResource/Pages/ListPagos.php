@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PagoResource\Pages;
 
 use App\Filament\Resources\PagoResource;
+use App\Filament\Widgets\PagosStats;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,6 +17,13 @@ class ListPagos extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->label('Registrar Pago'),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            PagosStats::class,
         ];
     }
     

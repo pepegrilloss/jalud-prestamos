@@ -145,7 +145,8 @@ class CreditosRefinanciadosResource extends Resource
                     ->label('Saldo Pendiente')
                     ->getStateUsing(function ($record) {
                         $totalPagado = $record->cuotas()->sum('MontoPagado');
-                        $saldo = ($record->proposicion->MontoTotal ?? 0) - $totalPagado;
+                        $montoCuotasTotal = $record->cuotas()->sum('MontoCuota');
+                        $saldo = $montoCuotasTotal - $totalPagado;
                         return max(0, $saldo);
                     })
                     ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))

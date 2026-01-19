@@ -78,9 +78,10 @@ class EditPago extends EditRecord
         $proposicion = $credito->proposicion;
         
         if ($proposicion) {
+            $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
             $totalPagado = $credito->cuotas()->sum('MontoPagado');
             $proposicion->update([
-                'SaldoPendiente' => $proposicion->MontoTotal - $totalPagado,
+                'SaldoPendiente' => $montoCuotasTotal - $totalPagado,
             ]);
         }
 

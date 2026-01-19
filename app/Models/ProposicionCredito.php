@@ -299,7 +299,7 @@ class ProposicionCredito extends Model
      */
     /**
      * Calcular el saldo pendiente de una proposición basado en sus cuotas
-     * Usa la misma lógica que CreditoResource: MontoTotal - Sum(MontoPagado)
+     * Usa la misma lógica que CreditoResource: Sum(MontoCuota) - Sum(MontoPagado)
      */
     public static function calcularSaldoPendiente($proposicionCreditoID)
     {
@@ -311,19 +311,22 @@ class ProposicionCredito extends Model
             return 0;
         }
 
-        // Obtener proposición para el MontoTotal
+        // Obtener proposición para el cálculo del total de cuotas
         $proposicion = ProposicionCredito::find($proposicionCreditoID);
         if (!$proposicion) {
             return 0;
         }
 
-        // Calcular: MontoTotal - Sum(MontoPagado)
-        $montoTotal = (float)$proposicion->MontoTotal;
+        // Calcular: Sum(MontoCuota) - Sum(MontoPagado)
+        // MontoCuota incluye Capital + Interés
+        $montoCuotasTotal = (float)$credito->cuotas()
+            ->where('Activo', true)
+            ->sum('MontoCuota');
         $totalPagado = $credito->cuotas()
             ->where('Activo', true)
             ->sum('MontoPagado');
 
-        return max(0, $montoTotal - $totalPagado);
+        return max(0, $montoCuotasTotal - $totalPagado);
     }
 
     /**

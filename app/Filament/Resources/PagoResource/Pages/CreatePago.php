@@ -110,7 +110,7 @@ class CreatePago extends CreateRecord
                 $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
                     ->where('Activo', 1)
                     ->where('NumeroCuota', '>', 0)
-                    ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
+                    ->where('SaldoPendiente', '>', 0)
                     ->orderBy('NumeroCuota')
                     ->first();
 
@@ -214,9 +214,10 @@ class CreatePago extends CreateRecord
             // Actualizar la proposición con el saldo pendiente total
             $proposicion = $credito->proposicion;
             if ($proposicion) {
+                $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
                 $totalPagado = $credito->cuotas()->sum('MontoPagado');
                 $proposicion->update([
-                    'SaldoPendiente' => $proposicion->MontoTotal - $totalPagado,
+                    'SaldoPendiente' => $montoCuotasTotal - $totalPagado,
                 ]);
                 \Log::info('CreatePago::afterCreate - Proposicion updated', [
                     'ProposicionID' => $proposicion->ProposicionID,

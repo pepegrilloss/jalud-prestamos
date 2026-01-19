@@ -240,21 +240,27 @@ class CrearProposicionCreditoResource extends Resource
                                 $tipoID = $get('TipoCreditoID');
                                 if ($tipoID) {
                                     $tipoCredito = TipoCredito::find($tipoID);
+                                    if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
+                                        return '✓ Validación de monto desactivada para refinanciamiento';
+                                    }
                                 }
 
                                 if (!$state || !$get('ClienteID')) {
                                     return '';
                                 }
-                                $cliente = Cliente::find($get('ClienteID'));
-                                if (!$cliente || !$cliente->analisisEconomico) {
-                                    return '';
-                                }
-                                $montoMax = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
+
+                                $disponible = self::calcularMontoDisponible($get('ClienteID'));
                                 $montoActual = (float) $state;
-                                if ($montoActual > $montoMax) {
-                                    return "❌ Excede el máximo de S/ {$montoMax}";
+
+                                if ($disponible['montoDisponible'] <= 0) {
+                                    return "❌ No hay monto disponible. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
                                 }
-                                return "✓ Máximo recomendado: S/ {$montoMax}";
+
+                                if ($montoActual > $disponible['montoDisponible']) {
+                                    return "❌ Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
+                                }
+
+                                return "✓ Disponible: S/ {$disponible['montoDisponible']} (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
                             })
                             ->suffixIcon(function (Get $get, $state) {
                                 $tipoID = $get('TipoCreditoID');
@@ -268,13 +274,11 @@ class CrearProposicionCreditoResource extends Resource
                                 if (!$state || !$get('ClienteID')) {
                                     return null;
                                 }
-                                $cliente = Cliente::find($get('ClienteID'));
-                                if (!$cliente || !$cliente->analisisEconomico) {
-                                    return null;
-                                }
-                                $montoMax = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
+
+                                $disponible = self::calcularMontoDisponible($get('ClienteID'));
                                 $montoActual = (float) $state;
-                                return $montoActual > $montoMax ? 'heroicon-s-exclamation-circle' : 'heroicon-s-check-circle';
+
+                                return $montoActual > $disponible['montoDisponible'] ? 'heroicon-s-exclamation-circle' : 'heroicon-s-check-circle';
                             })
                             ->rules([
                                 function (Get $get) {
@@ -290,12 +294,9 @@ class CrearProposicionCreditoResource extends Resource
 
                                         $clienteID = $get('ClienteID');
                                         if ($clienteID) {
-                                            $cliente = Cliente::find($clienteID);
-                                            if ($cliente && $cliente->analisisEconomico) {
-                                                $montoMax = $cliente->analisisEconomico->MontoMaxRecomendado;
-                                                if ((float) $value > (float) $montoMax) {
-                                                    $fail("El monto total no puede exceder el monto máximo recomendado de S/ {$montoMax}");
-                                                }
+                                            $disponible = self::calcularMontoDisponible($clienteID);
+                                            if ((float) $value > (float) $disponible['montoDisponible']) {
+                                                $fail("El monto total no puede exceder el monto disponible de S/ {$disponible['montoDisponible']}. (Máximo recomendado: S/ {$disponible['montoMaximoRecomendado']}, Ya utilizado: S/ {$disponible['montoUtilizado']})");
                                             }
                                         }
                                     };
@@ -335,8 +336,8 @@ class CrearProposicionCreditoResource extends Resource
                             ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
                             ->required()
                             ->searchable()
-                            ->disabled()
-                            ->helperText('Se asigna automáticamente desde el negocio del cliente'),
+                            ->native(false)
+                            ->dehydrated(),
                         Forms\Components\Textarea::make('Observaciones')->rows(3)->columnSpanFull(),
                     ])->columns(2),
             ]);
@@ -354,7 +355,8 @@ class CrearProposicionCreditoResource extends Resource
 
         if ($creditoCorriendo && $creditoCorriendo->credito) {
             $totalPagado = $creditoCorriendo->credito->cuotas()->sum('MontoPagado');
-            $saldoTotal = number_format(max(0, ($creditoCorriendo->MontoTotal ?? 0) - $totalPagado), 2);
+            $montoCuotasTotal = $creditoCorriendo->credito->cuotas()->sum('MontoCuota');
+            $saldoTotal = number_format(max(0, $montoCuotasTotal - $totalPagado), 2);
 
             return "🔴 Este cliente tiene un crédito corriendo con saldo pendiente de S/ {$saldoTotal}";
         }
@@ -387,6 +389,39 @@ class CrearProposicionCreditoResource extends Resource
         }
     }
 
+    protected static function calcularMontoDisponible($clienteID): array
+    {
+        $cliente = Cliente::find($clienteID);
+        if (!$cliente || !$cliente->analisisEconomico) {
+            return [
+                'montoMaximoRecomendado' => 0,
+                'montoUtilizado' => 0,
+                'montoDisponible' => 0,
+            ];
+        }
+
+        $montoMaximoRecomendado = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
+
+        // Obtener todas las proposiciones ACTIVAS del cliente (excluyendo refinanciamientos que han sido refinanciados)
+        $montoUtilizado = (float) ProposicionCredito::where('ClienteID', $clienteID)
+            ->where('Activo', true)
+            ->whereNotIn('Estado', ['RECHAZADO']) // Excluir rechazadas
+            ->where(function ($query) {
+                // Excluir proposiciones que fueron refinanciadas
+                $query->where('FueRefinanciada', false)
+                    ->orWhereNull('FueRefinanciada');
+            })
+            ->sum('MontoTotal');
+
+        $montoDisponible = max(0, $montoMaximoRecomendado - $montoUtilizado);
+
+        return [
+            'montoMaximoRecomendado' => $montoMaximoRecomendado,
+            'montoUtilizado' => $montoUtilizado,
+            'montoDisponible' => $montoDisponible,
+        ];
+    }
+
     protected static function validarMontoMaximo(Set $set, Get $get, $monto): void
     {
         $clienteID = $get('ClienteID');
@@ -399,14 +434,14 @@ class CrearProposicionCreditoResource extends Resource
             return;
         }
 
-        $montoMax = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
+        $disponible = self::calcularMontoDisponible($clienteID);
         $montoTotal = (float) $monto;
 
-        if ($montoTotal > $montoMax) {
+        if ($montoTotal > $disponible['montoDisponible']) {
             Notification::make()
                 ->warning()
-                ->title('⚠️ Monto Excede el Límite')
-                ->body("El monto de S/ {$montoTotal} excede el máximo recomendado de S/ {$montoMax}")
+                ->title('⚠️ Monto Excede el Límite Disponible')
+                ->body("El monto de S/ {$montoTotal} excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']}).")
                 ->send();
         }
     }
