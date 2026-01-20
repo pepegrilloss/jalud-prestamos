@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ClienteResource\Pages;
 
 use App\Filament\Resources\ClienteResource;
+use App\Models\AperturaCierreDia;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,12 +12,25 @@ class ListClientes extends ListRecords
 {
     protected static string $resource = ClienteResource::class;
 
+    public function getTitle(): string
+    {
+        $title = 'Clientes';
+        if (!AperturaCierreDia::estaAbierto()) {
+            $title .= ' ⚠️ (Día Cerrado)';
+        }
+        return $title;
+    }
+
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\CreateAction::make()
-                ->label('Nuevo Cliente'),
-        ];
+        $actions = [];
+        
+        if (AperturaCierreDia::estaAbierto()) {
+            $actions[] = Actions\CreateAction::make()
+                ->label('Nuevo Cliente');
+        }
+        
+        return $actions;
     }
 
     protected function getTableQuery(): Builder

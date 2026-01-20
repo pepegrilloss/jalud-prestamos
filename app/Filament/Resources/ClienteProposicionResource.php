@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ClienteProposicionResource\Pages;
 use App\Filament\Resources\ClienteProposicionResource\Widgets\ClienteProposicionStats;
 use App\Models\ProposicionCredito;
+use App\Models\AperturaCierreDia;
 use App\Models\TipoCredito;
 use App\Models\Tasa;
 use App\Models\Zona;
@@ -193,10 +194,12 @@ class ClienteProposicionResource extends Resource
                         ->label('Ver'),
 
                     Tables\Actions\EditAction::make()
-                        ->label('Editar'),
+                        ->label('Editar')
+                        ->visible(fn() => AperturaCierreDia::estaAbierto()),
 
                     Tables\Actions\DeleteAction::make()
-                        ->label('Eliminar'),
+                        ->label('Eliminar')
+                        ->visible(fn() => AperturaCierreDia::estaAbierto()),
                 ]),
             ])
             ->headerActions([
@@ -204,6 +207,7 @@ class ClienteProposicionResource extends Resource
                     ->label('Nueva Proposición')
                     ->icon('heroicon-o-plus')
                     ->size('lg')
+                    ->visible(fn() => AperturaCierreDia::estaAbierto())
                     ->url(fn(): string => '/admin/crear-proposicion-creditos/create')
                     ->openUrlInNewTab(false),
 

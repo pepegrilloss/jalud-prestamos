@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\AprobacionProposicionResource\Pages;
 use App\Models\ProposicionCredito;
 use App\Models\AprobacionProposicion;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -151,6 +152,7 @@ class AprobacionProposicionResource extends Resource
                         $record->Estado === 'PENDIENTE'
                         && auth()->user()->getNivelAprobacionActivo()?->NivelAprobacionID !== null
                         && self::puedeAprobarProposicion($record)
+                        && AperturaCierreDia::estaAbierto()
                     )
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar Proposición')
@@ -185,6 +187,7 @@ class AprobacionProposicionResource extends Resource
                         $record->Estado === 'PENDIENTE'
                         && auth()->user()->getNivelAprobacionActivo()?->NivelAprobacionID !== null
                         && self::puedeAprobarProposicion($record)
+                        && AperturaCierreDia::estaAbierto()
                     )
                     ->requiresConfirmation()
                     ->modalHeading('Rechazar Proposición')

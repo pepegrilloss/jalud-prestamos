@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TipoCreditoResource\Pages;
 use App\Models\TipoCredito;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -103,7 +104,8 @@ class TipoCreditoResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
 
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn() => AperturaCierreDia::estaAbierto()),
 
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
@@ -111,6 +113,21 @@ class TipoCreditoResource extends Resource
             ])
             ->bulkActions([])
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array

@@ -6,6 +6,7 @@ use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\GiroResource\Pages;
 use App\Filament\Resources\GiroResource\RelationManagers;
 use App\Models\Giro;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -74,7 +75,7 @@ class GiroResource extends Resource
                     ->visible(fn() => auth()->user()->can('view_giro')),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn() => auth()->user()->can('update_giro')),
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('update_giro')),
 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -101,6 +102,21 @@ class GiroResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array

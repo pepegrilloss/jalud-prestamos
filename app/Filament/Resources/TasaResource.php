@@ -6,6 +6,7 @@ use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TasaResource\Pages;
 use App\Filament\Resources\TasaResource\RelationManagers;
 use App\Models\Tasa;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -80,7 +81,7 @@ class TasaResource extends Resource
                     ->visible(fn() => auth()->user()->can('view_tasa')),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn() => auth()->user()->can('update_tasa')),
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('update_tasa')),
 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -99,6 +100,21 @@ class TasaResource extends Resource
             ->bulkActions([])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array

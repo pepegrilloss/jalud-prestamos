@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\EvaluacionDeCredito\Resources;
 use App\Filament\Clusters\EvaluacionDeCredito\Resources\RegistrarEvaluacionDeCreditoResource\Pages;
 use App\Models\RegistrarEvaluacionDeCredito;
 use App\Models\EvaluacionCredito;
+use App\Models\AperturaCierreDia;
 use App\Models\AnalisisEconomico;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -97,6 +98,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                         ->label('Registrar Evaluación')
                         ->icon('heroicon-o-plus-circle')
                         ->color('success')
+                        ->visible(fn() => AperturaCierreDia::estaAbierto())
                         ->modalHeading(fn($record) => 'Nueva Evaluación de Crédito')
                         ->modalDescription(fn($record) => $record->NombresApellidos . ' - DNI: ' . $record->DNI)
                         ->modalWidth('3xl')

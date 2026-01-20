@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TipoPagoResource\Pages;
 use App\Models\TipoPago;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -68,8 +69,10 @@ class TipoPagoResource extends Resource
                     ->falseLabel('Inactivos'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn() => AperturaCierreDia::estaAbierto()),
                 Tables\Actions\Action::make('toggleActive')
+                    ->visible(fn() => AperturaCierreDia::estaAbierto())
                     ->label(fn($record) => $record->Activo ? 'Desactivar' : 'Activar')
                     ->color(fn($record) => $record->Activo ? 'danger' : 'success')
                     ->icon(fn($record) => $record->Activo ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
@@ -87,6 +90,21 @@ class TipoPagoResource extends Resource
             ->bulkActions([])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array

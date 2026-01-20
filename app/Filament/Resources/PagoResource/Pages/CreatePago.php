@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\PagoResource\Pages;
 
 use App\Filament\Resources\PagoResource;
-use App\Models\Cuota;
 use App\Models\ProposicionCredito;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;

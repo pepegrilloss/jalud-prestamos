@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ClienteProposicionResource\Pages;
 use App\Filament\Resources\ClienteProposicionResource;
 use App\Filament\Resources\ClienteProposicionResource\Widgets\ClienteProposicionStats;
 use App\Models\ProposicionCredito;
+use App\Models\AperturaCierreDia;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Actions\Action;
 use Filament\Forms;
@@ -13,6 +14,15 @@ use Filament\Notifications\Notification;
 class ListClienteProposicions extends ListRecords
 {
     protected static string $resource = ClienteProposicionResource::class;
+
+    public function getTitle(): string
+    {
+        $title = 'Proposiciones';
+        if (!AperturaCierreDia::estaAbierto()) {
+            $title .= ' ⚠️ (Día Cerrado)';
+        }
+        return $title;
+    }
 
     protected function getHeaderActions(): array
     {

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ClienteResource\Pages;
 
 use App\Filament\Resources\ClienteResource;
+use App\Traits\BloquearPorDiaCerrado;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Filament\Forms;
 
 class EditCliente extends EditRecord
 {
+    use BloquearPorDiaCerrado;
+
     protected static string $resource = ClienteResource::class;
 
     protected function getHeaderActions(): array

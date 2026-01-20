@@ -7,6 +7,7 @@ use App\Filament\Resources\SubGiroResource\Pages;
 use App\Filament\Resources\SubGiroResource\RelationManagers;
 use App\Models\SubGiro;
 use App\Models\Giro;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -76,7 +77,7 @@ class SubGiroResource extends Resource
                     ->visible(fn() => auth()->user()->can('view_sub::giro')),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn() => auth()->user()->can('update_sub::giro')),
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('update_sub::giro')),
 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -96,6 +97,21 @@ class SubGiroResource extends Resource
             ->bulkActions([])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array

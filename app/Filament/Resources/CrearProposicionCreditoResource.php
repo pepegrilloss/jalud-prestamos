@@ -585,6 +585,48 @@ class CrearProposicionCreditoResource extends Resource
         ];
     }
 
+    public static function canCreate(): bool
+    {
+        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
+            \Filament\Notifications\Notification::make()
+                ->title('❌ Día Cerrado')
+                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
+                ->danger()
+                ->persistent()
+                ->send();
+            return false;
+        }
+        return true;
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
+            \Filament\Notifications\Notification::make()
+                ->title('❌ Día Cerrado')
+                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
+                ->danger()
+                ->persistent()
+                ->send();
+            return false;
+        }
+        return true;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
+            \Filament\Notifications\Notification::make()
+                ->title('❌ Día Cerrado')
+                ->body('El día de operaciones está cerrado. No se pueden eliminar registros. Contacte con administración.')
+                ->danger()
+                ->persistent()
+                ->send();
+            return false;
+        }
+        return true;
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
         return false;
