@@ -8,6 +8,7 @@ use App\Filament\Resources\PromotorCobradorResource\RelationManagers;
 use App\Models\PromotorCobrador;
 use App\Models\Ciudad;
 use App\Models\Zona;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -129,7 +130,7 @@ class PromotorCobradorResource extends Resource
                     ->visible(fn() => auth()->user()->can('view_promotor::cobrador')),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn() => auth()->user()->can('update_promotor::cobrador')),
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('update_promotor::cobrador')),
 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -139,7 +140,7 @@ class PromotorCobradorResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn() => auth()->user()->can('delete_promotor::cobrador'))
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('delete_promotor::cobrador'))
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                         'FechaModificacion' => now()
@@ -148,6 +149,21 @@ class PromotorCobradorResource extends Resource
             ])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array

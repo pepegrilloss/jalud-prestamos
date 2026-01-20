@@ -727,6 +727,11 @@ class ClienteResource extends Resource
 
     public static function canCreate(): bool
     {
+        // Los Promotores Cobradores NO pueden crear clientes
+        if (auth()->user()?->hasRole('Promotor Cobrador')) {
+            return false;
+        }
+
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
                 ->title('❌ Día Cerrado')
@@ -741,6 +746,11 @@ class ClienteResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        // Los Promotores Cobradores NO pueden editar clientes
+        if (auth()->user()?->hasRole('Promotor Cobrador')) {
+            return false;
+        }
+
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
                 ->title('❌ Día Cerrado')
@@ -755,6 +765,11 @@ class ClienteResource extends Resource
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        // Los Promotores Cobradores NO pueden eliminar clientes
+        if (auth()->user()?->hasRole('Promotor Cobrador')) {
+            return false;
+        }
+
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
                 ->title('❌ Día Cerrado')

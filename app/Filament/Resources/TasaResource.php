@@ -91,7 +91,7 @@ class TasaResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn() => auth()->user()->can('delete_tasa'))
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('delete_tasa'))
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                     ]))

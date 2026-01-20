@@ -141,6 +141,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                         ->color(fn($record) => $record->analisisEconomico 
                             ? 'info' 
                             : 'warning')
+                        ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                         ->modalHeading(fn($record) => $record->analisisEconomico 
                             ? 'Ver/Actualizar Análisis Económico' 
                             : 'Registrar Análisis Económico')
@@ -159,6 +160,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->minValue(0)
                                                 ->placeholder('Ej: 2000.00')
                                                 ->helperText('Monto que el cliente indica como capital')
+                                                ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                                 ->live(),
                                             
                                             Forms\Components\TextInput::make('CapitalEstimado')
@@ -168,6 +170,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->minValue(0)
                                                 ->placeholder('Ej: 4000.00')
                                                 ->helperText('Estimación del jefe de oficina')
+                                                ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                                 ->live(),
                                         ]),
                                     
@@ -179,6 +182,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->numeric()
                                                 ->minValue(0)
                                                 ->placeholder('Ej: 500.00')
+                                                ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                                 ->live(),
                                             
                                             Forms\Components\TextInput::make('VentaManifestadaMax')
@@ -187,6 +191,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->numeric()
                                                 ->minValue(0)
                                                 ->placeholder('Ej: 800.00')
+                                                ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                                 ->live()
                                                 ->rules([
                                                     fn (Forms\Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
@@ -202,6 +207,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->numeric()
                                                 ->minValue(0)
                                                 ->placeholder('Ej: 400.00')
+                                                ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                         ]),
 
                                 Forms\Components\TextInput::make('MontoMaxRecomendado')
@@ -212,6 +218,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                     ->step(0.01)
                                     ->placeholder('Ej: 5000.00')
                                     ->helperText('Monto máximo que se recomienda prestar a este cliente')
+                                    ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                     ->live(),
 
                                 // Resumen visual

@@ -38,12 +38,13 @@ class ListClientes extends ListRecords
         $query = parent::getTableQuery();
 
         if (auth()->user()?->hasRole('Promotor Cobrador')) {
-            $pcId = auth()->user()->PromotorCobradorID ?? \App\Models\PromotorCobrador::where('Codigo', auth()->user()->username)
-                ->orWhere('Descripcion', auth()->user()->name)
-                ->value('PromotorCobradorID');
-
-            if ($pcId) {
-                return $query->where('PromotorCobradorID', $pcId);
+            $promotorCobrador = auth()->user()->promotorCobrador;
+            
+            if ($promotorCobrador && $promotorCobrador->ZonaID) {
+                // Filtrar clientes cuyas proposiciones estén en la zona del promotor
+                return $query->whereHas('proposiciones', function (Builder $q) use ($promotorCobrador) {
+                    $q->where('ZonaID', $promotorCobrador->ZonaID);
+                });
             }
 
             return $query->whereRaw('1 = 0');

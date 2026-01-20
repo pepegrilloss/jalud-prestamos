@@ -50,25 +50,24 @@ class PagoResource extends Resource
                         Forms\Components\Select::make('ClienteID')
                             ->label('Cliente - DNI')
                             ->options(function () {
-                                $promotorCobradorID = auth()->user()?->PromotorCobradorID;
+                                $promotorCobrador = auth()->user()?->promotorCobrador;
+                                $zonaID = $promotorCobrador?->ZonaID;
 
-                                return \App\Models\Cliente::whereHas('proposiciones.credito', function ($query) {
-                                    $query->where('Activo', 1);
-                                })
+                                // Condiciones que se aplican a las proposiciones
+                                $propositionConditions = function ($q) use ($zonaID) {
+                                    $q->where('FueRefinanciada', 0)
+                                        ->whereHas('credito', function ($sq) {
+                                            $sq->where('Activo', 1);
+                                        });
+                                    
+                                    if ($zonaID) {
+                                        $q->where('ZonaID', $zonaID);
+                                    }
+                                };
 
-                                    ->with([
-                                        'proposiciones' => function ($query) {
-                                            $query->whereHas('credito', function ($q) {
-                                                $q->where('Activo', 1);
-                                            })
-                                                // Excluir proposiciones refinanciadas
-                                                ->where('FueRefinanciada', 0)
-                                                ->with('tipoCredito');
-                                        }
-                                    ])
-                                    ->when($promotorCobradorID, function ($query) use ($promotorCobradorID) {
-                                        $query->where('PromotorCobradorID', $promotorCobradorID);
-                                    })
+                                $query = \App\Models\Cliente::whereHas('proposiciones', $propositionConditions);
+
+                                return $query->with(['proposiciones' => $propositionConditions])
                                     ->get()
                                     ->mapWithKeys(function ($cliente) {
                                         return [$cliente->ClienteID => "{$cliente->NombresApellidos} - {$cliente->DNI}"];

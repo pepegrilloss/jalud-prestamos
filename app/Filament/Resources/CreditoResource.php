@@ -113,6 +113,14 @@ class CreditoResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('proposicion.ZonaID')
+                    ->label('Zona')
+                    ->getStateUsing(function ($record) {
+                        return $record->proposicion?->zona?->Nombre ?? '-';
+                    })
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('proposicion.MontoTotal')
                     ->label('Monto')
                     ->money('PEN')

@@ -87,7 +87,7 @@ class SubGiroResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn() => auth()->user()->can('delete_sub::giro'))
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('delete_sub::giro'))
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                         'FechaModificacion' => now()

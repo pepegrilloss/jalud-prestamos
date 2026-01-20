@@ -28,12 +28,13 @@ class ClientePolicy
     public function view(User $user, Cliente $cliente): bool
     {
         if ($user->hasRole('Promotor Cobrador')) {
-            $pcId = $user->PromotorCobradorID ?? \App\Models\PromotorCobrador::where('Codigo', $user->username)
-                ->orWhere('Descripcion', $user->name)
-                ->value('PromotorCobradorID');
-
-            if ($pcId) {
-                return $cliente->PromotorCobradorID == $pcId;
+            $promotorCobrador = $user->promotorCobrador;
+            
+            if ($promotorCobrador && $promotorCobrador->ZonaID) {
+                // Verificar si el cliente tiene al menos una proposición en la zona del promotor
+                return $cliente->proposiciones()
+                    ->where('ZonaID', $promotorCobrador->ZonaID)
+                    ->exists();
             }
 
             return false;
@@ -47,6 +48,11 @@ class ClientePolicy
      */
     public function create(User $user): bool
     {
+        // Los Promotores Cobradores NO pueden crear clientes
+        if ($user->hasRole('Promotor Cobrador')) {
+            return false;
+        }
+
         return $user->can('create_cliente::proposicion');
     }
 
@@ -55,6 +61,11 @@ class ClientePolicy
      */
     public function update(User $user, Cliente $cliente): bool
     {
+        // Los Promotores Cobradores NO pueden editar clientes
+        if ($user->hasRole('Promotor Cobrador')) {
+            return false;
+        }
+
         return $user->can('update_cliente::proposicion');
     }
 
@@ -63,6 +74,11 @@ class ClientePolicy
      */
     public function delete(User $user, Cliente $cliente): bool
     {
+        // Los Promotores Cobradores NO pueden eliminar clientes
+        if ($user->hasRole('Promotor Cobrador')) {
+            return false;
+        }
+
         return $user->can('delete_cliente::proposicion');
     }
 

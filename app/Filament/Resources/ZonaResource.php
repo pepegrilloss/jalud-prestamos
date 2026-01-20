@@ -7,6 +7,7 @@ use App\Filament\Resources\ZonaResource\Pages;
 use App\Filament\Resources\ZonaResource\RelationManagers;
 use App\Models\Zona;
 use App\Models\Ciudad;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -73,7 +74,7 @@ class ZonaResource extends Resource
                     ->visible(fn() => auth()->user()->can('view_zona')),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn() => auth()->user()->can('update_zona')),
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('update_zona')),
 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -83,7 +84,7 @@ class ZonaResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn() => auth()->user()->can('delete_zona'))
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('delete_zona'))
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                         'FechaModificacion' => now()
@@ -93,6 +94,21 @@ class ZonaResource extends Resource
             ->bulkActions([])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array

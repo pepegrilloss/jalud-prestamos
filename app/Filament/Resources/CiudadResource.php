@@ -6,6 +6,7 @@ use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\CiudadResource\Pages;
 use App\Filament\Resources\CiudadResource\RelationManagers;
 use App\Models\Ciudad;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -103,7 +104,7 @@ class CiudadResource extends Resource
                     ->visible(fn () => auth()->user()->can('view_ciudad')),
                 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn () => auth()->user()->can('update_ciudad')),
+                    ->visible(fn () => AperturaCierreDia::estaAbierto() && auth()->user()->can('update_ciudad')),
                 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -113,7 +114,7 @@ class CiudadResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn () => auth()->user()->can('delete_ciudad'))
+                    ->visible(fn () => AperturaCierreDia::estaAbierto() && auth()->user()->can('delete_ciudad'))
                     ->action(fn ($record) => $record->update([
                         'Activo' => false,
                         'FechaModificacion' => now()
@@ -122,6 +123,21 @@ class CiudadResource extends Resource
             ])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array

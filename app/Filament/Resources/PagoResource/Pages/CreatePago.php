@@ -13,6 +13,12 @@ class CreatePago extends CreateRecord
 {
     protected static string $resource = PagoResource::class;
 
+    // Deshabilitar la notificación por defecto de Filament
+    protected function getCreatedNotification(): ?\Filament\Notifications\Notification
+    {
+        return null;
+    }
+
     // Ocultar las acciones del header
     protected function getHeaderActions(): array
     {
@@ -119,13 +125,13 @@ class CreatePago extends CreateRecord
             }
         }
 
-        // 3. Obtener el PromotorCobradorID del cliente del crédito
-        if (isset($data['CreditoID'])) {
-            $credito = \App\Models\Credito::find($data['CreditoID']);
-            if ($credito && $credito->proposicion) {
-                $cliente = $credito->proposicion->cliente;
-                if ($cliente && $cliente->PromotorCobradorID) {
-                    $data['PromotorCobradorID'] = $cliente->PromotorCobradorID;
+        // 3. Asignar PromotorCobradorID desde el Cliente de la proposición del crédito
+        if (!isset($data['PromotorCobradorID']) || empty($data['PromotorCobradorID'])) {
+            $creditoID = $data['CreditoID'] ?? null;
+            if ($creditoID) {
+                $credito = \App\Models\Credito::with('proposicion.cliente')->find($creditoID);
+                if ($credito && $credito->proposicion && $credito->proposicion->cliente) {
+                    $data['PromotorCobradorID'] = $credito->proposicion->cliente->PromotorCobradorID;
                 }
             }
         }
@@ -166,7 +172,7 @@ class CreatePago extends CreateRecord
             }
 
             // Obtener solo la cuota seleccionada
-            $cuota = Cuota::find($pagoOriginal->CuotaID);
+            $cuota = \App\Models\Cuota::find($pagoOriginal->CuotaID);
 
             if (!$cuota) {
                 \Log::error('CreatePago::afterCreate - Cuota not found', ['CuotaID' => $pagoOriginal->CuotaID]);
@@ -190,9 +196,9 @@ class CreatePago extends CreateRecord
             // Determinar el nuevo estado
             $nuevoEstado = $cuota->Estado;
             if ($nuevoSaldoPendiente <= 0) {
-                $nuevoEstado = Cuota::ESTADO_PAGADA;
-            } elseif (now()->isAfter($cuota->FechaVencimiento) && $nuevoEstado !== Cuota::ESTADO_PAGADA) {
-                $nuevoEstado = Cuota::ESTADO_MORA;
+                $nuevoEstado = \App\Models\Cuota::ESTADO_PAGADA;
+            } elseif (now()->isAfter($cuota->FechaVencimiento) && $nuevoEstado !== \App\Models\Cuota::ESTADO_PAGADA) {
+                $nuevoEstado = \App\Models\Cuota::ESTADO_MORA;
             }
 
             // Actualizar cuota

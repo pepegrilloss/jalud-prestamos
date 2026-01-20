@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\NivelAprobacionResource\Pages;
 use App\Models\NivelAprobacion;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -145,7 +146,8 @@ class NivelAprobacionResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
 
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn() => AperturaCierreDia::estaAbierto()),
 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -155,7 +157,7 @@ class NivelAprobacionResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn() => auth()->user()->can('delete_nivel::aprobacion'))
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('delete_nivel::aprobacion'))
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                         'FechaModificacion' => now()
@@ -166,6 +168,21 @@ class NivelAprobacionResource extends Resource
             ->recordUrl(null)
             ->defaultSort('Orden')
             ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array

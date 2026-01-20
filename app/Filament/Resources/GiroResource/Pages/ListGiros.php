@@ -3,12 +3,22 @@
 namespace App\Filament\Resources\GiroResource\Pages;
 
 use App\Filament\Resources\GiroResource;
+use App\Models\AperturaCierreDia;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 class ListGiros extends ListRecords
 {
     protected static string $resource = GiroResource::class;
+
+    public function getTitle(): string
+    {
+        $title = 'Giros';
+        if (!AperturaCierreDia::estaAbierto()) {
+            $title .= ' ⚠️ (Día Cerrado)';
+        }
+        return $title;
+    }
 
     protected function getHeaderActions(): array
     {

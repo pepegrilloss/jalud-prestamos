@@ -109,6 +109,7 @@ class TipoCreditoResource extends Resource
 
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
+                    ->visible(fn() => AperturaCierreDia::estaAbierto())
                     ->successNotificationTitle('Tipo de Crédito eliminado correctamente'),
             ])
             ->bulkActions([])
