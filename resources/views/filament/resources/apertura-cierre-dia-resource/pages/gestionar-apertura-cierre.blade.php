@@ -44,18 +44,5 @@
                 @endif
             </div>
         </div>
-
-        <!-- Info -->
-        <div class="rounded-lg bg-blue-50 p-6 dark:bg-blue-900/20">
-            <div class="text-sm text-gray-700 dark:text-gray-200 space-y-2">
-                <p><strong>ℹ️ Información:</strong></p>
-                <ul class="list-disc list-inside space-y-1">
-                    <li>Usa los botones arriba para aperturar o cerrar el día</li>
-                    <li>Solo puedes aperturar el día una vez</li>
-                    <li>Para cerrar, primero debe estar abierto</li>
-                    <li>Cuando el día está cerrado, nadie puede crear/editar registros</li>
-                </ul>
-            </div>
-        </div>
     </div>
 </x-filament-panels::page>
