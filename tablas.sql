@@ -811,3 +811,15 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+
+ALTER TABLE credito ADD COLUMN FechaInicio DATE NULL COMMENT 'Fecha de inicio del crédito' AFTER FechaGeneracion;
+ALTER TABLE credito ADD COLUMN FechaVencimiento DATE NULL COMMENT 'Fecha de vencimiento del crédito (vencimiento de última cuota)' AFTER FechaInicio;
+
+-- Crear índices para optimizar búsquedas
+ALTER TABLE credito ADD INDEX IDX_FechaInicio (FechaInicio);
+ALTER TABLE credito ADD INDEX IDX_FechaVencimiento (FechaVencimiento);
+ALTER TABLE cuota DROP COLUMN MontoPagado;
+ALTER TABLE cuota DROP COLUMN SaldoPendiente;
+ALTER TABLE cuota DROP COLUMN MontoCapital;
+ALTER TABLE cuota DROP COLUMN MontoInteres

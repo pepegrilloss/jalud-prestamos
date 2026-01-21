@@ -83,7 +83,6 @@ class CrearProposicionCreditoResource extends Resource
                                     $cliente = Cliente::find($state);
                                     if ($cliente) {
                                         $set('CodigoCliente', $cliente->DNI);
-                                        $set('ZonaID', $cliente->negocio?->ZonaID ?? null);
                                     }
                                 }
                             }),
@@ -342,7 +341,12 @@ class CrearProposicionCreditoResource extends Resource
         $creditoCorriendo = $cliente->obtenerCreditoCorriendo();
 
         if ($creditoCorriendo && $creditoCorriendo->credito) {
-            $totalPagado = $creditoCorriendo->credito->cuotas()->sum('MontoPagado');
+            // Calcular total pagado desde la tabla pago (no desde cuota)
+            $totalPagado = \App\Models\Pago::where('Activo', 1)
+                ->whereHas('cuota', function ($query) use ($creditoCorriendo) {
+                    $query->where('CreditoID', $creditoCorriendo->credito->CreditoID);
+                })
+                ->sum('MontoPagado');
             $montoCuotasTotal = $creditoCorriendo->credito->cuotas()->sum('MontoCuota');
             $saldoTotal = number_format(max(0, $montoCuotasTotal - $totalPagado), 2);
 
@@ -438,16 +442,23 @@ class CrearProposicionCreditoResource extends Resource
 
         $montoMaximoRecomendado = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
 
-        // Obtener todas las proposiciones ACTIVAS del cliente (excluyendo rechazadas y refinanciadas)
-        $montoUtilizado = (float) ProposicionCredito::where('ClienteID', $clienteID)
-            ->where('Activo', true)
-            ->whereNotIn('Estado', ['RECHAZADO']) // Excluir rechazadas
-            ->where(function ($subquery) {
-                // Excluir proposiciones que fueron refinanciadas
-                $subquery->where('FueRefinanciada', false)
-                    ->orWhereNull('FueRefinanciada');
-            })
-            ->sum('MontoTotal');
+        // Obtener el SALDO PENDIENTE REAL de todos los créditos activos del cliente
+        // No usar MontoTotal de proposiciones, sino el saldo actual que debe pagar
+        $montoUtilizado = 0;
+        $creditosActivos = Credito::whereHas('proposicion', function ($query) use ($clienteID) {
+            $query->where('ClienteID', $clienteID)
+                ->where('FueRefinanciada', 0)
+                ->where('Activo', true);
+        })->where('Activo', 1)->get();
+
+        foreach ($creditosActivos as $credito) {
+            $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
+            $totalPagado = \App\Models\Pago::where('Activo', 1)
+                ->whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
+                ->sum('MontoPagado');
+            $saldoPendiente = max(0, $montoCuotasTotal - $totalPagado);
+            $montoUtilizado += $saldoPendiente;
+        }
 
         $montoDisponible = max(0, $montoMaximoRecomendado - $montoUtilizado);
 

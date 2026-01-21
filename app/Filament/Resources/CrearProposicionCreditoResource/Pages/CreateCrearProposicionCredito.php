@@ -104,6 +104,11 @@ class CreateCrearProposicionCredito extends CreateRecord
             $data['MontoTotalPagar'] = (float)$data['MontoTotal'] + (float)$data['MontoInteres'];
         }
 
+        // Asegurar que SaldoPendiente = MontoTotalPagar al crear (sin pagos)
+        if (empty($data['SaldoPendiente']) && !empty($data['MontoTotalPagar'])) {
+            $data['SaldoPendiente'] = $data['MontoTotalPagar'];
+        }
+
         return $data;
     }
 

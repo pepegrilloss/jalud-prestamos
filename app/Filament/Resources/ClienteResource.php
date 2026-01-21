@@ -285,7 +285,6 @@ class ClienteResource extends Resource
                         Forms\Components\Grid::make(1)
                             ->schema([
                                 Forms\Components\Select::make('PromotorCobradorID')
-                                    ->required()
                                     ->label('Promotor/Cobrador')
                                     ->options(
                                         PromotorCobrador::where('Activo', 1)
@@ -314,7 +313,6 @@ class ClienteResource extends Resource
                                     ->afterStateUpdated(fn(Set $set) => $set('negocio.ZonaID', null)),
 
                                 Forms\Components\Select::make('negocio.ZonaID')
-                                    ->required()
                                     ->label('Zona')
                                     ->options(
                                         fn(Get $get) =>

@@ -44,7 +44,20 @@ class PagoResource extends Resource
 
                         Forms\Components\Placeholder::make('promotor_info')
                             ->label('Promotor Cobrador')
-                            ->content(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->promotorCobrador?->Usuario ?? '-')
+                            ->content(function($record) {
+                                // Obtener la Zona desde Pago -> Cuota -> Credito -> Proposicion -> Zona
+                                $zona = $record?->cuota?->credito?->proposicion?->zona;
+                                if (!$zona) {
+                                    return '-';
+                                }
+                                
+                                // Obtener el Promotor Cobrador asignado a esa Zona
+                                $promotor = \App\Models\PromotorCobrador::where('ZonaID', $zona->ZonaID)
+                                    ->where('Activo', 1)
+                                    ->first();
+                                
+                                return $promotor?->Descripcion ?? '-';
+                            })
                             ->visible(fn() => request()->routeIs('*.view')),
 
                         Forms\Components\Select::make('ClienteID')
@@ -84,14 +97,22 @@ class PagoResource extends Resource
                                 $set('CuotaID', null);
 
                                 if ($state) {
+                                    $promotorCobrador = auth()->user()?->promotorCobrador;
+                                    $zonaID = $promotorCobrador?->ZonaID;
+
                                     $cliente = \App\Models\Cliente::with([
-                                        'proposiciones' => function ($q) {
+                                        'proposiciones' => function ($q) use ($zonaID) {
                                             $q->whereHas('credito', function ($sq) {
                                                 $sq->where('Activo', 1);
                                             })
                                                 // Excluir proposiciones refinanciadas
                                                 ->where('FueRefinanciada', 0)
                                                 ->with('tipoCredito');
+                                            
+                                            // Filtrar por zona del promotor
+                                            if ($zonaID) {
+                                                $q->where('ZonaID', $zonaID);
+                                            }
                                         }
                                     ])->find($state);
 
@@ -107,11 +128,10 @@ class PagoResource extends Resource
                                                 $tipo = $proposicion->tipoCredito?->Descripcion ?? 'N/A';
                                                 $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito}");
 
-                                                // Auto-seleccionar la primera cuota pendiente
+                                                // Auto-seleccionar la primera cuota pendiente (sin restricción de estado)
                                                 $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
                                                     ->where('Activo', 1)
                                                     ->where('NumeroCuota', '>', 0)
-                                                    ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
                                                     ->orderBy('NumeroCuota')
                                                     ->first();
 
@@ -132,10 +152,18 @@ class PagoResource extends Resource
                                     return [];
                                 }
 
+                                $promotorCobrador = auth()->user()?->promotorCobrador;
+                                $zonaID = $promotorCobrador?->ZonaID;
+
                                 $cliente = \App\Models\Cliente::find($clienteID);
-                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
+                                
+                                // Contar créditos activos en la zona del promotor
+                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
                                     $q->where('ClienteID', $cliente->ClienteID)
                                         ->where('FueRefinanciada', 0);
+                                    if ($zonaID) {
+                                        $q->where('ZonaID', $zonaID);
+                                    }
                                 })->where('Activo', 1)->count();
 
                                 // Solo mostrar este select si hay 2+ créditos
@@ -144,9 +172,12 @@ class PagoResource extends Resource
                                 }
 
                                 return \App\Models\Credito::with('proposicion.tipoCredito')
-                                    ->whereHas('proposicion', function ($q) use ($clienteID) {
+                                    ->whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
                                         $q->where('ClienteID', $clienteID)
                                             ->where('FueRefinanciada', 0);
+                                        if ($zonaID) {
+                                            $q->where('ZonaID', $zonaID);
+                                        }
                                     })
                                     ->where('Activo', 1)
                                     ->get()
@@ -154,7 +185,27 @@ class PagoResource extends Resource
                                         $credito->CreditoID => ($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A') . "  {$credito->proposicion->CodigoCredito}"
                                     ]);
                             })
-                            ->searchable()
+                            ->required(function (Forms\Get $get) {
+                                // Solo requerido si el select es visible (cuando hay 2+ créditos)
+                                $clienteID = $get('ClienteID');
+                                if (!$clienteID) {
+                                    return false;
+                                }
+
+                                $promotorCobrador = auth()->user()?->promotorCobrador;
+                                $zonaID = $promotorCobrador?->ZonaID;
+
+                                $cliente = \App\Models\Cliente::find($clienteID);
+                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
+                                    $q->where('ClienteID', $cliente->ClienteID)
+                                        ->where('FueRefinanciada', 0);
+                                    if ($zonaID) {
+                                        $q->where('ZonaID', $zonaID);
+                                    }
+                                })->where('Activo', 1)->count();
+
+                                return $creditosActivos >= 2;
+                            })
                             ->searchable()
                             ->native(false)
                             ->visible(function (Forms\Get $get) {
@@ -163,10 +214,16 @@ class PagoResource extends Resource
                                     return false;
                                 }
 
+                                $promotorCobrador = auth()->user()?->promotorCobrador;
+                                $zonaID = $promotorCobrador?->ZonaID;
+
                                 $cliente = \App\Models\Cliente::find($clienteID);
-                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
+                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
                                     $q->where('ClienteID', $cliente->ClienteID)
                                         ->where('FueRefinanciada', 0);
+                                    if ($zonaID) {
+                                        $q->where('ZonaID', $zonaID);
+                                    }
                                 })->where('Activo', 1)->count();
 
                                 return $creditosActivos >= 2;
@@ -193,10 +250,16 @@ class PagoResource extends Resource
                                 if (!$clienteID)
                                     return true;
 
+                                $promotorCobrador = auth()->user()?->promotorCobrador;
+                                $zonaID = $promotorCobrador?->ZonaID;
+
                                 $cliente = \App\Models\Cliente::find($clienteID);
-                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente) {
+                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
                                     $q->where('ClienteID', $cliente->ClienteID)
                                         ->where('FueRefinanciada', 0);
+                                    if ($zonaID) {
+                                        $q->where('ZonaID', $zonaID);
+                                    }
                                 })->where('Activo', 1)->count();
 
                                 // Solo visible si tiene 1 crédito. Si tiene 2+, se usa el Select anterior y este se oculta por redundancia.
@@ -219,13 +282,12 @@ class PagoResource extends Resource
                                 return \App\Models\Cuota::where('CreditoID', $creditoID)
                                     ->where('Activo', 1)
                                     ->where('NumeroCuota', '>', 0)
-                                    ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
                                     ->orderBy('NumeroCuota')
                                     ->get()
                                     ->mapWithKeys(fn($cuota) => [
                                         $cuota->CuotaID => "Cuota #{$cuota->NumeroCuota} - " .
                                             (\Carbon\Carbon::parse($cuota->FechaVencimiento)->format('d/m/Y')) .
-                                            " - S/ {$cuota->MontoCuota}"
+                                            " - S/ {$cuota->MontoCuota} (Pagado: S/ {$cuota->MontoPagado})"
                                     ]);
                             })
                             ->required()
@@ -235,18 +297,25 @@ class PagoResource extends Resource
                             ->dehydrated()
                             ->disabled(fn(Forms\Get $get) => !$get('CreditoID'))
                             ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                                // Si es la primera vez que se abre el formulario, auto-seleccionar la primera cuota pendiente
+                                // Auto-seleccionar la siguiente cuota en secuencia
                                 $creditoID = $get('CreditoID');
                                 if ($creditoID && !$get('CuotaID')) {
-                                    $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
+                                    // Obtener el máximo NumeroCuota que ya tiene pagos
+                                    $ultimoCuotaConPago = \App\Models\Pago::where('pago.CreditoID', $creditoID)
+                                        ->where('pago.Activo', 1)
+                                        ->join('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
+                                        ->max('cuota.NumeroCuota');
+
+                                    // La siguiente cuota es la que viene después
+                                    $siguienteCuotaNumber = ($ultimoCuotaConPago ?? 0) + 1;
+
+                                    $siguienteCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
+                                        ->where('NumeroCuota', $siguienteCuotaNumber)
                                         ->where('Activo', 1)
-                                        ->where('NumeroCuota', '>', 0)
-                                        ->where('Estado', '!=', \App\Models\Cuota::ESTADO_PAGADA)
-                                        ->orderBy('NumeroCuota')
                                         ->first();
 
-                                    if ($primeraCuota) {
-                                        $set('CuotaID', $primeraCuota->CuotaID);
+                                    if ($siguienteCuota) {
+                                        $set('CuotaID', $siguienteCuota->CuotaID);
                                     }
                                 }
                             }),
@@ -258,6 +327,7 @@ class PagoResource extends Resource
                             ->label('Monto Pagado')
                             ->numeric()
                             ->required()
+                            ->minValue(0.01)
                             ->placeholder('Ingrese el monto del pago'),
 
                         Forms\Components\DatePicker::make('FechaPago')

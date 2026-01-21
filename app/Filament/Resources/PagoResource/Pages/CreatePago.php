@@ -93,34 +93,67 @@ class CreatePago extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // 1. Asegurar primero el CreditoID (por si Filament lo quitó al estar oculto)
+        // Obtener la zona del promotor actual
+        $promotorCobrador = auth()->user()?->promotorCobrador;
+        $zonaID = $promotorCobrador?->ZonaID;
+
+        // Validar que el cliente esté presente
+        if (empty($data['ClienteID'])) {
+            throw new \Exception('El cliente es obligatorio.');
+        }
+
+        // 1. Asegurar primero el CreditoID (por si Filament lo quitó al estar oculto o no fue seteado)
         if (!isset($data['CreditoID']) || empty($data['CreditoID'])) {
             $clienteID = $data['ClienteID'] ?? null;
             if ($clienteID) {
-                $creditoUnico = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID) {
+                $creditoQuery = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
                     $q->where('ClienteID', $clienteID)
                         ->where('FueRefinanciada', 0);
-                })->where('Activo', 1)->first();
+                    if ($zonaID) {
+                        $q->where('ZonaID', $zonaID);
+                    }
+                })->where('Activo', 1);
+
+                $creditoUnico = $creditoQuery->first();
 
                 if ($creditoUnico) {
                     $data['CreditoID'] = $creditoUnico->CreditoID;
+                } else {
+                    throw new \Exception('No se encontró un crédito activo para este cliente en su zona.');
                 }
+            } else {
+                throw new \Exception('El cliente es obligatorio.');
             }
         }
 
-        // 2. Ahora que tenemos seguro el CreditoID, asegurar la CuotaID
+        // Validar que el monto sea obligatorio y positivo
+        if (empty($data['MontoPagado'])) {
+            throw new \Exception('El monto pagado es obligatorio.');
+        }
+        if ($data['MontoPagado'] <= 0) {
+            throw new \Exception('El monto pagado debe ser mayor a 0.');
+        }
+
+        // 2. Ahora que tenemos seguro el CreditoID, asegurar la CuotaID con la siguiente en secuencia
         if (!isset($data['CuotaID']) || empty($data['CuotaID'])) {
             $creditoID = $data['CreditoID'] ?? null;
             if ($creditoID) {
-                $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
+                // Obtener el máximo NumeroCuota que ya tiene pagos
+                $ultimoCuotaConPago = \App\Models\Pago::where('pago.CreditoID', $creditoID)
+                    ->where('pago.Activo', 1)
+                    ->join('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
+                    ->max('cuota.NumeroCuota');
+
+                // La siguiente cuota es la que viene después
+                $siguienteCuotaNumber = ($ultimoCuotaConPago ?? 0) + 1;
+
+                $siguienteCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
+                    ->where('NumeroCuota', $siguienteCuotaNumber)
                     ->where('Activo', 1)
-                    ->where('NumeroCuota', '>', 0)
-                    ->where('SaldoPendiente', '>', 0)
-                    ->orderBy('NumeroCuota')
                     ->first();
 
-                if ($primeraCuota) {
-                    $data['CuotaID'] = $primeraCuota->CuotaID;
+                if ($siguienteCuota) {
+                    $data['CuotaID'] = $siguienteCuota->CuotaID;
                 }
             }
         }
@@ -179,53 +212,51 @@ class CreatePago extends CreateRecord
                 return;
             }
 
-            // Aplicar el pago SOLO a la cuota seleccionada, sin prorrateo
-            $saldoActual = $cuota->SaldoPendiente ?? $cuota->MontoCuota;
-            $montoPagadoEnCuota = $pagoOriginal->MontoPagado;
-
             \Log::info('CreatePago::afterCreate - Procesando cuota', [
                 'CuotaID' => $cuota->CuotaID,
                 'NumeroCuota' => $cuota->NumeroCuota,
-                'SaldoActual' => $saldoActual,
-                'MontoPagado' => $montoPagadoEnCuota
+                'MontoCuota' => $cuota->MontoCuota,
+                'MontoPagado' => $pagoOriginal->MontoPagado
             ]);
 
-            $nuevoSaldoPendiente = $saldoActual - $montoPagadoEnCuota;
-            $nuevoMontoPagado = ($cuota->MontoPagado ?? 0) + $montoPagadoEnCuota;
+            // Calcular el total pagado para esta cuota sumando desde la tabla pago
+            $totalPagadoEnCuota = \App\Models\Pago::where('CuotaID', $cuota->CuotaID)
+                ->where('Activo', 1)
+                ->sum('MontoPagado');
 
-            // Determinar el nuevo estado
+            // Determinar el nuevo estado basándose en si está completamente pagada
             $nuevoEstado = $cuota->Estado;
-            if ($nuevoSaldoPendiente <= 0) {
+            if ($totalPagadoEnCuota >= $cuota->MontoCuota) {
+                // Cuota completamente pagada
                 $nuevoEstado = \App\Models\Cuota::ESTADO_PAGADA;
-            } elseif (now()->isAfter($cuota->FechaVencimiento) && $nuevoEstado !== \App\Models\Cuota::ESTADO_PAGADA) {
+            } elseif (now()->isAfter($cuota->FechaVencimiento) && $totalPagadoEnCuota < $cuota->MontoCuota) {
+                // Cuota vencida y con saldo pendiente
                 $nuevoEstado = \App\Models\Cuota::ESTADO_MORA;
             }
 
-            // Actualizar cuota
+            // Actualizar solo el estado de la cuota
             $cuota->update([
-                'MontoPagado' => $nuevoMontoPagado,
-                'SaldoPendiente' => max(0, $nuevoSaldoPendiente),
                 'Estado' => $nuevoEstado,
-                'FechaPago' => $fechaPago,
             ]);
 
             \Log::info('CreatePago::afterCreate - Cuota actualizada', [
                 'CuotaID' => $cuota->CuotaID,
                 'NuevoEstado' => $nuevoEstado,
-                'NuevoSaldoPendiente' => max(0, $nuevoSaldoPendiente),
-                'NuevoMontoPagado' => $nuevoMontoPagado
+                'TotalPagado' => $totalPagadoEnCuota
             ]);
 
-            // Actualizar la proposición con el saldo pendiente total
+            // Actualizar la proposición con el saldo pendiente total (calculado desde pagos)
             $proposicion = $credito->proposicion;
             if ($proposicion) {
                 $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
-                $totalPagado = $credito->cuotas()->sum('MontoPagado');
+                $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
+                    ->where('Activo', 1)
+                    ->sum('MontoPagado');
                 $proposicion->update([
                     'SaldoPendiente' => $montoCuotasTotal - $totalPagado,
                 ]);
                 \Log::info('CreatePago::afterCreate - Proposicion updated', [
-                    'ProposicionID' => $proposicion->ProposicionID,
+                    'ProposicionID' => $proposicion->ProposicionCreditoID,
                     'TotalPagado' => $totalPagado,
                     'SaldoPendiente' => $proposicion->SaldoPendiente
                 ]);

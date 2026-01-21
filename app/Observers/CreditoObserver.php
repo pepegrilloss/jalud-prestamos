@@ -21,11 +21,17 @@ class CreditoObserver
             return;
         }
 
+        // Verificar si las cuotas ya existen (evitar duplicados)
+        $cuotasExistentes = Cuota::where('CreditoID', $credito->CreditoID)->count();
+        if ($cuotasExistentes > 0) {
+            return;
+        }
+
         // Obtener días feriados de Perú
         $feriadosData = [];
         try {
             $fechaInicio = Carbon::parse($credito->FechaGeneracion);
-            $fechaFin = $fechaInicio->copy()->addDays($proposicion->NumeroCuotas);
+            $fechaFin = $fechaInicio->copy()->addDays($proposicion->NumeroCuotas * 2);
             $annoInicio = $fechaInicio->year;
             $annoFin = $fechaFin->year;
             
@@ -63,10 +69,6 @@ class CreditoObserver
                     'NumeroCuota' => 0, // No cuenta como cuota
                     'FechaVencimiento' => $fechaActual->format('Y-m-d'),
                     'MontoCuota' => 0.00,
-                    'MontoCapital' => 0.00,
-                    'MontoInteres' => 0.00,
-                    'MontoPagado' => 0.00,
-                    'SaldoPendiente' => 0.00,
                     'Estado' => $estado,
                     'DiasAtraso' => 0,
                     'MontoMora' => 0.00,
@@ -84,11 +86,7 @@ class CreditoObserver
                     'NumeroCuota' => $numeroCuota,
                     'FechaVencimiento' => $fechaActual->format('Y-m-d'),
                     'MontoCuota' => $proposicion->MontoCuota,
-                    'MontoCapital' => $proposicion->MontoTotal / $proposicion->NumeroCuotas,
-                    'MontoInteres' => $proposicion->MontoInteres / $proposicion->NumeroCuotas,
-                    'MontoPagado' => 0.00,
-                    'SaldoPendiente' => $proposicion->MontoCuota,
-                    'Estado' => Cuota::ESTADO_PENDIENTE,
+                    'Estado' => Cuota::ESTADO_NORMAL,
                     'DiasAtraso' => 0,
                     'MontoMora' => 0.00,
                     'FechaPago' => null,

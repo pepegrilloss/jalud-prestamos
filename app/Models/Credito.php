@@ -19,6 +19,8 @@ class Credito extends Model
 
     protected $casts = [
         'FechaGeneracion' => 'datetime',
+        'FechaInicio' => 'date',
+        'FechaVencimiento' => 'date',
         'Activo' => 'boolean',
     ];
 

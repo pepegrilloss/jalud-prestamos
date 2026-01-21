@@ -318,13 +318,17 @@ class ProposicionCredito extends Model
             return 0;
         }
 
-        // Calcular: Sum(MontoCuota) - Sum(MontoPagado)
+        // Calcular: Sum(MontoCuota) - Sum(MontoPagado desde tabla pago)
         // MontoCuota incluye Capital + Interés
         $montoCuotasTotal = (float)$credito->cuotas()
             ->where('Activo', true)
             ->sum('MontoCuota');
-        $totalPagado = $credito->cuotas()
-            ->where('Activo', true)
+        
+        // Calcular total pagado desde la tabla pago (no desde cuota)
+        $totalPagado = \App\Models\Pago::where('Activo', 1)
+            ->whereHas('cuota', function ($query) use ($credito) {
+                $query->where('CreditoID', $credito->CreditoID);
+            })
             ->sum('MontoPagado');
 
         return max(0, $montoCuotasTotal - $totalPagado);

@@ -95,7 +95,13 @@ class AprobacionProposicionResource extends Resource
                     ->label('MMR')
                     ->state(fn ($record) => $record->cliente?->analisisEconomico?->MontoMaxRecomendado ?? 0)
                     ->money('PEN')
-                    ->sortable()
+                    ->sortable(
+                        query: fn(\Illuminate\Database\Eloquent\Builder $query, string $direction) => $query
+                            ->leftJoin('cliente', 'proposicioncredito.ClienteID', '=', 'cliente.ClienteID')
+                            ->leftJoin('analisiseconomico', 'cliente.ClienteID', '=', 'analisiseconomico.ClienteID')
+                            ->orderBy('analisiseconomico.MontoMaxRecomendado', $direction)
+                            ->select('proposicioncredito.*')
+                    )
                     ->alignment('right'),
 
                 Tables\Columns\TextColumn::make('TasaInteres')
@@ -140,7 +146,7 @@ class AprobacionProposicionResource extends Resource
             ])
             ->modifyQueryUsing(function ($query) {
                 // Solo mostrar proposiciones PENDIENTES (que necesitan aprobación)
-                return $query->where('Estado', 'PENDIENTE');
+                return $query->where('proposicioncredito.Estado', 'PENDIENTE');
             })
             ->actions([
                 Tables\Actions\Action::make('aprobar')

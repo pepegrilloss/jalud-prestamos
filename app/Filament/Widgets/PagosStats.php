@@ -14,14 +14,15 @@ class PagosStats extends BaseWidget
     protected function getStats(): array
     {
         $user = Auth::user();
-        $promotorID = $user->PromotorCobradorID ?? null;
+        $promotorCobrador = $user->promotorCobrador;
+        $zonaID = $promotorCobrador?->ZonaID ?? null;
 
         // Base query for Pagos
         $query = Pago::query();
 
-        if ($promotorID) {
-            $query->whereHas('cuota.credito.proposicion.cliente', function ($q) use ($promotorID) {
-                $q->where('PromotorCobradorID', $promotorID);
+        if ($zonaID) {
+            $query->whereHas('cuota.credito.proposicion', function ($q) use ($zonaID) {
+                $q->where('ZonaID', $zonaID);
             });
         }
 

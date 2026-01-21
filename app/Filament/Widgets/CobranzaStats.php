@@ -15,65 +15,66 @@ class CobranzaStats extends BaseWidget
     protected function getStats(): array
     {
         $user = Auth::user();
-        $promotorID = $user->PromotorCobradorID ?? null;
+        $promotorCobrador = $user->promotorCobrador;
+        $zonaID = $promotorCobrador?->ZonaID ?? null;
 
         // 1. Cobrado Diario (Suma de montos)
         $pagosQuery = Pago::where('Activo', true)
             ->whereDate('FechaPago', now());
 
-        if ($promotorID) {
-            $pagosQuery->where('PromotorCobradorID', $promotorID);
+        if ($zonaID) {
+            $pagosQuery->whereHas('cuota.credito.proposicion', function ($q) use ($zonaID) {
+                $q->where('ZonaID', $zonaID);
+            });
         }
 
         $cobradoDiario = $pagosQuery->sum('MontoPagado');
         $pagosCount = $pagosQuery->count();
 
-        // 2. Créditos que vencen hoy (última cuota de cada crédito con vencimiento hoy, sin domingo ni feriado)
-        // Obtener todos los créditos activos no refinanciados
-        $creditosConUltimaCuota = Cuota::where('Activo', true)
-            ->where('Estado', '!=', 'PAGADA')
-            ->where('Estado', '!=', 'DOMINGO')
-            ->where('Estado', '!=', 'FERIADO')
-            ->whereHas('credito.proposicion', function ($q) {
-                $q->where('FueRefinanciada', 0);
-            });
-
-        if ($promotorID) {
-            $creditosConUltimaCuota->whereHas('credito.proposicion.cliente', function ($q) use ($promotorID) {
-                $q->where('PromotorCobradorID', $promotorID);
-            });
-        }
-
-        // Agrupar por CreditoID y obtener la cuota con mayor FechaVencimiento
-        $cuotasUltimas = $creditosConUltimaCuota->selectRaw('CreditoID, MAX(FechaVencimiento) as FechaVencimiento')
-            ->groupBy('CreditoID')
-            ->get();
-
-        // Contar cuántas de esas cuotas tienen FechaVencimiento = hoy
-        $vencenHoy = 0;
-        foreach ($cuotasUltimas as $cuota) {
-            if ($cuota->FechaVencimiento && \Carbon\Carbon::parse($cuota->FechaVencimiento)->isToday()) {
-                $vencenHoy++;
-            }
-        }
-
-        return [
+        $stats = [
             Stat::make('Cobrado Diario', 'S/ ' . number_format($cobradoDiario, 2))
                 ->value('S/ ' . number_format($cobradoDiario, 2))
                 ->description('Monto total recaudado hoy')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success')
                 ->chart([7, 2, 10, 3, 15, 4, 17]),
+        ];
 
-            Stat::make('Créditos Vencen Hoy', $vencenHoy)
+        // Mostrar "Créditos Vencen Hoy" y "Pagos Cerrados Hoy" solo si NO es Promotor Cobrador
+        if (!$zonaID) {
+            // 2. Créditos que vencen hoy (última cuota de cada crédito con vencimiento hoy, sin domingo ni feriado)
+            $creditosConUltimaCuota = Cuota::where('Activo', true)
+                ->where('Estado', '!=', 'PAGADA')
+                ->where('Estado', '!=', 'DOMINGO')
+                ->where('Estado', '!=', 'FERIADO')
+                ->whereHas('credito.proposicion', function ($q) {
+                    $q->where('FueRefinanciada', 0);
+                });
+
+            // Agrupar por CreditoID y obtener la cuota con mayor FechaVencimiento
+            $cuotasUltimas = $creditosConUltimaCuota->selectRaw('CreditoID, MAX(FechaVencimiento) as FechaVencimiento')
+                ->groupBy('CreditoID')
+                ->get();
+
+            // Contar cuántas de esas cuotas tienen FechaVencimiento = hoy
+            $vencenHoy = 0;
+            foreach ($cuotasUltimas as $cuota) {
+                if ($cuota->FechaVencimiento && \Carbon\Carbon::parse($cuota->FechaVencimiento)->isToday()) {
+                    $vencenHoy++;
+                }
+            }
+
+            $stats[] = Stat::make('Créditos Vencen Hoy', $vencenHoy)
                 ->description('Cuotas con vencimiento hoy')
                 ->descriptionIcon('heroicon-m-calendar-days')
-                ->color('warning'),
+                ->color('warning');
 
-            Stat::make('Pagos Cerrados Hoy', $pagosCount)
+            $stats[] = Stat::make('Pagos Cerrados Hoy', $pagosCount)
                 ->description('Transacciones registradas hoy')
                 ->descriptionIcon('heroicon-m-check-badge')
-                ->color('primary'),
-        ];
+                ->color('primary');
+        }
+
+        return $stats;
     }
 }

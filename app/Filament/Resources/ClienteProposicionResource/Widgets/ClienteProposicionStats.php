@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ClienteProposicionResource\Widgets;
 use App\Models\Cliente;
 use App\Models\Credito;
 use App\Models\ProposicionCredito;
+use App\Models\Pago;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
@@ -14,44 +15,33 @@ class ClienteProposicionStats extends BaseWidget
     protected function getStats(): array
     {
         $user = Auth::user();
-        $promotorID = $user->PromotorCobradorID ?? null;
+        $promotorCobrador = $user->promotorCobrador;
+        $zonaID = $promotorCobrador?->ZonaID ?? null;
 
-        // 1. MIS CLIENTES ACTIVOS
+        // 1. MIS CLIENTES ACTIVOS (clientes con créditos activos en mi zona)
         $clientesQuery = Cliente::where('Activo', true);
-        if ($promotorID) {
-            $clientesQuery->where('PromotorCobradorID', $promotorID);
+        if ($zonaID) {
+            // Filtrar clientes que tengan proposiciones activas en la zona del promotor
+            $clientesQuery->whereHas('proposiciones', function ($q) use ($zonaID) {
+                $q->where('ZonaID', $zonaID)
+                  ->whereHas('credito', function ($q2) {
+                      $q2->where('Activo', true);
+                  });
+            });
         }
-        $clientesActivos = $clientesQuery->count();
+        $clientesActivos = $clientesQuery->distinct('ClienteID')->count('ClienteID');
 
-        // 2. MIS PRESTAMOS ACTIVOS
-        // Se asume que un préstamo activo es un Crédito con Activo = true
-        // Excluir créditos que fueron refinanciados (FueRefinanciada = 1)
+        // 2. MIS PRESTAMOS ACTIVOS (créditos activos en mi zona)
         $creditosQuery = Credito::where('Activo', true)
-            ->whereHas('proposicion', function ($q) {
+            ->whereHas('proposicion', function ($q) use ($zonaID) {
                 $q->where('FueRefinanciada', 0);
+                if ($zonaID) {
+                    $q->where('ZonaID', $zonaID);
+                }
             });
-        if ($promotorID) {
-            $creditosQuery->whereHas('proposicion.cliente', function ($q) use ($promotorID) {
-                $q->where('PromotorCobradorID', $promotorID);
-            });
-        }
         $prestamosActivos = $creditosQuery->count();
 
-        // 3. MI TOTAL PRESTADO
-        // Suma del MontoTotal de las proposiciones asociadas a créditos activos
-        // Excluir créditos que fueron refinanciados (FueRefinanciada = 1)
-        $totalPrestadoQuery = ProposicionCredito::where('FueRefinanciada', 0)
-            ->whereHas('credito', function ($q) {
-                $q->where('Activo', true);
-            });
-        if ($promotorID) {
-            $totalPrestadoQuery->whereHas('cliente', function ($q) use ($promotorID) {
-                $q->where('PromotorCobradorID', $promotorID);
-            });
-        }
-        $totalPrestado = $totalPrestadoQuery->sum('MontoTotal');
-
-        return [
+        $stats = [
             Stat::make('Mis Clientes Activos', $clientesActivos)
                 ->description('Total de clientes activos asignados')
                 ->descriptionIcon('heroicon-m-users')
@@ -61,11 +51,41 @@ class ClienteProposicionStats extends BaseWidget
                 ->description('Créditos actualmente en curso')
                 ->descriptionIcon('heroicon-m-document-text')
                 ->color('warning'),
+        ];
 
-            Stat::make('Mi Total Prestado', 'S/ ' . number_format($totalPrestado, 2))
+        // 3. COBRADO DIARIO (solo para Promotor Cobrador)
+        if ($zonaID) {
+            $pagosQuery = Pago::where('Activo', true)
+                ->whereDate('FechaPago', now());
+
+            if ($zonaID) {
+                $pagosQuery->whereHas('cuota.credito.proposicion', function ($q) use ($zonaID) {
+                    $q->where('ZonaID', $zonaID);
+                });
+            }
+
+            $cobradoDiario = $pagosQuery->sum('MontoPagado');
+
+            $stats[] = Stat::make('Cobrado Diario', 'S/ ' . number_format($cobradoDiario, 2))
+                ->value('S/ ' . number_format($cobradoDiario, 2))
+                ->description('Monto total recaudado hoy')
+                ->descriptionIcon('heroicon-m-banknotes')
+                ->color('success')
+                ->chart([7, 2, 10, 3, 15, 4, 17]);
+        } else {
+            // Mostrar "Mi Total Prestado" solo si NO es Promotor Cobrador
+            $totalPrestadoQuery = ProposicionCredito::where('FueRefinanciada', 0)
+                ->whereHas('credito', function ($q) {
+                    $q->where('Activo', true);
+                });
+            $totalPrestado = $totalPrestadoQuery->sum('MontoTotal');
+
+            $stats[] = Stat::make('Mi Total Prestado', 'S/ ' . number_format($totalPrestado, 2))
                 ->description('Monto global desembolsado activo')
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color('success'),
-        ];
+                ->color('success');
+        }
+
+        return $stats;
     }
 }

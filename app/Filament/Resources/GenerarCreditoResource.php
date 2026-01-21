@@ -313,7 +313,8 @@ class GenerarCreditoResource extends Resource
                             ])
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
-                        Credito::create([
+                        // Crear el crédito
+                        $credito = Credito::create([
                             'ProposicionCreditoID' => $record->ProposicionCreditoID,
                             'TipoPagoID' => $data['TipoPagoID'],
                             'ComentarioGeneracion' => $data['ComentarioGeneracion'],
@@ -321,7 +322,64 @@ class GenerarCreditoResource extends Resource
                             'UserGeneracionID' => auth()->id(),
                             'Activo' => true,
                         ]);
-                        Notification::make()->title('Crédito Generado')->success()->send();
+
+                        // Calcular fechas usando la misma lógica de cuotas
+                        // (omitiendo domingos y feriados)
+                        $feriadosData = [];
+                        try {
+                            $fechaInicio = \Carbon\Carbon::parse($credito->FechaGeneracion);
+                            $fechaFin = $fechaInicio->copy()->addDays($record->NumeroCuotas * 2); // Buffer de seguridad
+                            $annoInicio = $fechaInicio->year;
+                            $annoFin = $fechaFin->year;
+                            
+                            for ($anno = $annoInicio; $anno <= $annoFin; $anno++) {
+                                try {
+                                    $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
+                                    $feriados = json_decode($response, true);
+                                    foreach ($feriados as $feriado) {
+                                        $feriadosData[$feriado['date']] = $feriado['localName'];
+                                    }
+                                } catch (\Exception $e) {
+                                    // Continuar sin feriados si falla la API
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Continuar sin feriados
+                        }
+
+                        // Calcular FechaInicio (primera cuota real, omitiendo domingos y feriados)
+                        $fechaActual = \Carbon\Carbon::parse($credito->FechaGeneracion)->addDay();
+                        $cuotasContadas = 0;
+                        $fechaInicio = null;
+                        $fechaVencimiento = null;
+
+                        while ($cuotasContadas < $record->NumeroCuotas) {
+                            $esDomingo = $fechaActual->dayOfWeek == 0;
+                            $esFeriado = isset($feriadosData[$fechaActual->format('Y-m-d')]);
+
+                            // Si NO es domingo ni feriado, es una cuota real
+                            if (!$esDomingo && !$esFeriado) {
+                                if ($fechaInicio === null) {
+                                    $fechaInicio = $fechaActual->clone();
+                                }
+                                $fechaVencimiento = $fechaActual->clone();
+                                $cuotasContadas++;
+                            }
+
+                            $fechaActual->addDay();
+                        }
+
+                        // Actualizar crédito con las fechas calculadas
+                        if ($fechaInicio && $fechaVencimiento) {
+                            $credito->update([
+                                'FechaInicio' => $fechaInicio->format('Y-m-d'),
+                                'FechaVencimiento' => $fechaVencimiento->format('Y-m-d'),
+                            ]);
+                        }
+
+                        // Las cuotas se crean automáticamente en el Observer
+
+                        \Filament\Notifications\Notification::make()->title('Crédito Generado')->success()->send();
                     }),
             ]);
     }

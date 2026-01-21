@@ -14,6 +14,9 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
+        \Illuminate\Auth\Events\Failed::class => [
+            \App\Listeners\LogFailedLoginAttempt::class,
+        ],
     ];
 
     public function boot()

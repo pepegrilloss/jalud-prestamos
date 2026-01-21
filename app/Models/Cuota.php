@@ -15,10 +15,6 @@ class Cuota extends Model
         'NumeroCuota',
         'FechaVencimiento',
         'MontoCuota',
-        'MontoCapital',
-        'MontoInteres',
-        'MontoPagado',
-        'SaldoPendiente',
         'Estado',
         'DiasAtraso',
         'MontoMora',
@@ -58,6 +54,7 @@ class Cuota extends Model
     const ESTADO_PENDIENTE = 'PENDIENTE';
     const ESTADO_PAGADA = 'PAGADA';
     const ESTADO_MORA = 'MORA';
+    const ESTADO_NORMAL = 'NORMAL';
     const ESTADO_DOMINGO = 'DOMINGO';
     const ESTADO_FERIADO = 'FERIADO';
 
@@ -72,5 +69,18 @@ class Cuota extends Model
             return now()->diffInDays($this->FechaVencimiento);
         }
         return 0;
+    }
+
+    // Propiedades calculadas dinámicamente desde la tabla pago
+    public function getMontoPagadoAttribute()
+    {
+        return $this->pagos()
+            ->where('Activo', 1)
+            ->sum('MontoPagado') ?? 0;
+    }
+
+    public function getSaldoPendienteAttribute()
+    {
+        return max(0, $this->MontoCuota - $this->MontoPagado);
     }
 }

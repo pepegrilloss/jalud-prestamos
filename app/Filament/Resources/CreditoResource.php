@@ -126,25 +126,14 @@ class CreditoResource extends Resource
                     ->money('PEN')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('MontoConInteres')
+                Tables\Columns\TextColumn::make('proposicion.MontoTotalPagar')
                     ->label('Monto + Interés')
-                    ->getStateUsing(function ($record) {
-                        $montoTotal = $record->proposicion->MontoTotal ?? 0;
-                        $interes = $record->proposicion->MontoInteres ?? 0;
-                        return $montoTotal + $interes;
-                    })
-                    ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))
+                    ->money('PEN')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('SaldoPendiente')
+                Tables\Columns\TextColumn::make('proposicion.SaldoPendiente')
                     ->label('Saldo Pendiente')
-                    ->getStateUsing(function ($record) {
-                        $totalPagado = $record->cuotas()->sum('MontoPagado');
-                        $montoCuotasTotal = $record->cuotas()->sum('MontoCuota');
-                        $saldo = $montoCuotasTotal - $totalPagado;
-                        return max(0, $saldo);
-                    })
-                    ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))
+                    ->money('PEN')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('FechaGeneracion')

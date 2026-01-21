@@ -49,37 +49,32 @@ class EditPago extends EditRecord
             return;
         }
 
-        // Recalcular estado de la cuota basado en MontoPagado
-        $saldoPendiente = $cuota->MontoCuota - $cuota->MontoPagado;
-        
-        if ($cuota->MontoPagado >= $cuota->MontoCuota) {
-            $cuota->update([
-                'Estado' => Cuota::ESTADO_PAGADA,
-                'FechaPago' => $pago->FechaPago,
-                'SaldoPendiente' => 0.00,
-            ]);
-        } else {
-            $estado = Cuota::ESTADO_PENDIENTE;
-            $diasAtraso = 0;
-            
-            if (now()->isAfter($cuota->FechaVencimiento)) {
-                $estado = Cuota::ESTADO_MORA;
-                $diasAtraso = now()->diffInDays($cuota->FechaVencimiento);
-            }
-            
-            $cuota->update([
-                'SaldoPendiente' => $saldoPendiente,
-                'Estado' => $estado,
-                'DiasAtraso' => $diasAtraso,
-            ]);
+        // Calcular el total pagado para esta cuota sumando desde la tabla pago
+        $totalPagadoEnCuota = \App\Models\Pago::where('CuotaID', $cuota->CuotaID)
+            ->where('Activo', 1)
+            ->sum('MontoPagado');
+
+        // Determinar el nuevo estado basándose en si está completamente pagada
+        $nuevoEstado = $cuota->Estado;
+        if ($totalPagadoEnCuota >= $cuota->MontoCuota) {
+            $nuevoEstado = Cuota::ESTADO_PAGADA;
+        } elseif (now()->isAfter($cuota->FechaVencimiento) && $totalPagadoEnCuota < $cuota->MontoCuota) {
+            $nuevoEstado = Cuota::ESTADO_MORA;
         }
 
-        // Actualizar ProposicionCredito
+        // Actualizar solo el estado de la cuota
+        $cuota->update([
+            'Estado' => $nuevoEstado,
+        ]);
+
+        // Actualizar ProposicionCredito con el saldo pendiente total (calculado desde pagos)
         $proposicion = $credito->proposicion;
         
         if ($proposicion) {
             $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
-            $totalPagado = $credito->cuotas()->sum('MontoPagado');
+            $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
+                ->where('Activo', 1)
+                ->sum('MontoPagado');
             $proposicion->update([
                 'SaldoPendiente' => $montoCuotasTotal - $totalPagado,
             ]);
