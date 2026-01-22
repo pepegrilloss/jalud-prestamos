@@ -44,18 +44,18 @@ class PagoResource extends Resource
 
                         Forms\Components\Placeholder::make('promotor_info')
                             ->label('Promotor Cobrador')
-                            ->content(function($record) {
+                            ->content(function ($record) {
                                 // Obtener la Zona desde Pago -> Cuota -> Credito -> Proposicion -> Zona
                                 $zona = $record?->cuota?->credito?->proposicion?->zona;
                                 if (!$zona) {
                                     return '-';
                                 }
-                                
+
                                 // Obtener el Promotor Cobrador asignado a esa Zona
                                 $promotor = \App\Models\PromotorCobrador::where('ZonaID', $zona->ZonaID)
                                     ->where('Activo', 1)
                                     ->first();
-                                
+
                                 return $promotor?->Descripcion ?? '-';
                             })
                             ->visible(fn() => request()->routeIs('*.view')),
@@ -72,7 +72,7 @@ class PagoResource extends Resource
                                         ->whereHas('credito', function ($sq) {
                                             $sq->where('Activo', 1);
                                         });
-                                    
+
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);
                                     }
@@ -108,7 +108,7 @@ class PagoResource extends Resource
                                                 // Excluir proposiciones refinanciadas
                                                 ->where('FueRefinanciada', 0)
                                                 ->with('tipoCredito');
-                                            
+
                                             // Filtrar por zona del promotor
                                             if ($zonaID) {
                                                 $q->where('ZonaID', $zonaID);
@@ -126,7 +126,9 @@ class PagoResource extends Resource
                                                 $creditoID = $proposicion->credito->CreditoID;
                                                 $set('CreditoID', $creditoID);
                                                 $tipo = $proposicion->tipoCredito?->Descripcion ?? 'N/A';
-                                                $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito}");
+                                                $fechaInicio = \Carbon\Carbon::parse($proposicion->credito->FechaGeneracion)->format('d/m/Y');
+                                                $montoTotal = $proposicion->MontoTotalPagar;
+                                                $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito} - {$fechaInicio} - {$montoTotal}");
 
                                                 // Auto-seleccionar la primera cuota pendiente (sin restricción de estado)
                                                 $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
@@ -156,7 +158,7 @@ class PagoResource extends Resource
                                 $zonaID = $promotorCobrador?->ZonaID;
 
                                 $cliente = \App\Models\Cliente::find($clienteID);
-                                
+
                                 // Contar créditos activos en la zona del promotor
                                 $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
                                     $q->where('ClienteID', $cliente->ClienteID)
@@ -181,9 +183,14 @@ class PagoResource extends Resource
                                     })
                                     ->where('Activo', 1)
                                     ->get()
-                                    ->mapWithKeys(fn($credito) => [
-                                        $credito->CreditoID => ($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A') . "  {$credito->proposicion->CodigoCredito}"
-                                    ]);
+                                    ->mapWithKeys(function ($credito) {
+                                        $tipo = $credito->proposicion->tipoCredito?->Descripcion ?? 'N/A';
+                                        $fechaInicio = \Carbon\Carbon::parse($credito->FechaGeneracion)->format('d/m/Y');
+                                        $montoTotal = $credito->proposicion->MontoTotalPagar;
+                                        return [
+                                            $credito->CreditoID => "{$tipo} - {$credito->proposicion->CodigoCredito} - {$fechaInicio} - {$montoTotal}"
+                                        ];
+                                    });
                             })
                             ->required(function (Forms\Get $get) {
                                 // Solo requerido si el select es visible (cuando hay 2+ créditos)
@@ -398,8 +405,7 @@ class PagoResource extends Resource
                     ->label('Hora de Pago')
                     ->getStateUsing(function ($record) {
                         return $record->FechaCreacion ? \Carbon\Carbon::parse($record->FechaCreacion)->format('H:i:s') : 'N/A';
-                    })
-                    ->sortable(),
+                    }),
 
                 Tables\Columns\TextColumn::make('UsuarioRegistro')
                     ->label('Usuario Registro')
