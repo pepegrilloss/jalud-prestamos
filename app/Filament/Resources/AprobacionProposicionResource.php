@@ -97,10 +97,10 @@ class AprobacionProposicionResource extends Resource
                     ->money('PEN')
                     ->sortable(
                         query: fn(\Illuminate\Database\Eloquent\Builder $query, string $direction) => $query
-                            ->leftJoin('cliente', 'proposicioncredito.ClienteID', '=', 'cliente.ClienteID')
+                            ->leftJoin('cliente', 'Proposicioncredito.ClienteID', '=', 'cliente.ClienteID')
                             ->leftJoin('analisiseconomico', 'cliente.ClienteID', '=', 'analisiseconomico.ClienteID')
                             ->orderBy('analisiseconomico.MontoMaxRecomendado', $direction)
-                            ->select('proposicioncredito.*')
+                            ->select('Proposicioncredito.*')
                     )
                     ->alignment('right'),
 
