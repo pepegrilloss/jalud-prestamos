@@ -139,15 +139,9 @@ class CreditosRefinanciadosResource extends Resource
                     ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('SaldoPendiente')
+                Tables\Columns\TextColumn::make('proposicion.SaldoPendiente')
                     ->label('Saldo Pendiente')
-                    ->getStateUsing(function ($record) {
-                        $totalPagado = $record->cuotas()->sum('MontoPagado');
-                        $montoCuotasTotal = $record->cuotas()->sum('MontoCuota');
-                        $saldo = $montoCuotasTotal - $totalPagado;
-                        return max(0, $saldo);
-                    })
-                    ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))
+                    ->money('PEN')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('proposicion.FechaPropuesta')
