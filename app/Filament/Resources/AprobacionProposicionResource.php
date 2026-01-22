@@ -97,10 +97,10 @@ class AprobacionProposicionResource extends Resource
                     ->money('PEN')
                     ->sortable(
                         query: fn(\Illuminate\Database\Eloquent\Builder $query, string $direction) => $query
-                            ->leftJoin('cliente', 'Proposicioncredito.ClienteID', '=', 'cliente.ClienteID')
+                            ->leftJoin('cliente', 'ProposicionCredito.ClienteID', '=', 'cliente.ClienteID')
                             ->leftJoin('analisiseconomico', 'cliente.ClienteID', '=', 'analisiseconomico.ClienteID')
                             ->orderBy('analisiseconomico.MontoMaxRecomendado', $direction)
-                            ->select('Proposicioncredito.*')
+                            ->select('ProposicionCredito.*')
                     )
                     ->alignment('right'),
 
@@ -146,7 +146,7 @@ class AprobacionProposicionResource extends Resource
             ])
             ->modifyQueryUsing(function ($query) {
                 // Solo mostrar proposiciones PENDIENTES (que necesitan aprobación)
-                return $query->where('Proposicioncredito.Estado', 'PENDIENTE');
+                return $query->where('ProposicionCredito.Estado', 'PENDIENTE');
             })
             ->actions([
                 Tables\Actions\Action::make('aprobar')
