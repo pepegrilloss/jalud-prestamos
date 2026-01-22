@@ -146,7 +146,7 @@ class AprobacionProposicionResource extends Resource
             ])
             ->modifyQueryUsing(function ($query) {
                 // Solo mostrar proposiciones PENDIENTES (que necesitan aprobación)
-                return $query->where('proposicioncredito.Estado', 'PENDIENTE');
+                return $query->where('Proposicioncredito.Estado', 'PENDIENTE');
             })
             ->actions([
                 Tables\Actions\Action::make('aprobar')
