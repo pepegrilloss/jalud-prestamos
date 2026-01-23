@@ -298,7 +298,7 @@ class GenerarCreditoResource extends Resource
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
                     ->modalHeading('Confirmar Formalización')
-                    ->modalWidth('2xl')
+                    ->modalWidth('4xl')
                     ->form([
                         Forms\Components\ViewField::make('resumen_moderno')
                             ->columnSpanFull()
@@ -310,9 +310,14 @@ class GenerarCreditoResource extends Resource
                                     ->label('Frecuencia de Pago')
                                     ->options(TipoPago::where('Activo', true)->pluck('Nombre', 'TipoPagoID'))
                                     ->required()
-                                    ->native(false),
-                                Forms\Components\Textarea::make('ComentarioGeneracion')->label('Notas')->rows(2),
+                                    ->native(false)
+                                    ->columnSpanFull(),
+                                Forms\Components\Textarea::make('ComentarioGeneracion')
+                                    ->label('Notas')
+                                    ->rows(2)
+                                    ->columnSpanFull(),
                             ])
+                            ->columns(1)
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
                         // Crear el crédito

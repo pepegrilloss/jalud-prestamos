@@ -99,6 +99,7 @@ class AprobacionProposicionResource extends Resource
                         query: fn(\Illuminate\Database\Eloquent\Builder $query, string $direction) => $query
                             ->leftJoin('cliente', 'ProposicionCredito.ClienteID', '=', 'cliente.ClienteID')
                             ->leftJoin('analisiseconomico', 'cliente.ClienteID', '=', 'analisiseconomico.ClienteID')
+                            ->where('analisiseconomico.Activo', 1)
                             ->orderBy('analisiseconomico.MontoMaxRecomendado', $direction)
                             ->select('ProposicionCredito.*')
                     )

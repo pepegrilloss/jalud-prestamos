@@ -30,7 +30,7 @@
     </div>
 
     <!-- Detalles de Tasas y Plazos -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Tasa de Interés</p>
             <p class="text-lg font-bold text-gray-900">{{ $getRecord()->tasa->Nombre }}</p>
@@ -45,15 +45,15 @@
             <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Plazo</p>
             <p class="text-lg font-bold text-gray-900">{{ $getRecord()->Plazo }} días</p>
         </div>
-
-        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <p class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">N° Cuotas</p>
-            <p class="text-lg font-bold text-gray-900">{{ $getRecord()->NumeroCuotas }}</p>
-        </div>
     </div>
 
     <!-- Plan de Cuotas y Mora -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+            <p class="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-2">N° Cuotas</p>
+            <p class="text-lg font-bold text-indigo-900">{{ $getRecord()->NumeroCuotas }}</p>
+        </div>
+
         <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
             <p class="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-2">Monto por Cuota</p>
             <p class="text-lg font-bold text-indigo-900">S/. {{ number_format($getRecord()->MontoCuota, 2) }}</p>
