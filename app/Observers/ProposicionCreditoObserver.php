@@ -27,10 +27,8 @@ class ProposicionCreditoObserver
             // Crear las aprobaciones requeridas
             $proposicionCredito->crearAprobacionesRequeridas();
             
-            // Si es un refinanciamiento, desactivar y marcar la proposición anterior
-            if ($proposicionCredito->EsRefinanciamiento && $proposicionCredito->ProposicionCreditoAnteriorID) {
-                $proposicionCredito->desactivarProposicionRefinanciada();
-            }
+            // NOTA: El marcado como FueRefinanciada ahora se hace en GenerarCreditoResource
+            // cuando se genera el crédito, no cuando se crea la proposición
         }, attempts: 3);
     }
 

@@ -31,7 +31,7 @@ class LibretaPagosController extends Controller
 
         $proposicion = $credito->proposicion;
         $cliente = $proposicion->cliente;
-        $zona = $cliente->negocio->zona->Nombre ?? 'N/A';
+        $zona = $proposicion->zona->Nombre ?? 'N/A';
         $cuotas = $credito->cuotas()->orderBy('FechaVencimiento')->get();
 
         $pagosData = [];

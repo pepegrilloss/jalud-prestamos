@@ -129,14 +129,9 @@ class CreditosRefinanciadosResource extends Resource
                     ->money('PEN')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('MontoConInteres')
+                Tables\Columns\TextColumn::make('proposicion.MontoTotalPagar')
                     ->label('Monto + Interés')
-                    ->getStateUsing(function ($record) {
-                        $montoTotal = $record->proposicion->MontoTotal ?? 0;
-                        $interes = $record->proposicion->MontoInteres ?? 0;
-                        return $montoTotal + $interes;
-                    })
-                    ->formatStateUsing(fn($state) => 'S/ ' . number_format($state, 2, '.', ','))
+                    ->money('PEN')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('proposicion.SaldoPendiente')
@@ -181,6 +176,25 @@ class CreditosRefinanciadosResource extends Resource
             })
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\Action::make('descargar_libreta')
+                    ->label('Excel')
+                    ->tooltip('Descargar Libreta de Pagos (Excel)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn($record) => route('libreta-pagos.descargar', $record->CreditoID))
+                    ->openUrlInNewTab(),
+                Tables\Actions\Action::make('descargar_libreta_html')
+                    ->label('Imprimir')
+                    ->tooltip('Ver Libreta de Pagos para Imprimir')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->url(fn($record) => route('libreta-pagos.html', $record->CreditoID))
+                    ->openUrlInNewTab(),
+                Tables\Actions\Action::make('descargar_ticket')
+                    ->label('Descargar Ticket')
+                    ->icon('heroicon-o-ticket')
+                    ->color('danger')
+                    ->url(fn($record) => route('ticket.descargar', $record->CreditoID))
+                    ->openUrlInNewTab(),
             ])
             ->bulkActions([])
             ->defaultSort('proposicion.FechaPropuesta', 'desc')

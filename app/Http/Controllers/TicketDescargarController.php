@@ -13,7 +13,7 @@ class TicketDescargarController extends Controller
         $proposicion = $credito->proposicion;
         $cliente = $proposicion->cliente;
         $negocio = $cliente->negocio;
-        $zona = $cliente->negocio->zona->Nombre ?? 'N/A';
+        $zona = $proposicion->zona->Nombre ?? 'N/A';
 
         $fecha = $credito->FechaGeneracion->format('d/m/Y');
         $monto = number_format($proposicion->MontoTotalPagar, 2, '.', ',');

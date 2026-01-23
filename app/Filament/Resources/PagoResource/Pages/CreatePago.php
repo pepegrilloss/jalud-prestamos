@@ -158,15 +158,33 @@ class CreatePago extends CreateRecord
             }
         }
 
-        // 3. Asignar PromotorCobradorID desde el Cliente de la proposición del crédito
-        if (!isset($data['PromotorCobradorID']) || empty($data['PromotorCobradorID'])) {
+        // 3. Asignar PromotorCobradorID basado en la zona
+        // El promotor cobrador debe ser del mismo usuario autenticado si su zona coincide con la de la proposición
+        $promotorCobradorDelUsuario = auth()->user()?->promotorCobrador;
+        
+        if ($promotorCobradorDelUsuario) {
+            // Obtener la zona del promotor cobrador del usuario
+            $zonaDelPromotorCobradorDelUsuario = $promotorCobradorDelUsuario->ZonaID;
+            
+            // Obtener la proposición del crédito
             $creditoID = $data['CreditoID'] ?? null;
             if ($creditoID) {
-                $credito = \App\Models\Credito::with('proposicion.cliente')->find($creditoID);
-                if ($credito && $credito->proposicion && $credito->proposicion->cliente) {
-                    $data['PromotorCobradorID'] = $credito->proposicion->cliente->PromotorCobradorID;
+                $credito = \App\Models\Credito::with('proposicion')->find($creditoID);
+                if ($credito && $credito->proposicion) {
+                    $zonaDelCredito = $credito->proposicion->ZonaID;
+                    
+                    // Si las zonas coinciden, asignar el PromotorCobradorID del usuario
+                    if ($zonaDelPromotorCobradorDelUsuario === $zonaDelCredito) {
+                        $data['PromotorCobradorID'] = $promotorCobradorDelUsuario->PromotorCobradorID;
+                    } else {
+                        // Si no coinciden, dejar como NULL
+                        $data['PromotorCobradorID'] = null;
+                    }
                 }
             }
+        } else {
+            // Si el usuario no es promotor cobrador, dejar como NULL
+            $data['PromotorCobradorID'] = null;
         }
 
         // Obtener el usuario actual

@@ -25,7 +25,7 @@ class LibretaPagosExport
         $credito = $this->credito;
         $proposicion = $credito->proposicion;
         $cliente = $proposicion->cliente;
-        $zona = $cliente->negocio->zona->Nombre ?? 'N/A';
+        $zona = $proposicion->zona->Nombre ?? 'N/A';
 
         // Obtener las cuotas reales de la BD
         $cuotas = $credito->cuotas()

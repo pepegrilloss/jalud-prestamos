@@ -10,6 +10,7 @@ use App\Models\Tasa;
 use App\Models\Zona;
 use App\Models\Credito;
 use App\Models\TipoPago;
+use App\Models\Pago;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -21,6 +22,7 @@ use Filament\Tables\Table;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -379,9 +381,131 @@ class GenerarCreditoResource extends Resource
 
                         // Las cuotas se crean automáticamente en el Observer
 
+                        // PAGO AUTOMÁTICO SI ES REFINANCIAMIENTO
+                        if ($record->EsRefinanciamiento && $record->ProposicionCreditoAnteriorID) {
+                            self::crearPagoAutomaticoRefinanciamiento($record, $credito);
+                        }
+
                         \Filament\Notifications\Notification::make()->title('Crédito Generado')->success()->send();
                     }),
             ]);
+    }
+
+    protected static function crearPagoAutomaticoRefinanciamiento(ProposicionCredito $record, Credito $creditoNuevo): void
+    {
+        try {
+            $proposicionAnterior = ProposicionCredito::find($record->ProposicionCreditoAnteriorID);
+
+            if (!$proposicionAnterior) {
+                return;
+            }
+
+            // Obtener el crédito de la proposición anterior
+            $creditoAnterior = Credito::where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)
+                ->where('Activo', true)
+                ->first();
+
+            if (!$creditoAnterior) {
+                return;
+            }
+
+            // Obtener todas las cuotas del crédito anterior
+            $allCuotas = $creditoAnterior->cuotas()->where('Activo', true)->get();
+
+            // Filtrar cuotas pendientes
+            $cuotasPendientes = $allCuotas->whereIn('Estado', ['PENDIENTE', 'VENCIDA', 'MORA', 'NORMAL']);
+
+            if ($cuotasPendientes->isEmpty()) {
+                return;
+            }
+
+            // Calcular el saldo total pendiente desde la proposición anterior (ya calculado correctamente)
+            $saldoTotalPendiente = (float) $proposicionAnterior->SaldoPendiente;
+
+            $montoRefinanciamiento = (float) $record->MontoTotal;
+
+            // Obtener el promotor cobrador del cliente
+            $cliente = Cliente::find($record->ClienteID);
+            $promotorCobradorID = $cliente?->PromotorCobradorID;
+
+            // Fallback: Si el cliente no tiene promotor, intentar usar el del usuario actual
+            if (!$promotorCobradorID) {
+                $promotorCobradorID = Auth::user()?->PromotorCobradorID;
+            }
+
+            // PAGO 1: Crear pago por el saldo pendiente del crédito anterior
+            $pago1 = Pago::create([
+                'CreditoID' => $creditoAnterior->CreditoID,
+                'CuotaID' => $cuotasPendientes->first()->CuotaID,
+                'PromotorCobradorID' => $promotorCobradorID,
+                'MontoPagado' => $saldoTotalPendiente,
+                'FechaPago' => now(),
+                'EsMora' => false,
+                'EsPagoAMayor' => false,
+                'EsPagoForzado' => false,
+                'Comentario' => "Pago automático por refinanciamiento. Proposición #{$record->ProposicionCreditoID}. Saldo total: S/ " . number_format($saldoTotalPendiente, 2),
+                'UsuarioRegistro' => Auth::user()?->name ?? 'Sistema',
+                'Activo' => true,
+            ]);
+
+            // Si el monto refinanciado es mayor al saldo pendiente, crear PAGO 2 como pago a mayor
+            if ($montoRefinanciamiento > $saldoTotalPendiente) {
+                $montoAMayor = $montoRefinanciamiento - $saldoTotalPendiente;
+
+                Pago::create([
+                    'CreditoID' => $creditoAnterior->CreditoID,
+                    'CuotaID' => $cuotasPendientes->first()->CuotaID,
+                    'PromotorCobradorID' => $promotorCobradorID,
+                    'MontoPagado' => $montoAMayor,
+                    'FechaPago' => now(),
+                    'EsMora' => false,
+                    'EsPagoAMayor' => true,
+                    'EsPagoForzado' => false,
+                    'Comentario' => "Pago a mayor automático por refinanciamiento. Proposición #{$record->ProposicionCreditoID}. Monto adicional: S/ " . number_format($montoAMayor, 2),
+                    'UsuarioRegistro' => Auth::user()?->name ?? 'Sistema',
+                    'Activo' => true,
+                ]);
+            }
+
+            // Actualizar todas las cuotas pendientes como pagadas
+            foreach ($cuotasPendientes as $cuota) {
+                $cuota->update([
+                    'Estado' => 'PAGADO',
+                    'FechaPago' => now(),
+                ]);
+            }
+
+            // Marcar la proposición anterior como refinanciada
+            $proposicionAnterior->update([
+                'FueRefinanciada' => 1
+            ]);
+
+            $mensaje = "Pago automático de S/ " . number_format($saldoTotalPendiente, 2) . " para cerrar el crédito anterior.";
+            if ($montoRefinanciamiento > $saldoTotalPendiente) {
+                $montoAMayor = $montoRefinanciamiento - $saldoTotalPendiente;
+                $mensaje .= " + Pago a mayor de S/ " . number_format($montoAMayor, 2);
+            }
+
+            Notification::make()
+                ->success()
+                ->title('✓ Pago Automático')
+                ->body($mensaje)
+                ->persistent()
+                ->send();
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error generando pago automático refinanciamiento en GenerarCredito: ' . $e->getMessage(), [
+                'exception' => $e,
+                'proposicionID' => $record->ProposicionCreditoID
+            ]);
+
+            Notification::make()
+                ->warning()
+                ->title('⚠️ Aviso')
+                ->body("El crédito se generó correctamente, pero hubo un error al crear el pago automático: {$e->getMessage()}")
+                ->persistent()
+                ->send();
+        }
     }
 
     public static function getPages(): array
