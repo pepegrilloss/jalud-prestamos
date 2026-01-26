@@ -18,7 +18,13 @@ class PagosStats extends BaseWidget
         $zonaID = $promotorCobrador?->ZonaID ?? null;
 
         // Base query for Pagos
-        $query = Pago::query();
+        // Excluir pagos de proposiciones QUE SON refinanciamiento (solo contar pagos de créditos normales)
+        // IMPORTANTE: Excluir pagos automáticos (EsPagoAutomatico = 1)
+        $query = Pago::query()
+            ->where('EsPagoAutomatico', 0)
+            ->whereHas('cuota.credito.proposicion', function ($q) {
+                $q->where('EsRefinanciamiento', 0);
+            });
 
         if ($zonaID) {
             $query->whereHas('cuota.credito.proposicion', function ($q) use ($zonaID) {

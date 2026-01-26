@@ -49,10 +49,13 @@ class AprobacionProposicion extends Model
             return false;
         }
 
+        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+        $fechaAprobacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+
         $this->update([
             'Estado' => 'APROBADO',
             'UserAprobadorID' => $usuario->id,
-            'FechaAprobacion' => now(),
+            'FechaAprobacion' => $fechaAprobacion,
             'Comentario' => $comentario,
         ]);
 
@@ -65,10 +68,13 @@ class AprobacionProposicion extends Model
             return false;
         }
 
+        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+        $fechaAprobacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+
         $this->update([
             'Estado' => 'RECHAZADO',
             'UserAprobadorID' => $usuario->id,
-            'FechaAprobacion' => now(),
+            'FechaAprobacion' => $fechaAprobacion,
             'Comentario' => $comentario,
         ]);
 

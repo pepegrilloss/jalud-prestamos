@@ -63,6 +63,8 @@ class CreditoObserver
             // Si es domingo o feriado
             if ($esDomingo || $esFeriado) {
                 $estado = $esDomingo ? Cuota::ESTADO_DOMINGO : Cuota::ESTADO_FERIADO;
+                $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                $fechaCreacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
                 
                 Cuota::create([
                     'CreditoID' => $credito->CreditoID,
@@ -73,13 +75,15 @@ class CreditoObserver
                     'DiasAtraso' => 0,
                     'MontoMora' => 0.00,
                     'FechaPago' => null,
-                    'FechaCreacion' => now(),
+                    'FechaCreacion' => $fechaCreacion,
                     'FechaModificacion' => null,
                     'Activo' => 1
                 ]);
             } else {
                 // Es un día normal - es una cuota real
                 $numeroCuota++;
+                $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                $fechaCreacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
 
                 Cuota::create([
                     'CreditoID' => $credito->CreditoID,
@@ -90,7 +94,7 @@ class CreditoObserver
                     'DiasAtraso' => 0,
                     'MontoMora' => 0.00,
                     'FechaPago' => null,
-                    'FechaCreacion' => now(),
+                    'FechaCreacion' => $fechaCreacion,
                     'FechaModificacion' => null,
                     'Activo' => 1
                 ]);

@@ -76,6 +76,9 @@ class CreateCrearProposicionCredito extends CreateRecord
             $data['EsRefinanciamiento'] = true;
 
             // Ya vienen cargados: TasaID, TasaInteres, Plazo, NumeroCuotas, TasaMora
+        } else {
+            // Si NO es refinanciamiento, asegurarse de que se setee a false
+            $data['EsRefinanciamiento'] = false;
         }
 
         if ($encrypted = request()->query('cliente')) {
@@ -95,7 +98,13 @@ class CreateCrearProposicionCredito extends CreateRecord
         }
 
         $data['UserProponenteID'] = auth()->id();
-        $data['FechaPropuesta'] = now();
+        
+        // Inyectar fecha abierta si no está seteada
+        if (!isset($data['FechaPropuesta'])) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            $data['FechaPropuesta'] = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+        }
+        
         $data['Estado'] = 'PENDIENTE';
         $data['Activo'] = true;
 

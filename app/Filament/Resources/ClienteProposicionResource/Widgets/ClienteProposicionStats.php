@@ -74,14 +74,16 @@ class ClienteProposicionStats extends BaseWidget
                 ->chart([7, 2, 10, 3, 15, 4, 17]);
         } else {
             // Mostrar "Mi Total Prestado" solo si NO es Promotor Cobrador
-            $totalPrestadoQuery = ProposicionCredito::where('FueRefinanciada', 0)
-                ->whereHas('credito', function ($q) {
-                    $q->where('Activo', true);
-                });
+            // Contar TODOS los créditos (activos e inactivos/cancelados)
+            // Excluir proposiciones que SON refinanciamiento (EsRefinanciamiento = true)
+            
+            $totalPrestadoQuery = ProposicionCredito::whereHas('credito')
+                ->where('EsRefinanciamiento', 0);
+            
             $totalPrestado = $totalPrestadoQuery->sum('MontoTotal');
 
             $stats[] = Stat::make('Mi Total Prestado', 'S/ ' . number_format($totalPrestado, 2))
-                ->description('Monto global desembolsado activo')
+                ->description('Monto global desembolsado (activos y cancelados)')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success');
         }

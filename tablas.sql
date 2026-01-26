@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Servidor: localhost:3306
--- Tiempo de generación: 22-01-2026 a las 21:41:40
--- Versión del servidor: 5.7.23-23
--- Versión de PHP: 8.1.34
+-- Servidor: 127.0.0.1
+-- Tiempo de generación: 23-01-2026 a las 16:25:13
+-- Versión del servidor: 10.4.32-MariaDB
+-- Versión de PHP: 8.3.28
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -20,44 +20,28 @@ SET time_zone = "+00:00";
 --
 -- Base de datos: `jvcso1ub_jalud_prestamos`
 --
-CREATE DATABASE IF NOT EXISTS `jvcso1ub_jalud_prestamos` DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-USE `jvcso1ub_jalud_prestamos`;
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `AnalisisEconomico`
+-- Estructura de tabla para la tabla `analisiseconomico`
 --
 
-DROP TABLE IF EXISTS `AnalisisEconomico`;
-CREATE TABLE `AnalisisEconomico` (
+CREATE TABLE `analisiseconomico` (
   `AnalisisEconomicoID` int(11) NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `CapitalManifestado` decimal(12,2) DEFAULT '0.00',
-  `CapitalEstimado` decimal(12,2) DEFAULT '0.00',
-  `VentaManifestadaMin` decimal(12,2) DEFAULT '0.00',
-  `VentaManifestadaMax` decimal(12,2) DEFAULT '0.00',
-  `VentaEstimada` decimal(12,2) DEFAULT '0.00',
-  `MontoMaxRecomendado` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `FechaAnalisis` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `UsuarioAnalisis` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `CapitalManifestado` decimal(12,2) DEFAULT 0.00,
+  `CapitalEstimado` decimal(12,2) DEFAULT 0.00,
+  `VentaManifestadaMin` decimal(12,2) DEFAULT 0.00,
+  `VentaManifestadaMax` decimal(12,2) DEFAULT 0.00,
+  `VentaEstimada` decimal(12,2) DEFAULT 0.00,
+  `MontoMaxRecomendado` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `FechaAnalisis` datetime NOT NULL DEFAULT current_timestamp(),
+  `UsuarioAnalisis` varchar(100) DEFAULT NULL,
   `FechaModificacion` datetime DEFAULT NULL,
-  `UsuarioModificacion` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT '1'
+  `UsuarioModificacion` varchar(100) DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `AnalisisEconomico`
---
-
-INSERT INTO `AnalisisEconomico` (`AnalisisEconomicoID`, `ClienteID`, `CapitalManifestado`, `CapitalEstimado`, `VentaManifestadaMin`, `VentaManifestadaMax`, `VentaEstimada`, `MontoMaxRecomendado`, `FechaAnalisis`, `UsuarioAnalisis`, `FechaModificacion`, `UsuarioModificacion`, `Activo`) VALUES
-(1, 1, 12000.00, 10000.00, 200.00, 700.00, 400.00, 2500.00, '2026-01-22 10:10:41', 'Julio Marco Vilcherrez Criollo', NULL, NULL, 1),
-(2, 2, 5000.00, 4500.00, 250.00, 300.00, 250.00, 2000.00, '2026-01-22 10:15:56', 'Julio Marco Vilcherrez Criollo', NULL, NULL, 1),
-(3, 3, 5000.00, 4500.00, 250.00, 500.00, 400.00, 1500.00, '2026-01-22 10:20:16', 'Julio Marco Vilcherrez Criollo', NULL, NULL, 1),
-(4, 4, 10000.00, 8000.00, 500.00, 1000.00, 800.00, 5000.00, '2026-01-22 10:24:19', 'Julio Marco Vilcherrez Criollo', NULL, NULL, 1),
-(5, 5, 20000.00, 15000.00, 1500.00, 2500.00, 2000.00, 10000.00, '2026-01-22 10:27:44', 'Julio Marco Vilcherrez Criollo', NULL, NULL, 1),
-(6, 6, 10000.00, 15000.00, 1000.00, 1500.00, 1000.00, 8000.00, '2026-01-22 10:30:10', 'Julio Marco Vilcherrez Criollo', '2026-01-22 10:47:50', 'Julio Marco Vilcherrez Criollo', 0),
-(7, 6, 2500.00, 1500.00, 100.00, 200.00, 150.00, 300.00, '2026-01-22 10:47:50', 'Julio Marco Vilcherrez Criollo', NULL, NULL, 1);
 
 -- --------------------------------------------------------
 
@@ -65,164 +49,93 @@ INSERT INTO `AnalisisEconomico` (`AnalisisEconomicoID`, `ClienteID`, `CapitalMan
 -- Estructura de tabla para la tabla `apertura_cierre_dia`
 --
 
-DROP TABLE IF EXISTS `apertura_cierre_dia`;
 CREATE TABLE `apertura_cierre_dia` (
   `AperturaCierreDiaID` bigint(20) UNSIGNED NOT NULL,
   `Fecha` date NOT NULL,
   `FechaApertura` timestamp NULL DEFAULT NULL,
   `FechaCierre` timestamp NULL DEFAULT NULL,
-  `EstadoDia` enum('ABIERTO','CERRADO') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CERRADO',
+  `EstadoDia` enum('ABIERTO','CERRADO') NOT NULL DEFAULT 'CERRADO',
   `UsuarioAperturaID` bigint(20) UNSIGNED DEFAULT NULL,
   `UsuarioCierreID` bigint(20) UNSIGNED DEFAULT NULL,
-  `Observaciones` longtext COLLATE utf8mb4_unicode_ci,
+  `Observaciones` longtext DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `apertura_cierre_dia`
---
-
-INSERT INTO `apertura_cierre_dia` (`AperturaCierreDiaID`, `Fecha`, `FechaApertura`, `FechaCierre`, `EstadoDia`, `UsuarioAperturaID`, `UsuarioCierreID`, `Observaciones`, `created_at`, `updated_at`) VALUES
-(1, '2026-01-20', '2026-01-21 03:02:44', '2026-01-21 02:55:21', 'ABIERTO', 5, 5, NULL, '2026-01-20 21:21:24', '2026-01-21 03:02:44'),
-(2, '2026-01-21', '2026-01-21 21:52:51', NULL, 'ABIERTO', 1, NULL, NULL, '2026-01-21 21:52:51', '2026-01-21 21:52:51'),
-(3, '2026-01-22', '2026-01-22 14:41:42', NULL, 'ABIERTO', 5, NULL, NULL, '2026-01-22 14:41:42', '2026-01-22 14:41:42');
-
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `AprobacionProposicion`
+-- Estructura de tabla para la tabla `aprobacionproposicion`
 --
 
-DROP TABLE IF EXISTS `AprobacionProposicion`;
-CREATE TABLE `AprobacionProposicion` (
+CREATE TABLE `aprobacionproposicion` (
   `AprobacionProposicionID` int(11) NOT NULL,
   `ProposicionCreditoID` int(11) NOT NULL,
   `NivelAprobacionID` int(11) NOT NULL,
   `UserAprobadorID` bigint(20) DEFAULT NULL,
-  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE',
-  `Comentario` text COLLATE utf8mb4_unicode_ci,
+  `Estado` varchar(20) NOT NULL DEFAULT 'PENDIENTE',
+  `Comentario` text DEFAULT NULL,
   `FechaAprobacion` datetime DEFAULT NULL,
-  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `AprobacionProposicion`
---
-
-INSERT INTO `AprobacionProposicion` (`AprobacionProposicionID`, `ProposicionCreditoID`, `NivelAprobacionID`, `UserAprobadorID`, `Estado`, `Comentario`, `FechaAprobacion`, `FechaCreacion`) VALUES
-(42, 1, 1, NULL, 'PENDIENTE', NULL, NULL, '2026-01-22 10:39:04'),
-(43, 2, 1, NULL, 'PENDIENTE', NULL, NULL, '2026-01-22 10:41:16'),
-(44, 3, 1, NULL, 'PENDIENTE', NULL, NULL, '2026-01-22 10:43:52'),
-(45, 4, 1, NULL, 'PENDIENTE', NULL, NULL, '2026-01-22 10:45:14'),
-(46, 5, 1, NULL, 'PENDIENTE', NULL, NULL, '2026-01-22 10:46:14'),
-(47, 6, 1, NULL, 'PENDIENTE', NULL, NULL, '2026-01-22 10:49:11');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `cache`
---
-
-DROP TABLE IF EXISTS `cache`;
-CREATE TABLE `cache` (
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `value` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `expiration` int(11) NOT NULL
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `cache_locks`
+-- Estructura de tabla para la tabla `ciudad`
 --
 
-DROP TABLE IF EXISTS `cache_locks`;
-CREATE TABLE `cache_locks` (
-  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `owner` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `expiration` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `Ciudad`
---
-
-DROP TABLE IF EXISTS `Ciudad`;
-CREATE TABLE `Ciudad` (
+CREATE TABLE `ciudad` (
   `CiudadID` int(11) NOT NULL,
-  `Nombre` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT '1',
-  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Nombre` varchar(100) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
   `FechaModificacion` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Volcado de datos para la tabla `Ciudad`
---
-
-INSERT INTO `Ciudad` (`CiudadID`, `Nombre`, `Activo`, `FechaCreacion`, `FechaModificacion`) VALUES
-(1, 'CHICLAYO', 1, '2025-12-20 12:26:03', NULL);
-
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `Cliente`
+-- Estructura de tabla para la tabla `cliente`
 --
 
-DROP TABLE IF EXISTS `Cliente`;
-CREATE TABLE `Cliente` (
+CREATE TABLE `cliente` (
   `ClienteID` int(11) NOT NULL,
-  `DNI` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `NombresApellidos` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Sexo` char(1) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `DNI` varchar(20) NOT NULL,
+  `NombresApellidos` varchar(200) NOT NULL,
+  `Sexo` char(1) NOT NULL,
   `FechaNacimiento` date DEFAULT NULL,
-  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'NO OBSERVADO',
-  `ConyugeDNI` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `ConyugeNombresApellidos` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `Domicilio` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Estado` varchar(20) NOT NULL DEFAULT 'NO OBSERVADO',
+  `ConyugeDNI` varchar(20) DEFAULT NULL,
+  `ConyugeNombresApellidos` varchar(200) DEFAULT NULL,
+  `Domicilio` varchar(500) DEFAULT NULL,
   `TasaID` int(11) DEFAULT NULL,
   `GaranteID` int(11) DEFAULT NULL,
-  `Observaciones` text COLLATE utf8mb4_unicode_ci,
+  `Observaciones` text DEFAULT NULL,
   `PromotorCobradorID` int(11) DEFAULT NULL,
-  `FechaRegistro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `FechaRegistro` datetime NOT NULL DEFAULT current_timestamp(),
   `FechaModificacion` datetime DEFAULT NULL,
-  `UsuarioRegistro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `UsuarioModificacion` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT '1'
+  `UsuarioRegistro` varchar(100) DEFAULT NULL,
+  `UsuarioModificacion` varchar(100) DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `Cliente`
---
-
-INSERT INTO `Cliente` (`ClienteID`, `DNI`, `NombresApellidos`, `Sexo`, `FechaNacimiento`, `Estado`, `ConyugeDNI`, `ConyugeNombresApellidos`, `Domicilio`, `TasaID`, `GaranteID`, `Observaciones`, `PromotorCobradorID`, `FechaRegistro`, `FechaModificacion`, `UsuarioRegistro`, `UsuarioModificacion`, `Activo`) VALUES
-(1, '72032352', 'NATALIE NICOLE FALLAQUE BARTUREN', 'F', NULL, 'NO OBSERVADO', NULL, NULL, 'PPJJ SAN ANTONIO -CALLE SAN CARLOS 172', 1, NULL, NULL, NULL, '2026-01-22 10:10:41', NULL, 'Julio Marco Vilcherrez Criollo', NULL, 1),
-(2, '72157854', 'KIMBERLY INGA FERNANDEZ', 'F', NULL, 'NO OBSERVADO', NULL, NULL, 'PUEBLO JOVEN SAN JUAN MZ I LOTE 03', 1, NULL, NULL, NULL, '2026-01-22 10:15:56', NULL, 'Julio Marco Vilcherrez Criollo', NULL, 1),
-(3, '80434439', 'PEDRO WILBER BRAVO DELGADO', 'M', NULL, 'NO OBSERVADO', NULL, NULL, 'MZ A LT 27 SANTO DOMINGO', 1, NULL, NULL, NULL, '2026-01-22 10:20:16', NULL, 'Julio Marco Vilcherrez Criollo', NULL, 1),
-(4, '80612585', 'NILA NAVARRO NUÑEZ', 'F', NULL, 'NO OBSERVADO', NULL, NULL, 'PJ VILLA HERMOSA SECTOR IV MZ Q2 LOTE 19- CALLE LOS COCOS N 185', 1, NULL, NULL, NULL, '2026-01-22 10:24:19', NULL, 'Julio Marco Vilcherrez Criollo', NULL, 1),
-(5, '76258031', 'ELVIA ELIZABETH DIAZ HERRERA', 'F', NULL, 'NO OBSERVADO', NULL, NULL, 'CALLE ECUADOR 738 CPM BARSALLO J.L.O', 1, NULL, NULL, NULL, '2026-01-22 10:27:44', NULL, 'Julio Marco Vilcherrez Criollo', NULL, 1),
-(6, '76355145', 'NICOLE STEFANY HUAMAN VALENCIA', 'F', NULL, 'NO OBSERVADO', NULL, NULL, 'MZ K LT 25 CPM FANNY ABANTO - CHICLAYO', 1, NULL, NULL, NULL, '2026-01-22 10:30:10', NULL, 'Julio Marco Vilcherrez Criollo', NULL, 1);
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `Credito`
+-- Estructura de tabla para la tabla `credito`
 --
 
-DROP TABLE IF EXISTS `Credito`;
-CREATE TABLE `Credito` (
+CREATE TABLE `credito` (
   `CreditoID` int(11) NOT NULL,
   `ProposicionCreditoID` int(11) NOT NULL,
   `TipoPagoID` int(11) NOT NULL,
-  `ComentarioGeneracion` text COLLATE utf8mb4_unicode_ci,
-  `FechaGeneracion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ComentarioGeneracion` text DEFAULT NULL,
+  `FechaGeneracion` datetime NOT NULL DEFAULT current_timestamp(),
   `FechaInicio` date DEFAULT NULL COMMENT 'Fecha de inicio del crédito',
   `FechaVencimiento` date DEFAULT NULL COMMENT 'Fecha de vencimiento del crédito (vencimiento de última cuota)',
   `UserGeneracionID` bigint(20) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT '1'
+  `Activo` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -231,186 +144,728 @@ CREATE TABLE `Credito` (
 -- Estructura de tabla para la tabla `cuota`
 --
 
-DROP TABLE IF EXISTS `cuota`;
 CREATE TABLE `cuota` (
   `CuotaID` int(11) NOT NULL,
   `CreditoID` int(11) NOT NULL,
   `NumeroCuota` int(11) NOT NULL,
   `FechaVencimiento` date NOT NULL,
   `MontoCuota` decimal(12,2) NOT NULL,
-  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE',
-  `DiasAtraso` int(11) DEFAULT '0',
-  `MontoMora` decimal(12,2) DEFAULT '0.00',
+  `Estado` varchar(20) NOT NULL DEFAULT 'PENDIENTE',
+  `DiasAtraso` int(11) DEFAULT 0,
+  `MontoMora` decimal(12,2) DEFAULT 0.00,
   `FechaPago` datetime DEFAULT NULL,
-  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
   `FechaModificacion` datetime DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT '1'
+  `Activo` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `DocumentoCliente`
+-- Estructura de tabla para la tabla `documentocliente`
 --
 
-DROP TABLE IF EXISTS `DocumentoCliente`;
-CREATE TABLE `DocumentoCliente` (
+CREATE TABLE `documentocliente` (
   `DocumentoClienteID` int(11) NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `TipoDocumento` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `RutaArchivo` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `NombreOriginal` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `TipoDocumento` varchar(50) NOT NULL,
+  `RutaArchivo` varchar(500) NOT NULL,
+  `NombreOriginal` varchar(255) NOT NULL,
   `TamanioArchivo` bigint(20) DEFAULT NULL,
-  `Extension` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `Observaciones` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `UsuarioRegistro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `UsuarioModificacion` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Extension` varchar(10) DEFAULT NULL,
+  `Observaciones` varchar(500) DEFAULT NULL,
+  `UsuarioRegistro` varchar(100) DEFAULT NULL,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `UsuarioModificacion` varchar(100) DEFAULT NULL,
   `FechaModificacion` datetime DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT '1'
+  `Activo` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `EvaluacionCredito`
+-- Estructura de tabla para la tabla `evaluacioncredito`
 --
 
-DROP TABLE IF EXISTS `EvaluacionCredito`;
-CREATE TABLE `EvaluacionCredito` (
+CREATE TABLE `evaluacioncredito` (
   `EvaluacionCreditoID` int(11) NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `Comentario` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `FechaRegistro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `UsuarioRegistro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Volcado de datos para la tabla `EvaluacionCredito`
---
-
-INSERT INTO `EvaluacionCredito` (`EvaluacionCreditoID`, `ClienteID`, `Comentario`, `FechaRegistro`, `UsuarioRegistro`) VALUES
-(1, 1, 'CLIENTE HA TENIDO PROBLEMAS DE EXTORCION , HA SOLICITADO EL MONTO DE 1200, ', '2026-01-22 10:31:37', 'Julio Marco Vilcherrez Criollo'),
-(2, 2, 'CLIENTE TUVO PROBLEMAS FAMILIAREZ FALELCIMIENTO DE SU MAMA,HA PAGADO DE A POCOS,QUIERE RENOVAR Y EMPEZAR NUEVO CREDITO', '2026-01-22 10:32:19', 'Julio Marco Vilcherrez Criollo'),
-(3, 3, 'renovadora de calzado. aprobado el monto de 1000 por supervisor omar', '2026-01-22 10:33:32', 'Julio Marco Vilcherrez Criollo'),
-(4, 4, 'ultima oportunidad, debe mejorar sus pagos, autorizado supervisor omar el monto 1000', '2026-01-22 10:34:21', 'Julio Marco Vilcherrez Criollo'),
-(5, 5, 'CLIENTE FUERA DE RANGO,PAGO DIARIO,NEGOCIO ABASTECIDO ', '2026-01-22 10:35:21', 'Julio Marco Vilcherrez Criollo'),
-(6, 6, 'cliente buena forma de pagos, aprobado supervisor omar el monto de 1500', '2026-01-22 10:36:11', 'Julio Marco Vilcherrez Criollo');
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `failed_jobs`
---
-
-DROP TABLE IF EXISTS `failed_jobs`;
-CREATE TABLE `failed_jobs` (
-  `id` bigint(20) NOT NULL,
-  `uuid` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `connection` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `queue` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `exception` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `failed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `Comentario` text NOT NULL,
+  `FechaRegistro` datetime NOT NULL DEFAULT current_timestamp(),
+  `UsuarioRegistro` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `Giro`
+-- Estructura de tabla para la tabla `giro`
 --
 
-DROP TABLE IF EXISTS `Giro`;
-CREATE TABLE `Giro` (
+CREATE TABLE `giro` (
   `GiroID` int(11) NOT NULL,
-  `Codigo` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Descripcion` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT '1',
-  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Codigo` varchar(10) NOT NULL,
+  `Descripcion` varchar(200) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `negocio`
+--
+
+CREATE TABLE `negocio` (
+  `NegocioID` int(11) NOT NULL,
+  `ClienteID` int(11) NOT NULL,
+  `DireccionNegocio` varchar(500) NOT NULL,
+  `CiudadID` int(11) DEFAULT NULL,
+  `ZonaID` int(11) DEFAULT NULL,
+  `Antiguedad` decimal(5,2) DEFAULT NULL,
+  `GiroID` int(11) DEFAULT NULL,
+  `SubGiroID` int(11) DEFAULT NULL,
+  `Ubicacion` varchar(20) DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `nivelaprobacion`
+--
+
+CREATE TABLE `nivelaprobacion` (
+  `NivelAprobacionID` int(11) NOT NULL,
+  `Nombre` varchar(50) NOT NULL,
+  `MontoMinimo` decimal(12,2) NOT NULL,
+  `MontoMaximo` decimal(12,2) NOT NULL,
+  `Orden` int(11) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `pago`
+--
+
+CREATE TABLE `pago` (
+  `PagoID` int(11) NOT NULL,
+  `CreditoID` int(11) NOT NULL,
+  `CuotaID` int(11) DEFAULT NULL,
+  `PromotorCobradorID` int(11) DEFAULT NULL,
+  `MontoPagado` decimal(12,2) NOT NULL,
+  `FechaPago` datetime NOT NULL DEFAULT current_timestamp(),
+  `TipoPago` varchar(20) DEFAULT 'EFECTIVO',
+  `EsMora` tinyint(1) NOT NULL DEFAULT 0,
+  `EsPagoAMayor` tinyint(1) NOT NULL DEFAULT 0,
+  `EsPagoForzado` tinyint(1) NOT NULL DEFAULT 0,
+  `Comentario` varchar(500) DEFAULT NULL,
+  `UsuarioRegistro` varchar(100) DEFAULT NULL,
+  `FechaCreacion` datetime DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `promotorcobrador`
+--
+
+CREATE TABLE `promotorcobrador` (
+  `PromotorCobradorID` int(11) NOT NULL,
+  `Codigo` varchar(20) NOT NULL,
+  `Descripcion` varchar(200) NOT NULL,
+  `CiudadID` int(11) NOT NULL,
+  `ZonaID` int(11) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `proposicioncredito`
+--
+
+CREATE TABLE `proposicioncredito` (
+  `ProposicionCreditoID` int(11) NOT NULL,
+  `CodigoCredito` varchar(20) NOT NULL,
+  `ClienteID` int(11) NOT NULL,
+  `CodigoCliente` varchar(20) NOT NULL,
+  `TipoCreditoID` int(11) NOT NULL,
+  `MontoTotal` decimal(12,2) NOT NULL,
+  `TasaID` int(11) NOT NULL,
+  `TasaInteres` decimal(5,2) NOT NULL,
+  `Plazo` int(11) NOT NULL,
+  `NumeroCuotas` int(11) NOT NULL,
+  `MontoCuota` decimal(12,2) NOT NULL,
+  `MontoInteres` decimal(12,2) NOT NULL,
+  `TasaMora` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `ZonaID` int(11) DEFAULT NULL,
+  `Observaciones` text DEFAULT NULL,
+  `UserProponenteID` bigint(20) NOT NULL,
+  `FechaPropuesta` datetime NOT NULL DEFAULT current_timestamp(),
+  `Estado` varchar(20) NOT NULL DEFAULT 'PENDIENTE',
+  `NivelAprobacionRequerido` int(11) DEFAULT NULL,
+  `UserAprobadorID` bigint(20) DEFAULT NULL,
+  `FechaAprobacion` datetime DEFAULT NULL,
+  `ComentarioAprobacion` varchar(500) DEFAULT NULL,
+  `FechaDesembolso` datetime DEFAULT NULL,
+  `UserDesembolsoID` bigint(20) DEFAULT NULL,
+  `FechaModificacion` datetime DEFAULT NULL,
+  `UserModificacionID` bigint(20) DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `EsRefinanciamiento` tinyint(1) NOT NULL DEFAULT 0,
+  `FueRefinanciada` tinyint(1) NOT NULL DEFAULT 0,
+  `ProposicionCreditoAnteriorID` int(11) DEFAULT NULL,
+  `MontoTotalPagar` decimal(12,2) DEFAULT 0.00,
+  `SaldoPendiente` decimal(12,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `subgiro`
+--
+
+CREATE TABLE `subgiro` (
+  `SubGiroID` int(11) NOT NULL,
+  `GiroID` int(11) NOT NULL,
+  `Descripcion` varchar(200) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tasa`
+--
+
+CREATE TABLE `tasa` (
+  `TasaID` int(11) NOT NULL,
+  `Nombre` varchar(50) NOT NULL,
+  `Valor` decimal(5,2) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL,
+  `Dias` int(11) NOT NULL,
+  `Cuotas` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `telefononegocio`
+--
+
+CREATE TABLE `telefononegocio` (
+  `TelefonoNegocioID` int(11) NOT NULL,
+  `NegocioID` int(11) NOT NULL,
+  `Telefono` varchar(20) NOT NULL,
+  `TipoTelefono` varchar(20) DEFAULT 'PRINCIPAL',
+  `Observacion` varchar(200) DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tipocredito`
+--
+
+CREATE TABLE `tipocredito` (
+  `TipoCreditoID` int(11) NOT NULL,
+  `Codigo` varchar(10) NOT NULL,
+  `Descripcion` varchar(100) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tipopago`
+--
+
+CREATE TABLE `tipopago` (
+  `TipoPagoID` int(11) NOT NULL,
+  `Nombre` varchar(50) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `usernivelaprobacion`
+--
+
+CREATE TABLE `usernivelaprobacion` (
+  `UserNivelAprobacionID` int(11) NOT NULL,
+  `UserID` bigint(20) NOT NULL,
+  `NivelAprobacionID` int(11) NOT NULL,
+  `FechaAsignacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Activo` tinyint(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `zona`
+--
+
+CREATE TABLE `zona` (
+  `ZonaID` int(11) NOT NULL,
+  `CiudadID` int(11) NOT NULL,
+  `Nombre` varchar(100) NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
   `FechaModificacion` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Volcado de datos para la tabla `Giro`
+-- Índices para tablas volcadas
 --
 
-INSERT INTO `Giro` (`GiroID`, `Codigo`, `Descripcion`, `Activo`, `FechaCreacion`, `FechaModificacion`) VALUES
-(1, 'G001', 'Abarrotes y Especies', 1, '2025-12-20 12:27:09', NULL),
-(2, 'G002', 'Artículos de Vestir y Personal ', 1, '2025-12-20 12:28:24', NULL),
-(3, 'G003', 'Restaurantes  - Comida', 1, '2025-12-20 12:31:09', NULL),
-(4, 'G004', 'Venta De Carnes Y Pescado', 1, '2025-12-20 12:31:30', NULL),
-(5, 'G005', 'Ferretería', 1, '2025-12-20 12:31:54', NULL),
-(6, 'G006', 'Venta De Telas', 1, '2025-12-20 12:32:26', NULL),
-(7, 'G007', 'Zapatería', 1, '2025-12-20 12:32:45', NULL),
-(8, 'G008', 'Zapatería', 1, '2025-12-20 12:34:17', NULL),
-(9, 'G009', 'Librería', 1, '2025-12-20 12:34:41', NULL),
-(10, 'G010', 'Locería Y Regalos', 1, '2025-12-20 12:35:05', NULL),
-(11, 'G011', 'Piñatería', 1, '2025-12-20 12:35:28', NULL),
-(14, 'G012', 'Cebichería', 1, '2025-12-20 12:36:24', NULL),
-(15, 'G013', 'Venta De Jugos', 1, '2025-12-20 12:37:45', NULL),
-(16, 'G014', 'Confecciones Y Estampados', 1, '2025-12-20 12:38:03', NULL),
-(17, 'G015', 'Verduras', 1, '2025-12-20 12:38:35', NULL),
-(18, 'G016', 'Frutas', 1, '2025-12-20 12:38:49', NULL),
-(19, 'G017', 'Otros', 1, '2025-12-20 12:39:05', NULL);
-
--- --------------------------------------------------------
+--
+-- Indices de la tabla `analisiseconomico`
+--
+ALTER TABLE `analisiseconomico`
+  ADD PRIMARY KEY (`AnalisisEconomicoID`),
+  ADD KEY `FK_AnalisisEconomico_Cliente` (`ClienteID`);
 
 --
--- Estructura de tabla para la tabla `jobs`
+-- Indices de la tabla `apertura_cierre_dia`
 --
-
-DROP TABLE IF EXISTS `jobs`;
-CREATE TABLE `jobs` (
-  `id` bigint(20) NOT NULL,
-  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `payload` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `attempts` tinyint(3) UNSIGNED NOT NULL,
-  `reserved_at` int(11) DEFAULT NULL,
-  `available_at` int(11) NOT NULL,
-  `created_at` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
+ALTER TABLE `apertura_cierre_dia`
+  ADD PRIMARY KEY (`AperturaCierreDiaID`),
+  ADD UNIQUE KEY `Fecha` (`Fecha`);
 
 --
--- Estructura de tabla para la tabla `job_batches`
+-- Indices de la tabla `aprobacionproposicion`
 --
-
-DROP TABLE IF EXISTS `job_batches`;
-CREATE TABLE `job_batches` (
-  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `total_jobs` int(11) NOT NULL,
-  `pending_jobs` int(11) NOT NULL,
-  `failed_jobs` int(11) NOT NULL,
-  `failed_job_ids` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `options` text COLLATE utf8mb4_unicode_ci,
-  `cancelled_at` int(11) DEFAULT NULL,
-  `created_at` int(11) NOT NULL,
-  `finished_at` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
+ALTER TABLE `aprobacionproposicion`
+  ADD PRIMARY KEY (`AprobacionProposicionID`),
+  ADD UNIQUE KEY `UQ_AprobacionProposicion` (`ProposicionCreditoID`,`NivelAprobacionID`),
+  ADD KEY `FK_AprobacionProposicion_Nivel` (`NivelAprobacionID`),
+  ADD KEY `FK_AprobacionProposicion_Usuario` (`UserAprobadorID`);
 
 --
--- Estructura de tabla para la tabla `logs`
+-- Indices de la tabla `ciudad`
 --
-
-DROP TABLE IF EXISTS `logs`;
-CREATE TABLE `logs` (
-  `id` bigint(20) NOT NULL,
-  `user_id` bigint(20) NOT NULL,
-  `accion` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
-  `modelo` varchar(150) COLLATE utf8_unicode_ci NOT NULL,
-  `modelo_id` bigint(20) DEFAULT NULL,
-  `old_values` text COLLATE utf8_unicode_ci,
-  `new_values` text COLLATE utf8_unicode_ci,
-  `ip_address` varchar(45) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `user_agent` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `machine_name` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `platform` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+ALTER TABLE `ciudad`
+  ADD PRIMARY KEY (`CiudadID`),
+  ADD UNIQUE KEY `Nombre` (`Nombre`);
 
 --
--- Volcado de datos para la tabla `logs`
+-- Indices de la tabla `cliente`
+--
+ALTER TABLE `cliente`
+  ADD PRIMARY KEY (`ClienteID`),
+  ADD UNIQUE KEY `DNI` (`DNI`),
+  ADD KEY `FK_Cliente_Garante` (`GaranteID`),
+  ADD KEY `FK_Cliente_PromotorCobrador` (`PromotorCobradorID`),
+  ADD KEY `FK_Cliente_Tasa` (`TasaID`);
+
+--
+-- Indices de la tabla `credito`
+--
+ALTER TABLE `credito`
+  ADD PRIMARY KEY (`CreditoID`),
+  ADD UNIQUE KEY `ProposicionCreditoID` (`ProposicionCreditoID`),
+  ADD KEY `FK_Credito_TipoPago` (`TipoPagoID`),
+  ADD KEY `IDX_FechaInicio` (`FechaInicio`),
+  ADD KEY `IDX_FechaVencimiento` (`FechaVencimiento`);
+
+--
+-- Indices de la tabla `cuota`
+--
+ALTER TABLE `cuota`
+  ADD PRIMARY KEY (`CuotaID`),
+  ADD KEY `FK_Cuota_Credito` (`CreditoID`);
+
+--
+-- Indices de la tabla `documentocliente`
+--
+ALTER TABLE `documentocliente`
+  ADD PRIMARY KEY (`DocumentoClienteID`),
+  ADD KEY `FK_DocumentoCliente_Cliente` (`ClienteID`);
+
+--
+-- Indices de la tabla `evaluacioncredito`
+--
+ALTER TABLE `evaluacioncredito`
+  ADD PRIMARY KEY (`EvaluacionCreditoID`),
+  ADD KEY `FK_EvaluacionCredito_Cliente` (`ClienteID`);
+
+--
+-- Indices de la tabla `giro`
+--
+ALTER TABLE `giro`
+  ADD PRIMARY KEY (`GiroID`),
+  ADD UNIQUE KEY `Codigo` (`Codigo`);
+
+--
+-- Indices de la tabla `negocio`
+--
+ALTER TABLE `negocio`
+  ADD PRIMARY KEY (`NegocioID`),
+  ADD KEY `FK_Negocio_Cliente` (`ClienteID`),
+  ADD KEY `FK_Negocio_Giro` (`GiroID`),
+  ADD KEY `FK_Negocio_SubGiro` (`SubGiroID`),
+  ADD KEY `FK_Negocio_Zona` (`ZonaID`),
+  ADD KEY `FK_Negocio_Ciudad` (`CiudadID`);
+
+--
+-- Indices de la tabla `nivelaprobacion`
+--
+ALTER TABLE `nivelaprobacion`
+  ADD PRIMARY KEY (`NivelAprobacionID`),
+  ADD UNIQUE KEY `Nombre` (`Nombre`);
+
+--
+-- Indices de la tabla `pago`
+--
+ALTER TABLE `pago`
+  ADD PRIMARY KEY (`PagoID`),
+  ADD KEY `FK_Pago_Cobrador` (`PromotorCobradorID`),
+  ADD KEY `FK_Pago_Credito` (`CreditoID`),
+  ADD KEY `FK_Pago_Cuota` (`CuotaID`);
+
+--
+-- Indices de la tabla `promotorcobrador`
+--
+ALTER TABLE `promotorcobrador`
+  ADD PRIMARY KEY (`PromotorCobradorID`),
+  ADD UNIQUE KEY `Codigo` (`Codigo`),
+  ADD KEY `fk_promotor_ciudad` (`CiudadID`),
+  ADD KEY `fk_promotor_zona` (`ZonaID`);
+
+--
+-- Indices de la tabla `proposicioncredito`
+--
+ALTER TABLE `proposicioncredito`
+  ADD PRIMARY KEY (`ProposicionCreditoID`),
+  ADD UNIQUE KEY `CodigoCredito` (`CodigoCredito`),
+  ADD KEY `FK_ProposicionCredito_Cliente` (`ClienteID`),
+  ADD KEY `FK_ProposicionCredito_NivelAprobacion` (`NivelAprobacionRequerido`),
+  ADD KEY `FK_ProposicionCredito_Tasa` (`TasaID`),
+  ADD KEY `FK_ProposicionCredito_TipoCredito` (`TipoCreditoID`),
+  ADD KEY `FK_ProposicionCredito_Zona` (`ZonaID`),
+  ADD KEY `IDX_EsRefinanciamiento` (`EsRefinanciamiento`),
+  ADD KEY `IDX_ProposicionCreditoAnteriorID` (`ProposicionCreditoAnteriorID`),
+  ADD KEY `IDX_FueRefinanciada` (`FueRefinanciada`);
+
+--
+-- Indices de la tabla `subgiro`
+--
+ALTER TABLE `subgiro`
+  ADD PRIMARY KEY (`SubGiroID`),
+  ADD UNIQUE KEY `UQ_SubGiro_Giro` (`GiroID`,`Descripcion`);
+
+--
+-- Indices de la tabla `tasa`
+--
+ALTER TABLE `tasa`
+  ADD PRIMARY KEY (`TasaID`);
+
+--
+-- Indices de la tabla `telefononegocio`
+--
+ALTER TABLE `telefononegocio`
+  ADD PRIMARY KEY (`TelefonoNegocioID`),
+  ADD KEY `FK_TelefonoNegocio_Negocio` (`NegocioID`);
+
+--
+-- Indices de la tabla `tipocredito`
+--
+ALTER TABLE `tipocredito`
+  ADD PRIMARY KEY (`TipoCreditoID`),
+  ADD UNIQUE KEY `Codigo` (`Codigo`);
+
+--
+-- Indices de la tabla `tipopago`
+--
+ALTER TABLE `tipopago`
+  ADD PRIMARY KEY (`TipoPagoID`),
+  ADD UNIQUE KEY `Nombre` (`Nombre`);
+
+--
+-- Indices de la tabla `usernivelaprobacion`
+--
+ALTER TABLE `usernivelaprobacion`
+  ADD PRIMARY KEY (`UserNivelAprobacionID`),
+  ADD UNIQUE KEY `UserID` (`UserID`),
+  ADD KEY `FK_UserNivel_NivelAprobacion` (`NivelAprobacionID`);
+
+--
+-- Indices de la tabla `zona`
+--
+ALTER TABLE `zona`
+  ADD PRIMARY KEY (`ZonaID`),
+  ADD UNIQUE KEY `UQ_Zona_Ciudad` (`CiudadID`,`Nombre`);
+
+--
+-- AUTO_INCREMENT de las tablas volcadas
+--
+
+--
+-- AUTO_INCREMENT de la tabla `analisiseconomico`
+--
+ALTER TABLE `analisiseconomico`
+  MODIFY `AnalisisEconomicoID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `apertura_cierre_dia`
+--
+ALTER TABLE `apertura_cierre_dia`
+  MODIFY `AperturaCierreDiaID` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `aprobacionproposicion`
+--
+ALTER TABLE `aprobacionproposicion`
+  MODIFY `AprobacionProposicionID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `ciudad`
+--
+ALTER TABLE `ciudad`
+  MODIFY `CiudadID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `cliente`
+--
+ALTER TABLE `cliente`
+  MODIFY `ClienteID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `credito`
+--
+ALTER TABLE `credito`
+  MODIFY `CreditoID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `cuota`
+--
+ALTER TABLE `cuota`
+  MODIFY `CuotaID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `documentocliente`
+--
+ALTER TABLE `documentocliente`
+  MODIFY `DocumentoClienteID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `evaluacioncredito`
+--
+ALTER TABLE `evaluacioncredito`
+  MODIFY `EvaluacionCreditoID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `giro`
+--
+ALTER TABLE `giro`
+  MODIFY `GiroID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `negocio`
+--
+ALTER TABLE `negocio`
+  MODIFY `NegocioID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `nivelaprobacion`
+--
+ALTER TABLE `nivelaprobacion`
+  MODIFY `NivelAprobacionID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `pago`
+--
+ALTER TABLE `pago`
+  MODIFY `PagoID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `promotorcobrador`
+--
+ALTER TABLE `promotorcobrador`
+  MODIFY `PromotorCobradorID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `proposicioncredito`
+--
+ALTER TABLE `proposicioncredito`
+  MODIFY `ProposicionCreditoID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `subgiro`
+--
+ALTER TABLE `subgiro`
+  MODIFY `SubGiroID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `tasa`
+--
+ALTER TABLE `tasa`
+  MODIFY `TasaID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `telefononegocio`
+--
+ALTER TABLE `telefononegocio`
+  MODIFY `TelefonoNegocioID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `tipocredito`
+--
+ALTER TABLE `tipocredito`
+  MODIFY `TipoCreditoID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `tipopago`
+--
+ALTER TABLE `tipopago`
+  MODIFY `TipoPagoID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `usernivelaprobacion`
+--
+ALTER TABLE `usernivelaprobacion`
+  MODIFY `UserNivelAprobacionID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `zona`
+--
+ALTER TABLE `zona`
+  MODIFY `ZonaID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `analisiseconomico`
+--
+ALTER TABLE `analisiseconomico`
+  ADD CONSTRAINT `FK_AnalisisEconomico_Cliente` FOREIGN KEY (`ClienteID`) REFERENCES `cliente` (`ClienteID`);
+
+--
+-- Filtros para la tabla `aprobacionproposicion`
+--
+ALTER TABLE `aprobacionproposicion`
+  ADD CONSTRAINT `FK_AprobacionProposicion_Nivel` FOREIGN KEY (`NivelAprobacionID`) REFERENCES `nivelaprobacion` (`NivelAprobacionID`),
+  ADD CONSTRAINT `FK_AprobacionProposicion_Proposicion` FOREIGN KEY (`ProposicionCreditoID`) REFERENCES `proposicioncredito` (`ProposicionCreditoID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `FK_AprobacionProposicion_Usuario` FOREIGN KEY (`UserAprobadorID`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `cliente`
+--
+ALTER TABLE `cliente`
+  ADD CONSTRAINT `FK_Cliente_Garante` FOREIGN KEY (`GaranteID`) REFERENCES `cliente` (`ClienteID`),
+  ADD CONSTRAINT `FK_Cliente_PromotorCobrador` FOREIGN KEY (`PromotorCobradorID`) REFERENCES `promotorcobrador` (`PromotorCobradorID`),
+  ADD CONSTRAINT `FK_Cliente_Tasa` FOREIGN KEY (`TasaID`) REFERENCES `tasa` (`TasaID`);
+
+--
+-- Filtros para la tabla `credito`
+--
+ALTER TABLE `credito`
+  ADD CONSTRAINT `FK_Credito_Proposicion` FOREIGN KEY (`ProposicionCreditoID`) REFERENCES `proposicioncredito` (`ProposicionCreditoID`),
+  ADD CONSTRAINT `FK_Credito_TipoPago` FOREIGN KEY (`TipoPagoID`) REFERENCES `tipopago` (`TipoPagoID`);
+
+--
+-- Filtros para la tabla `cuota`
+--
+ALTER TABLE `cuota`
+  ADD CONSTRAINT `FK_Cuota_Credito` FOREIGN KEY (`CreditoID`) REFERENCES `credito` (`CreditoID`);
+
+--
+-- Filtros para la tabla `documentocliente`
+--
+ALTER TABLE `documentocliente`
+  ADD CONSTRAINT `FK_DocumentoCliente_Cliente` FOREIGN KEY (`ClienteID`) REFERENCES `cliente` (`ClienteID`);
+
+--
+-- Filtros para la tabla `evaluacioncredito`
+--
+ALTER TABLE `evaluacioncredito`
+  ADD CONSTRAINT `FK_EvaluacionCredito_Cliente` FOREIGN KEY (`ClienteID`) REFERENCES `cliente` (`ClienteID`);
+
+--
+-- Filtros para la tabla `negocio`
+--
+ALTER TABLE `negocio`
+  ADD CONSTRAINT `FK_Negocio_Ciudad` FOREIGN KEY (`CiudadID`) REFERENCES `ciudad` (`CiudadID`),
+  ADD CONSTRAINT `FK_Negocio_Cliente` FOREIGN KEY (`ClienteID`) REFERENCES `cliente` (`ClienteID`),
+  ADD CONSTRAINT `FK_Negocio_Giro` FOREIGN KEY (`GiroID`) REFERENCES `giro` (`GiroID`),
+  ADD CONSTRAINT `FK_Negocio_SubGiro` FOREIGN KEY (`SubGiroID`) REFERENCES `subgiro` (`SubGiroID`),
+  ADD CONSTRAINT `FK_Negocio_Zona` FOREIGN KEY (`ZonaID`) REFERENCES `zona` (`ZonaID`);
+
+--
+-- Filtros para la tabla `pago`
+--
+ALTER TABLE `pago`
+  ADD CONSTRAINT `FK_Pago_Cobrador` FOREIGN KEY (`PromotorCobradorID`) REFERENCES `promotorcobrador` (`PromotorCobradorID`),
+  ADD CONSTRAINT `FK_Pago_Credito` FOREIGN KEY (`CreditoID`) REFERENCES `credito` (`CreditoID`),
+  ADD CONSTRAINT `FK_Pago_Cuota` FOREIGN KEY (`CuotaID`) REFERENCES `cuota` (`CuotaID`);
+
+--
+-- Filtros para la tabla `promotorcobrador`
+--
+ALTER TABLE `promotorcobrador`
+  ADD CONSTRAINT `fk_promotor_ciudad` FOREIGN KEY (`CiudadID`) REFERENCES `ciudad` (`CiudadID`),
+  ADD CONSTRAINT `fk_promotor_zona` FOREIGN KEY (`ZonaID`) REFERENCES `zona` (`ZonaID`);
+
+--
+-- Filtros para la tabla `proposicioncredito`
+--
+ALTER TABLE `proposicioncredito`
+  ADD CONSTRAINT `FK_ProposicionCredito_Anterior` FOREIGN KEY (`ProposicionCreditoAnteriorID`) REFERENCES `proposicioncredito` (`ProposicionCreditoID`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `FK_ProposicionCredito_Cliente` FOREIGN KEY (`ClienteID`) REFERENCES `cliente` (`ClienteID`),
+  ADD CONSTRAINT `FK_ProposicionCredito_NivelAprobacion` FOREIGN KEY (`NivelAprobacionRequerido`) REFERENCES `nivelaprobacion` (`NivelAprobacionID`),
+  ADD CONSTRAINT `FK_ProposicionCredito_Tasa` FOREIGN KEY (`TasaID`) REFERENCES `tasa` (`TasaID`),
+  ADD CONSTRAINT `FK_ProposicionCredito_TipoCredito` FOREIGN KEY (`TipoCreditoID`) REFERENCES `tipocredito` (`TipoCreditoID`),
+  ADD CONSTRAINT `FK_ProposicionCredito_Zona` FOREIGN KEY (`ZonaID`) REFERENCES `zona` (`ZonaID`);
+
+--
+-- Filtros para la tabla `subgiro`
+--
+ALTER TABLE `subgiro`
+  ADD CONSTRAINT `FK_SubGiro_Giro` FOREIGN KEY (`GiroID`) REFERENCES `giro` (`GiroID`);
+
+--
+-- Filtros para la tabla `telefononegocio`
+--
+ALTER TABLE `telefononegocio`
+  ADD CONSTRAINT `FK_TelefonoNegocio_Negocio` FOREIGN KEY (`NegocioID`) REFERENCES `negocio` (`NegocioID`);
+
+--
+-- Filtros para la tabla `usernivelaprobacion`
+--
+ALTER TABLE `usernivelaprobacion`
+  ADD CONSTRAINT `FK_UserNivel_NivelAprobacion` FOREIGN KEY (`NivelAprobacionID`) REFERENCES `nivelaprobacion` (`NivelAprobacionID`);
+
+--
+-- Filtros para la tabla `zona`
+--
+ALTER TABLE `zona`
+  ADD CONSTRAINT `FK_Zona_Ciudad` FOREIGN KEY (`CiudadID`) REFERENCES `ciudad` (`CiudadID`);
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

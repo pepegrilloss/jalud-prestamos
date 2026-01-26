@@ -8,14 +8,16 @@ use Filament\Notifications\Notification;
 trait BloquearPorDiaCerrado
 {
     /**
-     * Hook antes de guardar - valida que el día esté abierto
+     * Hook antes de guardar - valida que el registro no esté cerrado (FechaCierre)
+     * No valida si hoy está abierto, porque un registro reabierto puede editarse aunque hoy esté cerrado
      */
     protected function beforeSave(): void
     {
-        if (!AperturaCierreDia::estaAbierto()) {
+        // Si el registro tiene FechaCierre, está cerrado y no se puede editar
+        if ($this->record && $this->record->FechaCierre !== null) {
             Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
+                ->title('❌ Registro Cerrado')
+                ->body('Este registro está cerrado y no puede ser modificado. Debe reabrir la fecha para continuar.')
                 ->danger()
                 ->persistent()
                 ->send();
@@ -25,14 +27,16 @@ trait BloquearPorDiaCerrado
     }
 
     /**
-     * Hook antes de eliminar - valida que el día esté abierto
+     * Hook antes de eliminar - valida que el registro no esté cerrado
+     * No valida si hoy está abierto, porque un registro reabierto puede eliminarse aunque hoy esté cerrado
      */
     protected function beforeDelete(): void
     {
-        if (!AperturaCierreDia::estaAbierto()) {
+        // Si el registro tiene FechaCierre, está cerrado y no se puede eliminar
+        if ($this->record && $this->record->FechaCierre !== null) {
             Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden eliminar registros. Contacte con administración.')
+                ->title('❌ Registro Cerrado')
+                ->body('Este registro está cerrado y no puede ser eliminado. Debe reabrir la fecha para continuar.')
                 ->danger()
                 ->persistent()
                 ->send();
@@ -41,3 +45,4 @@ trait BloquearPorDiaCerrado
         }
     }
 }
+

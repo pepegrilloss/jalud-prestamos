@@ -21,6 +21,7 @@ class Cuota extends Model
         'FechaPago',
         'FechaCreacion',
         'FechaModificacion',
+        'FechaCierre',
         'Activo'
     ];
 
@@ -36,6 +37,7 @@ class Cuota extends Model
         'FechaPago' => 'datetime',
         'FechaCreacion' => 'datetime',
         'FechaModificacion' => 'datetime',
+        'FechaCierre' => 'datetime',
         'Activo' => 'boolean'
     ];
 

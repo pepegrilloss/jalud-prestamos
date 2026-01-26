@@ -33,7 +33,10 @@ class ListClienteProposicions extends ListRecords
                 ->form([
                     Forms\Components\DatePicker::make('fecha')
                         ->label('Seleccionar Fecha')
-                        ->default(now())
+                        ->default(function () {
+                            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                            return $fechaAbierta ?? now();
+                        })
                         ->native(false)
                         ->displayFormat('d/m/Y')
                         ->required(),

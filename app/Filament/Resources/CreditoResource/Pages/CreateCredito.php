@@ -157,12 +157,16 @@ class CreateCredito extends CreateRecord
 
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
     {
+        // Obtener la fecha abierta para la generación del crédito
+        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+        $fechaGeneracion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+        
         // Crear el registro de Credito
         $credito = Credito::create([
             'ProposicionCreditoID' => $data['proposicion_id'],
             'TipoPagoID' => $data['tipo_pago_id'],
             'ComentarioGeneracion' => $data['comentario_generacion'] ?? null,
-            'FechaGeneracion' => now(),
+            'FechaGeneracion' => $fechaGeneracion,
             'UserGeneracionID' => auth()->id(),
             'Activo' => true,
         ]);

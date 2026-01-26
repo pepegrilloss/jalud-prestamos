@@ -1,6 +1,6 @@
 <x-filament-panels::page>
-    <div class="grid grid-cols-1 gap-6">
-        <!-- Card de Estado -->
+    <div class="space-y-6">
+        <!-- Card de Estado Hoy -->
         <div class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="text-center">
                 <h2 class="text-2xl font-bold mb-4">Estado del Día Actual</h2>
@@ -43,6 +43,12 @@
                     </div>
                 @endif
             </div>
+        </div>
+
+        <!-- Tabla de Historial -->
+        <div class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+            <h3 class="text-lg font-bold mb-4">Historial de Fechas</h3>
+            {{ $this->table }}
         </div>
     </div>
 </x-filament-panels::page>

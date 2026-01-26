@@ -321,11 +321,15 @@ class GenerarCreditoResource extends Resource
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
                         // Crear el crédito
+                        // Usar la fecha abierta en lugar de now()
+                        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                        $fechaGeneracion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+                        
                         $credito = Credito::create([
                             'ProposicionCreditoID' => $record->ProposicionCreditoID,
                             'TipoPagoID' => $data['TipoPagoID'],
                             'ComentarioGeneracion' => $data['ComentarioGeneracion'],
-                            'FechaGeneracion' => now(),
+                            'FechaGeneracion' => $fechaGeneracion,
                             'UserGeneracionID' => auth()->id(),
                             'Activo' => true,
                         ]);
@@ -405,6 +409,10 @@ class GenerarCreditoResource extends Resource
                 return;
             }
 
+            // Obtener la fecha de apertura
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            $fechaPago = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+
             // Obtener el crédito de la proposición anterior
             $creditoAnterior = Credito::where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)
                 ->where('Activo', true)
@@ -444,10 +452,11 @@ class GenerarCreditoResource extends Resource
                 'CuotaID' => $cuotasPendientes->first()->CuotaID,
                 'PromotorCobradorID' => $promotorCobradorID,
                 'MontoPagado' => $saldoTotalPendiente,
-                'FechaPago' => now(),
+                'FechaPago' => $fechaPago,
                 'EsMora' => false,
                 'EsPagoAMayor' => false,
                 'EsPagoForzado' => false,
+                'EsPagoAutomatico' => 1,
                 'Comentario' => "Pago automático por refinanciamiento. Proposición #{$record->ProposicionCreditoID}. Saldo total: S/ " . number_format($saldoTotalPendiente, 2),
                 'UsuarioRegistro' => Auth::user()?->name ?? 'Sistema',
                 'Activo' => true,
@@ -462,10 +471,11 @@ class GenerarCreditoResource extends Resource
                     'CuotaID' => $cuotasPendientes->first()->CuotaID,
                     'PromotorCobradorID' => $promotorCobradorID,
                     'MontoPagado' => $montoAMayor,
-                    'FechaPago' => now(),
+                    'FechaPago' => $fechaPago,
                     'EsMora' => false,
                     'EsPagoAMayor' => true,
                     'EsPagoForzado' => false,
+                    'EsPagoAutomatico' => 1,
                     'Comentario' => "Pago a mayor automático por refinanciamiento. Proposición #{$record->ProposicionCreditoID}. Monto adicional: S/ " . number_format($montoAMayor, 2),
                     'UsuarioRegistro' => Auth::user()?->name ?? 'Sistema',
                     'Activo' => true,
@@ -476,7 +486,7 @@ class GenerarCreditoResource extends Resource
             foreach ($cuotasPendientes as $cuota) {
                 $cuota->update([
                     'Estado' => 'PAGADO',
-                    'FechaPago' => now(),
+                    'FechaPago' => $fechaPago,
                 ]);
             }
 
@@ -537,13 +547,9 @@ class GenerarCreditoResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si el registro está cerrado (FechaCierre != null), no permitir editar
+        // NO validar estaAbierto() porque un registro puede estar abierto aunque hoy esté cerrado
+        if ($record->FechaCierre !== null) {
             return false;
         }
         return true;
@@ -551,13 +557,9 @@ class GenerarCreditoResource extends Resource
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden eliminar registros. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si el registro está cerrado, no permitir eliminar
+        // NO validar estaAbierto() porque un registro puede estar abierto aunque hoy esté cerrado
+        if ($record->FechaCierre !== null) {
             return false;
         }
         return true;

@@ -253,6 +253,15 @@ class CrearProposicionCreditoResource extends Resource
                                     return '';
                                 }
 
+                                // No validar MMR si es refinanciamiento
+                                $tipoID = $get('TipoCreditoID');
+                                if ($tipoID) {
+                                    $tipoCredito = TipoCredito::find($tipoID);
+                                    if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
+                                        return ''; // Sin restricción de MMR para refinanciamiento
+                                    }
+                                }
+
                                 $disponible = self::calcularMontoDisponible($get('ClienteID'));
                                 $montoActual = (float) $state;
 
@@ -271,6 +280,15 @@ class CrearProposicionCreditoResource extends Resource
                                     return null;
                                 }
 
+                                // No validar MMR si es refinanciamiento
+                                $tipoID = $get('TipoCreditoID');
+                                if ($tipoID) {
+                                    $tipoCredito = TipoCredito::find($tipoID);
+                                    if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
+                                        return 'heroicon-s-check-circle'; // Sin restricción para refinanciamiento
+                                    }
+                                }
+
                                 $disponible = self::calcularMontoDisponible($get('ClienteID'));
                                 $montoActual = (float) $state;
 
@@ -279,6 +297,15 @@ class CrearProposicionCreditoResource extends Resource
                             ->rules([
                                 function (Get $get) {
                                     return function ($attribute, $value, $fail) use ($get) {
+                                        // No validar MMR si es refinanciamiento
+                                        $tipoID = $get('TipoCreditoID');
+                                        if ($tipoID) {
+                                            $tipoCredito = TipoCredito::find($tipoID);
+                                            if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
+                                                return; // Sin restricción de MMR para refinanciamiento
+                                            }
+                                        }
+
                                         $clienteID = $get('ClienteID');
                                         if ($clienteID) {
                                             $disponible = self::calcularMontoDisponible($clienteID);
@@ -442,23 +469,16 @@ class CrearProposicionCreditoResource extends Resource
 
         $montoMaximoRecomendado = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
 
-        // Obtener el SALDO PENDIENTE REAL de todos los créditos activos del cliente
-        // No usar MontoTotal de proposiciones, sino el saldo actual que debe pagar
-        $montoUtilizado = 0;
-        $creditosActivos = Credito::whereHas('proposicion', function ($query) use ($clienteID) {
-            $query->where('ClienteID', $clienteID)
-                ->where('FueRefinanciada', 0)
-                ->where('Activo', true);
-        })->where('Activo', 1)->get();
-
-        foreach ($creditosActivos as $credito) {
-            $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
-            $totalPagado = \App\Models\Pago::where('Activo', 1)
-                ->whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
-                ->sum('MontoPagado');
-            $saldoPendiente = max(0, $montoCuotasTotal - $totalPagado);
-            $montoUtilizado += $saldoPendiente;
-        }
+        // IMPORTANTE: El MMR se calcula sobre el MONTO TOTAL DESEMBOLSADO (MontoTotal de proposiciones)
+        // NO sobre el saldo pendiente. Esto es correcto porque el cliente "utilizó" todo el dinero cuando lo desembolsamos.
+        // Aunque haya pagado parte, sigue "utilizando" ese crédito.
+        
+        // Sumar MontoTotal de todas las proposiciones activas NO refinanciadas
+        $montoUtilizado = ProposicionCredito::where('ClienteID', $clienteID)
+            ->where('Activo', true)
+            ->where('FueRefinanciada', 0)
+            ->where('EsRefinanciamiento', 0)
+            ->sum('MontoTotal');
 
         $montoDisponible = max(0, $montoMaximoRecomendado - $montoUtilizado);
 
@@ -612,28 +632,40 @@ class CrearProposicionCreditoResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si el registro está cerrado (FechaCierre != null), no permitir editar
+        if ($record->FechaCierre !== null) {
             return false;
+        }
+
+        // Verificar si el día de propuesta está cerrado
+        $fechaPropuesta = $record->FechaPropuesta->toDateString();
+        $fechaHoy = now()->toDateString();
+        
+        if ($fechaPropuesta !== $fechaHoy) {
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaPropuesta)->first();
+            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
+                return false;
+            }
         }
         return true;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden eliminar registros. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si el registro está cerrado, no permitir eliminar
+        if ($record->FechaCierre !== null) {
             return false;
+        }
+
+        // Verificar si el día de propuesta está cerrado
+        $fechaPropuesta = $record->FechaPropuesta->toDateString();
+        $fechaHoy = now()->toDateString();
+        
+        if ($fechaPropuesta !== $fechaHoy) {
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaPropuesta)->first();
+            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
+                return false;
+            }
         }
         return true;
     }

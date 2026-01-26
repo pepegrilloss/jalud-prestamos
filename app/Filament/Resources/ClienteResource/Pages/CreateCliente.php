@@ -20,7 +20,12 @@ class CreateCliente extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['UsuarioRegistro'] = auth()->user()->name ?? 'Sistema';
-        $data['FechaRegistro'] = now();
+        
+        // Inyectar fecha abierta si no está seteada
+        if (!isset($data['FechaRegistro'])) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            $data['FechaRegistro'] = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+        }
         
         return $data;
     }

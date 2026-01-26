@@ -241,28 +241,40 @@ class CreditoResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si tiene FechaCierre, no se puede editar
+        if ($record->FechaCierre !== null) {
             return false;
+        }
+
+        // Verificar si el día de generación está cerrado
+        $fechaGeneracion = $record->FechaGeneracion->toDateString();
+        $fechaHoy = now()->toDateString();
+        
+        if ($fechaGeneracion !== $fechaHoy) {
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaGeneracion)->first();
+            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
+                return false;
+            }
         }
         return true;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden eliminar registros. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si tiene FechaCierre, no se puede eliminar
+        if ($record->FechaCierre !== null) {
             return false;
+        }
+
+        // Verificar si el día de generación está cerrado
+        $fechaGeneracion = $record->FechaGeneracion->toDateString();
+        $fechaHoy = now()->toDateString();
+        
+        if ($fechaGeneracion !== $fechaHoy) {
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaGeneracion)->first();
+            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
+                return false;
+            }
         }
         return true;
     }

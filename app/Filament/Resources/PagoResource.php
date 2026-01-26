@@ -340,7 +340,10 @@ class PagoResource extends Resource
                         Forms\Components\DatePicker::make('FechaPago')
                             ->label('Fecha de Pago')
                             ->required()
-                            ->default(now())
+                            ->default(function () {
+                                $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                                return $fechaAbierta ?? now();
+                            })
                             ->disabled()
                             ->native(false)
                             ->displayFormat('d/m/Y'),
@@ -453,18 +456,20 @@ class PagoResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                // Excluir pagos de créditos que fueron refinanciados
+                // Excluir pagos de proposiciones QUE SON refinanciamiento (EsRefinanciamiento = true)
+                // Pero SÍ mostrar pagos de créditos que FUERON refinanciados después (FueRefinanciada = 1)
+                // IMPORTANTE: Excluir pagos automáticos (EsPagoAutomatico = 1)
                 return $query->whereHas('cuota.credito.proposicion', function (Builder $q) {
-                    $q->where('FueRefinanciada', 0);
-                });
+                    $q->where('EsRefinanciamiento', 0);
+                })->where('EsPagoAutomatico', 0);
             })
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador') && \App\Models\AperturaCierreDia::estaAbierto()),
+                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador') && self::canEdit($record)),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador') && \App\Models\AperturaCierreDia::estaAbierto()),
+                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador') && self::canDelete($record)),
             ]);
 
     }
@@ -500,28 +505,62 @@ class PagoResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si tiene FechaCierre, no se puede editar
+        if ($record->FechaCierre !== null) {
             return false;
+        }
+
+        // Verificar si el día de creación está cerrado
+        $fechaCreacion = $record->FechaCreacion;
+        if (!$fechaCreacion) {
+            return false;
+        }
+        
+        // Convertir a string si es un objeto
+        if (is_object($fechaCreacion)) {
+            $fechaCreacion = $fechaCreacion->toDateString();
+        } else {
+            $fechaCreacion = \Carbon\Carbon::parse($fechaCreacion)->toDateString();
+        }
+        
+        $fechaHoy = now()->toDateString();
+        
+        if ($fechaCreacion !== $fechaHoy) {
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaCreacion)->first();
+            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
+                return false;
+            }
         }
         return true;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden eliminar registros. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si tiene FechaCierre, no se puede eliminar
+        if ($record->FechaCierre !== null) {
             return false;
+        }
+
+        // Verificar si el día de creación está cerrado
+        $fechaCreacion = $record->FechaCreacion;
+        if (!$fechaCreacion) {
+            return false;
+        }
+        
+        // Convertir a string si es un objeto
+        if (is_object($fechaCreacion)) {
+            $fechaCreacion = $fechaCreacion->toDateString();
+        } else {
+            $fechaCreacion = \Carbon\Carbon::parse($fechaCreacion)->toDateString();
+        }
+        
+        $fechaHoy = now()->toDateString();
+        
+        if ($fechaCreacion !== $fechaHoy) {
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaCreacion)->first();
+            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
+                return false;
+            }
         }
         return true;
     }

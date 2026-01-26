@@ -30,6 +30,7 @@ class Cliente extends Model
         'FechaRegistro',
         'UsuarioModificacion',
         'FechaModificacion',
+        'FechaCierre',
         'Activo',
     ];
 
@@ -37,6 +38,7 @@ class Cliente extends Model
         'FechaNacimiento' => 'date',
         'FechaRegistro' => 'datetime',
         'FechaModificacion' => 'datetime',
+        'FechaCierre' => 'datetime',
         'Activo' => 'boolean',
     ];
 

@@ -19,16 +19,20 @@ class Pago extends Model
         'EsMora',
         'EsPagoAMayor',
         'EsPagoForzado',
+        'EsPagoAutomatico',
         'Comentario',
         'UsuarioRegistro',
+        'FechaCierre',
         'Activo'
     ];
 
     protected $casts = [
         'FechaPago' => 'datetime:Y-m-d',
+        'FechaCierre' => 'datetime',
         'EsMora' => 'boolean',
         'EsPagoAMayor' => 'boolean',
         'EsPagoForzado' => 'boolean',
+        'EsPagoAutomatico' => 'boolean',
         'Activo' => 'boolean'
     ];
 

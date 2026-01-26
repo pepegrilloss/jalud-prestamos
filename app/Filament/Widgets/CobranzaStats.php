@@ -18,8 +18,9 @@ class CobranzaStats extends BaseWidget
         $promotorCobrador = $user->promotorCobrador;
         $zonaID = $promotorCobrador?->ZonaID ?? null;
 
-        // 1. Cobrado Diario (Suma de montos)
+        // 1. Cobrado Diario (Suma de montos) - Excluye pagos automáticos
         $pagosQuery = Pago::where('Activo', true)
+            ->where('EsPagoAutomatico', 0)
             ->whereDate('FechaPago', now());
 
         if ($zonaID) {

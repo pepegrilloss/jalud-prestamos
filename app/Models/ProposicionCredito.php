@@ -43,6 +43,7 @@ class ProposicionCredito extends Model
         'UserDesembolsoID',
         'FechaModificacion',
         'UserModificacionID',
+        'FechaCierre',
         'Activo',
         'EsRefinanciamiento',
         'ProposicionCreditoAnteriorID',
@@ -60,6 +61,7 @@ class ProposicionCredito extends Model
         'FechaAprobacion' => 'datetime',
         'FechaDesembolso' => 'datetime',
         'FechaModificacion' => 'datetime',
+        'FechaCierre' => 'datetime',
         'Activo' => 'boolean',
         'EsRefinanciamiento' => 'boolean',
         'FueRefinanciada' => 'boolean',
@@ -242,14 +244,16 @@ class ProposicionCredito extends Model
     {
         if ($this->hayRechazo()) {
             $this->Estado = 'RECHAZADO';
-            $this->FechaModificacion = now();
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
             $this->save();
         } elseif ($this->todasAprobacionesAprobadas()) {
             $ultimaAprobacion = $this->aprobaciones()->where('Estado', 'APROBADO')->latest('FechaAprobacion')->first();
             $this->Estado = 'APROBADO';
-            $this->FechaAprobacion = now();
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            $this->FechaAprobacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
             $this->UserAprobadorID = $ultimaAprobacion?->UserAprobadorID;
-            $this->FechaModificacion = now();
+            $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
             $this->save();
             
             // Si es un refinanciamiento aprobado, desactivar y marcar como refinanciada la proposición anterior

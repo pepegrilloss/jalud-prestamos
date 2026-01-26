@@ -31,7 +31,7 @@ class ViewCredito extends ViewRecord
     {
         return $infolist
             ->schema([
-                Infolists\Components\Section::make('Información de la Proposición')
+                Infolists\Components\Section::make('Información del credito')
                     ->schema([
                         Infolists\Components\TextEntry::make('proposicion.CodigoCredito')
                             ->label('Código de Crédito'),
@@ -58,11 +58,6 @@ class ViewCredito extends ViewRecord
                         Infolists\Components\TextEntry::make('proposicion.MontoCuota')
                             ->label('Monto por Cuota')
                             ->money('PEN'),
-
-                        Infolists\Components\TextEntry::make('proposicion.MontoInteres')
-                            ->label('Monto Total de Interés')
-                            ->money('PEN'),
-
                         Infolists\Components\TextEntry::make('proposicion.TasaMora')
                             ->label('Tasa de Mora (%)'),
                     ])

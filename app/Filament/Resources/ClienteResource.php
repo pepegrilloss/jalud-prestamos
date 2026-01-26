@@ -20,6 +20,7 @@ use Filament\Tables\Table;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Http;
 
 class ClienteResource extends Resource
 {
@@ -73,31 +74,16 @@ class ClienteResource extends Resource
                                                 try {
                                                     $token = 'apis-token-1.aTSI1U7KEuT-6bbbCguH-4Y8TI6KS73N';
 
-                                                    $curl = curl_init();
-                                                    curl_setopt_array($curl, array(
-                                                        CURLOPT_URL => 'https://api.apis.net.pe/v1/dni?numero=' . $state,
-                                                        CURLOPT_RETURNTRANSFER => true,
-                                                        CURLOPT_SSL_VERIFYPEER => 0,
-                                                        CURLOPT_ENCODING => '',
-                                                        CURLOPT_MAXREDIRS => 2,
-                                                        CURLOPT_TIMEOUT => 10,
-                                                        CURLOPT_FOLLOWLOCATION => true,
-                                                        CURLOPT_CUSTOMREQUEST => 'GET',
-                                                        CURLOPT_HTTPHEADER => array(
-                                                            'Referer: https://apis.net.pe/consulta-dni-api',
-                                                            'Authorization: Bearer ' . $token
-                                                        ),
-                                                    ));
+                                                    $response = Http::withHeaders([
+                                                        'Referer' => 'https://apis.net.pe/consulta-dni-api',
+                                                        'Authorization' => 'Bearer ' . $token
+                                                    ])->get('https://api.apis.net.pe/v1/dni?numero=' . $state);
 
-                                                    $response = curl_exec($curl);
-                                                    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-                                                    curl_close($curl);
+                                                    if ($response->successful()) {
+                                                        $persona = $response->json();
 
-                                                    if ($httpCode == 200) {
-                                                        $persona = json_decode($response);
-
-                                                        if (isset($persona->nombres) && isset($persona->apellidoPaterno) && isset($persona->apellidoMaterno)) {
-                                                            $nombreCompleto = $persona->nombres . ' ' . $persona->apellidoPaterno . ' ' . $persona->apellidoMaterno;
+                                                        if (isset($persona['nombres']) && isset($persona['apellidoPaterno']) && isset($persona['apellidoMaterno'])) {
+                                                            $nombreCompleto = $persona['nombres'] . ' ' . $persona['apellidoPaterno'] . ' ' . $persona['apellidoMaterno'];
                                                             $set('NombresApellidos', strtoupper($nombreCompleto));
 
                                                             \Filament\Notifications\Notification::make()
@@ -109,7 +95,7 @@ class ClienteResource extends Resource
                                                             throw new \Exception('Datos incompletos');
                                                         }
                                                     } else {
-                                                        throw new \Exception('Error en la consulta');
+                                                        throw new \Exception('Error en la consulta: ' . $response->status());
                                                     }
                                                 } catch (\Exception $e) {
                                                     \Filament\Notifications\Notification::make()
@@ -186,31 +172,16 @@ class ClienteResource extends Resource
                                                 try {
                                                     $token = 'apis-token-1.aTSI1U7KEuT-6bbbCguH-4Y8TI6KS73N';
 
-                                                    $curl = curl_init();
-                                                    curl_setopt_array($curl, array(
-                                                        CURLOPT_URL => 'https://api.apis.net.pe/v1/dni?numero=' . $state,
-                                                        CURLOPT_RETURNTRANSFER => true,
-                                                        CURLOPT_SSL_VERIFYPEER => 0,
-                                                        CURLOPT_ENCODING => '',
-                                                        CURLOPT_MAXREDIRS => 2,
-                                                        CURLOPT_TIMEOUT => 10,
-                                                        CURLOPT_FOLLOWLOCATION => true,
-                                                        CURLOPT_CUSTOMREQUEST => 'GET',
-                                                        CURLOPT_HTTPHEADER => array(
-                                                            'Referer: https://apis.net.pe/consulta-dni-api',
-                                                            'Authorization: Bearer ' . $token
-                                                        ),
-                                                    ));
+                                                    $response = Http::withHeaders([
+                                                        'Referer' => 'https://apis.net.pe/consulta-dni-api',
+                                                        'Authorization' => 'Bearer ' . $token
+                                                    ])->get('https://api.apis.net.pe/v1/dni?numero=' . $state);
 
-                                                    $response = curl_exec($curl);
-                                                    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-                                                    curl_close($curl);
+                                                    if ($response->successful()) {
+                                                        $persona = $response->json();
 
-                                                    if ($httpCode == 200) {
-                                                        $persona = json_decode($response);
-
-                                                        if (isset($persona->nombres) && isset($persona->apellidoPaterno) && isset($persona->apellidoMaterno)) {
-                                                            $nombreCompleto = $persona->nombres . ' ' . $persona->apellidoPaterno . ' ' . $persona->apellidoMaterno;
+                                                        if (isset($persona['nombres']) && isset($persona['apellidoPaterno']) && isset($persona['apellidoMaterno'])) {
+                                                            $nombreCompleto = $persona['nombres'] . ' ' . $persona['apellidoPaterno'] . ' ' . $persona['apellidoMaterno'];
                                                             $set('ConyugeNombresApellidos', strtoupper($nombreCompleto));
 
                                                             \Filament\Notifications\Notification::make()
@@ -222,7 +193,7 @@ class ClienteResource extends Resource
                                                             throw new \Exception('Datos incompletos');
                                                         }
                                                     } else {
-                                                        throw new \Exception('Error en la consulta');
+                                                        throw new \Exception('Error en la consulta: ' . $response->status());
                                                     }
                                                 } catch (\Exception $e) {
                                                     \Filament\Notifications\Notification::make()
@@ -682,10 +653,10 @@ class ClienteResource extends Resource
                         ->visible(fn () => !auth()->user()?->hasRole('Promotor Cobrador')),
                     Tables\Actions\EditAction::make()
                         ->label('Editar')
-                        ->visible(fn () => \App\Models\AperturaCierreDia::estaAbierto()),
+                        ->visible(fn (Cliente $record) => self::canEdit($record)),
 
                     Tables\Actions\DeleteAction::make()
-                        ->visible(fn () => \App\Models\AperturaCierreDia::estaAbierto())
+                        ->visible(fn (Cliente $record) => self::canDelete($record))
                         ->requiresConfirmation()
                         ->modalHeading('Eliminar Cliente')
                         ->modalDescription('¿Está seguro de que desea eliminar este cliente? Esta acción no se puede deshacer.')
@@ -723,6 +694,11 @@ class ClienteResource extends Resource
         ];
     }
 
+    public static function canView(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return true;
+    }
+
     public static function canCreate(): bool
     {
         // Los Promotores Cobradores NO pueden crear clientes
@@ -731,12 +707,6 @@ class ClienteResource extends Resource
         }
 
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
             return false;
         }
         return true;
@@ -749,15 +719,23 @@ class ClienteResource extends Resource
             return false;
         }
 
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si el registro está cerrado explícitamente (FechaCierre != null), no permitir editar
+        if ($record->FechaCierre !== null) {
             return false;
         }
+
+        // Si el registro pertenece a un día diferente que está CERRADO, no permitir editar
+        $fechaRegistro = $record->FechaRegistro->toDateString();
+        $fechaHoy = now()->toDateString();
+        
+        if ($fechaRegistro !== $fechaHoy) {
+            // El cliente fue registrado en otro día, verificar si ese día está cerrado
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaRegistro)->first();
+            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
+                return false;
+            }
+        }
+        
         return true;
     }
 
@@ -768,15 +746,23 @@ class ClienteResource extends Resource
             return false;
         }
 
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
-                ->body('El día de operaciones está cerrado. No se pueden eliminar registros. Contacte con administración.')
-                ->danger()
-                ->persistent()
-                ->send();
+        // Si el registro está cerrado explícitamente (FechaCierre != null), no permitir eliminar
+        if ($record->FechaCierre !== null) {
             return false;
         }
+
+        // Si el registro pertenece a un día diferente que está CERRADO, no permitir eliminar
+        $fechaRegistro = $record->FechaRegistro->toDateString();
+        $fechaHoy = now()->toDateString();
+        
+        if ($fechaRegistro !== $fechaHoy) {
+            // El cliente fue registrado en otro día, verificar si ese día está cerrado
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaRegistro)->first();
+            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
+                return false;
+            }
+        }
+        
         return true;
     }
 }
