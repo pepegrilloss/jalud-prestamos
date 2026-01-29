@@ -198,6 +198,9 @@ class AperturaCierreDiaResource extends Resource
                                     'UsuarioAperturaID' => auth()->id(),
                                 ]);
                                 
+                                // Limpiar FechaCierre de todos los registros del día
+                                $record->reabrirDia();
+                                
                                 $logger->success('[APERTURA_CIERRE] Fecha abierta exitosamente');
                             });
                             

@@ -510,23 +510,23 @@ class PagoResource extends Resource
             return false;
         }
 
-        // Verificar si el día de creación está cerrado
-        $fechaCreacion = $record->FechaCreacion;
-        if (!$fechaCreacion) {
+        // Verificar si el día de PAGO está cerrado (usar FechaPago, no FechaCreacion)
+        $fechaPago = $record->FechaPago;
+        if (!$fechaPago) {
             return false;
         }
         
         // Convertir a string si es un objeto
-        if (is_object($fechaCreacion)) {
-            $fechaCreacion = $fechaCreacion->toDateString();
+        if (is_object($fechaPago)) {
+            $fechaPago = $fechaPago->toDateString();
         } else {
-            $fechaCreacion = \Carbon\Carbon::parse($fechaCreacion)->toDateString();
+            $fechaPago = \Carbon\Carbon::parse($fechaPago)->toDateString();
         }
         
         $fechaHoy = now()->toDateString();
         
-        if ($fechaCreacion !== $fechaHoy) {
-            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaCreacion)->first();
+        if ($fechaPago !== $fechaHoy) {
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaPago)->first();
             if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
                 return false;
             }
@@ -541,23 +541,23 @@ class PagoResource extends Resource
             return false;
         }
 
-        // Verificar si el día de creación está cerrado
-        $fechaCreacion = $record->FechaCreacion;
-        if (!$fechaCreacion) {
+        // Verificar si el día de PAGO está cerrado (usar FechaPago, no FechaCreacion)
+        $fechaPago = $record->FechaPago;
+        if (!$fechaPago) {
             return false;
         }
         
         // Convertir a string si es un objeto
-        if (is_object($fechaCreacion)) {
-            $fechaCreacion = $fechaCreacion->toDateString();
+        if (is_object($fechaPago)) {
+            $fechaPago = $fechaPago->toDateString();
         } else {
-            $fechaCreacion = \Carbon\Carbon::parse($fechaCreacion)->toDateString();
+            $fechaPago = \Carbon\Carbon::parse($fechaPago)->toDateString();
         }
         
         $fechaHoy = now()->toDateString();
         
-        if ($fechaCreacion !== $fechaHoy) {
-            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaCreacion)->first();
+        if ($fechaPago !== $fechaHoy) {
+            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaPago)->first();
             if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
                 return false;
             }

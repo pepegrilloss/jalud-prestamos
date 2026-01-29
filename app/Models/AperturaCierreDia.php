@@ -148,51 +148,80 @@ class AperturaCierreDia extends Model
      */
     public function reabrirDia(): void
     {
+        $logFile = storage_path('logs/reopening-debug.log');
+        file_put_contents($logFile, "\n\n========== INICIANDO REABRIRDIA ==========\n", FILE_APPEND);
+        
         try {
-            $fecha = $this->Fecha->toDateString(); // '2025-01-22'
-            $fechaCarbon = $this->Fecha->startOfDay(); // Carbon object as timestamp
-
+            $fecha = $this->Fecha->toDateString(); // '2026-01-20'
+            file_put_contents($logFile, "Fecha a reabrir: {$fecha}\n", FILE_APPEND);
+            
+            $fechaInicio = $this->Fecha->copy()->startOfDay();
+            $fechaFin = $this->Fecha->copy()->endOfDay();
+            
+            file_put_contents($logFile, "Fecha inicio: " . $fechaInicio->toDateTimeString() . "\n", FILE_APPEND);
+            file_put_contents($logFile, "Fecha fin: " . $fechaFin->toDateTimeString() . "\n", FILE_APPEND);
+            
             // Reabrir clientes registrados ese día
-            Cliente::whereDate('FechaCierre', $fecha)
+            $clientesActualizados = Cliente::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Clientes actualizados: {$clientesActualizados}\n", FILE_APPEND);
 
             // Reabrir proposiciones propuestas ese día (usa FechaPropuesta)
-            ProposicionCredito::whereDate('FechaCierre', $fecha)
+            $proposicionesActualizadas = ProposicionCredito::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaPropuesta', $fecha)
                 ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Proposiciones actualizadas: {$proposicionesActualizadas}\n", FILE_APPEND);
 
             // Reabrir créditos generados ese día (usa FechaGeneracion)
-            Credito::whereDate('FechaCierre', $fecha)
+            $creditosActualizados = Credito::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaGeneracion', $fecha)
                 ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Créditos actualizados: {$creditosActualizados}\n", FILE_APPEND);
 
-            // Reabrir pagos registrados ese día (usa FechaPago)
-            Pago::whereDate('FechaCierre', $fecha)
-                ->whereDate('FechaPago', $fecha)
+            // Reabrir pagos creados ese día (buscar por FechaPago)
+            $pagosAntes = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])->count();
+            file_put_contents($logFile, "\nPagos encontrados antes de actualizar: {$pagosAntes}\n", FILE_APPEND);
+            
+            $pagosActualizados = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])
                 ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Pagos actualizados: {$pagosActualizados}\n", FILE_APPEND);
+            
+            $pagosDespues = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])
+                ->whereNull('FechaCierre')
+                ->count();
+            file_put_contents($logFile, "Pagos con FechaCierre NULL después: {$pagosDespues}\n", FILE_APPEND);
 
             // Reabrir cuotas creadas ese día (usa FechaCreacion)
-            Cuota::whereDate('FechaCierre', $fecha)
+            $cuotasActualizadas = Cuota::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaCreacion', $fecha)
                 ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Cuotas actualizadas: {$cuotasActualizadas}\n", FILE_APPEND);
 
             // Reabrir análisis económicos creados ese día (usa FechaAnalisis)
-            AnalisisEconomico::whereDate('FechaCierre', $fecha)
+            $analisisActualizados = AnalisisEconomico::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaAnalisis', $fecha)
                 ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Análisis económicos actualizados: {$analisisActualizados}\n", FILE_APPEND);
 
             // Reabrir evaluaciones de crédito creadas ese día (usa FechaRegistro)
-            EvaluacionCredito::whereDate('FechaCierre', $fecha)
+            $evaluacionesActualizadas = EvaluacionCredito::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Evaluaciones actualizadas: {$evaluacionesActualizadas}\n", FILE_APPEND);
 
+            file_put_contents($logFile, "\n========== REABRIRDIA COMPLETADO ==========\n", FILE_APPEND);
+            
             \Illuminate\Support\Facades\Log::info("Día reabierto: {$fecha}", [
                 'usuario' => auth()->user()?->name,
                 'timestamp' => now()
             ]);
 
         } catch (\Exception $e) {
+            $logFile = storage_path('logs/reopening-debug.log');
+            file_put_contents($logFile, "ERROR en reabrirDia: " . $e->getMessage() . "\n", FILE_APPEND);
+            file_put_contents($logFile, "Stack trace: " . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            
             \Illuminate\Support\Facades\Log::error('Error reabriendo día: ' . $e->getMessage(), [
                 'fecha' => $this->Fecha,
                 'exception' => $e
