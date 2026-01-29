@@ -613,7 +613,7 @@ class ClienteResource extends Resource
 
                 Tables\Columns\TextColumn::make('telefonos')
                     ->label('Teléfonos')
-                    ->getStateUsing(fn($record) => optional($record->negocio)->telefonos->pluck('Telefono')->implode(', '))
+                    ->getStateUsing(fn($record) => $record->negocio?->telefonos?->pluck('Telefono')?->implode(', ') ?? '-')
                     ->wrap(),
             ])
             ->filters([

@@ -191,9 +191,9 @@ class CreatePago extends CreateRecord
         $data['UsuarioRegistro'] = auth()->user()->name ?? auth()->id();
         $data['Activo'] = true;
         
-        // Inyectar fecha abierta en AMBOS campos de fecha
+        // Inyectar fecha abierta en AMBOS campos de fecha (con hora actual)
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-        $fechaAAsignar = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+        $fechaAAsignar = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
         
         if (!isset($data['FechaCreacion'])) {
             $data['FechaCreacion'] = $fechaAAsignar;

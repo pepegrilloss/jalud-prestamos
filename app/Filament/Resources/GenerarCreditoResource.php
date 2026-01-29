@@ -321,9 +321,9 @@ class GenerarCreditoResource extends Resource
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
                         // Crear el crédito
-                        // Usar la fecha abierta en lugar de now()
+                        // Usar la fecha abierta en lugar de now() (con hora actual)
                         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-                        $fechaGeneracion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+                        $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
                         
                         $credito = Credito::create([
                             'ProposicionCreditoID' => $record->ProposicionCreditoID,
@@ -409,9 +409,9 @@ class GenerarCreditoResource extends Resource
                 return;
             }
 
-            // Obtener la fecha de apertura
+            // Obtener la fecha de apertura (con hora actual)
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-            $fechaPago = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+            $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
 
             // Obtener el crédito de la proposición anterior
             $creditoAnterior = Credito::where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)

@@ -108,9 +108,9 @@ class AperturaCierreDia extends Model
                 ->update(['FechaCierre' => $fechaCarbon]);
             \Illuminate\Support\Facades\Log::info("Créditos cerrados en {$fecha}: {$creditosActualizados}");
 
-            // Cerrar pagos SIN CERRAR registrados ese día (usa FechaCreacion)
+            // Cerrar pagos SIN CERRAR registrados ese día (usa FechaPago)
             $pagosActualizados = Pago::whereNull('FechaCierre')
-                ->whereDate('FechaCreacion', $fecha)
+                ->whereDate('FechaPago', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
             \Illuminate\Support\Facades\Log::info("Pagos cerrados en {$fecha}: {$pagosActualizados}");
 
@@ -119,6 +119,18 @@ class AperturaCierreDia extends Model
                 ->whereDate('FechaCreacion', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
             \Illuminate\Support\Facades\Log::info("Cuotas cerradas en {$fecha}: {$cuotasActualizadas}");
+
+            // Cerrar análisis económicos SIN CERRAR creados ese día (usa FechaAnalisis)
+            $analisisActualizados = AnalisisEconomico::whereNull('FechaCierre')
+                ->whereDate('FechaAnalisis', $fecha)
+                ->update(['FechaCierre' => $fechaCarbon]);
+            \Illuminate\Support\Facades\Log::info("Análisis económicos cerrados en {$fecha}: {$analisisActualizados}");
+
+            // Cerrar evaluaciones SIN CERRAR creadas ese día (usa FechaRegistro)
+            $evaluacionesActualizadas = EvaluacionCredito::whereNull('FechaCierre')
+                ->whereDate('FechaRegistro', $fecha)
+                ->update(['FechaCierre' => $fechaCarbon]);
+            \Illuminate\Support\Facades\Log::info("Evaluaciones de crédito cerradas en {$fecha}: {$evaluacionesActualizadas}");
 
             \Illuminate\Support\Facades\Log::info("Día cerrado exitosamente: {$fecha}");
 
@@ -155,14 +167,24 @@ class AperturaCierreDia extends Model
                 ->whereDate('FechaGeneracion', $fecha)
                 ->update(['FechaCierre' => null]);
 
-            // Reabrir pagos registrados ese día (usa FechaCreacion)
+            // Reabrir pagos registrados ese día (usa FechaPago)
             Pago::whereDate('FechaCierre', $fecha)
-                ->whereDate('FechaCreacion', $fecha)
+                ->whereDate('FechaPago', $fecha)
                 ->update(['FechaCierre' => null]);
 
             // Reabrir cuotas creadas ese día (usa FechaCreacion)
             Cuota::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaCreacion', $fecha)
+                ->update(['FechaCierre' => null]);
+
+            // Reabrir análisis económicos creados ese día (usa FechaAnalisis)
+            AnalisisEconomico::whereDate('FechaCierre', $fecha)
+                ->whereDate('FechaAnalisis', $fecha)
+                ->update(['FechaCierre' => null]);
+
+            // Reabrir evaluaciones de crédito creadas ese día (usa FechaRegistro)
+            EvaluacionCredito::whereDate('FechaCierre', $fecha)
+                ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => null]);
 
             \Illuminate\Support\Facades\Log::info("Día reabierto: {$fecha}", [

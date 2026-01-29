@@ -245,15 +245,15 @@ class ProposicionCredito extends Model
         if ($this->hayRechazo()) {
             $this->Estado = 'RECHAZADO';
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-            $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+            $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
             $this->save();
         } elseif ($this->todasAprobacionesAprobadas()) {
             $ultimaAprobacion = $this->aprobaciones()->where('Estado', 'APROBADO')->latest('FechaAprobacion')->first();
             $this->Estado = 'APROBADO';
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-            $this->FechaAprobacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+            $this->FechaAprobacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
             $this->UserAprobadorID = $ultimaAprobacion?->UserAprobadorID;
-            $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+            $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
             $this->save();
             
             // Si es un refinanciamiento aprobado, desactivar y marcar como refinanciada la proposición anterior

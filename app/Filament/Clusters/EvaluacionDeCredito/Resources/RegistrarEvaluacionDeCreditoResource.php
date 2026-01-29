@@ -116,10 +116,13 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                 ])
                         ])
                         ->action(function ($record, array $data) {
+                            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                            $fechaRegistro = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+                            
                             EvaluacionCredito::create([
                                 'ClienteID' => $record->ClienteID,
                                 'Comentario' => $data['Comentario'],
-                                'FechaRegistro' => now(),
+                                'FechaRegistro' => $fechaRegistro,
                                 'UsuarioRegistro' => auth()->user()->name ?? 'Sistema',
                             ]);
 
@@ -271,7 +274,10 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                         'UsuarioModificacion' => auth()->user()->name ?? 'Sistema',
                                     ]);
 
-                                // Crear nuevo análisis
+                                // Crear nuevo análisis con fecha abierta
+                                $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                                $fechaAnalisis = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+                                
                                 \App\Models\AnalisisEconomico::create([
                                     'ClienteID' => $record->ClienteID,
                                     'CapitalManifestado' => $data['CapitalManifestado'],
@@ -281,7 +287,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                     'VentaEstimada' => $data['VentaEstimada'],
                                     'MontoMaxRecomendado' => $data['MontoMaxRecomendado'],
                                     'UsuarioAnalisis' => auth()->user()->name ?? 'Sistema',
-                                    'FechaAnalisis' => now(),
+                                    'FechaAnalisis' => $fechaAnalisis,
                                     'Activo' => 1,
                                 ]);
 

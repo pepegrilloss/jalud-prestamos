@@ -40,6 +40,7 @@ CREATE TABLE `analisiseconomico` (
   `UsuarioAnalisis` varchar(100) DEFAULT NULL,
   `FechaModificacion` datetime DEFAULT NULL,
   `UsuarioModificacion` varchar(100) DEFAULT NULL,
+  `FechaCierre` datetime DEFAULT NULL,
   `Activo` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -192,7 +193,9 @@ CREATE TABLE `evaluacioncredito` (
   `ClienteID` int(11) NOT NULL,
   `Comentario` text NOT NULL,
   `FechaRegistro` datetime NOT NULL DEFAULT current_timestamp(),
-  `UsuarioRegistro` varchar(100) DEFAULT NULL
+  `UsuarioRegistro` varchar(100) DEFAULT NULL,
+  `FechaCierre` datetime DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

@@ -21,10 +21,10 @@ class CreateCliente extends CreateRecord
     {
         $data['UsuarioRegistro'] = auth()->user()->name ?? 'Sistema';
         
-        // Inyectar fecha abierta si no está seteada
+        // Inyectar fecha abierta si no está seteada (con hora actual)
         if (!isset($data['FechaRegistro'])) {
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-            $data['FechaRegistro'] = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+            $data['FechaRegistro'] = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
         }
         
         return $data;
@@ -124,6 +124,10 @@ class CreateCliente extends CreateRecord
     {
         // Guardar análisis económico si hay datos
         if (!empty($analisis['CapitalManifestado']) || !empty($analisis['CapitalEstimado']) || !empty($analisis['MontoMaxRecomendado'])) {
+            // Inyectar fecha abierta
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            $fechaAnalisis = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+            
             AnalisisEconomico::create([
                 'ClienteID' => $clienteID,
                 'CapitalManifestado' => $analisis['CapitalManifestado'] ?? 0,
@@ -133,7 +137,7 @@ class CreateCliente extends CreateRecord
                 'VentaEstimada' => $analisis['VentaEstimada'] ?? 0,
                 'MontoMaxRecomendado' => $analisis['MontoMaxRecomendado'] ?? 0,
                 'UsuarioAnalisis' => auth()->user()->name ?? 'Sistema',
-                'FechaAnalisis' => now(),
+                'FechaAnalisis' => $fechaAnalisis,
                 'Activo' => 1,
             ]);
         }

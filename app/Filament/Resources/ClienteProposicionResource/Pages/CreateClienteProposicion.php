@@ -35,10 +35,10 @@ class CreateClienteProposicion extends CreateRecord
 
         $data['UserProponenteID'] = auth()->id();
         
-        // Inyectar fecha abierta si no está seteada
+        // Inyectar fecha abierta si no está seteada (con hora actual)
         if (!isset($data['FechaPropuesta'])) {
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-            $data['FechaPropuesta'] = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+            $data['FechaPropuesta'] = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
         }
         
         $data['Estado'] = 'PENDIENTE';

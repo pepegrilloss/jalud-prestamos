@@ -21,7 +21,9 @@ class AnalisisEconomico extends Model
         'MontoMaxRecomendado',
         'FechaAnalisis',
         'UsuarioAnalisis',
+        'FechaModificacion',
         'UsuarioModificacion',
+        'FechaCierre',
         'Activo',
     ];
 
@@ -34,6 +36,7 @@ class AnalisisEconomico extends Model
         'MontoMaxRecomendado' => 'decimal:2',
         'FechaAnalisis' => 'datetime',
         'FechaModificacion' => 'datetime',
+        'FechaCierre' => 'datetime',
         'Activo' => 'boolean',
     ];
 

@@ -50,7 +50,7 @@ class AprobacionProposicion extends Model
         }
 
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-        $fechaAprobacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+        $fechaAprobacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
 
         $this->update([
             'Estado' => 'APROBADO',
@@ -69,7 +69,7 @@ class AprobacionProposicion extends Model
         }
 
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-        $fechaAprobacion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+        $fechaAprobacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
 
         $this->update([
             'Estado' => 'RECHAZADO',

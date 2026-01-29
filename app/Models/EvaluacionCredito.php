@@ -16,10 +16,13 @@ class EvaluacionCredito extends Model
         'Comentario',
         'FechaRegistro',
         'UsuarioRegistro',
+        'FechaCierre',
+        'Activo',
     ];
 
     protected $casts = [
         'FechaRegistro' => 'datetime',
+        'FechaCierre' => 'datetime',
     ];
 
     public function cliente(): BelongsTo

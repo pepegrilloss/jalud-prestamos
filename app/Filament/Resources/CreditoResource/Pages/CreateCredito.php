@@ -157,9 +157,9 @@ class CreateCredito extends CreateRecord
 
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
     {
-        // Obtener la fecha abierta para la generación del crédito
+        // Obtener la fecha abierta para la generación del crédito (con hora actual)
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-        $fechaGeneracion = $fechaAbierta ? $fechaAbierta->startOfDay() : now();
+        $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
         
         // Crear el registro de Credito
         $credito = Credito::create([

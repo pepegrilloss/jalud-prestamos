@@ -153,7 +153,10 @@ class EditCliente extends EditRecord
                                 'UsuarioModificacion' => auth()->user()->name ?? 'Sistema',
                             ]);
 
-                        // Crear nuevo análisis
+                        // Crear nuevo análisis con fecha abierta
+                        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                        $fechaAnalisis = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+                        
                         \App\Models\AnalisisEconomico::create([
                             'ClienteID' => $this->record->ClienteID,
                             'CapitalManifestado' => $data['CapitalManifestado'],
@@ -163,7 +166,7 @@ class EditCliente extends EditRecord
                             'VentaEstimada' => $data['VentaEstimada'],
                             'MontoMaxRecomendado' => $data['MontoMaxRecomendado'],
                             'UsuarioAnalisis' => auth()->user()->name ?? 'Sistema',
-                            'FechaAnalisis' => now(),
+                            'FechaAnalisis' => $fechaAnalisis,
                             'Activo' => 1,
                         ]);
  

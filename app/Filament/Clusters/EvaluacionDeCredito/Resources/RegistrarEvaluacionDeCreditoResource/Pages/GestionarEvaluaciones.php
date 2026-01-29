@@ -54,10 +54,13 @@ class GestionarEvaluaciones extends Page implements HasTable
                         ->columnSpanFull(),
                 ])
                 ->action(function (array $data) {
+                    $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                    $fechaRegistro = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+                    
                     EvaluacionCredito::create([
                         'ClienteID' => $this->record->ClienteID,
                         'Comentario' => $data['Comentario'],
-                        'FechaRegistro' => now(),
+                        'FechaRegistro' => $fechaRegistro,
                         'UsuarioRegistro' => auth()->user()->name ?? 'Sistema',
                     ]);
 
@@ -146,10 +149,13 @@ class GestionarEvaluaciones extends Page implements HasTable
                             ->columnSpanFull(),
                     ])
                     ->action(function (array $data) {
+                        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                        $fechaRegistro = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+                        
                         EvaluacionCredito::create([
                             'ClienteID' => $this->record->ClienteID,
                             'Comentario' => $data['Comentario'],
-                            'FechaRegistro' => now(),
+                            'FechaRegistro' => $fechaRegistro,
                             'UsuarioRegistro' => auth()->user()->name ?? 'Sistema',
                         ]);
 
