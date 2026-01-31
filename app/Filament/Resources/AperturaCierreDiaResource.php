@@ -105,6 +105,16 @@ class AperturaCierreDiaResource extends Resource
                     ]),
             ])
             ->actions([
+                // VER OBSERVACIONES
+                Tables\Actions\Action::make('verObservaciones')
+                    ->label('Observaciones')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modal()
+                    ->modalHeading(fn(AperturaCierreDia $record) => "Observaciones - {$record->Fecha->format('d/m/Y')}")
+                    ->modalContent(fn(AperturaCierreDia $record) => view('components.modal-observaciones', ['observaciones' => $record->Observaciones ?? 'Sin observaciones']))
+                    ->modalSubmitActionLabel('Cerrar'),
+
                 // CERRAR DÍA - Solo visible cuando está ABIERTO
                 Tables\Actions\Action::make('cerrarDia')
                     ->label('Cerrar Día')

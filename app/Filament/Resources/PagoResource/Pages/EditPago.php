@@ -19,6 +19,18 @@ class EditPago extends EditRecord
         }
 
         parent::mount($record);
+
+        // Cargar los datos del pago en el formulario
+        $this->form->fill([
+            'ClienteID' => $this->record->cuota?->credito?->proposicion?->ClienteID,
+            'CreditoID' => $this->record->cuota?->credito?->CreditoID,
+            'CuotaID' => $this->record->CuotaID,
+            'MontoPagado' => $this->record->MontoPagado,
+            'FechaPago' => $this->record->FechaPago,
+            'EsMora' => $this->record->EsMora,
+            'EsPagoAMayor' => $this->record->EsPagoAMayor,
+            'Comentario' => $this->record->Comentario,
+        ]);
     }
 
     protected function getHeaderActions(): array

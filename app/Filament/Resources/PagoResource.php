@@ -90,6 +90,8 @@ class PagoResource extends Resource
                             ->searchable()
                             ->native(false)
                             ->live()
+                            ->disabled(fn() => request()->routeIs('*.edit'))
+                            ->dehydrated()
                             ->visible(fn() => !request()->routeIs('*.view'))
                             ->afterStateUpdated(function (Set $set, $state) {
                                 $set('CreditoID', null);
@@ -381,6 +383,11 @@ class PagoResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('cuota.credito.proposicion.tipoCredito.Descripcion')
+                    ->label('Tipo de Crédito')
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('cuota.credito.proposicion.CodigoCredito')
                     ->label('Código Crédito')
                     ->searchable()
@@ -424,6 +431,23 @@ class PagoResource extends Resource
                     ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
             ])
             ->filters([
+                Tables\Filters\Filter::make('cliente')
+                    ->label('Buscar Cliente (Nombre o DNI)')
+                    ->form([
+                        Forms\Components\TextInput::make('cliente')
+                            ->label('Nombre o DNI')
+                            ->placeholder('Ingrese nombre o DNI'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['cliente'] ?? null,
+                            fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente', fn(Builder $subQ) =>
+                                $subQ->where('NombresApellidos', 'like', '%' . $data['cliente'] . '%')
+                                    ->orWhere('DNI', 'like', '%' . $data['cliente'] . '%')
+                            )
+                        );
+                    }),
+
                 Tables\Filters\SelectFilter::make('zona')
                     ->label('Zona')
                     ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
