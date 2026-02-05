@@ -115,32 +115,29 @@ class Cliente extends Model
     }
 
     /**
-     * Obtener créditos activos con saldo pendiente
+     * Obtener créditos activos con saldo pendiente REAL (mayor a 0)
      */
     public function creditosConSaldo()
     {
         return $this->proposiciones()
+            ->where('Activo', true)
+            ->where('FueRefinanciada', 0)
             ->whereHas('credito', function ($query) {
                 $query->where('Activo', true);
             })
-            ->with(['credito.cuotas' => function ($query) {
-                $query->where('Activo', true);
-            }])
             ->get()
             ->filter(function ($proposicion) {
                 if (!$proposicion->credito) {
                     return false;
                 }
-                // Verificar si hay cuotas pendientes
-                return $proposicion->credito->cuotas()
-                    ->where('Activo', true)
-                    ->where('Estado', '!=', 'PAGADA')
-                    ->exists();
+                // Verificar si el saldo pendiente real es mayor a 0
+                $saldoPendiente = ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
+                return $saldoPendiente > 0;
             });
     }
 
     /**
-     * Verificar si el cliente tiene un crédito corriendo (con saldo pendiente)
+     * Verificar si el cliente tiene un crédito corriendo (con saldo pendiente REAL mayor a 0)
      */
     public function tieneCreditoCorriendo(): bool
     {
@@ -148,7 +145,7 @@ class Cliente extends Model
     }
 
     /**
-     * Obtener el crédito corriendo del cliente (el primero con saldo)
+     * Obtener el crédito corriendo del cliente (el primero con saldo REAL mayor a 0)
      */
     public function obtenerCreditoCorriendo()
     {

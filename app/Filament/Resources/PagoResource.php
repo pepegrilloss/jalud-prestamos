@@ -69,6 +69,7 @@ class PagoResource extends Resource
                                 // Condiciones que se aplican a las proposiciones
                                 $propositionConditions = function ($q) use ($zonaID) {
                                     $q->where('FueRefinanciada', 0)
+                                        ->where('Activo', true)
                                         ->whereHas('credito', function ($sq) {
                                             $sq->where('Activo', 1);
                                         });
@@ -82,6 +83,16 @@ class PagoResource extends Resource
 
                                 return $query->with(['proposiciones' => $propositionConditions])
                                     ->get()
+                                    ->filter(function ($cliente) {
+                                        // Solo incluir clientes que tengan al menos un crédito con saldo > 0
+                                        foreach ($cliente->proposiciones as $proposicion) {
+                                            $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
+                                            if ($saldo > 0) {
+                                                return true;
+                                            }
+                                        }
+                                        return false;
+                                    })
                                     ->mapWithKeys(function ($cliente) {
                                         return [$cliente->ClienteID => "{$cliente->NombresApellidos} - {$cliente->DNI}"];
                                     });
@@ -107,11 +118,10 @@ class PagoResource extends Resource
                                             $q->whereHas('credito', function ($sq) {
                                                 $sq->where('Activo', 1);
                                             })
-                                                // Excluir proposiciones refinanciadas
                                                 ->where('FueRefinanciada', 0)
+                                                ->where('Activo', true)
                                                 ->with('tipoCredito');
 
-                                            // Filtrar por zona del promotor
                                             if ($zonaID) {
                                                 $q->where('ZonaID', $zonaID);
                                             }
@@ -119,20 +129,25 @@ class PagoResource extends Resource
                                     ])->find($state);
 
                                     if ($cliente) {
-                                        $creditosActivos = $cliente->proposiciones->count();
+                                        // Filtrar solo proposiciones con saldo pendiente > 0
+                                        $proposicionesConSaldo = $cliente->proposiciones->filter(function ($prop) {
+                                            $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($prop->ProposicionCreditoID);
+                                            return $saldo > 0;
+                                        });
 
-                                        // Si el cliente tiene solo 1 crédito, seleccionarlo y mostrar el tipo con el código
+                                        $creditosActivos = $proposicionesConSaldo->count();
+
+                                        // Si el cliente tiene solo 1 crédito con saldo, seleccionarlo
                                         if ($creditosActivos == 1) {
-                                            $proposicion = $cliente->proposiciones->first();
+                                            $proposicion = $proposicionesConSaldo->first();
                                             if ($proposicion->credito) {
                                                 $creditoID = $proposicion->credito->CreditoID;
                                                 $set('CreditoID', $creditoID);
                                                 $tipo = $proposicion->tipoCredito?->Descripcion ?? 'N/A';
                                                 $fechaInicio = \Carbon\Carbon::parse($proposicion->credito->FechaGeneracion)->format('d/m/Y');
-                                                $montoTotal = $proposicion->MontoTotalPagar;
-                                                $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito} - {$fechaInicio} - {$montoTotal}");
+                                                $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
+                                                $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito} - {$fechaInicio} - Saldo: S/ " . number_format($saldo, 2));
 
-                                                // Auto-seleccionar la primera cuota pendiente (sin restricción de estado)
                                                 $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
                                                     ->where('Activo', 1)
                                                     ->where('NumeroCuota', '>', 0)
@@ -159,43 +174,39 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
 
-                                $cliente = \App\Models\Cliente::find($clienteID);
-
-                                // Contar créditos activos en la zona del promotor
-                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
-                                    $q->where('ClienteID', $cliente->ClienteID)
-                                        ->where('FueRefinanciada', 0);
+                                // Obtener créditos y filtrar solo los que tienen saldo > 0
+                                $creditos = \App\Models\Credito::with('proposicion.tipoCredito')
+                                    ->whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
+                                    $q->where('ClienteID', $clienteID)
+                                        ->where('FueRefinanciada', 0)
+                                        ->where('Activo', true);
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);
                                     }
-                                })->where('Activo', 1)->count();
+                                })
+                                    ->where('Activo', 1)
+                                    ->get()
+                                    ->filter(function ($credito) {
+                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
+                                    return $saldo > 0;
+                                });
 
-                                // Solo mostrar este select si hay 2+ créditos
-                                if ($creditosActivos < 2) {
+                                // Solo mostrar este select si hay 2+ créditos con saldo
+                                if ($creditos->count() < 2) {
                                     return [];
                                 }
 
-                                return \App\Models\Credito::with('proposicion.tipoCredito')
-                                    ->whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
-                                        $q->where('ClienteID', $clienteID)
-                                            ->where('FueRefinanciada', 0);
-                                        if ($zonaID) {
-                                            $q->where('ZonaID', $zonaID);
-                                        }
-                                    })
-                                    ->where('Activo', 1)
-                                    ->get()
-                                    ->mapWithKeys(function ($credito) {
-                                        $tipo = $credito->proposicion->tipoCredito?->Descripcion ?? 'N/A';
-                                        $fechaInicio = \Carbon\Carbon::parse($credito->FechaGeneracion)->format('d/m/Y');
-                                        $montoTotal = $credito->proposicion->MontoTotalPagar;
-                                        return [
-                                            $credito->CreditoID => "{$tipo} - {$credito->proposicion->CodigoCredito} - {$fechaInicio} - {$montoTotal}"
-                                        ];
-                                    });
+                                return $creditos->mapWithKeys(function ($credito) {
+                                    $tipo = $credito->proposicion->tipoCredito?->Descripcion ?? 'N/A';
+                                    $fechaInicio = \Carbon\Carbon::parse($credito->FechaGeneracion)->format('d/m/Y');
+                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
+                                    return [
+                                        $credito->CreditoID => "{$tipo} - {$credito->proposicion->CodigoCredito} - {$fechaInicio} - Saldo: S/ " . number_format($saldo, 2)
+                                    ];
+                                });
                             })
                             ->required(function (Forms\Get $get) {
-                                // Solo requerido si el select es visible (cuando hay 2+ créditos)
+                                // Solo requerido si el select es visible (cuando hay 2+ créditos con saldo)
                                 $clienteID = $get('ClienteID');
                                 if (!$clienteID) {
                                     return false;
@@ -204,16 +215,22 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
 
-                                $cliente = \App\Models\Cliente::find($clienteID);
-                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
-                                    $q->where('ClienteID', $cliente->ClienteID)
-                                        ->where('FueRefinanciada', 0);
+                                $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
+                                    $q->where('ClienteID', $clienteID)
+                                        ->where('FueRefinanciada', 0)
+                                        ->where('Activo', true);
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);
                                     }
-                                })->where('Activo', 1)->count();
+                                })->where('Activo', 1)->with('proposicion')->get();
 
-                                return $creditosActivos >= 2;
+                                // Filtrar solo créditos con saldo > 0
+                                $creditosConSaldo = $creditos->filter(function ($credito) {
+                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
+                                    return $saldo > 0;
+                                });
+
+                                return $creditosConSaldo->count() >= 2;
                             })
                             ->searchable()
                             ->native(false)
@@ -226,16 +243,22 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
 
-                                $cliente = \App\Models\Cliente::find($clienteID);
-                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
-                                    $q->where('ClienteID', $cliente->ClienteID)
-                                        ->where('FueRefinanciada', 0);
+                                $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
+                                    $q->where('ClienteID', $clienteID)
+                                        ->where('FueRefinanciada', 0)
+                                        ->where('Activo', true);
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);
                                     }
-                                })->where('Activo', 1)->count();
+                                })->where('Activo', 1)->with('proposicion')->get();
 
-                                return $creditosActivos >= 2;
+                                // Filtrar solo créditos con saldo > 0
+                                $creditosConSaldo = $creditos->filter(function ($credito) {
+                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
+                                    return $saldo > 0;
+                                });
+
+                                return $creditosConSaldo->count() >= 2;
                             })
                             ->disabled(fn(Forms\Get $get) => !$get('ClienteID'))
                             ->dehydrated()
@@ -262,17 +285,23 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
 
-                                $cliente = \App\Models\Cliente::find($clienteID);
-                                $creditosActivos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($cliente, $zonaID) {
-                                    $q->where('ClienteID', $cliente->ClienteID)
-                                        ->where('FueRefinanciada', 0);
+                                $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
+                                    $q->where('ClienteID', $clienteID)
+                                        ->where('FueRefinanciada', 0)
+                                        ->where('Activo', true);
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);
                                     }
-                                })->where('Activo', 1)->count();
+                                })->where('Activo', 1)->with('proposicion')->get();
 
-                                // Solo visible si tiene 1 crédito. Si tiene 2+, se usa el Select anterior y este se oculta por redundancia.
-                                return $creditosActivos < 2;
+                                // Filtrar solo créditos con saldo > 0
+                                $creditosConSaldo = $creditos->filter(function ($credito) {
+                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
+                                    return $saldo > 0;
+                                });
+
+                                // Solo visible si tiene 1 crédito con saldo. Si tiene 2+, se usa el Select anterior.
+                                return $creditosConSaldo->count() < 2;
                             }),
 
                         Forms\Components\Placeholder::make('tipo_credito_view')
@@ -431,19 +460,36 @@ class PagoResource extends Resource
                     ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
             ])
             ->filters([
-                Tables\Filters\Filter::make('cliente')
-                    ->label('Buscar Cliente (Nombre o DNI)')
+                Tables\Filters\SelectFilter::make('cliente')
+                    ->label('Cliente')
+                    ->options(function () {
+                        return \App\Models\Cliente::where('Activo', true)
+                            ->whereHas('proposiciones.credito')
+                            ->pluck('NombresApellidos', 'ClienteID')
+                            ->toArray();
+                    })
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente', fn(Builder $subQ) => $subQ->where('ClienteID', $data['value']))
+                        );
+                    })
+                    ->searchable()
+                    ->native(false),
+
+                Tables\Filters\Filter::make('dni')
+                    ->label('DNI')
                     ->form([
-                        Forms\Components\TextInput::make('cliente')
-                            ->label('Nombre o DNI')
-                            ->placeholder('Ingrese nombre o DNI'),
+                        Forms\Components\TextInput::make('dni')
+                            ->label('DNI')
+                            ->placeholder('Ingrese DNI'),
                     ])
                     ->query(function (Builder $query, array $data) {
                         return $query->when(
-                            $data['cliente'] ?? null,
-                            fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente', fn(Builder $subQ) =>
-                                $subQ->where('NombresApellidos', 'like', '%' . $data['cliente'] . '%')
-                                    ->orWhere('DNI', 'like', '%' . $data['cliente'] . '%')
+                            $data['dni'] ?? null,
+                            fn(Builder $q) => $q->whereHas(
+                                'cuota.credito.proposicion.cliente',
+                                fn(Builder $subQ) => $subQ->where('DNI', 'like', '%' . $data['dni'] . '%')
                             )
                         );
                     }),
@@ -480,12 +526,9 @@ class PagoResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                // Excluir pagos de proposiciones QUE SON refinanciamiento (EsRefinanciamiento = true)
-                // Pero SÍ mostrar pagos de créditos que FUERON refinanciados después (FueRefinanciada = 1)
-                // IMPORTANTE: Excluir pagos automáticos (EsPagoAutomatico = 1)
-                return $query->whereHas('cuota.credito.proposicion', function (Builder $q) {
-                    $q->where('EsRefinanciamiento', 0);
-                })->where('EsPagoAutomatico', 0);
+                // Solo excluir pagos automáticos (EsPagoAutomatico = 1)
+                // Se muestran pagos de TODOS los tipos de crédito incluyendo Refinanciamiento
+                return $query->where('EsPagoAutomatico', 0);
             })
             ->actions([
                 Tables\Actions\ViewAction::make()
@@ -539,16 +582,16 @@ class PagoResource extends Resource
         if (!$fechaPago) {
             return false;
         }
-        
+
         // Convertir a string si es un objeto
         if (is_object($fechaPago)) {
             $fechaPago = $fechaPago->toDateString();
         } else {
             $fechaPago = \Carbon\Carbon::parse($fechaPago)->toDateString();
         }
-        
+
         $fechaHoy = now()->toDateString();
-        
+
         if ($fechaPago !== $fechaHoy) {
             $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaPago)->first();
             if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
@@ -570,16 +613,16 @@ class PagoResource extends Resource
         if (!$fechaPago) {
             return false;
         }
-        
+
         // Convertir a string si es un objeto
         if (is_object($fechaPago)) {
             $fechaPago = $fechaPago->toDateString();
         } else {
             $fechaPago = \Carbon\Carbon::parse($fechaPago)->toDateString();
         }
-        
+
         $fechaHoy = now()->toDateString();
-        
+
         if ($fechaPago !== $fechaHoy) {
             $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaPago)->first();
             if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {

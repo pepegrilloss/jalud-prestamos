@@ -402,39 +402,39 @@ class CrearProposicionCreditoResource extends Resource
 
         try {
             $hoy = \Carbon\Carbon::now();
-            
+
             // Obtener todos los créditos activos del cliente
             $creditos = Credito::whereHas('proposicion', function ($query) use ($clienteID) {
                 $query->where('ClienteID', $clienteID)->where('Activo', true);
             })->where('Activo', true)->get();
-            
+
             foreach ($creditos as $credito) {
                 // Obtener cuotas vencidas (FechaVencimiento <= hoy)
                 $cuotasVencidas = $credito->cuotas()
                     ->where('FechaVencimiento', '<=', $hoy)
                     ->where('Estado', '!=', 'PAGADO')
                     ->get();
-                
+
                 if ($cuotasVencidas->isEmpty()) {
                     continue; // Sin cuotas vencidas, cliente está al día en este crédito
                 }
-                
+
                 // Calcular el monto total de cuotas que deberían estar pagadas
                 $montoCuotasEsperadas = $cuotasVencidas->sum('MontoCuota');
-                
+
                 // Calcular el total de pagos realizados en este crédito
                 $totalPagos = $credito->pagos()
                     ->where('Activo', true)
                     ->where('FechaPago', '<=', $hoy)
                     ->sum('MontoPagado');
-                
+
                 // Si el total de pagos es menor a lo esperado, el cliente NO está al día
                 if ($totalPagos < $montoCuotasEsperadas) {
                     $deuda = number_format($montoCuotasEsperadas - $totalPagos, 2);
                     return "❌ Cliente NO está al día. Deuda en cuotas: S/ {$deuda}";
                 }
             }
-            
+
             return "✅ Cliente está al día en el pago de sus cuotas";
         } catch (\Exception $e) {
             return "⚠️ Error al verificar estado de cuotas";
@@ -469,16 +469,27 @@ class CrearProposicionCreditoResource extends Resource
 
         $montoMaximoRecomendado = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
 
-        // IMPORTANTE: El MMR se calcula sobre el MONTO TOTAL DESEMBOLSADO (MontoTotal de proposiciones)
-        // NO sobre el saldo pendiente. Esto es correcto porque el cliente "utilizó" todo el dinero cuando lo desembolsamos.
-        // Aunque haya pagado parte, sigue "utilizando" ese crédito.
-        
-        // Sumar MontoTotal de todas las proposiciones activas NO refinanciadas
-        $montoUtilizado = ProposicionCredito::where('ClienteID', $clienteID)
+        // IMPORTANTE: Solo considerar como "utilizado" los créditos que tienen saldo pendiente REAL > 0
+        // Los créditos ya pagados (saldo = 0) no deben contar como monto utilizado
+
+        // Obtener proposiciones activas no refinanciadas
+        $proposiciones = ProposicionCredito::where('ClienteID', $clienteID)
             ->where('Activo', true)
             ->where('FueRefinanciada', 0)
             ->where('EsRefinanciamiento', 0)
-            ->sum('MontoTotal');
+            ->whereHas('credito', function ($query) {
+                $query->where('Activo', true);
+            })
+            ->get();
+
+        // Solo sumar el MontoTotal de las proposiciones que tienen saldo pendiente mayor a 0
+        $montoUtilizado = 0;
+        foreach ($proposiciones as $proposicion) {
+            $saldoPendiente = ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
+            if ($saldoPendiente > 0) {
+                $montoUtilizado += (float) $proposicion->MontoTotal;
+            }
+        }
 
         $montoDisponible = max(0, $montoMaximoRecomendado - $montoUtilizado);
 
@@ -640,7 +651,7 @@ class CrearProposicionCreditoResource extends Resource
         // Verificar si el día de propuesta está cerrado
         $fechaPropuesta = $record->FechaPropuesta->toDateString();
         $fechaHoy = now()->toDateString();
-        
+
         if ($fechaPropuesta !== $fechaHoy) {
             $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaPropuesta)->first();
             if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
@@ -660,7 +671,7 @@ class CrearProposicionCreditoResource extends Resource
         // Verificar si el día de propuesta está cerrado
         $fechaPropuesta = $record->FechaPropuesta->toDateString();
         $fechaHoy = now()->toDateString();
-        
+
         if ($fechaPropuesta !== $fechaHoy) {
             $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaPropuesta)->first();
             if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {

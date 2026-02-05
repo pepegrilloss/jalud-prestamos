@@ -42,9 +42,20 @@ class ViewCredito extends ViewRecord
                         Infolists\Components\TextEntry::make('proposicion.cliente.DNI')
                             ->label('DNI'),
 
+                        Infolists\Components\TextEntry::make('proposicion.zona.Nombre')
+                            ->label('Zona'),
+
+                        Infolists\Components\TextEntry::make('proposicion.MontoTotal')
+                            ->label('Monto')
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', ',')),
+
+                        Infolists\Components\TextEntry::make('proposicion.MontoInteres')
+                            ->label('Interés')
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', ',')),
+
                         Infolists\Components\TextEntry::make('proposicion.MontoTotalPagar')
-                            ->label('Monto + Interés')
-                            ->money('PEN'),
+                            ->label('Monto Total')
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', ',')),
 
                         Infolists\Components\TextEntry::make('proposicion.TasaInteres')
                             ->label('Tasa (%)'),
@@ -57,7 +68,8 @@ class ViewCredito extends ViewRecord
 
                         Infolists\Components\TextEntry::make('proposicion.MontoCuota')
                             ->label('Monto por Cuota')
-                            ->money('PEN'),
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', ',')),
+
                         Infolists\Components\TextEntry::make('proposicion.TasaMora')
                             ->label('Tasa de Mora (%)'),
                     ])
@@ -84,24 +96,24 @@ class ViewCredito extends ViewRecord
                                 Infolists\Components\TextEntry::make('MontoPagado')
                                     ->label('Cuota')
                                     ->money('PEN'),
-                                
+
                                 Infolists\Components\TextEntry::make('FechaPago')
                                     ->label('Fecha Pago')
                                     ->dateTime('d/m/Y H:i'),
-                                
+
                                 Infolists\Components\TextEntry::make('EsPagoAMayor')
                                     ->label('Tipo')
                                     ->formatStateUsing(fn($state) => $state ? 'Pago a Mayor' : 'Pago Normal'),
-                                
+
                                 Infolists\Components\TextEntry::make('EsMora')
                                     ->label('Es Mora')
                                     ->badge()
                                     ->color(fn($state) => $state ? 'danger' : 'success')
                                     ->formatStateUsing(fn($state) => $state ? 'Sí' : 'No'),
-                                
+
                                 Infolists\Components\TextEntry::make('UsuarioRegistro')
                                     ->label('Usuario'),
-                                
+
                                 Infolists\Components\TextEntry::make('Comentario')
                                     ->label('Comentario')
                                     ->columnSpanFull(),
