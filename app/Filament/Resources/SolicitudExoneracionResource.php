@@ -92,6 +92,42 @@ class SolicitudExoneracionResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('cliente')
+                    ->label('Cliente')
+                    ->options(function () {
+                        return \App\Models\Cliente::where('Activo', true)
+                            ->whereHas('proposiciones.credito')
+                            ->pluck('NombresApellidos', 'ClienteID')
+                            ->toArray();
+                    })
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('proposicion.cliente', fn(Builder $subQ) => $subQ->where('ClienteID', $data['value']))
+                        );
+                    })
+                    ->searchable()
+                    ->native(false),
+
+                Tables\Filters\Filter::make('dni')
+                    ->label('DNI')
+                    ->form([
+                        Forms\Components\TextInput::make('dni')
+                            ->label('DNI')
+                            ->placeholder('Ingrese DNI'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['dni'] ?? null,
+                            function (Builder $q) use ($data) {
+                                return $q->whereHas(
+                                    'proposicion.cliente',
+                                    fn(Builder $sq) => $sq->where('DNI', 'like', '%' . $data['dni'] . '%')
+                                );
+                            }
+                        );
+                    }),
+
                 Tables\Filters\SelectFilter::make('zona')
                     ->label('Zona')
                     ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
