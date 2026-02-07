@@ -144,6 +144,7 @@ class AprobacionExoneracionResource extends Resource
                         // Si se aprueba, crear pago automático
                         if ($data['Estado'] === 'APROBADO') {
                             $tipoConcepto = $record->tipoExoneracion->Codigo; // I, M, P
+                            $usuarioActual = auth()->user();
                             
                             $pago = new Pago();
                             $pago->CreditoID = $record->CreditoID;
@@ -152,6 +153,8 @@ class AprobacionExoneracionResource extends Resource
                             $pago->MontoPagado = $record->MontoExonerado;
                             $pago->Comentario = 'Exoneración aprobada - ' . $data['Comentario'];
                             $pago->FechaPago = $aprobacion->FechaAprobacion;
+                            $pago->UsuarioRegistro = $usuarioActual?->username ?? $usuarioActual?->name ?? auth()->id();
+                            $pago->Activo = 1;
                             $pago->save();
 
                             // Actualizar el SaldoPendiente en proposicioncredito

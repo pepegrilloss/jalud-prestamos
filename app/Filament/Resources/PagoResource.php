@@ -407,24 +407,40 @@ class PagoResource extends Resource
         return $table
             ->recordUrl(null)
             ->columns([
-                Tables\Columns\TextColumn::make('cuota.credito.proposicion.cliente.NombresApellidos')
+                Tables\Columns\TextColumn::make('cliente_nombre')
                     ->label('Cliente')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('cuota.credito.proposicion.tipoCredito.Descripcion')
+                Tables\Columns\TextColumn::make('tipo_credito_desc')
                     ->label('Tipo de Crédito')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('cuota.credito.proposicion.CodigoCredito')
+                Tables\Columns\TextColumn::make('codigo_credito')
                     ->label('Código Crédito')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('cuota.NumeroCuota')
+                Tables\Columns\TextColumn::make('numero_cuota')
                     ->label('Cuota #')
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(function ($state, $record) {
+                        return $state ? "Cuota #{$state}" : '-';
+                    }),
+
+                Tables\Columns\TextColumn::make('TipoConcepto')
+                    ->label('Tipo')
+                    ->sortable()
+                    ->formatStateUsing(function ($state, $record) {
+                        $tipos = [
+                            'C' => 'Cuota Normal',
+                            'I' => 'Interés',
+                            'M' => 'Mora',
+                            'P' => 'Penalidad',
+                        ];
+                        return $tipos[$record->TipoConcepto] ?? $record->TipoConcepto;
+                    }),
 
                 Tables\Columns\TextColumn::make('MontoPagado')
                     ->label('Monto Pagado')
@@ -471,7 +487,20 @@ class PagoResource extends Resource
                     ->query(function (Builder $query, array $data) {
                         return $query->when(
                             $data['value'] ?? null,
-                            fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente', fn(Builder $subQ) => $subQ->where('ClienteID', $data['value']))
+                            function (Builder $q) use ($data) {
+                                return $q->where(
+                                    function (Builder $subQ) use ($data) {
+                                        $subQ->whereHas(
+                                            'cuota.credito.proposicion.cliente', 
+                                            fn(Builder $sq) => $sq->where('ClienteID', $data['value'])
+                                        )
+                                        ->orWhereHas(
+                                            'credito.proposicion.cliente',
+                                            fn(Builder $sq) => $sq->where('ClienteID', $data['value'])
+                                        );
+                                    }
+                                );
+                            }
                         );
                     })
                     ->searchable()
@@ -487,10 +516,20 @@ class PagoResource extends Resource
                     ->query(function (Builder $query, array $data) {
                         return $query->when(
                             $data['dni'] ?? null,
-                            fn(Builder $q) => $q->whereHas(
-                                'cuota.credito.proposicion.cliente',
-                                fn(Builder $subQ) => $subQ->where('DNI', 'like', '%' . $data['dni'] . '%')
-                            )
+                            function (Builder $q) use ($data) {
+                                return $q->where(
+                                    function (Builder $subQ) use ($data) {
+                                        $subQ->whereHas(
+                                            'cuota.credito.proposicion.cliente',
+                                            fn(Builder $sq) => $sq->where('DNI', 'like', '%' . $data['dni'] . '%')
+                                        )
+                                        ->orWhereHas(
+                                            'credito.proposicion.cliente',
+                                            fn(Builder $sq) => $sq->where('DNI', 'like', '%' . $data['dni'] . '%')
+                                        );
+                                    }
+                                );
+                            }
                         );
                     }),
 
@@ -500,7 +539,20 @@ class PagoResource extends Resource
                     ->query(function (Builder $query, array $data) {
                         return $query->when(
                             $data['value'] ?? null,
-                            fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente.negocio', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
+                            function (Builder $q) use ($data) {
+                                return $q->where(
+                                    function (Builder $subQ) use ($data) {
+                                        $subQ->whereHas(
+                                            'cuota.credito.proposicion.cliente.negocio', 
+                                            fn(Builder $sq) => $sq->where('ZonaID', $data['value'])
+                                        )
+                                        ->orWhereHas(
+                                            'credito.proposicion.cliente.negocio',
+                                            fn(Builder $sq) => $sq->where('ZonaID', $data['value'])
+                                        );
+                                    }
+                                );
+                            }
                         );
                     })
                     ->native(false),
@@ -526,9 +578,32 @@ class PagoResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                // Solo excluir pagos automáticos (EsPagoAutomatico = 1)
+                // Excluir pagos automáticos SOLO si TipoConcepto = 'C' (cuotas normales)
                 // Se muestran pagos de TODOS los tipos de crédito incluyendo Refinanciamiento
-                return $query->where('EsPagoAutomatico', 0);
+                // Los pagos automáticos con TipoConcepto diferente a 'C' (descuentos, exoneraciones) SI se muestran
+                $query->where(function (Builder $q) {
+                    $q->where('EsPagoAutomatico', 0) // Mostrar todos los pagos normales
+                        ->orWhere(function (Builder $subQ) {
+                            $subQ->where('EsPagoAutomatico', 1) // Y los pagos automáticos
+                                ->where('TipoConcepto', '!=', 'C'); // Que NO sean de tipo cuota
+                        });
+                });
+                
+                // Join con Credito para obtener datos directamente
+                $query->leftJoin('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
+                    ->leftJoin('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+                    ->leftJoin('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+                    ->leftJoin('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+                    ->leftJoin('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
+                    ->select([
+                        'pago.*',
+                        'Cliente.NombresApellidos as cliente_nombre',
+                        'TipoCredito.Descripcion as tipo_credito_desc',
+                        'ProposicionCredito.CodigoCredito as codigo_credito',
+                        'cuota.NumeroCuota as numero_cuota'
+                    ]);
+                
+                return $query;
             })
             ->actions([
                 Tables\Actions\ViewAction::make()
