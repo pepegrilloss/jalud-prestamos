@@ -23,7 +23,7 @@ class AprobacionExoneracionResource extends Resource
     protected static ?string $navigationGroup = 'Exoneraciones';
     protected static ?int $navigationGroupSort = 100;
     protected static ?string $navigationIcon = 'heroicon-o-check-badge';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 10;
     protected static ?string $label = 'Aprobación de Exoneraciones';
     protected static ?string $pluralLabel = 'Aprobaciones de Exoneraciones';
 

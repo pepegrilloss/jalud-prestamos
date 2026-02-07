@@ -22,7 +22,7 @@ class SolicitudExoneracionResource extends Resource
     protected static ?string $navigationGroup = 'Exoneraciones';
     protected static ?int $navigationGroupSort = 100;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 9;
     protected static ?string $label = 'Descuentos y Exoneraciones';
     protected static ?string $pluralLabel = 'Descuentos y Exoneraciones';
 
