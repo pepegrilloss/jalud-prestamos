@@ -49,6 +49,26 @@ class AprobacionExoneracionResource extends Resource
             ->where('Estado', 'PENDIENTE');
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = auth()->user();
+        // Ocultar para promotores/cobradores
+        if ($user && $user->PromotorCobradorID) {
+            return false;
+        }
+        return true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        $user = auth()->user();
+        // Denegar acceso a promotores/cobradores
+        if ($user && $user->PromotorCobradorID) {
+            return false;
+        }
+        return true;
+    }
+
     public static function table(Table $table): Table
     {
         return $table

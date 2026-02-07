@@ -26,6 +26,26 @@ class SolicitudExoneracionResource extends Resource
     protected static ?string $label = 'Descuentos y Exoneraciones';
     protected static ?string $pluralLabel = 'Descuentos y Exoneraciones';
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = auth()->user();
+        // Ocultar para promotores/cobradores
+        if ($user && $user->PromotorCobradorID) {
+            return false;
+        }
+        return true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        $user = auth()->user();
+        // Denegar acceso a promotores/cobradores
+        if ($user && $user->PromotorCobradorID) {
+            return false;
+        }
+        return true;
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
