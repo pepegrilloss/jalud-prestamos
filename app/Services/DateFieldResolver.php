@@ -31,6 +31,7 @@ class DateFieldResolver
         'NivelAprobacion' => 'FechaCreacion',
         'AprobacionProposicion' => 'FechaAprobacion',
         'AnalisisEconomico' => 'FechaAnalisis',
+        'SolicitudExoneracion' => 'FechaSolicitud',
         'Log' => 'created_at',
     ];
 

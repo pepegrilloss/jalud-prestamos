@@ -16,6 +16,8 @@ class Pago extends Model
         'PromotorCobradorID',
         'MontoPagado',
         'FechaPago',
+        'TipoPago',
+        'TipoConcepto',
         'EsMora',
         'EsPagoAMayor',
         'EsPagoForzado',
