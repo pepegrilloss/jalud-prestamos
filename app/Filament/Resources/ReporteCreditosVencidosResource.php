@@ -119,9 +119,12 @@ class ReporteCreditosVencidosResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                // Mostrar solo créditos activos vencidos (con fecha vencimiento <= hoy)
+                // Mostrar solo créditos activos vencidos (con fecha vencimiento <= hoy) y con saldo pendiente > 0
                 $query->where('Activo', 1)
                     ->whereDate('FechaVencimiento', '<=', \Carbon\Carbon::today())
+                    ->whereHas('proposicion', function ($q) {
+                        $q->where('SaldoPendiente', '>', 0);
+                    })
                     ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
                     ->orderBy('FechaVencimiento', 'asc');
             })

@@ -32,6 +32,9 @@ class ListReporteCreditosVencidos extends ListRecords
     {
         $creditos = \App\Models\Credito::where('Activo', 1)
             ->whereDate('FechaVencimiento', '<=', Carbon::today())
+            ->whereHas('proposicion', function ($q) {
+                $q->where('SaldoPendiente', '>', 0);
+            })
             ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
             ->orderBy('FechaVencimiento', 'asc')
             ->get();
