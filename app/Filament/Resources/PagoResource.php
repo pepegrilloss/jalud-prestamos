@@ -145,8 +145,8 @@ class PagoResource extends Resource
                                                 $set('CreditoID', $creditoID);
                                                 $tipo = $proposicion->tipoCredito?->Descripcion ?? 'N/A';
                                                 $fechaInicio = \Carbon\Carbon::parse($proposicion->credito->FechaGeneracion)->format('d/m/Y');
-                                                $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
-                                                $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito} - {$fechaInicio} - Saldo: S/ " . number_format($saldo, 2));
+                                                $montoTotal = $proposicion->MontoTotalPagar;
+                                                $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito} - {$fechaInicio} - Monto total: S/ " . number_format($montoTotal, 2));
 
                                                 $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
                                                     ->where('Activo', 1)
@@ -199,9 +199,9 @@ class PagoResource extends Resource
                                 return $creditos->mapWithKeys(function ($credito) {
                                     $tipo = $credito->proposicion->tipoCredito?->Descripcion ?? 'N/A';
                                     $fechaInicio = \Carbon\Carbon::parse($credito->FechaGeneracion)->format('d/m/Y');
-                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
+                                    $montoTotal = $credito->proposicion->MontoTotalPagar;
                                     return [
-                                        $credito->CreditoID => "{$tipo} - {$credito->proposicion->CodigoCredito} - {$fechaInicio} - Saldo: S/ " . number_format($saldo, 2)
+                                        $credito->CreditoID => "{$tipo} - {$credito->proposicion->CodigoCredito} - {$fechaInicio} - Monto total: S/ " . number_format($montoTotal, 2)
                                     ];
                                 });
                             })

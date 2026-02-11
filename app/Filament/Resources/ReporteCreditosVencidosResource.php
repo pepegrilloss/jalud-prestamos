@@ -1,0 +1,160 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\ReporteCreditosVencidosResource\Pages;
+use App\Models\Credito;
+use Filament\Forms;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+
+class ReporteCreditosVencidosResource extends Resource
+{
+    protected static ?string $model = Credito::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-exclamation-circle';
+    protected static ?string $navigationGroup = 'Reportes';
+    protected static ?int $navigationGroupSort = 10;
+    protected static ?int $navigationSort = 2;
+    protected static ?string $label = 'Créditos Vencidos';
+    protected static ?string $pluralLabel = 'Créditos Vencidos';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                // This is a read-only resource
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('proposicion.cliente.DNI')
+                    ->label('DNI')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('proposicion.tipoCredito.Descripcion')
+                    ->label('TIPO')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('proposicion.cliente.NombresApellidos')
+                    ->label('Cliente')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('proposicion.MontoTotalPagar')
+                    ->label('Total')
+                    ->money('PEN')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('totalPagado')
+                    ->label('Pagado')
+                    ->money('PEN')
+                    ->getStateUsing(function ($record) {
+                        return \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $record->CreditoID))
+                            ->where('Activo', 1)
+                            ->sum('MontoPagado');
+                    })
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('saldoPendiente')
+                    ->label('Saldo')
+                    ->money('PEN')
+                    ->getStateUsing(function ($record) {
+                        $total = $record->proposicion->MontoTotalPagar ?? 0;
+                        $pagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $record->CreditoID))
+                            ->where('Activo', 1)
+                            ->sum('MontoPagado');
+                        return $total - $pagado;
+                    })
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('FechaVencimiento')
+                    ->label('Fecha')
+                    ->date('d/m/Y')
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('cliente')
+                    ->label('Cliente')
+                    ->relationship('proposicion.cliente', 'NombresApellidos')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\SelectFilter::make('tipoCredito')
+                    ->label('Tipo Crédito')
+                    ->relationship('proposicion.tipoCredito', 'Descripcion')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\Filter::make('FechaVencimiento')
+                    ->label('Fecha de Vencimiento')
+                    ->form([
+                        Forms\Components\DatePicker::make('fecha_desde')
+                            ->label('Desde'),
+                        Forms\Components\DatePicker::make('fecha_hasta')
+                            ->label('Hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['fecha_desde'] ?? null,
+                                function (Builder $q, $date) {
+                                    return $q->whereDate('FechaVencimiento', '>=', $date);
+                                }
+                            )
+                            ->when(
+                                $data['fecha_hasta'] ?? null,
+                                function (Builder $q, $date) {
+                                    return $q->whereDate('FechaVencimiento', '<=', $date);
+                                }
+                            );
+                    }),
+            ])
+            ->modifyQueryUsing(function (Builder $query) {
+                // Mostrar solo créditos activos vencidos (con fecha vencimiento <= hoy)
+                $query->where('Activo', 1)
+                    ->whereDate('FechaVencimiento', '<=', \Carbon\Carbon::today())
+                    ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
+                    ->orderBy('FechaVencimiento', 'asc');
+            })
+            ->actions([])
+            ->bulkActions([])
+            ->recordUrl(null)
+            ->paginationPageOptions([10, 25, 50]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListReporteCreditosVencidos::route('/'),
+        ];
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+}

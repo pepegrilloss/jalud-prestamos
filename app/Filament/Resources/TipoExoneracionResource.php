@@ -24,6 +24,26 @@ class TipoExoneracionResource extends Resource
     protected static ?string $pluralLabel = 'Tipos de Exoneración';
     protected static ?string $cluster = Mantenimiento::class;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = auth()->user();
+        // Ocultar para promotores/cobradores
+        if ($user && $user->PromotorCobradorID) {
+            return false;
+        }
+        return true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        $user = auth()->user();
+        // Denegar acceso a promotores/cobradores
+        if ($user && $user->PromotorCobradorID) {
+            return false;
+        }
+        return true;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
