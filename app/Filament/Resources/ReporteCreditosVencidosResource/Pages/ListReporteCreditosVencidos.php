@@ -40,7 +40,7 @@ class ListReporteCreditosVencidos extends ListRecords
                     
                     // Validar si hay créditos vencidos para la fecha seleccionada
                     $creditos = \App\Models\Credito::where('Activo', 1)
-                        ->whereDate('FechaVencimiento', '<=', $fecha)
+                        ->whereDate('FechaVencimiento', '=', $fecha)
                         ->whereHas('proposicion', function ($q) {
                             $q->where('SaldoPendiente', '>', 0);
                         })

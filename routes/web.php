@@ -43,7 +43,7 @@ Route::get('/pdf/creditos-vencidos', function () {
     $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
 
     $creditos = \App\Models\Credito::where('Activo', 1)
-        ->whereDate('FechaVencimiento', '<=', $fecha)
+        ->whereDate('FechaVencimiento', '=', $fecha)
         ->whereHas('proposicion', function ($q) {
             $q->where('SaldoPendiente', '>', 0);
         })
