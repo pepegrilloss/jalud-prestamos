@@ -5,7 +5,7 @@ namespace App\Filament\Resources\ReporteCreditosVencidosResource\Pages;
 use App\Filament\Resources\ReporteCreditosVencidosResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Forms;
 use Illuminate\Support\Carbon;
 
 class ListReporteCreditosVencidos extends ListRecords
@@ -21,36 +21,46 @@ class ListReporteCreditosVencidos extends ListRecords
     {
         return [
             Actions\Action::make('descargar_pdf')
-                ->label('Descargar PDF')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->action(fn() => $this->descargarPdf())
+                ->label('Descargar PDF Créditos Vencidos')
+                ->icon('heroicon-o-document-arrow-down')
+                ->form([
+                    Forms\Components\DatePicker::make('fecha')
+                        ->label('Seleccionar Fecha')
+                        ->default(now())
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    if (!isset($data['fecha'])) {
+                        return;
+                    }
+                    
+                    $fecha = is_string($data['fecha']) ? $data['fecha'] : $data['fecha']->format('Y-m-d');
+                    
+                    // Validar si hay créditos vencidos para la fecha seleccionada
+                    $creditos = \App\Models\Credito::where('Activo', 1)
+                        ->whereDate('FechaVencimiento', '<=', $fecha)
+                        ->whereHas('proposicion', function ($q) {
+                            $q->where('SaldoPendiente', '>', 0);
+                        })
+                        ->count();
+                    
+                    if ($creditos === 0) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Sin créditos vencidos')
+                            ->body('No hay créditos vencidos registrados para la fecha seleccionada.')
+                            ->warning()
+                            ->send();
+                        return;
+                    }
+                    
+                    $url = route('creditos-vencidos.view', ['fecha' => $fecha]);
+                    
+                    // Abrir en nueva ventana
+                    $this->js("window.open('" . addslashes($url) . "', '_blank')");
+                })
                 ->color('danger'),
         ];
-    }
-
-    public function descargarPdf()
-    {
-        $creditos = \App\Models\Credito::where('Activo', 1)
-            ->whereDate('FechaVencimiento', '<=', Carbon::today())
-            ->whereHas('proposicion', function ($q) {
-                $q->where('SaldoPendiente', '>', 0);
-            })
-            ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
-            ->orderBy('FechaVencimiento', 'asc')
-            ->get();
-
-        $data = [
-            'fecha' => Carbon::now()->format('d/m/Y H:i'),
-            'creditos' => $creditos,
-        ];
-
-        $pdf = Pdf::loadView('reportes.creditos-vencidos', $data)
-            ->setPaper('a4', 'landscape');
-
-        $filename = 'creditos_vencidos_' . Carbon::now()->format('d-m-Y_H-i-s') . '.pdf';
-        return response()->streamDownload(
-            fn() => print($pdf->output()),
-            $filename
-        );
     }
 }

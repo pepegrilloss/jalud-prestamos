@@ -5,7 +5,8 @@ namespace App\Filament\Resources\ReporteCuentasCanceladasResource\Pages;
 use App\Filament\Resources\ReporteCuentasCanceladasResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Forms;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Carbon;
 
 class ListReporteCuentasCanceladas extends ListRecords
@@ -21,32 +22,43 @@ class ListReporteCuentasCanceladas extends ListRecords
     {
         return [
             Actions\Action::make('descargar_pdf')
-                ->label('Descargar PDF')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->action(fn() => $this->descargarPdf())
+                ->label('Descargar PDF Cuentas Canceladas')
+                ->icon('heroicon-o-document-arrow-down')
+                ->form([
+                    Forms\Components\DatePicker::make('fecha')
+                        ->label('Seleccionar Fecha')
+                        ->default(now())
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    if (!isset($data['fecha'])) {
+                        return;
+                    }
+                    
+                    $fecha = is_string($data['fecha']) ? $data['fecha'] : $data['fecha']->format('Y-m-d');
+                    
+                    // Validar si hay cuentas canceladas para la fecha seleccionada
+                    $canceladas = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
+                        ->whereDate('FechaModificacion', '=', $fecha)
+                        ->count();
+                    
+                    if ($canceladas === 0) {
+                        Notification::make()
+                            ->title('Sin cuentas canceladas')
+                            ->body('No hay cuentas canceladas registradas para la fecha seleccionada.')
+                            ->warning()
+                            ->send();
+                        return;
+                    }
+                    
+                    $url = route('cuentas-canceladas.view', ['fecha' => $fecha]);
+                    
+                    // Abrir en nueva ventana
+                    $this->js("window.open('" . addslashes($url) . "', '_blank')");
+                })
                 ->color('danger'),
         ];
-    }
-
-    public function descargarPdf()
-    {
-        $proposiciones = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
-            ->with(['cliente', 'credito'])
-            ->orderByDesc('FechaModificacion')
-            ->get();
-
-        $data = [
-            'fecha' => Carbon::now()->format('d/m/Y H:i'),
-            'proposiciones' => $proposiciones,
-        ];
-
-        $pdf = Pdf::loadView('reportes.cuentas-canceladas', $data)
-            ->setPaper('a4', 'landscape');
-
-        $filename = 'cuentas_canceladas_' . Carbon::now()->format('d-m-Y_H-i-s') . '.pdf';
-        return response()->streamDownload(
-            fn() => print($pdf->output()),
-            $filename
-        );
     }
 }

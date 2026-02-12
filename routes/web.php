@@ -39,6 +39,47 @@ Route::get('/pdf/acta-creditos', function () {
     return $pdf->stream('Acta_Creditos_' . now()->format('Y-m-d_His') . '.pdf');
 })->name('acta-creditos.view');
 
+Route::get('/pdf/creditos-vencidos', function () {
+    $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+
+    $creditos = \App\Models\Credito::where('Activo', 1)
+        ->whereDate('FechaVencimiento', '<=', $fecha)
+        ->whereHas('proposicion', function ($q) {
+            $q->where('SaldoPendiente', '>', 0);
+        })
+        ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
+        ->orderBy('FechaVencimiento', 'asc')
+        ->get();
+
+    $pdf = Pdf::loadView('reportes.creditos-vencidos', [
+        'creditos' => $creditos,
+        'fecha' => $fecha->format('d/m/Y'),
+    ]);
+
+    $pdf->setPaper('a4', 'landscape');
+
+    return $pdf->stream('Creditos_Vencidos_' . $fecha->format('d-m-Y') . '.pdf');
+})->name('creditos-vencidos.view');
+
+Route::get('/pdf/cuentas-canceladas', function () {
+    $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+
+    $proposiciones = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
+        ->whereDate('FechaModificacion', '=', $fecha)
+        ->with(['cliente', 'credito'])
+        ->orderByDesc('FechaModificacion')
+        ->get();
+
+    $pdf = Pdf::loadView('reportes.cuentas-canceladas', [
+        'proposiciones' => $proposiciones,
+        'fecha' => $fecha->format('d/m/Y'),
+    ]);
+
+    $pdf->setPaper('a4', 'landscape');
+
+    return $pdf->stream('Cuentas_Canceladas_' . $fecha->format('d-m-Y') . '.pdf');
+})->name('cuentas-canceladas.view');
+
 Route::get('/libreta-pagos/{credito}', [App\Http\Controllers\LibretaPagosController::class, 'descargar'])
     ->name('libreta-pagos.descargar');
 
