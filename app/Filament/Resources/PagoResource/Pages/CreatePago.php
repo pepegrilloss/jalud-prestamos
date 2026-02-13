@@ -282,14 +282,31 @@ class CreatePago extends CreateRecord
                 $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
                     ->where('Activo', 1)
                     ->sum('MontoPagado');
+                $nuevoSaldoPendiente = $montoCuotasTotal - $totalPagado;
+                
                 $proposicion->update([
-                    'SaldoPendiente' => $montoCuotasTotal - $totalPagado,
+                    'SaldoPendiente' => $nuevoSaldoPendiente,
                 ]);
                 \Log::info('CreatePago::afterCreate - Proposicion updated', [
                     'ProposicionID' => $proposicion->ProposicionCreditoID,
                     'TotalPagado' => $totalPagado,
-                    'SaldoPendiente' => $proposicion->SaldoPendiente
+                    'SaldoPendiente' => $nuevoSaldoPendiente
                 ]);
+
+                // Si el saldo llegó a 0, actualizar el estatus del crédito a SALDADO
+                if ($nuevoSaldoPendiente <= 0) {
+                    $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                    $fechaSaldamiento = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+                    
+                    $credito->update([
+                        'EstatusCreditoFinal' => 'SALDADO',
+                        'FechaSaldamiento' => $fechaSaldamiento,
+                    ]);
+                    \Log::info('CreatePago::afterCreate - Credito marked as SALDADO', [
+                        'CreditoID' => $credito->CreditoID,
+                        'FechaSaldamiento' => $fechaSaldamiento
+                    ]);
+                }
             }
 
             // Mostrar notificación
