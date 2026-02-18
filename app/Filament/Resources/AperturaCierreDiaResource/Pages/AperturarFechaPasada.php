@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AperturaCierreDiaResource\Pages;
 
 use App\Filament\Resources\AperturaCierreDiaResource;
 use App\Models\AperturaCierreDia;
+use App\Events\DiaAbierto;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -84,6 +85,9 @@ class AperturarFechaPasada extends Page
                         : $registro->Observaciones,
                 ]);
 
+                // Disparar evento
+                DiaAbierto::dispatch($registro);
+
                 // Reabrir registros del día
                 AperturaCierreDiaResource::reabrirDia($registro);
 
@@ -95,13 +99,16 @@ class AperturarFechaPasada extends Page
                     ->send();
             } else {
                 // Crear nuevo registro de apertura
-                AperturaCierreDia::create([
+                $nuevoRegistro = AperturaCierreDia::create([
                     'Fecha' => $fecha->format('Y-m-d'),
                     'EstadoDia' => 'ABIERTO',
                     'FechaApertura' => now(),
                     'UsuarioAperturaID' => auth()->id(),
                     'Observaciones' => $data['observaciones'] ? "[Apertura de Fecha Pasada] " . $data['observaciones'] : '[Apertura de Fecha Pasada]',
                 ]);
+
+                // Disparar evento
+                DiaAbierto::dispatch($nuevoRegistro);
 
                 Notification::make()
                     ->success()

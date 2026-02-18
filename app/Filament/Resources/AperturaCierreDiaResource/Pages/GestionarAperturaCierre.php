@@ -5,6 +5,7 @@ namespace App\Filament\Resources\AperturaCierreDiaResource\Pages;
 use App\Filament\Resources\AperturaCierreDiaResource;
 use App\Models\AperturaCierreDia;
 use App\Services\AperturaCierreDiaLogger;
+use App\Events\DiaAbierto;
 use Filament\Actions;
 use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Database\Eloquent\Model;
@@ -54,6 +55,11 @@ class GestionarAperturaCierre extends ManageRecords
                             }
                             
                             $record = AperturaCierreDia::create($data);
+                            
+                            // Disparar evento si se crea como ABIERTO
+                            if ($record->EstadoDia === 'ABIERTO') {
+                                DiaAbierto::dispatch($record);
+                            }
                             
                             $logger->success('[APERTURA_CIERRE] Registro creado exitosamente', [
                                 'id' => $record->AperturaCierreDiaID,

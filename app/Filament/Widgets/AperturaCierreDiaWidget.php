@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\AperturaCierreDia;
+use App\Events\DiaAbierto;
 use Filament\Widgets\Widget;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -36,13 +37,17 @@ class AperturaCierreDiaWidget extends Widget
                 'FechaApertura' => now(),
                 'UsuarioAperturaID' => auth()->id(),
             ]);
+            // Disparar evento
+            DiaAbierto::dispatch($this->hoy);
         } else {
-            AperturaCierreDia::create([
+            $nuevoRegistro = AperturaCierreDia::create([
                 'Fecha' => today(),
                 'EstadoDia' => 'ABIERTO',
                 'FechaApertura' => now(),
                 'UsuarioAperturaID' => auth()->id(),
             ]);
+            // Disparar evento
+            DiaAbierto::dispatch($nuevoRegistro);
         }
 
         $this->hoy = AperturaCierreDia::whereDate('Fecha', today())->first();

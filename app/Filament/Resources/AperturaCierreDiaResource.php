@@ -29,6 +29,8 @@ class AperturaCierreDiaResource extends Resource
                 Forms\Components\DatePicker::make('Fecha')
                     ->required()
                     ->disabled(fn(string $operation): bool => $operation === 'edit')
+                    ->maxDate(today())
+                    ->native(false)
                     ->unique(AperturaCierreDia::class, 'Fecha', ignoreRecord: true),
 
                 Forms\Components\Select::make('EstadoDia')

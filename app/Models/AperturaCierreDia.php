@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Observers\AperturaCierreDiaObserver;
 
 class AperturaCierreDia extends Model
 {
@@ -25,6 +26,15 @@ class AperturaCierreDia extends Model
         'FechaApertura' => 'datetime',
         'FechaCierre' => 'datetime',
     ];
+
+    /**
+     * Registrar el Observer para los eventos de este modelo
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        static::observe(AperturaCierreDiaObserver::class);
+    }
 
     public function usuarioApertura(): BelongsTo
     {

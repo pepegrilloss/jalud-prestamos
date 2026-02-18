@@ -15,79 +15,111 @@ class CalcularMoraAutomatica implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $fecha;
+
+    public function __construct($fecha = null)
+    {
+        $this->fecha = $fecha ? \Carbon\Carbon::parse($fecha)->toDateString() : today()->toDateString();
+    }
+
     public function handle(): void
     {
-        // Obtener todos los créditos que:
-        // 1. Han vencido (FechaVencimiento <= hoy)
-        // 2. Tienen saldo pendiente
-        // 3. Están activos
-        $creditosVencidos = Credito::where('Activo', 1)
-            ->whereDate('FechaVencimiento', '<=', now())
-            ->with(['proposicion.cliente.tasaMora', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
-            ->get();
+        \Log::info('[JOB] CalcularMoraAutomatica: Iniciando cálculo de moras', ['fecha' => $this->fecha]);
+        
+        try {
+            // Obtener todos los créditos que:
+            // 1. Han vencido (FechaVencimiento <= hoy)
+            // 2. Tienen saldo pendiente
+            // 3. Están activos
+            $creditosVencidos = Credito::where('Activo', 1)
+                ->whereDate('FechaVencimiento', '<=', now())
+                ->with(['proposicion.cliente.tasaMora', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
+                ->get();
 
-        $hoy = today();
+            \Log::info('[JOB] Créditos vencidos encontrados: ' . $creditosVencidos->count());
 
-        foreach ($creditosVencidos as $credito) {
-            // Verificar si ya existe mora registrada para hoy
-            $moraHoy = Mora::where('CreditoID', $credito->CreditoID)
-                ->whereDate('FechaMora', $hoy)
-                ->exists();
+            $hoy = $this->fecha ? \Carbon\Carbon::parse($this->fecha) : today();
+            $morasCreadas = 0;
 
-            if ($moraHoy) {
-                continue; // Ya se calculó hoy
+            foreach ($creditosVencidos as $credito) {
+                \Log::debug('[JOB] Procesando crédito: ' . $credito->CreditoID);
+                
+                // Verificar si ya existe mora registrada para la fecha especificada
+                $moraHoy = Mora::where('CreditoID', $credito->CreditoID)
+                    ->whereDate('FechaMora', $hoy->toDateString())
+                    ->exists();
+
+                if ($moraHoy) {
+                    \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': Ya tiene mora registrada para ' . $hoy->toDateString());
+                    continue; // Ya se calculó para esa fecha
+                }
+
+                // Obtener saldo pendiente de la proposición de crédito
+                $saldoPendiente = $credito->proposicion?->SaldoPendiente ?? 0;
+
+                if ($saldoPendiente <= 0) {
+                    \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': Saldo pendiente <= 0: ' . number_format($saldoPendiente, 2));
+                    continue; // No hay saldo, no calcular mora
+                }
+
+                // Obtener cliente a través de proposicion
+                $cliente = $credito->proposicion?->cliente;
+                if (!$cliente) {
+                    \Log::warning('[JOB] Crédito ' . $credito->CreditoID . ': No tiene cliente asociado');
+                    continue; // No hay cliente asociado
+                }
+
+                // Obtener porcentaje de mora del cliente
+                $porcentajeMora = $cliente->tasaMora?->Porcentaje ?? 0;
+
+                if ($porcentajeMora <= 0) {
+                    \Log::warning('[JOB] Crédito ' . $credito->CreditoID . ': Cliente sin tasa de mora');
+                    continue; // No tiene tasa de mora configurada
+                }
+
+                // Calcular mora diaria
+                // Mora = SaldoPendiente * (Porcentaje / 100)
+                $montoMora = $saldoPendiente * ($porcentajeMora / 100);
+
+                // Obtener mora acumulada anterior
+                $moraAnterior = Mora::where('CreditoID', $credito->CreditoID)
+                    ->orderBy('FechaMora', 'desc')
+                    ->first();
+
+                $moraAcumulada = ($moraAnterior?->MoraAcumulada ?? 0) + $montoMora;
+
+                // Registrar la mora del día
+                $moraNueva = Mora::create([
+                    'CreditoID' => $credito->CreditoID,
+                    'FechaMora' => $hoy,
+                    'SaldoPendiente' => $saldoPendiente,
+                    'PorcentajeMora' => $porcentajeMora,
+                    'MontoMora' => $montoMora,
+                    'MoraAcumulada' => $moraAcumulada,
+                ]);
+
+                $morasCreadas++;
+
+                // Log para auditoría
+                \Log::info('[JOB] Mora calculada', [
+                    'CreditoID' => $credito->CreditoID,
+                    'ClienteDNI' => $cliente->DNI,
+                    'Fecha' => $hoy->toDateString(),
+                    'SaldoPendiente' => $saldoPendiente,
+                    'Porcentaje' => $porcentajeMora,
+                    'MontoMora' => $montoMora,
+                    'MoraAcumulada' => $moraAcumulada,
+                ]);
             }
 
-            // Obtener saldo pendiente de la proposición de crédito
-            $saldoPendiente = $credito->proposicion?->SaldoPendiente ?? 0;
-
-            if ($saldoPendiente <= 0) {
-                continue; // No hay saldo, no calcular mora
-            }
-
-            // Obtener cliente a través de proposicion
-            $cliente = $credito->proposicion?->cliente;
-            if (!$cliente) {
-                continue; // No hay cliente asociado
-            }
-
-            // Obtener porcentaje de mora del cliente
-            $porcentajeMora = $cliente->tasaMora?->Porcentaje ?? 0;
-
-            if ($porcentajeMora <= 0) {
-                continue; // No tiene tasa de mora configurada
-            }
-
-            // Calcular mora diaria
-            // Mora = SaldoPendiente * (Porcentaje / 100)
-            $montoMora = $saldoPendiente * ($porcentajeMora / 100);
-
-            // Obtener mora acumulada anterior
-            $moraAnterior = Mora::where('CreditoID', $credito->CreditoID)
-                ->orderBy('FechaMora', 'desc')
-                ->first();
-
-            $moraAcumulada = ($moraAnterior?->MoraAcumulada ?? 0) + $montoMora;
-
-            // Registrar la mora del día
-            Mora::create([
-                'CreditoID' => $credito->CreditoID,
-                'FechaMora' => $hoy,
-                'SaldoPendiente' => $saldoPendiente,
-                'PorcentajeMora' => $porcentajeMora,
-                'MontoMora' => $montoMora,
-                'MoraAcumulada' => $moraAcumulada,
+            \Log::info('[JOB] CalcularMoraAutomatica completado. Moras creadas: ' . $morasCreadas, ['fecha' => $hoy->toDateString()]);
+            
+        } catch (\Exception $e) {
+            \Log::error('[JOB] Error en CalcularMoraAutomatica', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-
-            // Log para auditoría
-            \Log::info("Mora calculada", [
-                'CreditoID' => $credito->CreditoID,
-                'ClienteDNI' => $cliente->DNI,
-                'SaldoPendiente' => $saldoPendiente,
-                'Porcentaje' => $porcentajeMora,
-                'MontoMora' => $montoMora,
-                'MoraAcumulada' => $moraAcumulada,
-            ]);
+            throw $e;
         }
     }
 }
