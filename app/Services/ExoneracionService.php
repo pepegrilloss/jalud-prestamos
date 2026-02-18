@@ -6,6 +6,7 @@ use App\Models\Credito;
 use App\Models\SolicitudExoneracion;
 use App\Models\TipoExoneracion;
 use App\Models\Pago;
+use App\Models\Mora;
 use Illuminate\Database\Eloquent\Model;
 
 class ExoneracionService
@@ -29,10 +30,14 @@ class ExoneracionService
 
     public function obtenerMontoDisponibleMora(int $creditoID): float
     {
-        $moraAcumulada = Pago::where('CreditoID', $creditoID)
-            ->where('EsMora', 1)
-            ->sum('MontoPagado');
+        // Obtener la última mora acumulada registrada en la tabla Mora
+        $mora = Mora::where('CreditoID', $creditoID)
+            ->orderBy('FechaMora', 'desc')
+            ->first();
 
+        $moraAcumulada = $mora?->MoraAcumulada ?? 0;
+
+        // Restar la mora que ya fue exonerada/pagada
         $moraExonerada = Pago::where('CreditoID', $creditoID)
             ->where('TipoConcepto', 'M')
             ->sum('MontoPagado');
