@@ -37,6 +37,10 @@ class Log extends Model
 
     public static function registrar($accion, $modelo, $modeloId = null, $oldValues = null, $newValues = null)
     {
+        // SEGURIDAD: Sanitizar datos sensibles antes de guardar en logs
+        $oldValues = self::sanitizarValoresSensibles($oldValues);
+        $newValues = self::sanitizarValoresSensibles($newValues);
+        
         return self::create([
             'user_id' => auth()->id() ?? 0,
             'accion' => $accion,
@@ -46,9 +50,51 @@ class Log extends Model
             'new_values' => $newValues ? json_encode($newValues) : null,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
-            'machine_name' => gethostname(),
+            'machine_name' => null, // CRÍTICO: NO exponer información de servidor
             'platform' => PHP_OS_FAMILY,
             'created_at' => now()
         ]);
+    }
+
+    /**
+     * Sanitizar campos sensibles antes de guardar en auditoria
+     * SEGURIDAD: No guardar datos personales sin encriptación
+     */
+    private static function sanitizarValoresSensibles($values)
+    {
+        if (!is_array($values)) {
+            return $values;
+        }
+
+        $camposSensibles = [
+            'password',
+            'token',
+            'secret',
+            'DNI',
+            'dni',
+            'Dni',
+            'numero_documento',
+            'NumeroDocumento',
+            'phone',
+            'Telefono',
+            'telefono',
+            'email',
+            'correo',
+            'Correo',
+            'tarjeta',
+            'Tarjeta',
+            'cuenta_banco',
+            'CuentaBanco',
+            'numero_cuenta',
+            'NumeroCuenta'
+        ];
+
+        foreach ($camposSensibles as $campo) {
+            if (isset($values[$campo])) {
+                $values[$campo] = '[REDACTED]'; // Marcar como datos sensibles
+            }
+        }
+
+        return $values;
     }
 }

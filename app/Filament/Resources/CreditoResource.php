@@ -136,6 +136,36 @@ class CreditoResource extends Resource
                     ->money('PEN')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('FechaVencimiento')
+                    ->label('Fecha Vencimiento')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->color(function ($record) {
+                        if (!$record->FechaVencimiento) return 'gray';
+                        
+                        if ($record->FechaVencimiento < today()) {
+                            return 'danger'; // Vencido (fecha pasada) = Rojo
+                        }
+                        
+                        $diasFaltantes = today()->diffInDays($record->FechaVencimiento);
+                        if ($diasFaltantes <= 5) {
+                            return 'warning'; // Próximo a vencer (0-5 días) = Amarillo
+                        }
+                        
+                        return 'success'; // Al día (más de 5 días) = Verde
+                    }),
+
+                Tables\Columns\TextColumn::make('mora_acumulada')
+                    ->label('Mora Acumulada')
+                    ->money('PEN')
+                    ->getStateUsing(function ($record) {
+                        return $record->moras()?->latest('FechaMora')?->first()?->MoraAcumulada ?? 0;
+                    })
+                    ->color(function ($state) {
+                        return $state > 0 ? 'danger' : 'success';
+                    })
+                    ->sortable(false),
+
                 Tables\Columns\TextColumn::make('FechaGeneracion')
                     ->label('Fecha Generación')
                     ->dateTime('d/m/Y H:i')

@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Crypt;
+use App\Helpers\EncryptionHelper;
 
 class DocumentoCliente extends Model
 {
@@ -29,6 +31,19 @@ class DocumentoCliente extends Model
         'Activo' => 'boolean',
         'TamanioArchivo' => 'integer',
     ];
+
+    /**
+     * SEGURIDAD: Nombre del documento encriptado en BD
+     */
+    protected function setNombreOriginalAttribute($value)
+    {
+        $this->attributes['NombreOriginal'] = EncryptionHelper::encryptIfNeeded($value);
+    }
+
+    protected function getNombreOriginalAttribute($value)
+    {
+        return EncryptionHelper::decrypt($value);
+    }
 
     public function cliente(): BelongsTo
     {

@@ -569,11 +569,11 @@ class PagoResource extends Resource
                         return $query
                             ->when(
                                 $data['FechaPago_from'],
-                                fn(Builder $q) => $q->whereDate('FechaPago', '>=', $data['FechaPago_from']),
+                                fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) >= ?', [$data['FechaPago_from']]),
                             )
                             ->when(
                                 $data['FechaPago_to'],
-                                fn(Builder $q) => $q->whereDate('FechaPago', '<=', $data['FechaPago_to']),
+                                fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) <= ?', [$data['FechaPago_to']]),
                             );
                     }),
             ])
@@ -582,10 +582,10 @@ class PagoResource extends Resource
                 // Se muestran pagos de TODOS los tipos de crédito incluyendo Refinanciamiento
                 // Los pagos automáticos con TipoConcepto diferente a 'C' (descuentos, exoneraciones) SI se muestran
                 $query->where(function (Builder $q) {
-                    $q->where('EsPagoAutomatico', 0) // Mostrar todos los pagos normales
+                    $q->whereRaw('`pago`.`EsPagoAutomatico` = 0') // Mostrar todos los pagos normales
                         ->orWhere(function (Builder $subQ) {
-                            $subQ->where('EsPagoAutomatico', 1) // Y los pagos automáticos
-                                ->where('TipoConcepto', '!=', 'C'); // Que NO sean de tipo cuota
+                            $subQ->whereRaw('`pago`.`EsPagoAutomatico` = 1') // Y los pagos automáticos
+                                ->whereRaw('`pago`.`TipoConcepto` != ?', ['C']); // Que NO sean de tipo cuota
                         });
                 });
                 

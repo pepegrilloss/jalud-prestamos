@@ -23,6 +23,7 @@ class Cliente extends Model
         'ConyugeNombresApellidos',
         'Domicilio',
         'TasaID',
+        'TasaMoraID',
         'GaranteID',
         'Observaciones',
         'PromotorCobradorID',
@@ -42,10 +43,17 @@ class Cliente extends Model
         'Activo' => 'boolean',
     ];
 
+
+
     // Relaciones
     public function tasa(): BelongsTo
     {
         return $this->belongsTo(Tasa::class, 'TasaID', 'TasaID');
+    }
+
+    public function tasaMora(): BelongsTo
+    {
+        return $this->belongsTo(TasaMora::class, 'TasaMoraID', 'TasaMoraID');
     }
 
     public function promotorCobrador(): BelongsTo

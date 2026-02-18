@@ -120,6 +120,35 @@ class ViewCredito extends ViewRecord
                             ])
                             ->columns(5),
                     ]),
+
+                Infolists\Components\Section::make('Moras Acumuladas')
+                    ->schema([
+                        Infolists\Components\RepeatableEntry::make('moras')
+                            ->schema([
+                                Infolists\Components\TextEntry::make('FechaMora')
+                                    ->label('Fecha')
+                                    ->date('d/m/Y'),
+
+                                Infolists\Components\TextEntry::make('SaldoPendiente')
+                                    ->label('Saldo Pendiente')
+                                    ->money('PEN'),
+
+                                Infolists\Components\TextEntry::make('PorcentajeMora')
+                                    ->label('% Mora')
+                                    ->suffix('%'),
+
+                                Infolists\Components\TextEntry::make('MontoMora')
+                                    ->label('Mora Diaria')
+                                    ->money('PEN')
+                                    ->color('warning'),
+
+                                Infolists\Components\TextEntry::make('MoraAcumulada')
+                                    ->label('Mora Acumulada')
+                                    ->money('PEN')
+                                    ->color('danger'),
+                            ])
+                            ->columns(5),
+                    ]),
             ]);
     }
 

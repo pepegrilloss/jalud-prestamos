@@ -51,4 +51,9 @@ class Credito extends Model
     {
         return $this->hasMany(Cuota::class, 'CreditoID', 'CreditoID');
     }
+
+    public function moras()
+    {
+        return $this->hasMany(Mora::class, 'CreditoID');
+    }
 }

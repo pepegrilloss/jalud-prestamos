@@ -8,6 +8,9 @@ use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\RateLimiter;
 
 class CreatePago extends CreateRecord
 {
@@ -93,6 +96,23 @@ class CreatePago extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // SEGURIDAD: Rate limiting directo en Filament para creación de pagos
+        // Máximo 10 pagos por usuario cada 60 minutos
+        $userID = auth()->id();
+        $key = "pago_creation_filament:{$userID}";
+        
+        if (RateLimiter::tooManyAttempts($key, 10)) {
+            $retryAfter = RateLimiter::availableIn($key);
+            \Log::warning('SEGURIDAD - RATE LIMIT PAGO: Demasiados intentos', [
+                'UserID' => $userID,
+                'IP' => request()->ip(),
+                'RetryAfter' => $retryAfter
+            ]);
+            throw new \Exception('Has intentado crear demasiados pagos. Intenta nuevamente en ' . ceil($retryAfter / 60) . ' minutos. Este intento ha sido registrado.');
+        }
+        
+        RateLimiter::hit($key, 3600); // 1 hora
+        
         // Obtener la zona del promotor actual
         $promotorCobrador = auth()->user()?->promotorCobrador;
         $zonaID = $promotorCobrador?->ZonaID;
@@ -130,8 +150,56 @@ class CreatePago extends CreateRecord
         if (empty($data['MontoPagado'])) {
             throw new \Exception('El monto pagado es obligatorio.');
         }
-        if ($data['MontoPagado'] <= 0) {
-            throw new \Exception('El monto pagado debe ser mayor a 0.');
+        
+        $monto = (float) $data['MontoPagado'];
+        
+        // CRÍTICO: Validación exhaustiva de monto
+        if ($monto <= 0) {
+            throw new \Exception('El monto pagado debe ser mayor a S/ 0.00');
+        }
+        
+        // Límite mínimo: S/ 0.01
+        if ($monto < 0.01) {
+            throw new \Exception('El monto mínimo a pagar es S/ 0.01');
+        }
+        
+        // Límite máximo: S/ 1,000,000 (ajustar según políticas del negocio)
+        $montoMaximo = 1000000;
+        if ($monto > $montoMaximo) {
+            throw new \Exception("El monto no puede exceder S/ {$montoMaximo}. Contacta a administración.");
+        }
+
+        // CRÍTICO: Validación de fechas permitidas
+        $fechaPago = $data['FechaPago'] ?? now();
+        
+        // No puede ser en el futuro
+        if (Carbon::parse($fechaPago)->gt(Carbon::now())) {
+            throw new \Exception('La fecha del pago no puede ser en el futuro. Usa la fecha actual o anterior.');
+        }
+        
+        // No puede ser más de 30 días en el pasado (ajustar según políticas)
+        $fechaMinima = Carbon::now()->subDays(30);
+        if (Carbon::parse($fechaPago)->lt($fechaMinima)) {
+            throw new \Exception('La fecha del pago no puede ser más de 30 días anterior. Por favor contacta a administración para registros históricos.');
+        }
+        
+        // Validar que la fecha esté dentro del período del crédito
+        $creditoID = $data['CreditoID'] ?? null;
+        if ($creditoID) {
+            $credito = \App\Models\Credito::find($creditoID);
+            if ($credito) {
+                $fechaInicio = Carbon::parse($credito->FechaInicio);
+                $fechaVencimiento = Carbon::parse($credito->FechaVencimiento);
+                
+                if (Carbon::parse($fechaPago)->lt($fechaInicio)) {
+                    throw new \Exception('No se puede registrar un pago antes de la fecha de inicio del crédito.');
+                }
+                
+                // Permitir pagos después del vencimiento (para mora), pero alertar
+                if (Carbon::parse($fechaPago)->gt($fechaVencimiento->addDays(365))) {
+                    throw new \Exception('Fecha de pago fuera del rango permitido del crédito. Contacta a administración.');
+                }
+            }
         }
 
         // 2. Ahora que tenemos seguro el CreditoID, asegurar la CuotaID con la siguiente en secuencia
@@ -208,123 +276,135 @@ class CreatePago extends CreateRecord
 
     protected function afterCreate(): void
     {
+        // CRÍTICO: Envolver en transacción para evitar inconsistencias financieras
         try {
-            $pagoOriginal = $this->record;
+            DB::transaction(function () {
+                $pagoOriginal = $this->record;
 
-            if (!$pagoOriginal || !$pagoOriginal->CreditoID || !$pagoOriginal->CuotaID) {
-                \Log::warning('CreatePago::afterCreate - No pago, CreditoID or CuotaID', ['pago' => $pagoOriginal]);
-                return;
-            }
+                if (!$pagoOriginal || !$pagoOriginal->CreditoID || !$pagoOriginal->CuotaID) {
+                    \Log::warning('SEGURIDAD - CreatePago::afterCreate - No pago, CreditoID or CuotaID', ['pago' => $pagoOriginal]);
+                    return;
+                }
 
-            // Asegurar que FechaPago tenga un valor
-            $fechaPago = $pagoOriginal->FechaPago ?? now();
+                // Asegurar que FechaPago tenga un valor
+                $fechaPago = $pagoOriginal->FechaPago ?? now();
 
-            \Log::info('CreatePago::afterCreate - Starting', [
-                'PagoID' => $pagoOriginal->PagoID,
-                'CreditoID' => $pagoOriginal->CreditoID,
-                'CuotaID' => $pagoOriginal->CuotaID,
-                'MontoPagado' => $pagoOriginal->MontoPagado,
-                'FechaPago' => $fechaPago
-            ]);
+                \Log::info('SEGURIDAD - CreatePago::afterCreate - Iniciando procesamiento', [
+                    'PagoID' => $pagoOriginal->PagoID,
+                    'CreditoID' => $pagoOriginal->CreditoID,
+                    'CuotaID' => $pagoOriginal->CuotaID,
+                    'MontoPagado' => $pagoOriginal->MontoPagado,
+                    'UsuarioID' => auth()->id(),
+                    'IP' => request()->ip(),
+                    'FechaPago' => $fechaPago
+                ]);
 
-            $credito = \App\Models\Credito::find($pagoOriginal->CreditoID);
+                $credito = \App\Models\Credito::with('proposicion.cliente')->lockForUpdate()->find($pagoOriginal->CreditoID);
 
-            if (!$credito) {
-                \Log::error('CreatePago::afterCreate - Credito not found', ['CreditoID' => $pagoOriginal->CreditoID]);
-                return;
-            }
+                if (!$credito) {
+                    throw new \Exception('Crédito no encontrado: ' . $pagoOriginal->CreditoID);
+                }
 
-            // Obtener solo la cuota seleccionada
-            $cuota = \App\Models\Cuota::find($pagoOriginal->CuotaID);
+                // Obtener solo la cuota seleccionada con lock
+                $cuota = \App\Models\Cuota::lockForUpdate()->find($pagoOriginal->CuotaID);
 
-            if (!$cuota) {
-                \Log::error('CreatePago::afterCreate - Cuota not found', ['CuotaID' => $pagoOriginal->CuotaID]);
-                return;
-            }
+                if (!$cuota) {
+                    throw new \Exception('Cuota no encontrada: ' . $pagoOriginal->CuotaID);
+                }
 
-            \Log::info('CreatePago::afterCreate - Procesando cuota', [
-                'CuotaID' => $cuota->CuotaID,
-                'NumeroCuota' => $cuota->NumeroCuota,
-                'MontoCuota' => $cuota->MontoCuota,
-                'MontoPagado' => $pagoOriginal->MontoPagado
-            ]);
+                \Log::info('SEGURIDAD - CreatePago::afterCreate - Procesando cuota', [
+                    'CuotaID' => $cuota->CuotaID,
+                    'NumeroCuota' => $cuota->NumeroCuota,
+                    'MontoCuota' => $cuota->MontoCuota,
+                    'MontoPagado' => $pagoOriginal->MontoPagado
+                ]);
 
-            // Calcular el total pagado para esta cuota sumando desde la tabla pago
-            $totalPagadoEnCuota = \App\Models\Pago::where('CuotaID', $cuota->CuotaID)
-                ->where('Activo', 1)
-                ->sum('MontoPagado');
-
-            // Determinar el nuevo estado basándose en si está completamente pagada
-            $nuevoEstado = $cuota->Estado;
-            if ($totalPagadoEnCuota >= $cuota->MontoCuota) {
-                // Cuota completamente pagada
-                $nuevoEstado = \App\Models\Cuota::ESTADO_PAGADA;
-            } elseif (now()->isAfter($cuota->FechaVencimiento) && $totalPagadoEnCuota < $cuota->MontoCuota) {
-                // Cuota vencida y con saldo pendiente
-                $nuevoEstado = \App\Models\Cuota::ESTADO_MORA;
-            }
-
-            // Actualizar solo el estado de la cuota
-            $cuota->update([
-                'Estado' => $nuevoEstado,
-            ]);
-
-            \Log::info('CreatePago::afterCreate - Cuota actualizada', [
-                'CuotaID' => $cuota->CuotaID,
-                'NuevoEstado' => $nuevoEstado,
-                'TotalPagado' => $totalPagadoEnCuota
-            ]);
-
-            // Actualizar la proposición con el saldo pendiente total (calculado desde pagos)
-            $proposicion = $credito->proposicion;
-            if ($proposicion) {
-                $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
-                $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
+                // Calcular el total pagado para esta cuota sumando desde la tabla pago
+                $totalPagadoEnCuota = \App\Models\Pago::where('CuotaID', $cuota->CuotaID)
                     ->where('Activo', 1)
                     ->sum('MontoPagado');
-                $nuevoSaldoPendiente = $montoCuotasTotal - $totalPagado;
-                
-                $proposicion->update([
-                    'SaldoPendiente' => $nuevoSaldoPendiente,
-                ]);
-                \Log::info('CreatePago::afterCreate - Proposicion updated', [
-                    'ProposicionID' => $proposicion->ProposicionCreditoID,
-                    'TotalPagado' => $totalPagado,
-                    'SaldoPendiente' => $nuevoSaldoPendiente
-                ]);
 
-                // Si el saldo llegó a 0, actualizar el estatus del crédito a SALDADO
-                if ($nuevoSaldoPendiente <= 0) {
-                    $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-                    $fechaSaldamiento = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-                    
-                    $credito->update([
-                        'EstatusCreditoFinal' => 'SALDADO',
-                        'FechaSaldamiento' => $fechaSaldamiento,
-                    ]);
-                    \Log::info('CreatePago::afterCreate - Credito marked as SALDADO', [
-                        'CreditoID' => $credito->CreditoID,
-                        'FechaSaldamiento' => $fechaSaldamiento
-                    ]);
+                // Determinar el nuevo estado basándose en si está completamente pagada
+                $nuevoEstado = $cuota->Estado;
+                if ($totalPagadoEnCuota >= $cuota->MontoCuota) {
+                    // Cuota completamente pagada
+                    $nuevoEstado = \App\Models\Cuota::ESTADO_PAGADA;
+                } elseif (now()->isAfter($cuota->FechaVencimiento) && $totalPagadoEnCuota < $cuota->MontoCuota) {
+                    // Cuota vencida y con saldo pendiente
+                    $nuevoEstado = \App\Models\Cuota::ESTADO_MORA;
                 }
-            }
 
-            // Mostrar notificación
+                // Actualizar solo el estado de la cuota
+                $cuota->update([
+                    'Estado' => $nuevoEstado,
+                ]);
+
+                \Log::info('SEGURIDAD - CreatePago::afterCreate - Cuota actualizada', [
+                    'CuotaID' => $cuota->CuotaID,
+                    'NuevoEstado' => $nuevoEstado,
+                    'TotalPagado' => $totalPagadoEnCuota
+                ]);
+
+                // Actualizar la proposición con el saldo pendiente total (calculado desde pagos)
+                $proposicion = $credito->proposicion;
+                if ($proposicion) {
+                    $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
+                    $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
+                        ->where('Activo', 1)
+                        ->sum('MontoPagado');
+                    $nuevoSaldoPendiente = $montoCuotasTotal - $totalPagado;
+                    
+                    $proposicion->update([
+                        'SaldoPendiente' => $nuevoSaldoPendiente,
+                    ]);
+                    \Log::info('SEGURIDAD - CreatePago::afterCreate - Proposición actualizada', [
+                        'ProposicionID' => $proposicion->ProposicionCreditoID,
+                        'ClienteID' => $credito->proposicion->ClienteID,
+                        'TotalPagado' => $totalPagado,
+                        'SaldoPendiente' => $nuevoSaldoPendiente
+                    ]);
+
+                    // Si el saldo llegó a 0, actualizar el estatus del crédito a SALDADO
+                    if ($nuevoSaldoPendiente <= 0) {
+                        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                        $fechaSaldamiento = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+                        
+                        $credito->update([
+                            'EstatusCreditoFinal' => 'SALDADO',
+                            'FechaSaldamiento' => $fechaSaldamiento,
+                        ]);
+                        \Log::info('SEGURIDAD - CreatePago::afterCreate - Crédito marcado como SALDADO', [
+                            'CreditoID' => $credito->CreditoID,
+                            'ClienteID' => $credito->proposicion->ClienteID,
+                            'FechaSaldamiento' => $fechaSaldamiento,
+                            'UsuarioID' => auth()->id()
+                        ]);
+                    }
+                }
+            }, 2); // Máximo 2 reintentos si hay conflicto de concurrencia
+            
+            // Mostrar notificación al completar transacción
+            $cuota = $this->record->cuota;
             Notification::make()
                 ->success()
-                ->title('✅ Pago Registrado')
-                ->body("Pago de S/ {$pagoOriginal->MontoPagado} registrado en la cuota #{$cuota->NumeroCuota} correctamente.")
+                ->title('✅ Pago Registrado Exitosamente')
+                ->body("Pago de S/ {$this->record->MontoPagado} registrado en la cuota #{$cuota->NumeroCuota} correctamente.")
                 ->send();
 
         } catch (\Exception $e) {
-            \Log::error('CreatePago::afterCreate - Exception: ' . $e->getMessage(), [
-                'exception' => $e->getTraceAsString()
+            // CRÍTICO: Log sin información sensible pero con contexto
+            \Log::error('SEGURIDAD - CreatePago::afterCreate - Error en transacción', [
+                'error_message' => $e->getMessage(),
+                'PagoID' => $this->record->PagoID ?? 'desconocido',
+                'UsuarioID' => auth()->id(),
+                'IP' => request()->ip(),
+                'timestamp' => now()->toIso8601String()
             ]);
 
             Notification::make()
                 ->danger()
-                ->title('Error al procesar pago')
-                ->body($e->getMessage())
+                ->title('❌ Error al procesar pago')
+                ->body('El pago no se pudo registrar correctamente. Por favor contacta a administración.')
                 ->send();
         }
     }

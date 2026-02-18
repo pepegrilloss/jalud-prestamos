@@ -1,0 +1,148 @@
+📋 INSTRUCCIONES PARA EJECUTAR SCRIPTS SQL DIRECTAMENTE
+════════════════════════════════════════════════════════════════════════
+
+ARCHIVOS CREADOS:
+─────────────────
+1. expand_columns_for_encryption.sql    ← PRINCIPAL (Ejecutar primero)
+2. revert_columns_from_encryption.sql   ← De reversión (solo si es necesario)
+3. verify_columns.sql                   ← Verificación (antes y después)
+
+════════════════════════════════════════════════════════════════════════
+
+🔴 PASO 1: HACER BACKUP DE LA BD (CRÍTICO)
+────────────────────────────────────────────
+
+Opción A: Desde phpMyAdmin
+────────────────────────────
+1. Abre http://localhost/phpmyadmin
+2. Selecciona BD: jvcso1ub_jalud_prestamos
+3. Click en "Exportar"
+4. Formato: SQL
+5. Click "Ir"
+6. Guarda el archivo como: jvcso1ub_jalud_prestamos_backup_13feb2026.sql
+
+Opción B: Desde línea de comandos (si tienes MySQL instalado)
+─────────────────────────────────────────────────────────────
+mysqldump -u root -p jvcso1ub_jalud_prestamos > C:\Backups\jvcso1ub_jalud_prestamos_backup_13feb2026.sql
+
+════════════════════════════════════════════════════════════════════════
+
+✅ PASO 2: VERIFICAR ESTADO ACTUAL (OPCIONAL)
+──────────────────────────────────────────────
+
+Ejecuta el archivo: verify_columns.sql
+
+Este script te mostrará:
+  - Tipos actuales de las columnas
+  - Total de registros en cada tabla
+  - Longitud máxima de datos actuales
+
+📝 Dónde ejecutarlo:
+  1. phpMyAdmin → Selecciona BD
+  2. Pestaña "SQL"
+  3. Copia y pega el contenido de verify_columns.sql
+  4. Haz click en "Ejecutar"
+
+════════════════════════════════════════════════════════════════════════
+
+🚀 PASO 3: EJECUTAR SCRIPT PRINCIPAL
+─────────────────────────────────────
+
+Ejecuta el archivo: expand_columns_for_encryption.sql
+
+Este script:
+✓ Cambiar DNI de VARCHAR(20) → LONGTEXT
+✓ Cambiar NombresApellidos de VARCHAR(200) → LONGTEXT
+✓ Cambiar ConyugeDNI de VARCHAR(20) → LONGTEXT
+✓ Cambiar ConyugeNombresApellidos de VARCHAR(200) → LONGTEXT
+✓ Cambiar Domicilio de VARCHAR(500) → LONGTEXT
+✓ Cambiar Telefono de VARCHAR(20) → LONGTEXT
+✓ Cambiar NombreOriginal de VARCHAR(255) → LONGTEXT
+
+📝 Dónde ejecutarlo:
+  1. phpMyAdmin → Selecciona BD
+  2. Pestaña "SQL"
+  3. Copia TODO el contenido de expand_columns_for_encryption.sql
+  4. Haz click en "Ejecutar"
+
+⏱️ Tiempo estimado: 1-2 minutos
+
+════════════════════════════════════════════════════════════════════════
+
+✅ PASO 4: VERIFICAR CAMBIOS (RECOMENDADO)
+────────────────────────────────────────────
+
+Vuelve a ejecutar verify_columns.sql para confirmar que los cambios se aplicaron.
+
+Deberías ver:
+  - Tipo: LONGTEXT (en lugar de VARCHAR)
+  - CHARACTER_MAXIMUM_LENGTH: NULL (porque LONGTEXT no tiene límite)
+
+════════════════════════════════════════════════════════════════════════
+
+🔐 PASO 5: EJECUTAR ENCRIPTACIÓN EN LARAVEL
+──────────────────────────────────────────────
+
+Una vez confirmados los cambios en la BD, ejecuta:
+
+php artisan security:encrypt-sensitive-data
+
+Verás:
+  🔒 Iniciando encriptación de datos sensibles...
+  📝 Procesando tabla Cliente...
+    Encriptando DNI...
+    ████████████████████ 100%
+    ✅ Tabla Cliente encriptada
+  ...
+  ✅ Encriptación completada exitosamente
+
+════════════════════════════════════════════════════════════════════════
+
+⚠️ ¿QUE PASA SI ALGO SALE MAL?
+───────────────────────────────
+
+1. Restaura el backup que hiciste en el Paso 1
+2. Ejecuta: revert_columns_from_encryption.sql
+3. Contacta para investigar qué falló
+
+════════════════════════════════════════════════════════════════════════
+
+📊 CAMBIOS RESUMIDOS
+────────────────────
+
+TABLA: Cliente
+  DNI                      VARCHAR(20)   → LONGTEXT
+  NombresApellidos         VARCHAR(200)  → LONGTEXT
+  ConyugeDNI               VARCHAR(20)   → LONGTEXT
+  ConyugeNombresApellidos  VARCHAR(200)  → LONGTEXT
+  Domicilio                VARCHAR(500)  → LONGTEXT
+
+TABLA: TelefonoNegocio
+  Telefono                 VARCHAR(20)   → LONGTEXT
+
+TABLA: DocumentoCliente
+  NombreOriginal           VARCHAR(255)  → LONGTEXT
+
+════════════════════════════════════════════════════════════════════════
+
+✅ CHECKLIST
+────────────
+
+□ Backup de BD creado
+□ verify_columns.sql ejecutado (estado actual)
+□ expand_columns_for_encryption.sql ejecutado
+□ verify_columns.sql ejecutado nuevamente (verificar cambios)
+□ php artisan security:encrypt-sensitive-data ejecutado
+□ Prueba: crear/editar cliente y verificar que se encripta
+
+════════════════════════════════════════════════════════════════════════
+
+💡 NOTAS IMPORTANTES
+────────────────────
+
+- LONGTEXT puede almacenar hasta 4GB de datos (más que suficiente)
+- Los datos encriptados ocupan ~300-400 caracteres por campo
+- La operación es reversible (archivo revert_columns_from_encryption.sql)
+- No hay pérdida de datos en la conversión
+
+════════════════════════════════════════════════════════════════════════

@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\Ciudad;
 use App\Models\Zona;
 use App\Models\Tasa;
+use App\Models\TasaMora;
 use App\Models\PromotorCobrador;
 use App\Models\Giro;
 use App\Models\SubGiro;
@@ -266,6 +267,20 @@ class ClienteResource extends Resource
                                     )
                                     ->searchable()
                                     ->native(false),
+
+                                Forms\Components\Select::make('TasaMoraID')
+                                    ->required()
+                                    ->label('Tasa de Mora')
+                                    ->options(
+                                        TasaMora::where('Activo', 1)
+                                            ->get()
+                                            ->mapWithKeys(fn($tasaMora) => [
+                                                $tasaMora->TasaMoraID => "{$tasaMora->Nombre} - {$tasaMora->Porcentaje}%"
+                                            ])
+                                    )
+                                    ->searchable()
+                                    ->native(false)
+                                    ->placeholder('Seleccione una tasa de mora'),
                             ]),
                     ])
                     ->collapsible(),
@@ -635,7 +650,12 @@ class ClienteResource extends Resource
                     ->label('Ciudad')
                     ->options(Ciudad::where('Activo', 1)->pluck('Nombre', 'CiudadID'))
                     ->searchable()
-                    ->attribute('negocio.CiudadID'),
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('negocio', fn(Builder $subQ) => $subQ->where('CiudadID', $data['value']))
+                        );
+                    }),
 
                 Tables\Filters\SelectFilter::make('ZonaID')
                     ->label('Zona')
@@ -644,8 +664,17 @@ class ClienteResource extends Resource
                         Zona::where('Activo', 1)->pluck('Nombre', 'ZonaID')
                     )
                     ->searchable()
-                    ->attribute('negocio.ZonaID'),
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('negocio', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
+                        );
+                    }),
             ])
+            ->modifyQueryUsing(function (Builder $query) {
+                // Solo mostrar clientes activos
+                return $query->where('Activo', true);
+            })
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
@@ -706,10 +735,8 @@ class ClienteResource extends Resource
             return false;
         }
 
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
-            return false;
-        }
-        return true;
+        // Si hay cualquier día abierto, permitir crear
+        return \App\Models\AperturaCierreDia::where('EstadoDia', 'ABIERTO')->exists();
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
@@ -719,24 +746,8 @@ class ClienteResource extends Resource
             return false;
         }
 
-        // Si el registro está cerrado explícitamente (FechaCierre != null), no permitir editar
-        if ($record->FechaCierre !== null) {
-            return false;
-        }
-
-        // Si el registro pertenece a un día diferente que está CERRADO, no permitir editar
-        $fechaRegistro = $record->FechaRegistro->toDateString();
-        $fechaHoy = now()->toDateString();
-        
-        if ($fechaRegistro !== $fechaHoy) {
-            // El cliente fue registrado en otro día, verificar si ese día está cerrado
-            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaRegistro)->first();
-            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
-                return false;
-            }
-        }
-        
-        return true;
+        // Si hay cualquier día abierto, permitir editar
+        return \App\Models\AperturaCierreDia::where('EstadoDia', 'ABIERTO')->exists();
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
@@ -746,23 +757,7 @@ class ClienteResource extends Resource
             return false;
         }
 
-        // Si el registro está cerrado explícitamente (FechaCierre != null), no permitir eliminar
-        if ($record->FechaCierre !== null) {
-            return false;
-        }
-
-        // Si el registro pertenece a un día diferente que está CERRADO, no permitir eliminar
-        $fechaRegistro = $record->FechaRegistro->toDateString();
-        $fechaHoy = now()->toDateString();
-        
-        if ($fechaRegistro !== $fechaHoy) {
-            // El cliente fue registrado en otro día, verificar si ese día está cerrado
-            $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaRegistro)->first();
-            if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
-                return false;
-            }
-        }
-        
-        return true;
+        // Si hay cualquier día abierto, permitir eliminar
+        return \App\Models\AperturaCierreDia::where('EstadoDia', 'ABIERTO')->exists();
     }
 }
