@@ -15,6 +15,10 @@ class CalcularMoraRetroactiva extends Command
     public function handle(): int
     {
         $this->info("Calculando mora retroactivamente para todos los créditos vencidos...\n");
+        $this->info("(NO se calcula mora en domingos ni feriados)\n");
+
+        // Obtener días feriados de Perú para los años en rango
+        $feriadosData = $this->obtenerFeriados();
 
         // Obtener créditos vencidos que aún tengan saldo
         $creditosVencidos = Credito::where('Activo', 1)
@@ -24,6 +28,7 @@ class CalcularMoraRetroactiva extends Command
 
         $morasRegistradas = 0;
         $morasTotales = 0;
+        $diasOmitidos = 0;
 
         foreach ($creditosVencidos as $credito) {
             $cliente = $credito->proposicion?->cliente;
@@ -40,6 +45,22 @@ class CalcularMoraRetroactiva extends Command
             $hoy = today();
 
             while ($fecha <= $hoy) {
+                // VALIDAR: NO CALCULAR EN DOMINGO
+                if ($fecha->dayOfWeek == 0) {
+                    $this->line("⊘ Crédito {$credito->CreditoID} - Fecha: {$fecha->format('d/m/Y')} - DOMINGO (omitido)");
+                    $diasOmitidos++;
+                    $fecha = $fecha->addDay();
+                    continue;
+                }
+
+                // VALIDAR: NO CALCULAR EN FERIADO
+                if (isset($feriadosData[$fecha->format('Y-m-d')])) {
+                    $this->line("⊘ Crédito {$credito->CreditoID} - Fecha: {$fecha->format('d/m/Y')} - FERIADO ({$feriadosData[$fecha->format('Y-m-d')]}) (omitido)");
+                    $diasOmitidos++;
+                    $fecha = $fecha->addDay();
+                    continue;
+                }
+
                 // Verificar si ya existe mora registrada para este día
                 $moraExiste = Mora::where('CreditoID', $credito->CreditoID)
                     ->whereDate('FechaMora', $fecha)
@@ -89,8 +110,35 @@ class CalcularMoraRetroactiva extends Command
 
         $this->info("\n✅ Cálculo retroactivo completado!");
         $this->info("   Moras registradas: {$morasRegistradas}");
+        $this->info("   Días omitidos (domingos/feriados): {$diasOmitidos}");
         $this->info("   Monto total: S/. " . number_format($morasTotales, 2));
 
         return 0;
+    }
+
+    /**
+     * Obtener feriados de Perú de los últimos años y los próximos
+     */
+    private function obtenerFeriados(): array
+    {
+        $feriadosData = [];
+        $annoActual = now()->year;
+
+        // Obtener feriados desde hace 2 años hasta 2 años en el futuro
+        for ($anno = $annoActual - 2; $anno <= $annoActual + 2; $anno++) {
+            try {
+                $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
+                $feriados = json_decode($response, true);
+                if ($feriados) {
+                    foreach ($feriados as $feriado) {
+                        $feriadosData[$feriado['date']] = $feriado['localName'];
+                    }
+                }
+            } catch (\Exception $e) {
+                $this->warn("⚠️  No se pudieron obtener feriados para el año {$anno}");
+            }
+        }
+
+        return $feriadosData;
     }
 }

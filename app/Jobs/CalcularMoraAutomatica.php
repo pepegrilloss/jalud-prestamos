@@ -24,7 +24,38 @@ class CalcularMoraAutomatica implements ShouldQueue
 
     public function handle(): void
     {
-        \Log::info('[JOB] CalcularMoraAutomatica: Iniciando cálculo de moras', ['fecha' => $this->fecha]);
+        $fecha = $this->fecha ? \Carbon\Carbon::parse($this->fecha) : today();
+        \Log::info('[JOB] CalcularMoraAutomatica: Iniciando cálculo de moras', ['fecha' => $fecha->toDateString()]);
+        
+        // Validar si es domingo o feriado - NO calcular mora en esos días
+        if ($fecha->dayOfWeek == 0) { // 0 = Domingo
+            \Log::info('[JOB] No se calcula mora - Día es DOMINGO', ['fecha' => $fecha->toDateString()]);
+            return;
+        }
+
+        // Obtener días feriados de Perú
+        $feriadosData = [];
+        try {
+            $anno = $fecha->year;
+            $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
+            $feriados = json_decode($response, true);
+            if ($feriados) {
+                foreach ($feriados as $feriado) {
+                    $feriadosData[$feriado['date']] = $feriado['localName'];
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('[JOB] No se pudieron obtener feriados de la API', ['error' => $e->getMessage()]);
+        }
+
+        // Validar si es feriado
+        if (isset($feriadosData[$fecha->format('Y-m-d')])) {
+            \Log::info('[JOB] No se calcula mora - Día es FERIADO', [
+                'fecha' => $fecha->toDateString(),
+                'feriado' => $feriadosData[$fecha->format('Y-m-d')]
+            ]);
+            return;
+        }
         
         try {
             // Obtener todos los créditos que:
@@ -38,7 +69,6 @@ class CalcularMoraAutomatica implements ShouldQueue
 
             \Log::info('[JOB] Créditos vencidos encontrados: ' . $creditosVencidos->count());
 
-            $hoy = $this->fecha ? \Carbon\Carbon::parse($this->fecha) : today();
             $morasCreadas = 0;
 
             foreach ($creditosVencidos as $credito) {
@@ -46,11 +76,11 @@ class CalcularMoraAutomatica implements ShouldQueue
                 
                 // Verificar si ya existe mora registrada para la fecha especificada
                 $moraHoy = Mora::where('CreditoID', $credito->CreditoID)
-                    ->whereDate('FechaMora', $hoy->toDateString())
+                    ->whereDate('FechaMora', $fecha->toDateString())
                     ->exists();
 
                 if ($moraHoy) {
-                    \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': Ya tiene mora registrada para ' . $hoy->toDateString());
+                    \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': Ya tiene mora registrada para ' . $fecha->toDateString());
                     continue; // Ya se calculó para esa fecha
                 }
 
@@ -91,7 +121,7 @@ class CalcularMoraAutomatica implements ShouldQueue
                 // Registrar la mora del día
                 $moraNueva = Mora::create([
                     'CreditoID' => $credito->CreditoID,
-                    'FechaMora' => $hoy,
+                    'FechaMora' => $fecha,
                     'SaldoPendiente' => $saldoPendiente,
                     'PorcentajeMora' => $porcentajeMora,
                     'MontoMora' => $montoMora,
@@ -104,7 +134,7 @@ class CalcularMoraAutomatica implements ShouldQueue
                 \Log::info('[JOB] Mora calculada', [
                     'CreditoID' => $credito->CreditoID,
                     'ClienteDNI' => $cliente->DNI,
-                    'Fecha' => $hoy->toDateString(),
+                    'Fecha' => $fecha->toDateString(),
                     'SaldoPendiente' => $saldoPendiente,
                     'Porcentaje' => $porcentajeMora,
                     'MontoMora' => $montoMora,
@@ -112,7 +142,7 @@ class CalcularMoraAutomatica implements ShouldQueue
                 ]);
             }
 
-            \Log::info('[JOB] CalcularMoraAutomatica completado. Moras creadas: ' . $morasCreadas, ['fecha' => $hoy->toDateString()]);
+            \Log::info('[JOB] CalcularMoraAutomatica completado. Moras creadas: ' . $morasCreadas, ['fecha' => $fecha->toDateString()]);
             
         } catch (\Exception $e) {
             \Log::error('[JOB] Error en CalcularMoraAutomatica', [
