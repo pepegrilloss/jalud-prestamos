@@ -380,17 +380,19 @@ class PagoResource extends Resource
                             ->displayFormat('d/m/Y'),
                     ]),
 
-                Forms\Components\Section::make('Flags de Pago')
+                Forms\Components\Section::make('Método de Pago')
                     ->schema([
-                        Forms\Components\Checkbox::make('EsMora')
-                            ->label('Es Mora')
-                            ->default(false),
-
-                        Forms\Components\Checkbox::make('EsPagoAMayor')
-                            ->label('Es A Mayor')
-                            ->default(false),
-
-                    ])->columns(3),
+                        Forms\Components\Select::make('TipoPago')
+                            ->label('Método de Pago')
+                            ->options([
+                                'EFECTIVO' => '💵 Efectivo',
+                                'YAPE_PLIN' => '📱 Yape o Plin',
+                                'TRANSFERENCIA_BANCARIA' => '🏦 Transferencia Bancaria',
+                            ])
+                            ->required()
+                            ->default('EFECTIVO')
+                            ->native(false),
+                    ]),
 
                 Forms\Components\Section::make('Comentarios')
                     ->schema([
@@ -450,6 +452,12 @@ class PagoResource extends Resource
                 Tables\Columns\BooleanColumn::make('EsMora')
                     ->label('Es Mora')
                     ->sortable(),
+
+                Tables\Columns\IconColumn::make('EsPagoInicial')
+                    ->label('Inicial')
+                    ->boolean()
+                    ->sortable()
+                    ->tooltip('Pago realizado el día de generación del crédito'),
 
                 Tables\Columns\TextColumn::make('FechaPago')
                     ->label('Fecha de Pago')

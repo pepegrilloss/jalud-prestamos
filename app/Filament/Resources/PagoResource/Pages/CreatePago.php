@@ -16,6 +16,9 @@ class CreatePago extends CreateRecord
 {
     protected static string $resource = PagoResource::class;
 
+    // Guardar el valor de EsPagoInicial que el usuario seleccionó
+    public ?bool $pagoInicialSeleccionado = null;
+
     // Deshabilitar la notificación por defecto de Filament
     protected function getCreatedNotification(): ?\Filament\Notifications\Notification
     {
@@ -31,6 +34,132 @@ class CreatePago extends CreateRecord
     // Agregar el botón ABAJO del formulario
     protected function getFormActions(): array
     {
+        // Verificar si es pago inicial
+        $esPagoInicial = false;
+        try {
+            $esPagoInicial = $this->esPagoInicial();
+        } catch (\Exception $e) {
+            $esPagoInicial = false;
+        }
+
+        if ($esPagoInicial) {
+            // Acción para pago inicial: dos botones separados
+            return [
+                Actions\Action::make('registrar_como_inicial')
+                    ->label('REGISTRA COMO INICIAL')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('⚠️ Confirmar Registro de Pago')
+                    ->modalDescription(function () {
+                        try {
+                            $data = $this->form->getRawState();
+                            $creditoID = $data['CreditoID'] ?? null;
+                            $montoPagado = $data['MontoPagado'] ?? null;
+
+                            if (!$creditoID || !$montoPagado) {
+                                return 'Por favor complete todos los campos requeridos (Cliente y Monto).';
+                            }
+
+                            $credito = \App\Models\Credito::with(['proposicion.cliente', 'proposicion.tipoCredito'])->find($creditoID);
+
+                            if (!$credito || !$credito->proposicion || !$credito->proposicion->cliente) {
+                                return 'No se pudo cargar la información del crédito o cliente.';
+                            }
+
+                            $cliente = $credito->proposicion->cliente;
+                            $tipoCredito = e($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A');
+                            $monto = number_format($montoPagado, 2);
+                            $nombre = e($cliente->NombresApellidos ?? '');
+
+                            return new \Illuminate\Support\HtmlString(
+                                '<div style="text-align:center; padding: 10px 0;">' .
+                                '<div style="font-size: 1.1rem; color: #666; margin-bottom: 4px;">👤 Cliente:</div>' .
+                                '<div style="font-size: 2.25rem; line-height: 2.5rem; font-weight: 800; color: #111; margin-bottom: 20px; text-transform: uppercase; letter-spacing: -0.025em;">' . $nombre . '</div>' .
+                                '<div style="display: flex; justify-content: center; gap: 40px; border-top: 1px solid #eee; pt-4; margin-top: 10px; padding-top: 20px;">' .
+                                '<div>' .
+                                '<div style="font-size: 0.875rem; color: #666;">📝 Tipo de Crédito</div>' .
+                                '<div style="font-size: 1.25rem; font-weight: 600;">' . $tipoCredito . '</div>' .
+                                '</div>' .
+                                '<div>' .
+                                '<div style="font-size: 0.875rem; color: #666;">💰 Monto a Pagar</div>' .
+                                '<div style="font-size: 1.5rem; font-weight: 700; color: #059669;">S/ ' . $monto . '</div>' .
+                                '</div>' .
+                                '</div>' .
+                                '</div>'
+                            );
+
+                        } catch (\Exception $e) {
+                            return 'Error al cargar los datos.';
+                        }
+                    })
+                    ->modalSubmitActionLabel('✓ Confirmar')
+                    ->modalCancelActionLabel('✗ Cancelar')
+                    ->action(function () {
+                        $this->pagoInicialSeleccionado = true;
+                        $this->create();
+                    }),
+
+                Actions\Action::make('registrar_normal')
+                    ->label('REGISTRAR PAGO NORMAL')
+                    ->icon('heroicon-o-x-mark')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('⚠️ Confirmar Registro de Pago')
+                    ->modalDescription(function () {
+                        try {
+                            $data = $this->form->getRawState();
+                            $creditoID = $data['CreditoID'] ?? null;
+                            $montoPagado = $data['MontoPagado'] ?? null;
+
+                            if (!$creditoID || !$montoPagado) {
+                                return 'Por favor complete todos los campos requeridos (Cliente y Monto).';
+                            }
+
+                            $credito = \App\Models\Credito::with(['proposicion.cliente', 'proposicion.tipoCredito'])->find($creditoID);
+
+                            if (!$credito || !$credito->proposicion || !$credito->proposicion->cliente) {
+                                return 'No se pudo cargar la información del crédito o cliente.';
+                            }
+
+                            $cliente = $credito->proposicion->cliente;
+                            $tipoCredito = e($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A');
+                            $monto = number_format($montoPagado, 2);
+                            $nombre = e($cliente->NombresApellidos ?? '');
+
+                            return new \Illuminate\Support\HtmlString(
+                                '<div style="text-align:center; padding: 10px 0;">' .
+                                '<div style="font-size: 1.1rem; color: #666; margin-bottom: 4px;">👤 Cliente:</div>' .
+                                '<div style="font-size: 2.25rem; line-height: 2.5rem; font-weight: 800; color: #111; margin-bottom: 20px; text-transform: uppercase; letter-spacing: -0.025em;">' . $nombre . '</div>' .
+                                '<div style="display: flex; justify-content: center; gap: 40px; border-top: 1px solid #eee; pt-4; margin-top: 10px; padding-top: 20px;">' .
+                                '<div>' .
+                                '<div style="font-size: 0.875rem; color: #666;">📝 Tipo de Crédito</div>' .
+                                '<div style="font-size: 1.25rem; font-weight: 600;">' . $tipoCredito . '</div>' .
+                                '</div>' .
+                                '<div>' .
+                                '<div style="font-size: 0.875rem; color: #666;">💰 Monto a Pagar</div>' .
+                                '<div style="font-size: 1.5rem; font-weight: 700; color: #059669;">S/ ' . $monto . '</div>' .
+                                '</div>' .
+                                '</div>' .
+                                '</div>'
+                            );
+
+                        } catch (\Exception $e) {
+                            return 'Error al cargar los datos.';
+                        }
+                    })
+                    ->modalSubmitActionLabel('✓ Confirmar')
+                    ->modalCancelActionLabel('✗ Cancelar')
+                    ->action(function () {
+                        $this->pagoInicialSeleccionado = false;
+                        $this->create();
+                    }),
+
+                $this->getCancelFormAction(),
+            ];
+        }
+
+        // Acción normal: sin detección de pago inicial
         return [
             Actions\Action::make('confirmar_pago')
                 ->label('Crear Pago')
@@ -39,10 +168,7 @@ class CreatePago extends CreateRecord
                 ->modalHeading('⚠️ Confirmar Registro de Pago')
                 ->modalDescription(function () {
                     try {
-                        // Usamos getRawFormData() o accedemos al estado de los componentes directamente
-                        // para asegurar que el modal tenga los datos antes de la validación final
                         $data = $this->form->getRawState();
-
                         $creditoID = $data['CreditoID'] ?? null;
                         $montoPagado = $data['MontoPagado'] ?? null;
 
@@ -59,7 +185,6 @@ class CreatePago extends CreateRecord
                         $cliente = $credito->proposicion->cliente;
                         $tipoCredito = e($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A');
                         $monto = number_format($montoPagado, 2);
-
                         $nombre = e($cliente->NombresApellidos ?? '');
 
                         return new \Illuminate\Support\HtmlString(
@@ -86,7 +211,7 @@ class CreatePago extends CreateRecord
                 ->modalSubmitActionLabel('✓ Sí, Registrar')
                 ->modalCancelActionLabel('✗ Cancelar')
                 ->action(function () {
-                    // Crear el registro
+                    $this->pagoInicialSeleccionado = false;
                     $this->create();
                 }),
 
@@ -259,6 +384,30 @@ class CreatePago extends CreateRecord
         $data['UsuarioRegistro'] = auth()->user()->name ?? auth()->id();
         $data['Activo'] = true;
         
+        // Validar y asignar el método de pago
+        $metodoPagoValidos = ['EFECTIVO', 'YAPE_PLIN', 'TRANSFERENCIA_BANCARIA'];
+        $tipoPago = $data['TipoPago'] ?? 'EFECTIVO';
+        
+        if (!in_array($tipoPago, $metodoPagoValidos)) {
+            throw new \Exception('Método de pago inválido. Use: EFECTIVO, YAPE_PLIN o TRANSFERENCIA_BANCARIA');
+        }
+        
+        $data['TipoPago'] = $tipoPago;
+        
+        // Mantener para compatibilidad con datos históricos (ya no se usan en el formulario)
+        $data['EsMora'] = false;
+        $data['EsPagoAMayor'] = false;
+        
+        // Usar el valor que el usuario seleccionó en los botones
+        // Si no seleccionó nada explícitamente, hacer detección automática
+        if ($this->pagoInicialSeleccionado !== null) {
+            // El usuario seleccionó explícitamente REGISTRA COMO INICIAL o REGISTRAR PAGO NORMAL
+            $data['EsPagoInicial'] = $this->pagoInicialSeleccionado;
+        } else {
+            // Para pagos normales (sin detección), usar false
+            $data['EsPagoInicial'] = false;
+        }
+        
         // Inyectar fecha abierta en AMBOS campos de fecha (con hora actual)
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
         $fechaAAsignar = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
@@ -406,6 +555,37 @@ class CreatePago extends CreateRecord
                 ->title('❌ Error al procesar pago')
                 ->body('El pago no se pudo registrar correctamente. Por favor contacta a administración.')
                 ->send();
+        }
+    }
+
+    /**
+     * Verificar si el pago se realiza el mismo día que se generó el crédito
+     */
+    private function esPagoInicial(): bool
+    {
+        try {
+            $data = $this->form->getRawState();
+            $creditoID = $data['CreditoID'] ?? null;
+            $fechaPago = $data['FechaPago'] ?? now();
+
+            if (!$creditoID) {
+                return false;
+            }
+
+            $credito = \App\Models\Credito::find($creditoID);
+            
+            if (!$credito || !$credito->FechaGeneracion) {
+                return false;
+            }
+
+            // Comparar solo las fechas (sin hora)
+            $fechaPagoStr = Carbon::parse($fechaPago)->toDateString();
+            $fechaGeneracionStr = Carbon::parse($credito->FechaGeneracion)->toDateString();
+
+            return $fechaPagoStr === $fechaGeneracionStr;
+        } catch (\Exception $e) {
+            \Log::error('Error en esPagoInicial:', ['error' => $e->getMessage()]);
+            return false;
         }
     }
 

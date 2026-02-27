@@ -20,6 +20,7 @@ class Pago extends Model
         'TipoConcepto',
         'EsMora',
         'EsPagoAMayor',
+        'EsPagoInicial',
         'EsPagoForzado',
         'EsPagoAutomatico',
         'Comentario',
@@ -33,6 +34,7 @@ class Pago extends Model
         'FechaCierre' => 'datetime',
         'EsMora' => 'boolean',
         'EsPagoAMayor' => 'boolean',
+        'EsPagoInicial' => 'boolean',
         'EsPagoForzado' => 'boolean',
         'EsPagoAutomatico' => 'boolean',
         'Activo' => 'boolean'

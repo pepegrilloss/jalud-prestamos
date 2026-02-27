@@ -27,8 +27,7 @@ class EditPago extends EditRecord
             'CuotaID' => $this->record->CuotaID,
             'MontoPagado' => $this->record->MontoPagado,
             'FechaPago' => $this->record->FechaPago,
-            'EsMora' => $this->record->EsMora,
-            'EsPagoAMayor' => $this->record->EsPagoAMayor,
+            'TipoPago' => $this->record->TipoPago ?? 'EFECTIVO',
             'Comentario' => $this->record->Comentario,
         ]);
     }
