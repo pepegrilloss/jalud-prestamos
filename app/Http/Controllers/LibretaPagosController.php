@@ -39,6 +39,14 @@ class LibretaPagosController extends Controller
             $pagosData[$pago->CuotaID] = ($pagosData[$pago->CuotaID] ?? 0) + $pago->MontoPagado;
         }
 
+        // Filtrar la Cuota 0 si NO tiene pagos asociados
+        $cuotas = $cuotas->filter(function ($cuota) use ($pagosData) {
+            if ($cuota->NumeroCuota == 0) {
+                return isset($pagosData[$cuota->CuotaID]) && $pagosData[$cuota->CuotaID] > 0;
+            }
+            return true;
+        })->values();
+
         $nombreDescarga = 'Libreta_' . str_replace(' ', '_', $cliente->NombresApellidos) . '.pdf';
 
         try {

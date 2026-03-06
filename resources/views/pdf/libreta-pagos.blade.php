@@ -246,45 +246,8 @@
 
         <div class="contenedor-rejilla">
             @php 
-                                $saldoFicticio = ($proposicion->MontoTotal + $proposicion->MontoInteres);
+                $saldoFicticio = ($proposicion->MontoTotal + $proposicion->MontoInteres);
                 $filasConfig = [13, 18, 18];
-
-                // --- LÓGICA DE PAGO INICIAL/MISMO DÍA ---
-                $fechaGeneracionCredito = \Carbon\Carbon::parse($credito->FechaGeneracion)->startOfDay();
-                $pagoInicialEncontrado = null;
-
-                if (isset($credito->pagos)) {
-                    foreach ($credito->pagos as $pago) {
-                        $fechaPago = \Carbon\Carbon::parse($pago->FechaPago)->startOfDay();
-                        if ($fechaPago->eq($fechaGeneracionCredito)) {
-                            $pagoInicialEncontrado = $pago;
-                            break;
-                        }
-                    }
-                }
-
-                // Generamos una colección combinada con el pago inicial (si existe) + cuotas
-                $filasAMostrar = collect();
-
-                if ($pagoInicialEncontrado) {
-                    $filasAMostrar->push((object) [
-                        'esPagoInicial' => true,
-                        'FechaVencimiento' => $pagoInicialEncontrado->FechaPago,
-                        'MontoPagado' => $pagoInicialEncontrado->MontoPagado,
-                        'Estado' => 'PAGO_INICIAL'
-                    ]);
-                }
-
-                foreach ($cuotas as $cuota) {
-                    $filasAMostrar->push((object) [
-                        'esPagoInicial' => false,
-                        'CuotaID' => $cuota->CuotaID,
-                        'FechaVencimiento' => $cuota->FechaVencimiento,
-                        'Estado' => $cuota->Estado,
-                        'cuotaOriginal' => $cuota
-                    ]);
-                }
-
                 $offsetGeneral = 0;
             @endphp
  @foreach ($filasConfig as $index => $maxFilas)
@@ -301,38 +264,30 @@
                         </thead>
                     <tbody>
                         @php 
-                                                            $items = $filasAMostrar->slice($offsetGeneral, $maxFilas);
+                            $items = $cuotas->slice($offsetGeneral, $maxFilas);
                             $contador = 0;
                             $offsetGeneral += $maxFilas;
                         @endphp
 
-                        @foreach($items as $filaItem)
+                        @foreach($items as $cuota)
                             @php 
-                                                                $pago = 0;
-                                $esPagoInicialFila = $filaItem->esPagoInicial;
-                                $fechaMostrar = \Carbon\Carbon::parse($filaItem->FechaVencimiento);
+                                $pago = 0;
+                                $esPagoInicialFila = $cuota->NumeroCuota == 0;
+                                $fechaMostrar = \Carbon\Carbon::parse($cuota->FechaVencimiento);
 
-                                if ($esPagoInicialFila) {
-                                    $pago = $filaItem->MontoPagado;
-                                } else {
-                                    // Buscar si hay pagos regulares para esta cuota
-                                    if (isset($credito->pagos)) {
-                                        foreach ($credito->pagos as $p) {
-                                            if ($p->CuotaID == $filaItem->CuotaID) {
-                                                // Excluir el pago inicial si ya se mostró
-                                                if ($pagoInicialEncontrado && $p->PagoID === $pagoInicialEncontrado->PagoID) {
-                                                    continue;
-                                                }
-                                                $pago += $p->MontoPagado;
-                                            }
+                                // Buscar si hay pagos para esta cuota
+                                if (isset($credito->pagos)) {
+                                    foreach ($credito->pagos as $p) {
+                                        if ($p->CuotaID == $cuota->CuotaID) {
+                                            $pago += $p->MontoPagado;
                                         }
                                     }
                                 }
 
                                 $saldoFicticio -= $pago;
 
-                                $esDomingo = $filaItem->Estado === 'DOMINGO';
-                                $esFeriado = $filaItem->Estado === 'FERIADO';
+                                $esDomingo = $cuota->Estado === 'DOMINGO';
+                                $esFeriado = $cuota->Estado === 'FERIADO';
                                 $debeResaltar = $esDomingo || $esFeriado;
 
                                 $contador++;
@@ -341,7 +296,7 @@
                                 <td>
                                     @if($esPagoInicialFila)
                                         {{ $fechaMostrar->format('d/m/Y') }}<br>
-                                        <span style="font-size: 5pt; color: #666;">P. INICIAL</span>
+                                        <span style="font-size: 5pt; color: #666;">PAGO INICIAL</span>
                                     @else
                                         {{ $fechaMostrar->format('d/m/Y') }}
                                     @endif

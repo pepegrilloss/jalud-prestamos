@@ -16,7 +16,7 @@ class CreditoObserver
     private function generarCuotas(Credito $credito)
     {
         $proposicion = $credito->proposicion;
-        
+
         if (!$proposicion) {
             return;
         }
@@ -34,7 +34,7 @@ class CreditoObserver
             $fechaFin = $fechaInicio->copy()->addDays($proposicion->NumeroCuotas * 2);
             $annoInicio = $fechaInicio->year;
             $annoFin = $fechaFin->year;
-            
+
             for ($anno = $annoInicio; $anno <= $annoFin; $anno++) {
                 try {
                     $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
@@ -50,7 +50,26 @@ class CreditoObserver
             // Continuar sin feriados
         }
 
-        $fechaActual = Carbon::parse($credito->FechaGeneracion)->addDay();
+        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+        $fechaCreacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+
+        // --- CREAR CUOTA 0 (PAGO INICIAL) EL DÍA DE GENERACIÓN ---
+        $fechaGeneracion = Carbon::parse($credito->FechaGeneracion);
+        Cuota::create([
+            'CreditoID' => $credito->CreditoID,
+            'NumeroCuota' => 0,
+            'FechaVencimiento' => $fechaGeneracion->format('Y-m-d'),
+            'MontoCuota' => 0.00,
+            'Estado' => 'PAGO_INICIAL',
+            'DiasAtraso' => 0,
+            'MontoMora' => 0.00,
+            'FechaPago' => null,
+            'FechaCreacion' => $fechaCreacion,
+            'FechaModificacion' => null,
+            'Activo' => 1
+        ]);
+
+        $fechaActual = $fechaGeneracion->copy()->addDay();
         $numeroCuota = 0;
         $cuotasGeneradas = 0;
         $cuotasRequeridas = $proposicion->NumeroCuotas;
@@ -65,7 +84,7 @@ class CreditoObserver
                 $estado = $esDomingo ? Cuota::ESTADO_DOMINGO : Cuota::ESTADO_FERIADO;
                 $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                 $fechaCreacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-                
+
                 Cuota::create([
                     'CreditoID' => $credito->CreditoID,
                     'NumeroCuota' => 0, // No cuenta como cuota

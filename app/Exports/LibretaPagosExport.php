@@ -140,44 +140,17 @@ class LibretaPagosExport
             $pagosData[$pago->CuotaID][] = $pago;
         }
 
+        // Filtrar la Cuota 0 si NO tiene pagos asociados
+        $cuotas = $cuotas->filter(function ($cuota) use ($pagosData) {
+            if ($cuota->NumeroCuota == 0) {
+                return isset($pagosData[$cuota->CuotaID]) && count($pagosData[$cuota->CuotaID]) > 0;
+            }
+            return true;
+        })->values();
+
         $saldoAcumulativo = $montoTotal + $totalInteres; // Comienza con el monto total
 
-        // --- LÓGICA DE PAGO INICIAL/MISMO DÍA ---
-        // Verificar si existe algún pago que se hizo el mismo día de la generación del crédito
-        $fechaGeneracionCredito = Carbon::parse($credito->FechaGeneracion)->startOfDay();
-        $pagoInicialEncontrado = null;
-
-        foreach ($credito->pagos as $pago) {
-            $fechaPago = Carbon::parse($pago->FechaPago)->startOfDay();
-            if ($fechaPago->eq($fechaGeneracionCredito)) {
-                $pagoInicialEncontrado = $pago;
-                break;
-            }
-        }
-
-        // Crear una lista combinada de filas a mostrar
-        $filasAMostrar = [];
-
-        if ($pagoInicialEncontrado) {
-            $filasAMostrar[] = (object) [
-                'esPagoInicial' => true,
-                'FechaVencimiento' => $pagoInicialEncontrado->FechaPago,
-                'MontoPagado' => $pagoInicialEncontrado->MontoPagado,
-                'Estado' => 'PAGO_INICIAL'
-            ];
-        }
-
         foreach ($cuotas as $cuota) {
-            $filasAMostrar[] = (object) [
-                'esPagoInicial' => false,
-                'CuotaID' => $cuota->CuotaID,
-                'FechaVencimiento' => $cuota->FechaVencimiento,
-                'Estado' => $cuota->Estado,
-                'cuotaOriginal' => $cuota
-            ];
-        }
-
-        foreach ($filasAMostrar as $filaItem) {
             $i = $indiceFila;
 
             // Lógica de bloques: 20 a la izquierda, 28 al medio, resto a la derecha
@@ -232,16 +205,16 @@ class LibretaPagosExport
             }
 
             // Formato de fecha con día de la semana
-            $fechaCuota = Carbon::parse($filaItem->FechaVencimiento);
+            $fechaCuota = Carbon::parse($cuota->FechaVencimiento);
             $nombreDia = $dias[$fechaCuota->dayOfWeek];
 
-            // Determinar si es domingo o feriado y construir el formato
-            $esDomingo = $filaItem->Estado === 'DOMINGO';
-            $esFeriado = $filaItem->Estado === 'FERIADO';
-            $esPagoInicialFila = $filaItem->esPagoInicial;
+            // Determinar si es domingo o feriado o pago inicial y construir el formato
+            $esDomingo = $cuota->Estado === 'DOMINGO';
+            $esFeriado = $cuota->Estado === 'FERIADO';
+            $esPagoInicialFila = $cuota->NumeroCuota == 0;
 
             if ($esPagoInicialFila) {
-                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - P. INICIAL';
+                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - PAGO INICIAL';
             } elseif ($esDomingo) {
                 $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia;
             } elseif ($esFeriado) {
@@ -264,17 +237,9 @@ class LibretaPagosExport
             $montoEfectivo = 0;
             $montoOtros = 0;
 
-            if ($esPagoInicialFila) {
-                $montoEfectivo = $filaItem->MontoPagado;
-            } else {
-                if (isset($pagosData[$filaItem->CuotaID])) {
-                    foreach ($pagosData[$filaItem->CuotaID] as $pago) {
-                        // Excluir el pago inicial de la sumatoria regular si ya se mostró en su propia fila
-                        if ($pagoInicialEncontrado && $pago->PagoID === $pagoInicialEncontrado->PagoID) {
-                            continue;
-                        }
-                        $montoEfectivo += $pago->MontoPagado;
-                    }
+            if (isset($pagosData[$cuota->CuotaID])) {
+                foreach ($pagosData[$cuota->CuotaID] as $pago) {
+                    $montoEfectivo += $pago->MontoPagado;
                 }
             }
 

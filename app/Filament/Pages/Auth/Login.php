@@ -10,13 +10,15 @@ use Illuminate\Validation\ValidationException;
 
 class Login extends BaseLogin
 {
+    protected static string $view = 'filament.pages.auth.login';
+
     public function form(Form $form): Form
     {
         return $form
             ->schema([
                 $this->getUsernameFormComponent(),
                 $this->getPasswordFormComponent(),
-                $this->getRememberFormComponent(),
+                //$this->getRememberFormComponent(),
             ])
             ->statePath('data');
     }
