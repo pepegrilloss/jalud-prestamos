@@ -103,14 +103,14 @@ class LibretaPagosExport
         $sheet->setCellValue('F14', $proposicion->NumeroCuotas);
         $sheet->setCellValue('E15', 'PLAZO');
         $sheet->setCellValue('F15', $plazo);
-        
+
         $sheet->getStyle('E11:E15')->applyFromArray($styleVerdeBold);
         $sheet->getStyle('F12:F15')->getFont()->setBold(true);
         $sheet->getStyle('F12:F15')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
         // --- 6. ZONA ---
         $sheet->mergeCells('A13:B13');
-        $sheet->setCellValue('A13', $zona); 
+        $sheet->setCellValue('A13', $zona);
         $sheet->getStyle('A13')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFFF00');
         $sheet->getStyle('A13')->getFont()->setBold(true)->setColor(new Color('FF0000'));
         $sheet->getStyle('A13')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -124,13 +124,13 @@ class LibretaPagosExport
         // --- GENERACIÓN DE TABLAS CON CUOTAS REALES ---
         $dias = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
         $indiceFila = 0;
-        
+
         // Calcular total pagado en TODO el crédito
         $totalPagadoEnCredito = 0;
         foreach ($credito->pagos as $pago) {
             $totalPagadoEnCredito += $pago->MontoPagado;
         }
-        
+
         // Obtener pagos agrupados por cuota
         $pagosData = [];
         foreach ($credito->pagos as $pago) {
@@ -139,12 +139,47 @@ class LibretaPagosExport
             }
             $pagosData[$pago->CuotaID][] = $pago;
         }
-        
+
         $saldoAcumulativo = $montoTotal + $totalInteres; // Comienza con el monto total
-        
+
+        // --- LÓGICA DE PAGO INICIAL/MISMO DÍA ---
+        // Verificar si existe algún pago que se hizo el mismo día de la generación del crédito
+        $fechaGeneracionCredito = Carbon::parse($credito->FechaGeneracion)->startOfDay();
+        $pagoInicialEncontrado = null;
+
+        foreach ($credito->pagos as $pago) {
+            $fechaPago = Carbon::parse($pago->FechaPago)->startOfDay();
+            if ($fechaPago->eq($fechaGeneracionCredito)) {
+                $pagoInicialEncontrado = $pago;
+                break;
+            }
+        }
+
+        // Crear una lista combinada de filas a mostrar
+        $filasAMostrar = [];
+
+        if ($pagoInicialEncontrado) {
+            $filasAMostrar[] = (object) [
+                'esPagoInicial' => true,
+                'FechaVencimiento' => $pagoInicialEncontrado->FechaPago,
+                'MontoPagado' => $pagoInicialEncontrado->MontoPagado,
+                'Estado' => 'PAGO_INICIAL'
+            ];
+        }
+
         foreach ($cuotas as $cuota) {
+            $filasAMostrar[] = (object) [
+                'esPagoInicial' => false,
+                'CuotaID' => $cuota->CuotaID,
+                'FechaVencimiento' => $cuota->FechaVencimiento,
+                'Estado' => $cuota->Estado,
+                'cuotaOriginal' => $cuota
+            ];
+        }
+
+        foreach ($filasAMostrar as $filaItem) {
             $i = $indiceFila;
-            
+
             // Lógica de bloques: 20 a la izquierda, 28 al medio, resto a la derecha
             if ($i < 20) {
                 $colOffset = 'A';
@@ -164,20 +199,20 @@ class LibretaPagosExport
             if ($i == 0 || $i == 20 || $i == 48) {
                 $sheet->setCellValue($colOffset . $headerRow, 'FECHA');
                 $sheet->getStyle($colOffset . $headerRow)->applyFromArray($styleHeaderTable);
-                
+
                 if ($i == 0) {
                     $efectivoCol1 = $this->nextCol($colOffset, 1);
                     $efectivoCol2 = $this->nextCol($colOffset, 2);
                     $sheet->mergeCells($efectivoCol1 . $headerRow . ':' . $efectivoCol2 . $headerRow);
                     $sheet->setCellValue($efectivoCol1 . $headerRow, 'EFECTIVO');
                     $sheet->getStyle($efectivoCol1 . $headerRow . ':' . $efectivoCol2 . $headerRow)->applyFromArray($styleHeaderTable);
-                    
+
                     $yapeCol1 = $this->nextCol($colOffset, 3);
                     $yapeCol2 = $this->nextCol($colOffset, 4);
                     $sheet->mergeCells($yapeCol1 . $headerRow . ':' . $yapeCol2 . $headerRow);
                     $sheet->setCellValue($yapeCol1 . $headerRow, 'YAPE - TRANSFERENCIA');
                     $sheet->getStyle($yapeCol1 . $headerRow . ':' . $yapeCol2 . $headerRow)->applyFromArray($styleHeaderTable);
-                    
+
                     $saldoCol = $this->nextCol($colOffset, 5);
                     $sheet->setCellValue($saldoCol . $headerRow, 'SALDO');
                     $sheet->getStyle($saldoCol . $headerRow)->applyFromArray($styleHeaderTable);
@@ -185,11 +220,11 @@ class LibretaPagosExport
                     $efectivoCol = $this->nextCol($colOffset, 1);
                     $sheet->setCellValue($efectivoCol . $headerRow, 'EFECTIVO');
                     $sheet->getStyle($efectivoCol . $headerRow)->applyFromArray($styleHeaderTable);
-                    
+
                     $yapeCol = $this->nextCol($colOffset, 2);
                     $sheet->setCellValue($yapeCol . $headerRow, 'YAPE - TRANSFERENCIA');
                     $sheet->getStyle($yapeCol . $headerRow)->applyFromArray($styleHeaderTable);
-                    
+
                     $saldoCol = $this->nextCol($colOffset, 3);
                     $sheet->setCellValue($saldoCol . $headerRow, 'SALDO');
                     $sheet->getStyle($saldoCol . $headerRow)->applyFromArray($styleHeaderTable);
@@ -197,14 +232,17 @@ class LibretaPagosExport
             }
 
             // Formato de fecha con día de la semana
-            $fechaCuota = Carbon::parse($cuota->FechaVencimiento);
+            $fechaCuota = Carbon::parse($filaItem->FechaVencimiento);
             $nombreDia = $dias[$fechaCuota->dayOfWeek];
-            
+
             // Determinar si es domingo o feriado y construir el formato
-            $esDomingo = $cuota->Estado === 'DOMINGO';
-            $esFeriado = $cuota->Estado === 'FERIADO';
-            
-            if ($esDomingo) {
+            $esDomingo = $filaItem->Estado === 'DOMINGO';
+            $esFeriado = $filaItem->Estado === 'FERIADO';
+            $esPagoInicialFila = $filaItem->esPagoInicial;
+
+            if ($esPagoInicialFila) {
+                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - P. INICIAL';
+            } elseif ($esDomingo) {
                 $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia;
             } elseif ($esFeriado) {
                 $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia . ' - FERIADO';
@@ -216,20 +254,27 @@ class LibretaPagosExport
             $sheet->setCellValue($colOffset . $currentRow, $fechaFormato);
             $sheet->getStyle($colOffset . $currentRow)->applyFromArray($styleBordeVerde);
             $sheet->getStyle($colOffset . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-            
+
             // Si es domingo o feriado, marcar en rojo
             if ($esDomingo || $esFeriado) {
                 $sheet->getStyle($colOffset . $currentRow)->getFont()->setColor(new Color('FF0000'));
             }
-            
+
             // Calcular efectivo (sumar pagos de tipo EFECTIVO)
             $montoEfectivo = 0;
             $montoOtros = 0;
-            if (isset($pagosData[$cuota->CuotaID])) {
-                foreach ($pagosData[$cuota->CuotaID] as $pago) {
-                    // Asumiendo que existe un campo en Pago que indique si es efectivo
-                    // Por ahora, suponemos que todos los pagos son efectivo
-                    $montoEfectivo += $pago->MontoPagado;
+
+            if ($esPagoInicialFila) {
+                $montoEfectivo = $filaItem->MontoPagado;
+            } else {
+                if (isset($pagosData[$filaItem->CuotaID])) {
+                    foreach ($pagosData[$filaItem->CuotaID] as $pago) {
+                        // Excluir el pago inicial de la sumatoria regular si ya se mostró en su propia fila
+                        if ($pagoInicialEncontrado && $pago->PagoID === $pagoInicialEncontrado->PagoID) {
+                            continue;
+                        }
+                        $montoEfectivo += $pago->MontoPagado;
+                    }
                 }
             }
 
@@ -247,7 +292,7 @@ class LibretaPagosExport
                     $sheet->getStyle($efectivoCol1 . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
                 $sheet->getStyle($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow)->applyFromArray($styleBordeVerde);
-                
+
                 $yapeCol1 = $this->nextCol($colOffset, 3);
                 $yapeCol2 = $this->nextCol($colOffset, 4);
                 $sheet->mergeCells($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow);
@@ -256,7 +301,7 @@ class LibretaPagosExport
                     $sheet->getStyle($yapeCol1 . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
                 $sheet->getStyle($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow)->applyFromArray($styleBordeVerde);
-                
+
                 $saldoCol = $this->nextCol($colOffset, 5);
                 $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoTotalCredito, 2));
                 $sheet->getStyle($saldoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
@@ -269,14 +314,14 @@ class LibretaPagosExport
                     $sheet->getStyle($efectivoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
                 $sheet->getStyle($efectivoCol . $currentRow)->applyFromArray($styleBordeVerde);
-                
+
                 $yapeCol = $this->nextCol($colOffset, 2);
                 if ($montoOtros > 0) {
                     $sheet->setCellValue($yapeCol . $currentRow, number_format($montoOtros, 2));
                     $sheet->getStyle($yapeCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
                 $sheet->getStyle($yapeCol . $currentRow)->applyFromArray($styleBordeVerde);
-                
+
                 $saldoCol = $this->nextCol($colOffset, 3);
                 $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoTotalCredito, 2));
                 $sheet->getStyle($saldoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
@@ -287,20 +332,20 @@ class LibretaPagosExport
         }
 
         // Ajuste de anchos de columnas
-        $sheet->getColumnDimension('A')->setWidth(26); 
-        $sheet->getColumnDimension('B')->setWidth(10); 
-        $sheet->getColumnDimension('C')->setWidth(10); 
-        $sheet->getColumnDimension('D')->setWidth(12); 
-        $sheet->getColumnDimension('E')->setWidth(12); 
-        $sheet->getColumnDimension('F')->setWidth(12); 
-        $sheet->getColumnDimension('G')->setWidth(25); 
-        $sheet->getColumnDimension('H')->setWidth(15); 
-        $sheet->getColumnDimension('I')->setWidth(20); 
-        $sheet->getColumnDimension('J')->setWidth(12); 
-        $sheet->getColumnDimension('K')->setWidth(25); 
-        $sheet->getColumnDimension('L')->setWidth(15); 
-        $sheet->getColumnDimension('M')->setWidth(20); 
-        $sheet->getColumnDimension('N')->setWidth(12); 
+        $sheet->getColumnDimension('A')->setWidth(26);
+        $sheet->getColumnDimension('B')->setWidth(10);
+        $sheet->getColumnDimension('C')->setWidth(10);
+        $sheet->getColumnDimension('D')->setWidth(12);
+        $sheet->getColumnDimension('E')->setWidth(12);
+        $sheet->getColumnDimension('F')->setWidth(12);
+        $sheet->getColumnDimension('G')->setWidth(25);
+        $sheet->getColumnDimension('H')->setWidth(15);
+        $sheet->getColumnDimension('I')->setWidth(20);
+        $sheet->getColumnDimension('J')->setWidth(12);
+        $sheet->getColumnDimension('K')->setWidth(25);
+        $sheet->getColumnDimension('L')->setWidth(15);
+        $sheet->getColumnDimension('M')->setWidth(20);
+        $sheet->getColumnDimension('N')->setWidth(12);
         $sheet->getColumnDimension('O')->setWidth(12);
         $sheet->getColumnDimension('P')->setWidth(12);
 
@@ -311,7 +356,8 @@ class LibretaPagosExport
         return $fileName;
     }
 
-    private function nextCol($col, $steps) {
+    private function nextCol($col, $steps)
+    {
         $alphabet = range('A', 'Z');
         $index = array_search($col, $alphabet);
         return $alphabet[$index + $steps];
