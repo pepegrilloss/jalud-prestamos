@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('3rem')
+            ->darkMode(false)
             ->colors([
                 'primary' => '#a4cb3b',
             ])

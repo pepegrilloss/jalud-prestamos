@@ -80,6 +80,18 @@ Route::get('/pdf/cuentas-canceladas', function () {
     return $pdf->stream('Cuentas_Canceladas_' . $fecha->format('d-m-Y') . '.pdf');
 })->name('cuentas-canceladas.view');
 
+Route::get('/reportes/compras/excel', [App\Http\Controllers\ComprasReporteController::class, 'descargarExcel'])
+    ->name('compras.excel');
+
+Route::get('/reportes/compras/pdf', [App\Http\Controllers\ComprasReporteController::class, 'descargarPdf'])
+    ->name('compras.pdf');
+
+Route::get('/reportes/gastos/excel', [App\Http\Controllers\GastoReporteController::class, 'descargarExcel'])
+    ->name('gastos.excel');
+
+Route::get('/reportes/gastos/pdf', [App\Http\Controllers\GastoReporteController::class, 'descargarPdf'])
+    ->name('gastos.pdf');
+
 Route::get('/libreta-pagos/{credito}', [App\Http\Controllers\LibretaPagosController::class, 'descargar'])
     ->name('libreta-pagos.descargar');
 
