@@ -33,30 +33,38 @@ class ListGastos extends ListRecords
                     DatePicker::make('fecha_desde')
                         ->label('Fecha Desde')
                         ->native(false)
-                        ->displayFormat('d/m/Y'),
+                        ->displayFormat('d/m/Y')
+                        ->placeholder('dd/mm/yyyy')
+                        ->required(),
                     DatePicker::make('fecha_hasta')
                         ->label('Fecha Hasta')
                         ->native(false)
-                        ->displayFormat('d/m/Y'),
+                        ->displayFormat('d/m/Y')
+                        ->placeholder('dd/mm/yyyy')
+                        ->required(),
                 ])
                 ->action(function (array $data) {
-                    $params = [];
+                    $fechaDesde = \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
+                    $fechaHasta = \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
 
-                    if (!empty($data['fecha_desde'])) {
-                        $fechaDesde = is_object($data['fecha_desde'])
-                            ? $data['fecha_desde']->format('Y-m-d')
-                            : \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
-                        $params['fecha_desde'] = $fechaDesde;
+                    $hasData = \App\Models\Gasto::activos()
+                        ->whereDate('FechaCreacion', '>=', $fechaDesde)
+                        ->whereDate('FechaCreacion', '<=', $fechaHasta)
+                        ->exists();
+
+                    if (!$hasData) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Sin registros')
+                            ->body('No hay gastos en el rango de fechas seleccionado.')
+                            ->danger()
+                            ->send();
+                        return;
                     }
 
-                    if (!empty($data['fecha_hasta'])) {
-                        $fechaHasta = is_object($data['fecha_hasta'])
-                            ? $data['fecha_hasta']->format('Y-m-d')
-                            : \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
-                        $params['fecha_hasta'] = $fechaHasta;
-                    }
-
-                    return $this->redirect(route('gastos.excel', $params));
+                    return $this->redirect(route('gastos.excel', [
+                        'fecha_desde' => $fechaDesde,
+                        'fecha_hasta' => $fechaHasta
+                    ]));
                 })
                 ->modalHeading('Descargar Excel')
                 ->modalSubmitActionLabel('Descargar'),
@@ -68,30 +76,38 @@ class ListGastos extends ListRecords
                     DatePicker::make('fecha_desde')
                         ->label('Fecha Desde')
                         ->native(false)
-                        ->displayFormat('d/m/Y'),
+                        ->displayFormat('d/m/Y')
+                        ->placeholder('dd/mm/yyyy')
+                        ->required(),
                     DatePicker::make('fecha_hasta')
                         ->label('Fecha Hasta')
                         ->native(false)
-                        ->displayFormat('d/m/Y'),
+                        ->displayFormat('d/m/Y')
+                        ->placeholder('dd/mm/yyyy')
+                        ->required(),
                 ])
                 ->action(function (array $data) {
-                    $params = [];
+                    $fechaDesde = \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
+                    $fechaHasta = \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
 
-                    if (!empty($data['fecha_desde'])) {
-                        $fechaDesde = is_object($data['fecha_desde'])
-                            ? $data['fecha_desde']->format('Y-m-d')
-                            : \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
-                        $params['fecha_desde'] = $fechaDesde;
+                    $hasData = \App\Models\Gasto::activos()
+                        ->whereDate('FechaCreacion', '>=', $fechaDesde)
+                        ->whereDate('FechaCreacion', '<=', $fechaHasta)
+                        ->exists();
+
+                    if (!$hasData) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Sin registros')
+                            ->body('No hay gastos en el rango de fechas seleccionado.')
+                            ->danger()
+                            ->send();
+                        return;
                     }
 
-                    if (!empty($data['fecha_hasta'])) {
-                        $fechaHasta = is_object($data['fecha_hasta'])
-                            ? $data['fecha_hasta']->format('Y-m-d')
-                            : \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
-                        $params['fecha_hasta'] = $fechaHasta;
-                    }
-
-                    $url = route('gastos.pdf', $params);
+                    $url = route('gastos.pdf', [
+                        'fecha_desde' => $fechaDesde,
+                        'fecha_hasta' => $fechaHasta
+                    ]);
                     $this->js("window.open('{$url}', '_blank')");
                 })
                 ->modalHeading('Previsualizar PDF')
