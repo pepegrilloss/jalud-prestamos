@@ -21,19 +21,19 @@ class GastoReporteController extends Controller
 
         $query = Gasto::query()
             ->activos()
-            ->with('tipoComprobante', 'motivo', 'detalles')
-            ->orderBy('FechaCreacion', 'desc');
+            ->with('tipoComprobanteGasto', 'motivo', 'detalles')
+            ->orderBy('FechaEmision', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {
             try {
-                $query->whereDate('FechaCreacion', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
+                $query->whereDate('FechaEmision', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
             } catch (\Exception $e) {
             }
         }
 
         if (!empty($fechaHasta) && $fechaHasta !== 'null') {
             try {
-                $query->whereDate('FechaCreacion', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
+                $query->whereDate('FechaEmision', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
             } catch (\Exception $e) {
             }
         }
@@ -109,8 +109,8 @@ class GastoReporteController extends Controller
 
             if ($detalles->isEmpty()) {
                 // Gasto sin detalles (datos antiguos)
-                $sheet->setCellValue('A' . $row, $gasto->FechaCreacion->format('d/m/Y'));
-                $sheet->setCellValue('B' . $row, $gasto->tipoComprobante->Nombre);
+                $sheet->setCellValue('A' . $row, $gasto->FechaEmision->format('d/m/Y'));
+                $sheet->setCellValue('B' . $row, $gasto->tipoComprobanteGasto->Nombre);
                 $sheet->setCellValue('C' . $row, $gasto->Numero);
                 $sheet->setCellValue('D' . $row, $gasto->NombreProveedor);
                 $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
@@ -127,8 +127,8 @@ class GastoReporteController extends Controller
             } else {
                 foreach ($detalles as $detalle) {
                     if ($isFirst) {
-                        $sheet->setCellValue('A' . $row, $gasto->FechaCreacion->format('d/m/Y'));
-                        $sheet->setCellValue('B' . $row, $gasto->tipoComprobante->Nombre);
+                        $sheet->setCellValue('A' . $row, $gasto->FechaEmision->format('d/m/Y'));
+                        $sheet->setCellValue('B' . $row, $gasto->tipoComprobanteGasto->Nombre);
                         $sheet->setCellValue('C' . $row, $gasto->Numero);
                         $sheet->setCellValue('D' . $row, $gasto->NombreProveedor);
                         $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
@@ -188,19 +188,19 @@ class GastoReporteController extends Controller
 
         $query = Gasto::query()
             ->activos()
-            ->with('tipoComprobante', 'motivo', 'detalles')
-            ->orderBy('FechaCreacion', 'desc');
+            ->with('tipoComprobanteGasto', 'motivo', 'detalles')
+            ->orderBy('FechaEmision', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {
             try {
-                $query->whereDate('FechaCreacion', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
+                $query->whereDate('FechaEmision', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
             } catch (\Exception $e) {
             }
         }
 
         if (!empty($fechaHasta) && $fechaHasta !== 'null') {
             try {
-                $query->whereDate('FechaCreacion', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
+                $query->whereDate('FechaEmision', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
             } catch (\Exception $e) {
             }
         }

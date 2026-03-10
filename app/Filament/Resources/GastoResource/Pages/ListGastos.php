@@ -48,8 +48,8 @@ class ListGastos extends ListRecords
                     $fechaHasta = \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
 
                     $hasData = \App\Models\Gasto::activos()
-                        ->whereDate('FechaCreacion', '>=', $fechaDesde)
-                        ->whereDate('FechaCreacion', '<=', $fechaHasta)
+                        ->whereDate('FechaEmision', '>=', $fechaDesde)
+                        ->whereDate('FechaEmision', '<=', $fechaHasta)
                         ->exists();
 
                     if (!$hasData) {
@@ -91,8 +91,8 @@ class ListGastos extends ListRecords
                     $fechaHasta = \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
 
                     $hasData = \App\Models\Gasto::activos()
-                        ->whereDate('FechaCreacion', '>=', $fechaDesde)
-                        ->whereDate('FechaCreacion', '<=', $fechaHasta)
+                        ->whereDate('FechaEmision', '>=', $fechaDesde)
+                        ->whereDate('FechaEmision', '<=', $fechaHasta)
                         ->exists();
 
                     if (!$hasData) {

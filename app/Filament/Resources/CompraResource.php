@@ -35,18 +35,17 @@ class CompraResource extends Resource
                             ->label('Tipo de Comprobante')
                             ->options(TipoComprobante::where('Activo', true)->pluck('Nombre', 'TipoComprobanteID'))
                             ->required()
-                            ->searchable(),
-                        Forms\Components\TextInput::make('Serie')
-                            ->label('Serie')
-                            ->maxLength(20)
-                            ->nullable(),
+                            ->searchable()
+                            ->live(),
                         Forms\Components\TextInput::make('Numero')
-                            ->label('Número')
+                            ->label('Serie / Número')
                             ->required()
                             ->maxLength(20),
                         Forms\Components\DatePicker::make('FechaEmision')
                             ->label('Fecha Emisión')
-                            ->required(),
+                            ->required()
+                            ->minDate(now()->startOfMonth())
+                            ->maxDate(now()->endOfMonth()),
                     ])->columns(2),
 
                 Forms\Components\Section::make('Proveedor')
@@ -107,14 +106,42 @@ class CompraResource extends Resource
                             ->minItems(1)
                             ->columnSpanFull(),
 
-                        Forms\Components\Placeholder::make('TotalDisplay')
-                            ->label('TOTAL')
-                            ->content(function (Get $get): string {
+                        Forms\Components\Placeholder::make('TotalesDisplay')
+                            ->label('Desglose de Totales')
+                            ->content(function (Get $get): \Illuminate\Support\HtmlString {
                                 $detalles = $get('detalles') ?? [];
-                                $total = collect($detalles)->sum(fn($item) => floatval($item['Subtotal'] ?? 0));
-                                return 'S/. ' . number_format($total, 2);
+                                $subtotalBase = collect($detalles)->sum(fn($item) => floatval($item['Subtotal'] ?? 0));
+
+                                $tipoComprobanteId = $get('TipoComprobanteID');
+                                $aplicaIgv = false;
+
+                                if ($tipoComprobanteId) {
+                                    $comprobante = \App\Models\TipoComprobante::find($tipoComprobanteId);
+                                    if ($comprobante && in_array($comprobante->Nombre, ['FACTURA ELECTRÓNICA', 'BOLETA DE VENTA ELECTRÓNICA', 'SERVICIOS PÚBLICOS'])) {
+                                        $aplicaIgv = true;
+                                    }
+                                }
+
+                                $igv = $aplicaIgv ? $subtotalBase * 0.18 : 0;
+                                $totalFinal = $subtotalBase + $igv;
+
+                                return new \Illuminate\Support\HtmlString("
+                                    <div class='flex flex-col gap-1 text-sm'>
+                                        <div class='flex justify-between w-48'>
+                                            <span class='text-gray-500'>Subtotal Base:</span>
+                                            <span class='font-medium'>S/. " . number_format($subtotalBase, 2) . "</span>
+                                        </div>
+                                        <div class='flex justify-between w-48'>
+                                            <span class='text-gray-500'>IGV (18%):</span>
+                                            <span class='font-medium'>S/. " . number_format($igv, 2) . "</span>
+                                        </div>
+                                        <div class='flex justify-between w-48 pt-2 mt-2 border-t border-gray-200 dark:border-gray-700'>
+                                            <span class='font-bold'>TOTAL:</span>
+                                            <span class='text-xl font-bold text-primary-600'>S/. " . number_format($totalFinal, 2) . "</span>
+                                        </div>
+                                    </div>
+                                ");
                             })
-                            ->extraAttributes(['class' => 'text-xl font-bold']),
                     ]),
 
                 Forms\Components\Section::make('Observaciones')
@@ -140,12 +167,8 @@ class CompraResource extends Resource
                     ->label('Tipo Comprobante')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('Serie')
-                    ->label('Serie')
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('Numero')
-                    ->label('Número')
+                    ->label('Serie / Número')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('NombreProveedor')
@@ -198,6 +221,7 @@ class CompraResource extends Resource
                     }),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
                     ->visible(fn() => AperturaCierreDia::estaAbierto()),
                 Tables\Actions\Action::make('delete')
@@ -221,17 +245,17 @@ class CompraResource extends Resource
 
     public static function canCreate(): bool
     {
-        return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canCreate() && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
-        return parent::canEdit(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canEdit($record) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        return parent::canDelete(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canDelete($record) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array
@@ -239,6 +263,7 @@ class CompraResource extends Resource
         return [
             'index' => Pages\ListCompras::route('/'),
             'create' => Pages\CreateCompra::route('/create'),
+            'view' => Pages\ViewCompra::route('/{record}'),
             'edit' => Pages\EditCompra::route('/{record}/edit'),
         ];
     }

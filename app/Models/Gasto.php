@@ -15,7 +15,7 @@ class Gasto extends Model
     const UPDATED_AT = 'FechaModificacion';
 
     protected $fillable = [
-        'TipoComprobanteID',
+        'TipoComprobanteGastoID',
         'Numero',
         'FechaEmision',
         'NombreProveedor',
@@ -34,9 +34,9 @@ class Gasto extends Model
         'Activo' => 'boolean',
     ];
 
-    public function tipoComprobante(): BelongsTo
+    public function tipoComprobanteGasto(): BelongsTo
     {
-        return $this->belongsTo(TipoComprobante::class, 'TipoComprobanteID', 'TipoComprobanteID');
+        return $this->belongsTo(TipoComprobanteGasto::class, 'TipoComprobanteGastoID', 'TipoComprobanteGastoID');
     }
 
     public function motivo(): BelongsTo

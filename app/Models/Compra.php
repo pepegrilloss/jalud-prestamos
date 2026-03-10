@@ -16,10 +16,11 @@ class Compra extends Model
 
     protected $fillable = [
         'TipoComprobanteID',
-        'Serie',
         'Numero',
         'FechaEmision',
         'NombreProveedor',
+        'SubtotalBase',
+        'MontoIGV',
         'Total',
         'Observaciones',
         'Activo',
@@ -29,6 +30,8 @@ class Compra extends Model
         'FechaEmision' => 'datetime',
         'FechaCreacion' => 'datetime',
         'FechaModificacion' => 'datetime',
+        'SubtotalBase' => 'decimal:2',
+        'MontoIGV' => 'decimal:2',
         'Total' => 'decimal:2',
         'Activo' => 'boolean',
     ];

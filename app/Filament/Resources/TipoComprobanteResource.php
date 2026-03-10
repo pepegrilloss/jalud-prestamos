@@ -20,8 +20,8 @@ class TipoComprobanteResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?int $navigationSort = 1015;
-    protected static ?string $label = 'Tipo de Comprobante';
-    protected static ?string $pluralLabel = 'Tipos de Comprobante';
+    protected static ?string $label = 'Tipo de Comprobante (Compras)';
+    protected static ?string $pluralLabel = 'Tipos de Comprobante (Compras)';
     protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
@@ -36,7 +36,7 @@ class TipoComprobanteResource extends Resource
                 Forms\Components\Toggle::make('Activo')
                     ->label('Activo')
                     ->default(true)
-                    ->hidden(fn (string $operation): bool => $operation === 'create'),
+                    ->hidden(fn(string $operation): bool => $operation === 'create'),
             ]);
     }
 

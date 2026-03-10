@@ -18,10 +18,22 @@ class CreateCompra extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Recalcular total desde los detalles guardados
         $record = $this->record;
-        $total = $record->detalles()->sum('Subtotal');
-        $record->update(['Total' => $total]);
+        $subtotalBase = $record->detalles()->sum('Subtotal');
+        $aplicaIgv = false;
+        $comprobante = $record->tipoComprobante;
+        if ($comprobante && in_array($comprobante->Nombre, ['FACTURA ELECTRÓNICA', 'BOLETA DE VENTA ELECTRÓNICA', 'SERVICIOS PÚBLICOS'])) {
+            $aplicaIgv = true;
+        }
+
+        $igv = $aplicaIgv ? $subtotalBase * 0.18 : 0;
+        $totalFinal = $subtotalBase + $igv;
+
+        $record->update([
+            'SubtotalBase' => $subtotalBase,
+            'MontoIGV' => $igv,
+            'Total' => $totalFinal
+        ]);
     }
 
     protected function getRedirectUrl(): string

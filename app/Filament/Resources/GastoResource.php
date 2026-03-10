@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\GastoResource\Pages;
 use App\Models\Gasto;
-use App\Models\TipoComprobante;
+use App\Models\TipoComprobanteGasto;
 use App\Models\Motivo;
 use App\Models\AperturaCierreDia;
 use Filament\Forms;
@@ -31,9 +31,9 @@ class GastoResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Información del Comprobante')
                     ->schema([
-                        Forms\Components\Select::make('TipoComprobanteID')
+                        Forms\Components\Select::make('TipoComprobanteGastoID')
                             ->label('Tipo de Comprobante')
-                            ->options(TipoComprobante::where('Activo', true)->pluck('Nombre', 'TipoComprobanteID'))
+                            ->options(TipoComprobanteGasto::where('Activo', true)->pluck('Nombre', 'TipoComprobanteGastoID'))
                             ->required()
                             ->searchable(),
                         Forms\Components\TextInput::make('Numero')
@@ -42,7 +42,9 @@ class GastoResource extends Resource
                             ->maxLength(20),
                         Forms\Components\DatePicker::make('FechaEmision')
                             ->label('Fecha Emisión')
-                            ->required(),
+                            ->required()
+                            ->minDate(now()->startOfMonth())
+                            ->maxDate(now()->endOfMonth()),
                     ])->columns(2),
 
                 Forms\Components\Section::make('Datos del Gasto')
@@ -60,8 +62,6 @@ class GastoResource extends Resource
                             ->label('Método de Gasto')
                             ->options([
                                 'CAJA CHICA' => 'CAJA CHICA',
-                                'Tarjeta de crédito' => 'Tarjeta de crédito',
-                                'Tarjeta de débito' => 'Tarjeta de débito',
                             ])
                             ->required(),
                     ])->columns(2),
@@ -123,7 +123,7 @@ class GastoResource extends Resource
                     ->label('Fecha Emisión')
                     ->date('d/m/Y')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('tipoComprobante.Nombre')
+                Tables\Columns\TextColumn::make('tipoComprobanteGasto.Nombre')
                     ->label('Tipo Comprobante')
                     ->searchable()
                     ->sortable(),
@@ -162,9 +162,9 @@ class GastoResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('TipoComprobanteID')
+                Tables\Filters\SelectFilter::make('TipoComprobanteGastoID')
                     ->label('Tipo Comprobante')
-                    ->options(TipoComprobante::where('Activo', true)->pluck('Nombre', 'TipoComprobanteID')),
+                    ->options(TipoComprobanteGasto::where('Activo', true)->pluck('Nombre', 'TipoComprobanteGastoID')),
                 Tables\Filters\SelectFilter::make('MotivoID')
                     ->label('Motivo')
                     ->options(Motivo::where('Activo', true)->pluck('Nombre', 'MotivoID')),
@@ -195,6 +195,7 @@ class GastoResource extends Resource
                     }),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make()
                     ->visible(fn() => AperturaCierreDia::estaAbierto()),
                 Tables\Actions\Action::make('delete')
@@ -218,17 +219,17 @@ class GastoResource extends Resource
 
     public static function canCreate(): bool
     {
-        return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canCreate() && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
-        return parent::canEdit(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canEdit($record) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        return parent::canDelete(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canDelete($record) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array
@@ -236,6 +237,7 @@ class GastoResource extends Resource
         return [
             'index' => Pages\ListGastos::route('/'),
             'create' => Pages\CreateGasto::route('/create'),
+            'view' => Pages\ViewGasto::route('/{record}'),
             'edit' => Pages\EditGasto::route('/{record}/edit'),
         ];
     }

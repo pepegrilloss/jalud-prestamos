@@ -136,8 +136,8 @@
                         <tr class="detalle-row">
                             @if($index === 0)
                                 <td class="centro" rowspan="{{ $gasto->detalles->count() }}">
-                                    {{ $gasto->FechaCreacion->format('d/m/Y') }}</td>
-                                <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->tipoComprobante->Nombre }}</td>
+                                    {{ $gasto->FechaEmision->format('d/m/Y') }}</td>
+                                <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->tipoComprobanteGasto->Nombre }}</td>
                                 <td class="centro" rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->Numero }}</td>
                                 <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->NombreProveedor }}</td>
                                 <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->motivo->Nombre }}</td>
@@ -150,8 +150,8 @@
                 @else
                     {{-- Datos antiguos sin detalles --}}
                     <tr class="detalle-row">
-                        <td class="centro">{{ $gasto->FechaCreacion->format('d/m/Y') }}</td>
-                        <td>{{ $gasto->tipoComprobante->Nombre }}</td>
+                        <td class="centro">{{ $gasto->FechaEmision->format('d/m/Y') }}</td>
+                        <td>{{ $gasto->tipoComprobanteGasto->Nombre }}</td>
                         <td class="centro">{{ $gasto->Numero }}</td>
                         <td>{{ $gasto->NombreProveedor }}</td>
                         <td>{{ $gasto->motivo->Nombre }}</td>

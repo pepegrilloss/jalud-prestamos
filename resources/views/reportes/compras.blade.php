@@ -126,8 +126,7 @@
             <tr>
                 <th class="centro">FECHA</th>
                 <th>TIPO COMP.</th>
-                <th class="centro">SERIE</th>
-                <th class="centro">NÚMERO</th>
+                <th class="centro">SERIE / NÚMERO</th>
                 <th>PROVEEDOR</th>
                 <th>PRODUCTO/SERVICIO</th>
                 <th class="numero">CANT.</th>
@@ -142,9 +141,8 @@
                         <tr class="detalle-row">
                             @if($index === 0)
                                 <td class="centro" rowspan="{{ $compra->detalles->count() }}">
-                                    {{ $compra->FechaCreacion->format('d/m/Y') }}</td>
+                                    {{ $compra->FechaEmision->format('d/m/Y') }}</td>
                                 <td rowspan="{{ $compra->detalles->count() }}">{{ $compra->tipoComprobante->Nombre }}</td>
-                                <td class="centro" rowspan="{{ $compra->detalles->count() }}">{{ $compra->Serie }}</td>
                                 <td class="centro" rowspan="{{ $compra->detalles->count() }}">{{ $compra->Numero }}</td>
                                 <td rowspan="{{ $compra->detalles->count() }}">{{ $compra->NombreProveedor }}</td>
                             @endif
@@ -157,9 +155,8 @@
                 @else
                     {{-- Datos antiguos sin detalles --}}
                     <tr class="detalle-row">
-                        <td class="centro">{{ $compra->FechaCreacion->format('d/m/Y') }}</td>
+                        <td class="centro">{{ $compra->FechaEmision->format('d/m/Y') }}</td>
                         <td>{{ $compra->tipoComprobante->Nombre }}</td>
-                        <td class="centro">{{ $compra->Serie }}</td>
                         <td class="centro">{{ $compra->Numero }}</td>
                         <td>{{ $compra->NombreProveedor }}</td>
                         <td>{{ $compra->ProductoServicio ?? '-' }}</td>
@@ -171,12 +168,12 @@
                 @endif
             @empty
                 <tr>
-                    <td colspan="9" style="text-align: center;">No hay datos disponibles</td>
+                    <td colspan="8" style="text-align: center;">No hay datos disponibles</td>
                 </tr>
             @endforelse
             @if($compras->count() > 0)
                 <tr class="total-row">
-                    <td colspan="8" style="text-align: right;">TOTAL:</td>
+                    <td colspan="7" style="text-align: right;">TOTAL:</td>
                     <td class="numero">S/. {{ number_format($total_general, 2) }}</td>
                 </tr>
             @endif
