@@ -13,8 +13,7 @@ class EditTipoExoneracion extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make()
-                ->visible(fn() => auth()->user()->can('delete_tipo_exoneracion')),
+            Actions\DeleteAction::make(),
         ];
     }
 

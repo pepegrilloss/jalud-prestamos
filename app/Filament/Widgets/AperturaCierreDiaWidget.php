@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
 use App\Models\AperturaCierreDia;
 use App\Events\DiaAbierto;
 use Filament\Widgets\Widget;
@@ -10,6 +12,8 @@ use Filament\Notifications\Notification;
 
 class AperturaCierreDiaWidget extends Widget
 {
+    use HasWidgetShield;
+
     protected static string $view = 'filament.widgets.apertura-cierre-dia-widget';
     protected static ?int $sort = 1;
 

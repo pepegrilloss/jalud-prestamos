@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
 use App\Models\SolicitudExoneracion;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -9,6 +11,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 
 class ExoneracionesPendientesWidget extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected static ?int $sort = 2;
     protected int | string | array $columnSpan = 'full';
 

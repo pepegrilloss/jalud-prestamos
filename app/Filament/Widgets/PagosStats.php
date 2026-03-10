@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
 use App\Models\Pago;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -9,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 
 class PagosStats extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected static ?int $sort = 2;
 
     protected function getStats(): array

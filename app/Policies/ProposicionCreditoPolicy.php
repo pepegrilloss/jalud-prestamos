@@ -15,7 +15,7 @@ class ProposicionCreditoPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_generar::credito');
+        return $user->can('view_any_reporte::cuentas::canceladas');
     }
 
     /**
@@ -23,7 +23,7 @@ class ProposicionCreditoPolicy
      */
     public function view(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('view_generar::credito');
+        return $user->can('view_reporte::cuentas::canceladas');
     }
 
     /**
@@ -31,7 +31,7 @@ class ProposicionCreditoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_generar::credito');
+        return $user->can('create_reporte::cuentas::canceladas');
     }
 
     /**
@@ -39,7 +39,7 @@ class ProposicionCreditoPolicy
      */
     public function update(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('update_generar::credito');
+        return $user->can('update_reporte::cuentas::canceladas');
     }
 
     /**
@@ -47,7 +47,7 @@ class ProposicionCreditoPolicy
      */
     public function delete(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('delete_generar::credito');
+        return $user->can('delete_reporte::cuentas::canceladas');
     }
 
     /**
@@ -55,7 +55,7 @@ class ProposicionCreditoPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_generar::credito');
+        return $user->can('delete_any_reporte::cuentas::canceladas');
     }
 
     /**
@@ -63,7 +63,7 @@ class ProposicionCreditoPolicy
      */
     public function forceDelete(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('force_delete_generar::credito');
+        return $user->can('force_delete_reporte::cuentas::canceladas');
     }
 
     /**
@@ -71,7 +71,7 @@ class ProposicionCreditoPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_generar::credito');
+        return $user->can('force_delete_any_reporte::cuentas::canceladas');
     }
 
     /**
@@ -79,7 +79,7 @@ class ProposicionCreditoPolicy
      */
     public function restore(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('restore_generar::credito');
+        return $user->can('restore_reporte::cuentas::canceladas');
     }
 
     /**
@@ -87,7 +87,7 @@ class ProposicionCreditoPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_generar::credito');
+        return $user->can('restore_any_reporte::cuentas::canceladas');
     }
 
     /**
@@ -95,7 +95,7 @@ class ProposicionCreditoPolicy
      */
     public function replicate(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('replicate_generar::credito');
+        return $user->can('replicate_reporte::cuentas::canceladas');
     }
 
     /**
@@ -103,6 +103,6 @@ class ProposicionCreditoPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_generar::credito');
+        return $user->can('reorder_reporte::cuentas::canceladas');
     }
 }

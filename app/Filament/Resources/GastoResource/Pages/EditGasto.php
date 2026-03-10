@@ -22,7 +22,6 @@ class EditGasto extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->visible(fn() => auth()->user()->can('delete_gasto'))
                 ->action(function ($record) {
                     $record->update(['Activo' => false]);
                 }),

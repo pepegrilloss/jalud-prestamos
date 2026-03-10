@@ -74,7 +74,8 @@ class AdminPanelProvider extends PanelProvider
 
             ->plugins([
                 FilamentShieldPlugin::make(),
-                \Hasnayeen\Themes\ThemesPlugin::make(),
+                \Hasnayeen\Themes\ThemesPlugin::make()
+                    ->canViewThemesPage(fn() => auth()->user() ? auth()->user()->can('page_Themes') : false),
             ])
             ->tenantMiddleware([
                 \Hasnayeen\Themes\Http\Middleware\SetTheme::class,

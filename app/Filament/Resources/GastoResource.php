@@ -218,17 +218,17 @@ class GastoResource extends Resource
 
     public static function canCreate(): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canEdit(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canDelete(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array

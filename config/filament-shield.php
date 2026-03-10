@@ -56,7 +56,11 @@ return [
         'pages' => true,
         'widgets' => true,
         'resources' => true,
-        'custom_permissions' => false,
+        'custom_permissions' => true,
+    ],
+
+    'custom_permissions' => [
+        'page_Themes'
     ],
 
     'generator' => [
@@ -73,7 +77,8 @@ return [
         ],
 
         'widgets' => [
-            'AccountWidget', 'FilamentInfoWidget',
+            'AccountWidget',
+            'FilamentInfoWidget',
         ],
 
         'resources' => [],

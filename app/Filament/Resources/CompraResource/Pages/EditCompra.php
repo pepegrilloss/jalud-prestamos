@@ -22,7 +22,6 @@ class EditCompra extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->visible(fn() => auth()->user()->can('delete_compra'))
                 ->action(function ($record) {
                     $record->update(['Activo' => false]);
                 }),

@@ -2,12 +2,16 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
 use App\Models\HistorialExoneracion;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class ExoneracionesStatsWidget extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected function getStats(): array
     {
         $totalExonerado = HistorialExoneracion::sum('MontoExonerado');

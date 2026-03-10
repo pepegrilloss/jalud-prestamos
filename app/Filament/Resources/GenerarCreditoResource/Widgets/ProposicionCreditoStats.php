@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\GenerarCreditoResource\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
 use App\Models\ProposicionCredito;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class ProposicionCreditoStats extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected function getStats(): array
     {
         return [

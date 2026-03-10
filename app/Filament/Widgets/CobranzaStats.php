@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
 use App\Models\Cuota;
 use App\Models\Pago;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -10,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 
 class CobranzaStats extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected static ?int $sort = 2;
 
     protected function getStats(): array

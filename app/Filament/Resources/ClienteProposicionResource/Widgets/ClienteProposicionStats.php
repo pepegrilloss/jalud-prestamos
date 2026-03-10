@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\ClienteProposicionResource\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
 use App\Models\Cliente;
 use App\Models\Credito;
 use App\Models\ProposicionCredito;
@@ -12,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 
 class ClienteProposicionStats extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected function getStats(): array
     {
         $user = Auth::user();

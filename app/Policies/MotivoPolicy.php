@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Cliente;
+use App\Models\Motivo;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class ClientePolicy
+class MotivoPolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class ClientePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_cliente');
+        return $user->can('view_any_motivo');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Cliente $cliente): bool
+    public function view(User $user, Motivo $motivo): bool
     {
-        return $user->can('view_cliente');
+        return $user->can('view_motivo');
     }
 
     /**
@@ -31,23 +31,23 @@ class ClientePolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_cliente');
+        return $user->can('create_motivo');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Cliente $cliente): bool
+    public function update(User $user, Motivo $motivo): bool
     {
-        return $user->can('update_cliente');
+        return $user->can('update_motivo');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Cliente $cliente): bool
+    public function delete(User $user, Motivo $motivo): bool
     {
-        return $user->can('delete_cliente');
+        return $user->can('delete_motivo');
     }
 
     /**
@@ -55,15 +55,15 @@ class ClientePolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_cliente');
+        return $user->can('delete_any_motivo');
     }
 
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, Cliente $cliente): bool
+    public function forceDelete(User $user, Motivo $motivo): bool
     {
-        return $user->can('force_delete_cliente');
+        return $user->can('force_delete_motivo');
     }
 
     /**
@@ -71,15 +71,15 @@ class ClientePolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_cliente');
+        return $user->can('force_delete_any_motivo');
     }
 
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, Cliente $cliente): bool
+    public function restore(User $user, Motivo $motivo): bool
     {
-        return $user->can('restore_cliente');
+        return $user->can('restore_motivo');
     }
 
     /**
@@ -87,15 +87,15 @@ class ClientePolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_cliente');
+        return $user->can('restore_any_motivo');
     }
 
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, Cliente $cliente): bool
+    public function replicate(User $user, Motivo $motivo): bool
     {
-        return $user->can('replicate_cliente');
+        return $user->can('replicate_motivo');
     }
 
     /**
@@ -103,6 +103,6 @@ class ClientePolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_cliente');
+        return $user->can('reorder_motivo');
     }
 }

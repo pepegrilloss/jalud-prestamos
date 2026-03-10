@@ -13,8 +13,7 @@ class EditTipoPago extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make()
-                ->visible(fn() => auth()->user()->can('delete_tipo_pago')),
+            Actions\DeleteAction::make(),
         ];
     }
 

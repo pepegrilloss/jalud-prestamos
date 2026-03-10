@@ -77,11 +77,10 @@ class TasaResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->visible(fn() => auth()->user()->can('view_tasa')),
+                Tables\Actions\ViewAction::make(),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('update_tasa')),
+                    ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto()),
 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -91,7 +90,7 @@ class TasaResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('delete_tasa'))
+                    ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                     ]))
@@ -104,17 +103,17 @@ class TasaResource extends Resource
 
     public static function canCreate(): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canEdit(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canDelete(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array

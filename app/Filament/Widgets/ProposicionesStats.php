@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+
 use App\Models\Credito;
 use App\Models\ProposicionCredito;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -10,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 
 class ProposicionesStats extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected static ?int $sort = 3;
 
     protected function getStats(): array

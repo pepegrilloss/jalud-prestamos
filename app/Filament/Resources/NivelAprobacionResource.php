@@ -157,7 +157,7 @@ class NivelAprobacionResource extends Resource
                     ->modalSubmitActionLabel('Sí, desactivar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()->can('delete_nivel::aprobacion'))
+                    ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                         'FechaModificacion' => now()
@@ -172,17 +172,17 @@ class NivelAprobacionResource extends Resource
 
     public static function canCreate(): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canEdit(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        return AperturaCierreDia::estaAbierto();
+        return parent::canDelete(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function getRelations(): array
