@@ -41,28 +41,28 @@ class ListGastos extends ListRecords
                 ])
                 ->action(function (array $data) {
                     $params = [];
-                    
+
                     if (!empty($data['fecha_desde'])) {
-                        $fechaDesde = is_object($data['fecha_desde']) 
+                        $fechaDesde = is_object($data['fecha_desde'])
                             ? $data['fecha_desde']->format('Y-m-d')
                             : \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
                         $params['fecha_desde'] = $fechaDesde;
                     }
-                    
+
                     if (!empty($data['fecha_hasta'])) {
-                        $fechaHasta = is_object($data['fecha_hasta']) 
+                        $fechaHasta = is_object($data['fecha_hasta'])
                             ? $data['fecha_hasta']->format('Y-m-d')
                             : \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
                         $params['fecha_hasta'] = $fechaHasta;
                     }
-                    
+
                     return $this->redirect(route('gastos.excel', $params));
                 })
                 ->modalHeading('Descargar Excel')
                 ->modalSubmitActionLabel('Descargar'),
             Action::make('descargar_pdf')
                 ->label('Descargar PDF')
-                ->icon('heroicon-o-arrow-down-tray')
+                ->icon('heroicon-o-eye')
                 ->color('danger')
                 ->form([
                     DatePicker::make('fecha_desde')
@@ -76,25 +76,26 @@ class ListGastos extends ListRecords
                 ])
                 ->action(function (array $data) {
                     $params = [];
-                    
+
                     if (!empty($data['fecha_desde'])) {
-                        $fechaDesde = is_object($data['fecha_desde']) 
+                        $fechaDesde = is_object($data['fecha_desde'])
                             ? $data['fecha_desde']->format('Y-m-d')
                             : \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
                         $params['fecha_desde'] = $fechaDesde;
                     }
-                    
+
                     if (!empty($data['fecha_hasta'])) {
-                        $fechaHasta = is_object($data['fecha_hasta']) 
+                        $fechaHasta = is_object($data['fecha_hasta'])
                             ? $data['fecha_hasta']->format('Y-m-d')
                             : \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
                         $params['fecha_hasta'] = $fechaHasta;
                     }
-                    
-                    return $this->redirect(route('gastos.pdf', $params));
+
+                    $url = route('gastos.pdf', $params);
+                    $this->js("window.open('{$url}', '_blank')");
                 })
-                ->modalHeading('Descargar PDF')
-                ->modalSubmitActionLabel('Descargar'),
+                ->modalHeading('Previsualizar PDF')
+                ->modalSubmitActionLabel('Ver PDF'),
         ];
     }
 }

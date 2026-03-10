@@ -8,6 +8,8 @@ use App\Models\TipoComprobante;
 use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -57,41 +59,63 @@ class CompraResource extends Resource
 
                 Forms\Components\Section::make('Detalle de Compra')
                     ->schema([
-                        Forms\Components\TextInput::make('ProductoServicio')
-                            ->label('Producto o Servicio')
+                        Forms\Components\Repeater::make('detalles')
+                            ->label('Productos / Servicios')
+                            ->relationship()
+                            ->schema([
+                                Forms\Components\TextInput::make('ProductoServicio')
+                                    ->label('Producto o Servicio')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->columnSpan(2),
+                                Forms\Components\TextInput::make('Cantidad')
+                                    ->label('Cantidad')
+                                    ->numeric()
+                                    ->required()
+                                    ->step(0.01)
+                                    ->default(1)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (Get $get, Set $set) {
+                                        $cantidad = floatval($get('Cantidad') ?? 0);
+                                        $precio = floatval($get('PrecioUnitario') ?? 0);
+                                        $set('Subtotal', number_format($cantidad * $precio, 2, '.', ''));
+                                    }),
+                                Forms\Components\TextInput::make('PrecioUnitario')
+                                    ->label('Precio Unitario')
+                                    ->numeric()
+                                    ->required()
+                                    ->step(0.01)
+                                    ->prefix('S/. ')
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (Get $get, Set $set) {
+                                        $cantidad = floatval($get('Cantidad') ?? 0);
+                                        $precio = floatval($get('PrecioUnitario') ?? 0);
+                                        $set('Subtotal', number_format($cantidad * $precio, 2, '.', ''));
+                                    }),
+                                Forms\Components\TextInput::make('Subtotal')
+                                    ->label('Subtotal')
+                                    ->numeric()
+                                    ->prefix('S/. ')
+                                    ->readOnly()
+                                    ->default(0),
+                            ])
+                            ->columns(4)
+                            ->defaultItems(1)
+                            ->addActionLabel('Agregar producto')
+                            ->reorderable(false)
                             ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('Cantidad')
-                            ->label('Cantidad')
-                            ->numeric()
-                            ->required()
-                            ->step(0.01)
-                            ->live()
-                            ->afterStateUpdated(function ($get, $set) {
-                                $cantidad = floatval($get('Cantidad') ?? 0);
-                                $precio = floatval($get('PrecioUnitario') ?? 0);
-                                $set('Total', $cantidad * $precio);
-                            }),
-                        Forms\Components\TextInput::make('PrecioUnitario')
-                            ->label('Precio Unitario')
-                            ->numeric()
-                            ->required()
-                            ->step(0.01)
-                            ->prefix('S/. ')
-                            ->live()
-                            ->afterStateUpdated(function ($get, $set) {
-                                $cantidad = floatval($get('Cantidad') ?? 0);
-                                $precio = floatval($get('PrecioUnitario') ?? 0);
-                                $set('Total', $cantidad * $precio);
-                            }),
-                        Forms\Components\TextInput::make('Total')
-                            ->label('Total')
-                            ->numeric()
-                            ->required()
-                            ->step(0.01)
-                            ->prefix('S/. ')
-                            ->readOnly(),
-                    ])->columns(2),
+                            ->minItems(1)
+                            ->columnSpanFull(),
+
+                        Forms\Components\Placeholder::make('TotalDisplay')
+                            ->label('TOTAL')
+                            ->content(function (Get $get): string {
+                                $detalles = $get('detalles') ?? [];
+                                $total = collect($detalles)->sum(fn($item) => floatval($item['Subtotal'] ?? 0));
+                                return 'S/. ' . number_format($total, 2);
+                            })
+                            ->extraAttributes(['class' => 'text-xl font-bold']),
+                    ]),
 
                 Forms\Components\Section::make('Observaciones')
                     ->schema([
@@ -106,7 +130,7 @@ class CompraResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->activos())
+            ->modifyQueryUsing(fn($query) => $query->activos()->with('detalles'))
             ->columns([
                 Tables\Columns\TextColumn::make('FechaEmision')
                     ->label('Fecha Emisión')
@@ -128,21 +152,22 @@ class CompraResource extends Resource
                     ->label('Proveedor')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('ProductoServicio')
-                    ->label('Producto/Servicio')
-                    ->limit(40)
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('Cantidad')
-                    ->label('Cant.')
-                    ->numeric(2)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('PrecioUnitario')
-                    ->label('Precio Unit.')
-                    ->numeric(2)
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('detalles_resumen')
+                    ->label('Productos')
+                    ->getStateUsing(function ($record) {
+                        $nombres = $record->detalles->pluck('ProductoServicio')->toArray();
+                        $resumen = implode(', ', $nombres);
+                        return strlen($resumen) > 50 ? substr($resumen, 0, 50) . '...' : $resumen;
+                    })
+                    ->wrap(),
+                Tables\Columns\TextColumn::make('detalles_count')
+                    ->label('Ítems')
+                    ->getStateUsing(fn($record) => $record->detalles->count())
+                    ->alignCenter(),
                 Tables\Columns\TextColumn::make('Total')
                     ->label('Total')
                     ->numeric(2)
+                    ->prefix('S/. ')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('Activo')
                     ->label('Estado')
@@ -164,11 +189,11 @@ class CompraResource extends Resource
                         $query
                             ->when(
                                 $data['fecha_desde'],
-                                fn ($q) => $q->whereDate('FechaEmision', '>=', $data['fecha_desde'])
+                                fn($q) => $q->whereDate('FechaEmision', '>=', $data['fecha_desde'])
                             )
                             ->when(
                                 $data['fecha_hasta'],
-                                fn ($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
+                                fn($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
                             );
                     }),
             ])

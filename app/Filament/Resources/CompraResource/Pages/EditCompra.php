@@ -10,11 +10,12 @@ class EditCompra extends EditRecord
 {
     protected static string $resource = CompraResource::class;
 
-    protected function mutateFormDataBeforeSave(array $data): array
+    protected function afterSave(): void
     {
-        // Calcular total automáticamente
-        $data['Total'] = $data['Cantidad'] * $data['PrecioUnitario'];
-        return $data;
+        // Recalcular total desde los detalles guardados
+        $record = $this->record;
+        $total = $record->detalles()->sum('Subtotal');
+        $record->update(['Total' => $total]);
     }
 
     protected function getHeaderActions(): array

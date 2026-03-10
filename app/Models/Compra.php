@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Compra extends Model
 {
@@ -19,9 +20,6 @@ class Compra extends Model
         'Numero',
         'FechaEmision',
         'NombreProveedor',
-        'ProductoServicio',
-        'Cantidad',
-        'PrecioUnitario',
         'Total',
         'Observaciones',
         'Activo',
@@ -31,8 +29,6 @@ class Compra extends Model
         'FechaEmision' => 'datetime',
         'FechaCreacion' => 'datetime',
         'FechaModificacion' => 'datetime',
-        'Cantidad' => 'float',
-        'PrecioUnitario' => 'decimal:2',
         'Total' => 'decimal:2',
         'Activo' => 'boolean',
     ];
@@ -40,6 +36,11 @@ class Compra extends Model
     public function tipoComprobante(): BelongsTo
     {
         return $this->belongsTo(TipoComprobante::class, 'TipoComprobanteID', 'TipoComprobanteID');
+    }
+
+    public function detalles(): HasMany
+    {
+        return $this->hasMany(CompraDetalle::class, 'CompraID', 'CompraID');
     }
 
     public function scopeActivos($query)

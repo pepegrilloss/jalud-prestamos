@@ -18,17 +18,16 @@ class GastoReporteController extends Controller
     {
         $fechaDesde = request()->query('fecha_desde');
         $fechaHasta = request()->query('fecha_hasta');
-        
+
         $query = Gasto::query()
             ->activos()
-            ->with('tipoComprobante', 'motivo')
+            ->with('tipoComprobante', 'motivo', 'detalles')
             ->orderBy('FechaCreacion', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {
             try {
                 $query->whereDate('FechaCreacion', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
             } catch (\Exception $e) {
-                // Ignorar si falla el parsing
             }
         }
 
@@ -36,7 +35,6 @@ class GastoReporteController extends Controller
             try {
                 $query->whereDate('FechaCreacion', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
             } catch (\Exception $e) {
-                // Ignorar si falla el parsing
             }
         }
 
@@ -74,7 +72,7 @@ class GastoReporteController extends Controller
         ];
 
         // Título
-        $sheet->mergeCells('A1:J1');
+        $sheet->mergeCells('A1:I1');
         $sheet->setCellValue('A1', 'REPORTE DE GASTOS');
         $sheet->getStyle('A1')->applyFromArray($styleTitle);
         $sheet->getRowDimension(1)->setRowHeight(25);
@@ -95,7 +93,7 @@ class GastoReporteController extends Controller
         $row += 2;
 
         // Encabezados
-        $headers = ['Fecha', 'Tipo Comprobante', 'Número', 'Proveedor', 'Motivo', 'Método Gasto', 'Descripción', 'Total', 'Observaciones'];
+        $headers = ['Fecha', 'Tipo Comprobante', 'Número', 'Proveedor', 'Motivo', 'Método Gasto', 'Descripción', 'Monto', 'Observaciones'];
         foreach ($headers as $col => $header) {
             $colLetter = chr(65 + $col);
             $sheet->setCellValue($colLetter . $row, $header);
@@ -103,30 +101,52 @@ class GastoReporteController extends Controller
         }
 
         $row++;
-        $startRow = $row;
 
-        // Datos
+        // Datos - una fila por cada detalle
         foreach ($gastos as $gasto) {
-            $sheet->setCellValue('A' . $row, $gasto->FechaCreacion->format('d/m/Y'));
-            $sheet->setCellValue('B' . $row, $gasto->tipoComprobante->Nombre);
-            $sheet->setCellValue('C' . $row, $gasto->Numero);
-            $sheet->setCellValue('D' . $row, $gasto->NombreProveedor);
-            $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
-            $sheet->setCellValue('F' . $row, $gasto->MetodoGasto);
-            $sheet->setCellValue('G' . $row, $gasto->Descripcion);
-            $sheet->setCellValue('H' . $row, $gasto->Total);
-            $sheet->setCellValue('I' . $row, $gasto->Observaciones);
+            $detalles = $gasto->detalles;
+            $isFirst = true;
 
-            // Aplicar estilos de datos
-            for ($col = 0; $col < 9; $col++) {
-                $colLetter = chr(65 + $col);
-                $sheet->getStyle($colLetter . $row)->applyFromArray($styleData);
+            if ($detalles->isEmpty()) {
+                // Gasto sin detalles (datos antiguos)
+                $sheet->setCellValue('A' . $row, $gasto->FechaCreacion->format('d/m/Y'));
+                $sheet->setCellValue('B' . $row, $gasto->tipoComprobante->Nombre);
+                $sheet->setCellValue('C' . $row, $gasto->Numero);
+                $sheet->setCellValue('D' . $row, $gasto->NombreProveedor);
+                $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
+                $sheet->setCellValue('F' . $row, $gasto->MetodoGasto);
+                $sheet->setCellValue('G' . $row, $gasto->Descripcion ?? '');
+                $sheet->setCellValue('H' . $row, $gasto->Total);
+                $sheet->setCellValue('I' . $row, $gasto->Observaciones);
+
+                for ($col = 0; $col < 9; $col++) {
+                    $sheet->getStyle(chr(65 + $col) . $row)->applyFromArray($styleData);
+                }
+                $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
+                $row++;
+            } else {
+                foreach ($detalles as $detalle) {
+                    if ($isFirst) {
+                        $sheet->setCellValue('A' . $row, $gasto->FechaCreacion->format('d/m/Y'));
+                        $sheet->setCellValue('B' . $row, $gasto->tipoComprobante->Nombre);
+                        $sheet->setCellValue('C' . $row, $gasto->Numero);
+                        $sheet->setCellValue('D' . $row, $gasto->NombreProveedor);
+                        $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
+                        $sheet->setCellValue('F' . $row, $gasto->MetodoGasto);
+                        $sheet->setCellValue('I' . $row, $gasto->Observaciones);
+                        $isFirst = false;
+                    }
+
+                    $sheet->setCellValue('G' . $row, $detalle->Descripcion);
+                    $sheet->setCellValue('H' . $row, $detalle->Monto);
+
+                    for ($col = 0; $col < 9; $col++) {
+                        $sheet->getStyle(chr(65 + $col) . $row)->applyFromArray($styleData);
+                    }
+                    $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
+                    $row++;
+                }
             }
-
-            // Alineación numérica para Total
-            $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
-
-            $row++;
         }
 
         // Total
@@ -142,7 +162,7 @@ class GastoReporteController extends Controller
         $sheet->getColumnDimension('D')->setWidth(20);
         $sheet->getColumnDimension('E')->setWidth(15);
         $sheet->getColumnDimension('F')->setWidth(18);
-        $sheet->getColumnDimension('G')->setWidth(25);
+        $sheet->getColumnDimension('G')->setWidth(30);
         $sheet->getColumnDimension('H')->setWidth(12);
         $sheet->getColumnDimension('I')->setWidth(20);
 
@@ -165,17 +185,16 @@ class GastoReporteController extends Controller
     {
         $fechaDesde = request()->query('fecha_desde');
         $fechaHasta = request()->query('fecha_hasta');
-        
+
         $query = Gasto::query()
             ->activos()
-            ->with('tipoComprobante', 'motivo')
+            ->with('tipoComprobante', 'motivo', 'detalles')
             ->orderBy('FechaCreacion', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {
             try {
                 $query->whereDate('FechaCreacion', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
             } catch (\Exception $e) {
-                // Ignorar si falla el parsing
             }
         }
 
@@ -183,7 +202,6 @@ class GastoReporteController extends Controller
             try {
                 $query->whereDate('FechaCreacion', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
             } catch (\Exception $e) {
-                // Ignorar si falla el parsing
             }
         }
 
@@ -200,6 +218,6 @@ class GastoReporteController extends Controller
 
         $pdf->setPaper('a4', 'landscape');
 
-        return $pdf->download('Reporte_Gastos_' . now()->format('Y-m-d_His') . '.pdf');
+        return $pdf->stream('Reporte_Gastos_' . now()->format('Y-m-d_His') . '.pdf');
     }
 }

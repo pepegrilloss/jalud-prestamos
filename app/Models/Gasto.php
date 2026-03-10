@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Gasto extends Model
 {
@@ -20,7 +21,6 @@ class Gasto extends Model
         'NombreProveedor',
         'MotivoID',
         'MetodoGasto',
-        'Descripcion',
         'Total',
         'Observaciones',
         'Activo',
@@ -42,6 +42,11 @@ class Gasto extends Model
     public function motivo(): BelongsTo
     {
         return $this->belongsTo(Motivo::class, 'MotivoID', 'MotivoID');
+    }
+
+    public function detalles(): HasMany
+    {
+        return $this->hasMany(GastoDetalle::class, 'GastoID', 'GastoID');
     }
 
     public function scopeActivos($query)

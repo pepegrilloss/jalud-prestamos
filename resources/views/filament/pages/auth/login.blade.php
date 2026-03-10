@@ -58,7 +58,7 @@
                 <span class="jalud-divider-icon">🔐</span>
                 <span class="jalud-divider-line"></span>
             </div>
-
+            
             <div class="jalud-fields-wrap">
                 <x-filament-panels::form wire:submit="authenticate">
                     {{ $this->form }}

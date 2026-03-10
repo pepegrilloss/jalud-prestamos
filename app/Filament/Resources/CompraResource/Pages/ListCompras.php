@@ -41,28 +41,28 @@ class ListCompras extends ListRecords
                 ])
                 ->action(function (array $data) {
                     $params = [];
-                    
+
                     if (!empty($data['fecha_desde'])) {
-                        $fechaDesde = is_object($data['fecha_desde']) 
+                        $fechaDesde = is_object($data['fecha_desde'])
                             ? $data['fecha_desde']->format('Y-m-d')
                             : \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
                         $params['fecha_desde'] = $fechaDesde;
                     }
-                    
+
                     if (!empty($data['fecha_hasta'])) {
-                        $fechaHasta = is_object($data['fecha_hasta']) 
+                        $fechaHasta = is_object($data['fecha_hasta'])
                             ? $data['fecha_hasta']->format('Y-m-d')
                             : \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
                         $params['fecha_hasta'] = $fechaHasta;
                     }
-                    
+
                     return $this->redirect(route('compras.excel', $params));
                 })
                 ->modalHeading('Descargar Excel')
                 ->modalSubmitActionLabel('Descargar'),
             Actions\Action::make('descargar_pdf')
                 ->label('Descargar PDF')
-                ->icon('heroicon-o-arrow-down-tray')
+                ->icon('heroicon-o-eye')
                 ->color('danger')
                 ->form([
                     Forms\Components\DatePicker::make('fecha_desde')
@@ -76,27 +76,26 @@ class ListCompras extends ListRecords
                 ])
                 ->action(function (array $data) {
                     $params = [];
-                    
+
                     if (!empty($data['fecha_desde'])) {
-                        $fechaDesde = is_object($data['fecha_desde']) 
+                        $fechaDesde = is_object($data['fecha_desde'])
                             ? $data['fecha_desde']->format('Y-m-d')
                             : \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
                         $params['fecha_desde'] = $fechaDesde;
                     }
-                    
+
                     if (!empty($data['fecha_hasta'])) {
-                        $fechaHasta = is_object($data['fecha_hasta']) 
+                        $fechaHasta = is_object($data['fecha_hasta'])
                             ? $data['fecha_hasta']->format('Y-m-d')
                             : \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
                         $params['fecha_hasta'] = $fechaHasta;
                     }
-                    
-                    return $this->redirect(route('compras.pdf', $params));
+
+                    $url = route('compras.pdf', $params);
+                    $this->js("window.open('{$url}', '_blank')");
                 })
-                ->modalHeading('Descargar PDF')
-                ->modalSubmitActionLabel('Descargar'),
+                ->modalHeading('Previsualizar PDF')
+                ->modalSubmitActionLabel('Ver PDF'),
         ];
     }
 }
-
-

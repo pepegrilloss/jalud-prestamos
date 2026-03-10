@@ -9,6 +9,7 @@ use App\Models\Motivo;
 use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -67,17 +68,40 @@ class GastoResource extends Resource
 
                 Forms\Components\Section::make('Detalle del Gasto')
                     ->schema([
-                        Forms\Components\Textarea::make('Descripcion')
-                            ->label('Descripción')
+                        Forms\Components\Repeater::make('detalles')
+                            ->label('Líneas de Gasto')
+                            ->relationship()
+                            ->schema([
+                                Forms\Components\Textarea::make('Descripcion')
+                                    ->label('Descripción')
+                                    ->required()
+                                    ->maxLength(500)
+                                    ->rows(2)
+                                    ->columnSpan(2),
+                                Forms\Components\TextInput::make('Monto')
+                                    ->label('Monto')
+                                    ->numeric()
+                                    ->required()
+                                    ->step(0.01)
+                                    ->prefix('S/. ')
+                                    ->live(onBlur: true),
+                            ])
+                            ->columns(3)
+                            ->defaultItems(1)
+                            ->addActionLabel('Agregar línea de gasto')
+                            ->reorderable(false)
                             ->required()
-                            ->maxLength(500)
+                            ->minItems(1)
                             ->columnSpanFull(),
-                        Forms\Components\TextInput::make('Total')
-                            ->label('Total')
-                            ->numeric()
-                            ->required()
-                            ->step(0.01)
-                            ->prefix('S/. '),
+
+                        Forms\Components\Placeholder::make('TotalDisplay')
+                            ->label('TOTAL')
+                            ->content(function (Get $get): string {
+                                $detalles = $get('detalles') ?? [];
+                                $total = collect($detalles)->sum(fn($item) => floatval($item['Monto'] ?? 0));
+                                return 'S/. ' . number_format($total, 2);
+                            })
+                            ->extraAttributes(['class' => 'text-xl font-bold']),
                     ]),
 
                 Forms\Components\Section::make('Adicional')
@@ -93,7 +117,7 @@ class GastoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn ($query) => $query->activos())
+            ->modifyQueryUsing(fn($query) => $query->activos()->with('detalles'))
             ->columns([
                 Tables\Columns\TextColumn::make('FechaEmision')
                     ->label('Fecha Emisión')
@@ -119,13 +143,18 @@ class GastoResource extends Resource
                     ->label('Método')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('Descripcion')
+                Tables\Columns\TextColumn::make('detalles_resumen')
                     ->label('Descripción')
-                    ->limit(40)
-                    ->searchable(),
+                    ->getStateUsing(function ($record) {
+                        $descripciones = $record->detalles->pluck('Descripcion')->toArray();
+                        $resumen = implode(', ', $descripciones);
+                        return strlen($resumen) > 50 ? substr($resumen, 0, 50) . '...' : $resumen;
+                    })
+                    ->wrap(),
                 Tables\Columns\TextColumn::make('Total')
                     ->label('Total')
                     ->numeric(2)
+                    ->prefix('S/. ')
                     ->sortable(),
                 Tables\Columns\IconColumn::make('Activo')
                     ->label('Estado')
@@ -157,11 +186,11 @@ class GastoResource extends Resource
                         $query
                             ->when(
                                 $data['fecha_desde'],
-                                fn ($q) => $q->whereDate('FechaEmision', '>=', $data['fecha_desde'])
+                                fn($q) => $q->whereDate('FechaEmision', '>=', $data['fecha_desde'])
                             )
                             ->when(
                                 $data['fecha_hasta'],
-                                fn ($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
+                                fn($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
                             );
                     }),
             ])

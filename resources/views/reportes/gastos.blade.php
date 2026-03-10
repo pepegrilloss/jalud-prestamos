@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,17 +10,20 @@
             margin: 0;
             padding: 0;
         }
+
         body {
             font-family: 'Courier New', monospace;
             font-size: 12px;
             padding: 40px;
             line-height: 1.4;
         }
+
         .header {
             text-align: right;
             margin-bottom: 20px;
             font-size: 11px;
         }
+
         .title {
             text-align: center;
             font-weight: bold;
@@ -27,49 +31,62 @@
             margin: 30px 0 10px 0;
             letter-spacing: 2px;
         }
+
         .subtitle {
             text-align: center;
             font-size: 11px;
             margin-bottom: 20px;
         }
+
         .line {
             border-bottom: 1px solid #000;
             margin: 10px 0 20px 0;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
+
         table th,
         table td {
             border: none;
-            padding: 8px;
+            padding: 6px 8px;
             text-align: left;
             font-family: 'Courier New', monospace;
-            font-size: 11px;
+            font-size: 10px;
         }
+
         table th {
             border-bottom: 1px solid #000;
             font-weight: bold;
             padding-bottom: 5px;
             text-align: center;
+            font-size: 10px;
         }
-        table tbody tr {
-            border-bottom: 1px solid #ccc;
-        }
-        table tbody tr:last-child {
-            border-bottom: 1px solid #000;
-        }
+
         table td.numero {
             text-align: right;
         }
+
         table td.centro {
             text-align: center;
         }
+
+        .detalle-row {
+            border-bottom: 1px solid #eee;
+        }
+
+        .detalle-row:last-child {
+            border-bottom: 1px solid #ccc;
+        }
+
         .total-row {
             font-weight: bold;
             background-color: #f5f5f5;
+            border-top: 2px solid #000;
         }
+
         .footer {
             text-align: center;
             font-size: 10px;
@@ -78,6 +95,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <div>{{ $fecha_reporte }}</div>
@@ -102,27 +120,46 @@
         <thead>
             <tr>
                 <th class="centro">FECHA</th>
-                <th>TIPO COMPROBANTE</th>
+                <th>TIPO COMP.</th>
                 <th class="centro">NÚMERO</th>
                 <th>PROVEEDOR</th>
                 <th>MOTIVO</th>
-                <th>MÉTODO GASTO</th>
+                <th>MÉTODO</th>
                 <th>DESCRIPCIÓN</th>
-                <th class="numero">TOTAL</th>
+                <th class="numero">MONTO</th>
             </tr>
         </thead>
         <tbody>
             @forelse($gastos as $gasto)
-                <tr>
-                    <td class="centro">{{ $gasto->FechaCreacion->format('d/m/Y') }}</td>
-                    <td>{{ $gasto->tipoComprobante->Nombre }}</td>
-                    <td class="centro">{{ $gasto->Numero }}</td>
-                    <td>{{ $gasto->NombreProveedor }}</td>
-                    <td>{{ $gasto->motivo->Nombre }}</td>
-                    <td class="centro">{{ $gasto->MetodoGasto }}</td>
-                    <td>{{ substr($gasto->Descripcion, 0, 30) }}</td>
-                    <td class="numero">S/. {{ number_format($gasto->Total, 2) }}</td>
-                </tr>
+                @if($gasto->detalles->isNotEmpty())
+                    @foreach($gasto->detalles as $index => $detalle)
+                        <tr class="detalle-row">
+                            @if($index === 0)
+                                <td class="centro" rowspan="{{ $gasto->detalles->count() }}">
+                                    {{ $gasto->FechaCreacion->format('d/m/Y') }}</td>
+                                <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->tipoComprobante->Nombre }}</td>
+                                <td class="centro" rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->Numero }}</td>
+                                <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->NombreProveedor }}</td>
+                                <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->motivo->Nombre }}</td>
+                                <td class="centro" rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->MetodoGasto }}</td>
+                            @endif
+                            <td>{{ $detalle->Descripcion }}</td>
+                            <td class="numero">S/. {{ number_format($detalle->Monto, 2) }}</td>
+                        </tr>
+                    @endforeach
+                @else
+                    {{-- Datos antiguos sin detalles --}}
+                    <tr class="detalle-row">
+                        <td class="centro">{{ $gasto->FechaCreacion->format('d/m/Y') }}</td>
+                        <td>{{ $gasto->tipoComprobante->Nombre }}</td>
+                        <td class="centro">{{ $gasto->Numero }}</td>
+                        <td>{{ $gasto->NombreProveedor }}</td>
+                        <td>{{ $gasto->motivo->Nombre }}</td>
+                        <td class="centro">{{ $gasto->MetodoGasto }}</td>
+                        <td>{{ $gasto->Descripcion ?? '-' }}</td>
+                        <td class="numero">S/. {{ number_format($gasto->Total, 2) }}</td>
+                    </tr>
+                @endif
             @empty
                 <tr>
                     <td colspan="8" style="text-align: center;">No hay datos disponibles</td>
@@ -138,8 +175,9 @@
     </table>
 
     <div class="footer">
-        <p>Cantidad de registros: {{ $gastos->count() }}</p>
+        <p>Cantidad de gastos: {{ $gastos->count() }}</p>
         <p>Este documento fue generado automaticamente por el sistema JALUD</p>
     </div>
 </body>
+
 </html>

@@ -10,6 +10,14 @@ class EditGasto extends EditRecord
 {
     protected static string $resource = GastoResource::class;
 
+    protected function afterSave(): void
+    {
+        // Recalcular total desde los detalles guardados
+        $record = $this->record;
+        $total = $record->detalles()->sum('Monto');
+        $record->update(['Total' => $total]);
+    }
+
     protected function getHeaderActions(): array
     {
         return [
