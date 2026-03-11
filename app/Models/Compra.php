@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\BelongsToSede;
 
 class Compra extends Model
 {
+    use BelongsToSede;
     protected $table = 'Compra';
     protected $primaryKey = 'CompraID';
     public $timestamps = true;
@@ -24,6 +26,7 @@ class Compra extends Model
         'Total',
         'Observaciones',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [

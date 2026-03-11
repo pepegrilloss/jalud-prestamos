@@ -23,6 +23,7 @@ use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Http;
 
+use App\Models\Sede;
 class ClienteResource extends Resource
 {
     protected static ?string $model = Cliente::class;
@@ -632,6 +633,10 @@ class ClienteResource extends Resource
                     ->wrap(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\Filter::make('NombresApellidos')
                     ->label('Nombres y Apellidos del Cliente')
                     ->form([

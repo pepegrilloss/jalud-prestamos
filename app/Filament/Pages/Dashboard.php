@@ -11,8 +11,8 @@ class Dashboard extends BaseDashboard
 {
     public function getWidgets(): array
     {
-        // Para Promotores Cobradores: solo mostrar CustomAccountWidget y ClienteProposicionStats
-        if (auth()->check() && auth()->user()->hasRole('Promotor Cobrador')) {
+        // Para Promotores Cobradores: solo mostrar CustomAccountWidget, ClienteProposicionStats
+        if (auth()->check() && (auth()->user()->hasRole('Promotor Cobrador') || auth()->user()->hasRole('promotor_cobrador'))) {
             return [
                 \App\Filament\Widgets\CustomAccountWidget::class,
                 ClienteProposicionStats::class,

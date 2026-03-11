@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+use App\Models\Sede;
 class LogResource extends Resource
 {
     protected static ?string $model = Log::class;
@@ -22,7 +23,7 @@ class LogResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()->hasRole('super_admin');
+        return auth()->user()->esAdmin();
     }
 
     public static function form(Form $form): Form
@@ -124,6 +125,10 @@ class LogResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('accion')
                     ->label('Acción')
                     ->options([

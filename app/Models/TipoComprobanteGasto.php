@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class TipoComprobanteGasto extends Model
 {
+    use BelongsToSede;
     protected $table = 'TipoComprobanteGasto';
     protected $primaryKey = 'TipoComprobanteGastoID';
     public $timestamps = true;
@@ -15,6 +17,7 @@ class TipoComprobanteGasto extends Model
     protected $fillable = [
         'Nombre',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class Cuota extends Model
 {
+    use BelongsToSede;
     protected $table = 'cuota';
     protected $primaryKey = 'CuotaID';
     public $timestamps = false;
@@ -22,7 +24,8 @@ class Cuota extends Model
         'FechaCreacion',
         'FechaModificacion',
         'FechaCierre',
-        'Activo'
+        'Activo',
+        'SedeID',
     ];
 
     protected $dates = [

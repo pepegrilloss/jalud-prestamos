@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\BelongsToSede;
 
 class SubGiro extends Model
 {
+    use BelongsToSede;
     protected $table = 'SubGiro';
     protected $primaryKey = 'SubGiroID';
     public $timestamps = false;
@@ -16,7 +18,8 @@ class SubGiro extends Model
         'Descripcion',
         'Activo',
         'FechaCreacion',
-        'FechaModificacion'
+        'FechaModificacion',
+        'SedeID',
     ];
 
     protected $casts = [

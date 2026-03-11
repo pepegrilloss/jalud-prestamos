@@ -16,6 +16,7 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Builder;
 
+use App\Models\Sede;
 class PagoResource extends Resource
 {
     protected static ?string $model = Pago::class;
@@ -484,6 +485,10 @@ class PagoResource extends Resource
                     ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('cliente')
                     ->label('Cliente')
                     ->options(function () {

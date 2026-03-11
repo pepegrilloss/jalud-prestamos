@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+use App\Models\Sede;
 class MotivoResource extends Resource
 {
     protected static ?string $model = Motivo::class;
@@ -61,7 +62,12 @@ class MotivoResource extends Resource
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
-            ->filters([])
+            ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
+])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->visible(fn() => AperturaCierreDia::estaAbierto()),

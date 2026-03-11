@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class TipoExoneracion extends Model
 {
+    use BelongsToSede;
     protected $table = 'TipoExoneracion';
     protected $primaryKey = 'TipoExoneracionID';
     public $timestamps = true;
@@ -17,6 +19,7 @@ class TipoExoneracion extends Model
         'Nombre',
         'Descripcion',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [

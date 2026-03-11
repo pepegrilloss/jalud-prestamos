@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
 use App\Models\Pago;
 
+use App\Models\Sede;
 class CrearProposicionCreditoResource extends Resource
 {
     protected static ?string $model = ProposicionCredito::class;
@@ -614,7 +615,14 @@ class CrearProposicionCreditoResource extends Resource
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 return $query->where('Estado', 'PENDIENTE');
-            })
+            })([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
+
+            ])
+
             ->actions([])
             ->bulkActions([]);
     }

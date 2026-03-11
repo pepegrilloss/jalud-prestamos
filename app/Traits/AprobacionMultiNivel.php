@@ -25,7 +25,7 @@ trait AprobacionMultiNivel
     public function puedeAprobareAprobacion(AprobacionProposicion $aprobacion): bool
     {
         // Super admin puede aprobar todo
-        if ($this->hasRole('super_admin')) {
+        if ($this->hasRole(\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName())) {
             return true;
         }
 

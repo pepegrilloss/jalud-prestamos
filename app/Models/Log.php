@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class Log extends Model
 {
+    use BelongsToSede;
     protected $table = 'logs';
     protected $primaryKey = 'id';
     public $timestamps = false;
@@ -21,7 +23,8 @@ class Log extends Model
         'user_agent',
         'machine_name',
         'platform',
-        'created_at'
+        'created_at',
+        'SedeID',
     ];
 
     protected $casts = [
@@ -40,7 +43,7 @@ class Log extends Model
         // SEGURIDAD: Sanitizar datos sensibles antes de guardar en logs
         $oldValues = self::sanitizarValoresSensibles($oldValues);
         $newValues = self::sanitizarValoresSensibles($newValues);
-        
+
         return self::create([
             'user_id' => auth()->id() ?? 0,
             'accion' => $accion,

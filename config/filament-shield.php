@@ -60,7 +60,8 @@ return [
     ],
 
     'custom_permissions' => [
-        'page_Themes'
+        'page_Themes',
+        'ver_todas_las_sedes',
     ],
 
     'generator' => [

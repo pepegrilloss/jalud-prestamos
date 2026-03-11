@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class Tasa extends Model
 {
+    use BelongsToSede;
     protected $table = 'Tasa';
     protected $primaryKey = 'TasaID';
     public $timestamps = true;
@@ -18,6 +20,7 @@ class Tasa extends Model
         'Activo',
         'Dias',
         'Cuotas',
+        'SedeID',
     ];
 
     protected $casts = [

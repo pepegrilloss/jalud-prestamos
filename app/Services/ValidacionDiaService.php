@@ -74,7 +74,7 @@ class ValidacionDiaService
     {
         // Solo admin puede abrir/cerrar día
         if ($recurso === 'AperturaCierreDia') {
-            if (!auth()->user()?->hasRole('super_admin')) {
+            if (!auth()->user()?->esAdmin()) {
                 throw new AuthorizationException('Solo administradores pueden gestionar la apertura/cierre de día.');
             }
             return true;

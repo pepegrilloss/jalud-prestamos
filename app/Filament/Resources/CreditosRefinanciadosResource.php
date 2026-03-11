@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+use App\Models\Sede;
 class CreditosRefinanciadosResource extends Resource
 {
     protected static ?string $model = Credito::class;
@@ -146,6 +147,10 @@ class CreditosRefinanciadosResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('zona')
                     ->label('Zona')
                     ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())

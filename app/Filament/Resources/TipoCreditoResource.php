@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+use App\Models\Sede;
 class TipoCreditoResource extends Resource
 {
     protected static ?string $model = TipoCredito::class;
@@ -96,6 +97,10 @@ class TipoCreditoResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\TernaryFilter::make('Activo')
                     ->placeholder('Todos')
                     ->trueLabel('Activos')

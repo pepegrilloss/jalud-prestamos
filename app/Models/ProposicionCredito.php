@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\BelongsToSede;
 
 class ProposicionCredito extends Model
 {
+    use BelongsToSede;
     protected $table = 'ProposicionCredito';
     protected $primaryKey = 'ProposicionCreditoID';
-    
+
     // IMPORTANTE para SQL Server: Indicar que es autoincremental
     public $incrementing = true;
     public $timestamps = false;
@@ -48,6 +50,7 @@ class ProposicionCredito extends Model
         'EsRefinanciamiento',
         'ProposicionCreditoAnteriorID',
         'FueRefinanciada',
+        'SedeID',
     ];
 
     protected $casts = [
@@ -83,69 +86,69 @@ class ProposicionCredito extends Model
 
     // --- Relaciones ---
 
-    public function cliente() 
-    { 
-        return $this->belongsTo(Cliente::class, 'ClienteID'); 
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class, 'ClienteID');
     }
-    
-    public function tipoCredito() 
-    { 
-        return $this->belongsTo(TipoCredito::class, 'TipoCreditoID'); 
+
+    public function tipoCredito()
+    {
+        return $this->belongsTo(TipoCredito::class, 'TipoCreditoID');
     }
-    
-    public function tasa() 
-    { 
-        return $this->belongsTo(Tasa::class, 'TasaID'); 
+
+    public function tasa()
+    {
+        return $this->belongsTo(Tasa::class, 'TasaID');
     }
-    
-    public function zona() 
-    { 
-        return $this->belongsTo(Zona::class, 'ZonaID'); 
+
+    public function zona()
+    {
+        return $this->belongsTo(Zona::class, 'ZonaID');
     }
-    
-    public function nivelAprobacion() 
-    { 
-        return $this->belongsTo(NivelAprobacion::class, 'NivelAprobacionRequerido', 'NivelAprobacionID'); 
+
+    public function nivelAprobacion()
+    {
+        return $this->belongsTo(NivelAprobacion::class, 'NivelAprobacionRequerido', 'NivelAprobacionID');
     }
-    
-    public function userProponente() 
-    { 
-        return $this->belongsTo(User::class, 'UserProponenteID'); 
+
+    public function userProponente()
+    {
+        return $this->belongsTo(User::class, 'UserProponenteID');
     }
-    
-    public function userAprobador() 
-    { 
-        return $this->belongsTo(User::class, 'UserAprobadorID'); 
+
+    public function userAprobador()
+    {
+        return $this->belongsTo(User::class, 'UserAprobadorID');
     }
-    
-    public function userDesembolso() 
-    { 
-        return $this->belongsTo(User::class, 'UserDesembolsoID'); 
+
+    public function userDesembolso()
+    {
+        return $this->belongsTo(User::class, 'UserDesembolsoID');
     }
-    
-    public function userModificacion() 
-    { 
-        return $this->belongsTo(User::class, 'UserModificacionID'); 
+
+    public function userModificacion()
+    {
+        return $this->belongsTo(User::class, 'UserModificacionID');
     }
-    
-    public function aprobaciones() 
-    { 
-        return $this->hasMany(AprobacionProposicion::class, 'ProposicionCreditoID', 'ProposicionCreditoID'); 
+
+    public function aprobaciones()
+    {
+        return $this->hasMany(AprobacionProposicion::class, 'ProposicionCreditoID', 'ProposicionCreditoID');
     }
-    
-    public function credito() 
-    { 
-        return $this->hasOne(Credito::class, 'ProposicionCreditoID', 'ProposicionCreditoID'); 
+
+    public function credito()
+    {
+        return $this->hasOne(Credito::class, 'ProposicionCreditoID', 'ProposicionCreditoID');
     }
-    
-    public function proposicionAnterior() 
-    { 
-        return $this->belongsTo(ProposicionCredito::class, 'ProposicionCreditoAnteriorID', 'ProposicionCreditoID'); 
+
+    public function proposicionAnterior()
+    {
+        return $this->belongsTo(ProposicionCredito::class, 'ProposicionCreditoAnteriorID', 'ProposicionCreditoID');
     }
-    
-    public function refinanciamientos() 
-    { 
-        return $this->hasMany(ProposicionCredito::class, 'ProposicionCreditoAnteriorID', 'ProposicionCreditoID'); 
+
+    public function refinanciamientos()
+    {
+        return $this->hasMany(ProposicionCredito::class, 'ProposicionCreditoAnteriorID', 'ProposicionCreditoID');
     }
 
     // --- Métodos de Lógica ---
@@ -161,7 +164,7 @@ class ProposicionCredito extends Model
     public static function generarCodigoCredito()
     {
         $ultimo = self::orderBy('ProposicionCreditoID', 'desc')->first();
-        $numero = ($ultimo ? (int)substr($ultimo->CodigoCredito, 2) + 1 : 1);
+        $numero = ($ultimo ? (int) substr($ultimo->CodigoCredito, 2) + 1 : 1);
         return 'C-' . str_pad($numero, 6, '0', STR_PAD_LEFT);
     }
 
@@ -207,7 +210,7 @@ class ProposicionCredito extends Model
 
         // Al usar el boot anterior, este save() ya no fallará
         $this->NivelAprobacionRequerido = $nivelMasAlto;
-        $this->save(); 
+        $this->save();
     }
 
     public function obtenerProximaAprobacionPendiente(): ?AprobacionProposicion
@@ -255,7 +258,7 @@ class ProposicionCredito extends Model
             $this->UserAprobadorID = $ultimaAprobacion?->UserAprobadorID;
             $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
             $this->save();
-            
+
             // Si es un refinanciamiento aprobado, desactivar y marcar como refinanciada la proposición anterior
             $this->desactivarProposicionRefinanciada();
         }
@@ -269,7 +272,7 @@ class ProposicionCredito extends Model
         // Si tiene proposición anterior para refinanciar
         if ($this->ProposicionCreditoAnteriorID) {
             $proposicionAnterior = ProposicionCredito::find($this->ProposicionCreditoAnteriorID);
-            
+
             if ($proposicionAnterior) {
                 $proposicionAnterior->Activo = false;
                 $proposicionAnterior->FueRefinanciada = true;
@@ -290,9 +293,11 @@ class ProposicionCredito extends Model
             ->where('Estado', 'APROBADO')
             ->where('FueRefinanciada', 0)
             ->has('credito')
-            ->with(['credito' => function ($query) {
-                $query->where('Activo', true);
-            }])
+            ->with([
+                'credito' => function ($query) {
+                    $query->where('Activo', true);
+                }
+            ])
             ->get()
             ->filter(function ($proposicion) {
                 return self::calcularSaldoPendiente($proposicion->ProposicionCreditoID) > 0;
@@ -324,10 +329,10 @@ class ProposicionCredito extends Model
 
         // Calcular: Sum(MontoCuota) - Sum(MontoPagado desde tabla pago)
         // MontoCuota incluye Capital + Interés
-        $montoCuotasTotal = (float)$credito->cuotas()
+        $montoCuotasTotal = (float) $credito->cuotas()
             ->where('Activo', true)
             ->sum('MontoCuota');
-        
+
         // Calcular total pagado desde la tabla pago (no desde cuota)
         $totalPagado = \App\Models\Pago::where('Activo', 1)
             ->whereHas('cuota', function ($query) use ($credito) {
@@ -344,12 +349,12 @@ class ProposicionCredito extends Model
     public function obtenerInfoRefinanciamiento()
     {
         $saldoPendiente = self::calcularSaldoPendiente($this->ProposicionCreditoID);
-        
+
         // Contar cuotas pendientes
         $credito = Credito::where('ProposicionCreditoID', $this->ProposicionCreditoID)
             ->where('Activo', true)
             ->first();
-        
+
         $cuotasPendientes = 0;
         if ($credito) {
             $cuotasPendientes = $credito->cuotas()
@@ -357,17 +362,17 @@ class ProposicionCredito extends Model
                 ->whereIn('Estado', ['PENDIENTE', 'VENCIDA', 'MORA'])
                 ->count();
         }
-        
+
         return [
             'ProposicionCreditoID' => $this->ProposicionCreditoID,
             'CodigoCredito' => $this->CodigoCredito,
-            'MontoOriginal' => (float)$this->MontoTotal,
-            'SaldoPendiente' => (float)$saldoPendiente,
-            'CuotasPendientes' => (int)$cuotasPendientes,
-            'TasaInteres' => (float)$this->TasaInteres,
-            'Plazo' => (int)$this->Plazo,
-            'NumeroCuotas' => (int)$this->NumeroCuotas,
-            'TasaMora' => (float)$this->TasaMora,
+            'MontoOriginal' => (float) $this->MontoTotal,
+            'SaldoPendiente' => (float) $saldoPendiente,
+            'CuotasPendientes' => (int) $cuotasPendientes,
+            'TasaInteres' => (float) $this->TasaInteres,
+            'Plazo' => (int) $this->Plazo,
+            'NumeroCuotas' => (int) $this->NumeroCuotas,
+            'TasaMora' => (float) $this->TasaMora,
             'TipoCreditoID' => $this->TipoCreditoID,
             'TasaID' => $this->TasaID,
         ];

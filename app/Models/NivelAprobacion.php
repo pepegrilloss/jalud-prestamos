@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class NivelAprobacion extends Model
 {
+    use BelongsToSede;
     protected $table = 'NivelAprobacion';
     protected $primaryKey = 'NivelAprobacionID';
     public $timestamps = false;
@@ -18,6 +20,7 @@ class NivelAprobacion extends Model
         'Activo',
         'FechaCreacion',
         'FechaModificacion',
+        'SedeID',
     ];
 
     protected $casts = [

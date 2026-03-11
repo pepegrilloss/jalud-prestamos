@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class Mora extends Model
 {
+    use BelongsToSede;
     protected $table = 'mora';
     protected $primaryKey = 'MoraID';
     protected $keyType = 'int';
@@ -18,6 +20,7 @@ class Mora extends Model
         'PorcentajeMora',
         'MontoMora',
         'MoraAcumulada',
+        'SedeID',
     ];
 
     protected $casts = [

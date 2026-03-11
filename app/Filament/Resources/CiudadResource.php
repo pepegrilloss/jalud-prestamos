@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 
+use App\Models\Sede;
 class CiudadResource extends Resource
 {
     protected static ?string $model = Ciudad::class;
@@ -94,6 +95,10 @@ class CiudadResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\TernaryFilter::make('Activo')
                     ->placeholder('Todos')
                     ->trueLabel('Activos')

@@ -6,9 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\BelongsToSede;
 
 class Cliente extends Model
 {
+    use BelongsToSede;
     protected $table = 'Cliente';
     protected $primaryKey = 'ClienteID';
     public $timestamps = false;
@@ -33,6 +35,7 @@ class Cliente extends Model
         'FechaModificacion',
         'FechaCierre',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [

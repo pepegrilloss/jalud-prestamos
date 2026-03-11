@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+use App\Models\Sede;
 class GastoResource extends Resource
 {
     protected static ?string $model = Gasto::class;
@@ -162,6 +163,10 @@ class GastoResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('TipoComprobanteGastoID')
                     ->label('Tipo Comprobante')
                     ->options(TipoComprobanteGasto::where('Activo', true)->pluck('Nombre', 'TipoComprobanteGastoID')),

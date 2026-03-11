@@ -13,6 +13,7 @@ use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+use App\Models\Sede;
 class NivelAprobacionResource extends Resource
 {
     protected static ?string $model = NivelAprobacion::class;
@@ -138,6 +139,10 @@ class NivelAprobacionResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\TernaryFilter::make('Activo')
                     ->placeholder('Todos')
                     ->trueLabel('Activos')

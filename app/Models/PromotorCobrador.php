@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\BelongsToSede;
 
 class PromotorCobrador extends Model
 {
+    use BelongsToSede;
     protected $table = 'PromotorCobrador';
     protected $primaryKey = 'PromotorCobradorID';
     public $timestamps = false;
@@ -18,7 +20,8 @@ class PromotorCobrador extends Model
         'ZonaID',
         'Activo',
         'FechaCreacion',
-        'FechaModificacion'
+        'FechaModificacion',
+        'SedeID',
     ];
 
     protected $casts = [

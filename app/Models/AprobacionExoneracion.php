@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\BelongsToSede;
 
 class AprobacionExoneracion extends Model
 {
+    use BelongsToSede;
     protected $table = 'AprobacionExoneracion';
     protected $primaryKey = 'AprobacionExoneracionID';
     public $timestamps = false;
@@ -20,6 +22,7 @@ class AprobacionExoneracion extends Model
         'Estado',
         'Comentario',
         'FechaAprobacion',
+        'SedeID',
     ];
 
     protected $casts = [

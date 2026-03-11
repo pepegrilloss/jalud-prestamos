@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class Motivo extends Model
 {
+    use BelongsToSede;
     protected $table = 'Motivo';
     protected $primaryKey = 'MotivoID';
     public $timestamps = true;
@@ -15,6 +17,7 @@ class Motivo extends Model
     protected $fillable = [
         'Nombre',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [

@@ -18,6 +18,7 @@ use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+use App\Models\Sede;
 class ClienteProposicionResource extends Resource
 {
     protected static ?string $model = ProposicionCredito::class;
@@ -175,6 +176,10 @@ class ClienteProposicionResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('ZonaID')
                     ->label('Zona')
                     ->relationship('zona', 'Nombre')

@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\BelongsToSede;
 
 class Giro extends Model
 {
+    use BelongsToSede;
     protected $table = 'Giro';
     protected $primaryKey = 'GiroID';
     public $timestamps = false;
@@ -16,7 +18,8 @@ class Giro extends Model
         'Descripcion',
         'Activo',
         'FechaCreacion',
-        'FechaModificacion'
+        'FechaModificacion',
+        'SedeID',
     ];
 
     protected $casts = [

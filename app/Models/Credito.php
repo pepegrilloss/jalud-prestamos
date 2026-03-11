@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class Credito extends Model
 {
+    use BelongsToSede;
     protected $table = 'Credito';
     protected $primaryKey = 'CreditoID';
     public $timestamps = false;

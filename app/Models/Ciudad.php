@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\BelongsToSede;
 
 class Ciudad extends Model
 {
+    use BelongsToSede;
     protected $table = 'Ciudad';
     protected $primaryKey = 'CiudadID';
     public $timestamps = false;
@@ -15,7 +17,8 @@ class Ciudad extends Model
         'Nombre',
         'Activo',
         'FechaCreacion',
-        'FechaModificacion'
+        'FechaModificacion',
+        'SedeID',
     ];
 
     protected $casts = [

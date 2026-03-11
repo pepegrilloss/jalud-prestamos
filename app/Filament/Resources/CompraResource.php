@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+use App\Models\Sede;
 class CompraResource extends Resource
 {
     protected static ?string $model = Compra::class;
@@ -198,6 +199,10 @@ class CompraResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('TipoComprobanteID')
                     ->label('Tipo Comprobante')
                     ->options(TipoComprobante::where('Activo', true)->pluck('Nombre', 'TipoComprobanteID')),

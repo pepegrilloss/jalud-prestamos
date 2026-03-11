@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class TipoCredito extends Model
 {
+    use BelongsToSede;
     protected $table = 'TipoCredito';
     protected $primaryKey = 'TipoCreditoID';
     public $timestamps = false;
@@ -16,6 +18,7 @@ class TipoCredito extends Model
         'Activo',
         'FechaCreacion',
         'FechaModificacion',
+        'SedeID',
     ];
 
     protected $casts = [

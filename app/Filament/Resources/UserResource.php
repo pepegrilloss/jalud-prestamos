@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use App\Models\Sede;
 use App\Models\NivelAprobacion;
 use App\Models\UserNivelAprobacion;
 use Filament\Forms;
@@ -64,6 +65,14 @@ class UserResource extends Resource
                             ->preload()
                             ->native(false)
                             ->helperText('Asignar un promotor cobrador a este usuario'),
+
+                        Forms\Components\Select::make('SedeID')
+                            ->label('Sede')
+                            ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                            ->required()
+                            ->searchable()
+                            ->native(false)
+                            ->helperText('Sede a la que pertenece este usuario'),
                     ])
                     ->columns(2),
             ]);
@@ -93,6 +102,13 @@ class UserResource extends Resource
                     ->placeholder('Sin asignar')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('Sin sede')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('email_verified_at')
                     ->dateTime()
                     ->sortable()
@@ -110,6 +126,10 @@ class UserResource extends Resource
                     ->relationship('roles', 'name')
                     ->multiple()
                     ->preload(),
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn() => auth()->user()->esAdmin()),
             ])
             ->actions([
                 Tables\Actions\Action::make('asignarNivel')

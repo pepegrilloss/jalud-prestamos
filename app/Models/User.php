@@ -20,6 +20,7 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'username',
         'PromotorCobradorID',
+        'SedeID',
     ];
 
     protected $hidden = [
@@ -40,10 +41,10 @@ class User extends Authenticatable implements FilamentUser
     {
         // Permitir acceso si tiene cualquier rol
         return $this->roles()->exists();
-        
+
         // O si prefieres ser más específico:
-        // return $this->hasAnyRole(['super_admin', 'admin']);
-        
+        // return $this->hasAnyRole([\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName(), 'admin']);
+
         // O simplemente permitir a todos los usuarios autenticados:
         // return true;
     }
@@ -81,14 +82,14 @@ class User extends Authenticatable implements FilamentUser
         if (!$nivelActual) {
             return false;
         }
-        
+
         $nivelActualDB = $nivelActual->nivelAprobacion;
         $nivelRequeridoDB = NivelAprobacion::find($nivelAprobacionRequerido);
-        
+
         if (!$nivelRequeridoDB) {
             return false;
         }
-        
+
         // Comparar por Orden (mayor orden = mayor jerarquía)
         return $nivelActualDB->Orden >= $nivelRequeridoDB->Orden;
     }
@@ -101,5 +102,24 @@ class User extends Authenticatable implements FilamentUser
     public function promotorCobrador()
     {
         return $this->belongsTo(\App\Models\PromotorCobrador::class, 'PromotorCobradorID', 'PromotorCobradorID');
+    }
+
+    public function sede()
+    {
+        return $this->belongsTo(\App\Models\Sede::class, 'SedeID', 'SedeID');
+    }
+
+    /**
+     * Verifica si el usuario es super administrador (acceso a todas las sedes)
+     */
+    public function esAdmin(): bool
+    {
+        // Un administrador (que puede ver todas las sedes) es quien cumpla alguna de estas condiciones:
+        // 1. Es super_admin de Filament Shield
+        // 2. Tiene el permiso específico 'ver_todas_las_sedes'
+        // 3. Tiene un rol con jerarquía global (ej. 'admin', 'gerente_general')
+        return $this->hasRole(\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName())
+            || $this->can('ver_todas_las_sedes')
+            || $this->hasAnyRole(['admin', 'gerente_general']);
     }
 }

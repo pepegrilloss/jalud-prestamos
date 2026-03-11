@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
+use App\Models\Sede;
 class TipoPagoResource extends Resource
 {
     protected static ?string $model = TipoPago::class;
@@ -62,6 +63,10 @@ class TipoPagoResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\TernaryFilter::make('Activo')
                     ->label('Estado')
                     ->placeholder('Todos')

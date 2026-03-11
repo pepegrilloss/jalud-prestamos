@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class TasaMora extends Model
 {
+    use BelongsToSede;
     protected $table = 'TasaMora';
     protected $primaryKey = 'TasaMoraID';
     public $timestamps = false;
@@ -17,6 +19,7 @@ class TasaMora extends Model
         'Activo',
         'FechaCreacion',
         'FechaModificacion',
+        'SedeID',
     ];
 
     protected $casts = [

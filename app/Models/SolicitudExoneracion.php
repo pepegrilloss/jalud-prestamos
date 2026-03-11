@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\BelongsToSede;
 
 class SolicitudExoneracion extends Model
 {
+    use BelongsToSede;
     protected $table = 'SolicitudExoneracion';
     protected $primaryKey = 'SolicitudExoneracionID';
     public $timestamps = true;
@@ -29,6 +31,7 @@ class SolicitudExoneracion extends Model
         'PagoGeneradoID',
         'UserModificacionID',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [

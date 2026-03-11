@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+use App\Models\Sede;
 class TasaMoraResource extends Resource
 {
     protected static ?string $model = TasaMora::class;
@@ -97,6 +98,10 @@ class TasaMoraResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\TernaryFilter::make('Activo')
                     ->label('Estado')
                     ->placeholder('Todos')

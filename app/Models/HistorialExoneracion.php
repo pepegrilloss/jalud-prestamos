@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\BelongsToSede;
 
 class HistorialExoneracion extends Model
 {
+    use BelongsToSede;
     protected $table = 'HistorialExoneracion';
     protected $primaryKey = 'HistorialExoneracionID';
     public $timestamps = false;
@@ -21,6 +23,7 @@ class HistorialExoneracion extends Model
         'MontoExonerado',
         'UsuarioAprobador',
         'Comentario',
+        'SedeID',
     ];
 
     protected $casts = [

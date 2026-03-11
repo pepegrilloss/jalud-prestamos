@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Observers\AperturaCierreDiaObserver;
+use App\Traits\BelongsToSede;
 
 class AperturaCierreDia extends Model
 {
+    use BelongsToSede;
     protected $table = 'apertura_cierre_dia';
     protected $primaryKey = 'AperturaCierreDiaID';
 
@@ -19,6 +21,7 @@ class AperturaCierreDia extends Model
         'UsuarioAperturaID',
         'UsuarioCierreID',
         'Observaciones',
+        'SedeID',
     ];
 
     protected $casts = [
@@ -160,17 +163,17 @@ class AperturaCierreDia extends Model
     {
         $logFile = storage_path('logs/reopening-debug.log');
         file_put_contents($logFile, "\n\n========== INICIANDO REABRIRDIA ==========\n", FILE_APPEND);
-        
+
         try {
             $fecha = $this->Fecha->toDateString(); // '2026-01-20'
             file_put_contents($logFile, "Fecha a reabrir: {$fecha}\n", FILE_APPEND);
-            
+
             $fechaInicio = $this->Fecha->copy()->startOfDay();
             $fechaFin = $this->Fecha->copy()->endOfDay();
-            
+
             file_put_contents($logFile, "Fecha inicio: " . $fechaInicio->toDateTimeString() . "\n", FILE_APPEND);
             file_put_contents($logFile, "Fecha fin: " . $fechaFin->toDateTimeString() . "\n", FILE_APPEND);
-            
+
             // Reabrir clientes registrados ese día
             $clientesActualizados = Cliente::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaRegistro', $fecha)
@@ -192,11 +195,11 @@ class AperturaCierreDia extends Model
             // Reabrir pagos creados ese día (buscar por FechaPago)
             $pagosAntes = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])->count();
             file_put_contents($logFile, "\nPagos encontrados antes de actualizar: {$pagosAntes}\n", FILE_APPEND);
-            
+
             $pagosActualizados = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Pagos actualizados: {$pagosActualizados}\n", FILE_APPEND);
-            
+
             $pagosDespues = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])
                 ->whereNull('FechaCierre')
                 ->count();
@@ -221,7 +224,7 @@ class AperturaCierreDia extends Model
             file_put_contents($logFile, "Evaluaciones actualizadas: {$evaluacionesActualizadas}\n", FILE_APPEND);
 
             file_put_contents($logFile, "\n========== REABRIRDIA COMPLETADO ==========\n", FILE_APPEND);
-            
+
             \Illuminate\Support\Facades\Log::info("Día reabierto: {$fecha}", [
                 'usuario' => auth()->user()?->name,
                 'timestamp' => now()
@@ -231,7 +234,7 @@ class AperturaCierreDia extends Model
             $logFile = storage_path('logs/reopening-debug.log');
             file_put_contents($logFile, "ERROR en reabrirDia: " . $e->getMessage() . "\n", FILE_APPEND);
             file_put_contents($logFile, "Stack trace: " . $e->getTraceAsString() . "\n\n", FILE_APPEND);
-            
+
             \Illuminate\Support\Facades\Log::error('Error reabriendo día: ' . $e->getMessage(), [
                 'fecha' => $this->Fecha,
                 'exception' => $e

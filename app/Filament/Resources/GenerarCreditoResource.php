@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Illuminate\Database\Eloquent\Builder;
 
+use App\Models\Sede;
 class GenerarCreditoResource extends Resource
 {
     protected static ?string $model = ProposicionCredito::class;
@@ -196,7 +197,14 @@ class GenerarCreditoResource extends Resource
             ->modifyQueryUsing(function (Builder $query) {
                 return $query->where('Estado', 'APROBADO')
                     ->whereDoesntHave('credito');
-            })
+            })([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
+
+            ])
+
             ->actions([
                 Tables\Actions\Action::make('ver_comentarios')
                     ->label('Comentarios')

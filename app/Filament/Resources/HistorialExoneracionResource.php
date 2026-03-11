@@ -11,6 +11,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+use App\Models\Sede;
 class HistorialExoneracionResource extends Resource
 {
     protected static ?string $model = HistorialExoneracion::class;
@@ -111,6 +112,10 @@ class HistorialExoneracionResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('TipoExoneracion')
                     ->label('Tipo')
                     ->options([

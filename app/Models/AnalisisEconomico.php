@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\BelongsToSede;
 
 class AnalisisEconomico extends Model
 {
+    use BelongsToSede;
     protected $table = 'AnalisisEconomico';
     protected $primaryKey = 'AnalisisEconomicoID';
     public $timestamps = false;
@@ -25,6 +27,7 @@ class AnalisisEconomico extends Model
         'UsuarioModificacion',
         'FechaCierre',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [

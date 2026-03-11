@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\UniqueConstraintViolationException;
 
+use App\Models\Sede;
 class AperturaCierreDiaResource extends Resource
 {
     protected static ?string $model = AperturaCierreDia::class;
@@ -100,6 +101,10 @@ class AperturaCierreDiaResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn() => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('EstadoDia')
                     ->options([
                         'ABIERTO' => 'Abierto',
@@ -125,42 +130,42 @@ class AperturaCierreDiaResource extends Resource
                     ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'ABIERTO')
                     ->action(function (AperturaCierreDia $record) {
                         $logger = new AperturaCierreDiaLogger();
-                        
+
                         try {
                             $logger->info('[APERTURA_CIERRE] Cerrando día', [
                                 'record_id' => $record->AperturaCierreDiaID,
                                 'fecha' => $record->Fecha->format('d/m/Y'),
                             ]);
-                            
+
                             DB::transaction(function () use ($record, $logger) {
                                 $recordLocked = AperturaCierreDia::lockForUpdate()
                                     ->find($record->AperturaCierreDiaID);
-                                
+
                                 if ($recordLocked->EstadoDia !== 'ABIERTO') {
                                     throw new \Exception('El día ya está cerrado.');
                                 }
-                                
+
                                 $recordLocked->update([
                                     'EstadoDia' => 'CERRADO',
                                     'FechaCierre' => now(),
                                     'UsuarioCierreID' => auth()->id(),
                                 ]);
-                                
+
                                 $logger->success('[APERTURA_CIERRE] Día cerrado exitosamente');
                             });
-                            
+
                             \Filament\Notifications\Notification::make()
                                 ->success()
                                 ->title('✅ Día cerrado')
                                 ->body("El día {$record->Fecha->format('d/m/Y')} ha sido cerrado.")
                                 ->persistent()
                                 ->send();
-                                
+
                         } catch (\Exception $e) {
                             $logger->error('[APERTURA_CIERRE] Error al cerrar día', [
                                 'error' => $e->getMessage(),
                             ]);
-                            
+
                             \Filament\Notifications\Notification::make()
                                 ->danger()
                                 ->title('❌ Error al cerrar')
@@ -169,7 +174,7 @@ class AperturaCierreDiaResource extends Resource
                                 ->send();
                         }
                     }),
-                
+
                 // ABRIR FECHA - Solo visible cuando está CERRADO
                 Tables\Actions\Action::make('abrirFecha')
                     ->label('Abrir Fecha')
@@ -178,30 +183,30 @@ class AperturaCierreDiaResource extends Resource
                     ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'CERRADO')
                     ->action(function (AperturaCierreDia $record) {
                         $logger = new AperturaCierreDiaLogger();
-                        
+
                         try {
                             $logger->info('[APERTURA_CIERRE] Iniciando acción abrirFecha', [
                                 'record_id' => $record->AperturaCierreDiaID,
                                 'fecha' => $record->Fecha->format('d/m/Y'),
                             ]);
-                            
+
                             DB::transaction(function () use ($record, $logger) {
                                 $recordLocked = AperturaCierreDia::lockForUpdate()
                                     ->find($record->AperturaCierreDiaID);
-                                
+
                                 if ($recordLocked->EstadoDia !== 'CERRADO') {
                                     throw new \Exception('El estado del registro cambió. Por favor, recarga la página.');
                                 }
-                                
+
                                 $diaAbierto = AperturaCierreDia::lockForUpdate()
                                     ->where('EstadoDia', 'ABIERTO')
                                     ->where('AperturaCierreDiaID', '!=', $record->AperturaCierreDiaID)
                                     ->first();
-                                
+
                                 if ($diaAbierto) {
                                     throw new \Exception("Ya hay un día abierto: {$diaAbierto->Fecha->format('d/m/Y')}");
                                 }
-                                
+
                                 $recordLocked->update([
                                     'EstadoDia' => 'ABIERTO',
                                     'FechaCierre' => null,
@@ -209,39 +214,39 @@ class AperturaCierreDiaResource extends Resource
                                     'FechaApertura' => now(),
                                     'UsuarioAperturaID' => auth()->id(),
                                 ]);
-                                
+
                                 // Limpiar FechaCierre de todos los registros del día
                                 $record->reabrirDia();
-                                
+
                                 $logger->success('[APERTURA_CIERRE] Fecha abierta exitosamente');
                             });
-                            
+
                             \Filament\Notifications\Notification::make()
                                 ->success()
                                 ->title('✅ Fecha abierta')
                                 ->body("La fecha {$record->Fecha->format('d/m/Y')} ha sido abierta para operaciones.")
                                 ->persistent()
                                 ->send();
-                                
+
                         } catch (UniqueConstraintViolationException $e) {
                             $logger->error('[APERTURA_CIERRE] Constraint violation en abrirFecha');
-                            
+
                             $diaAbierto = AperturaCierreDia::where('EstadoDia', 'ABIERTO')->first();
-                            
+
                             \Filament\Notifications\Notification::make()
                                 ->danger()
                                 ->title('🔒 No se puede abrir')
-                                ->body($diaAbierto 
+                                ->body($diaAbierto
                                     ? "Ya existe un día abierto: {$diaAbierto->Fecha->format('d/m/Y')}. Debe cerrarlo primero."
                                     : "No se puede abrir múltiples días simultáneamente.")
                                 ->persistent()
                                 ->send();
-                                
+
                         } catch (\Exception $e) {
                             $logger->error('[APERTURA_CIERRE] Error en abrirFecha', [
                                 'error' => $e->getMessage(),
                             ]);
-                            
+
                             \Filament\Notifications\Notification::make()
                                 ->danger()
                                 ->title('❌ No se puede abrir')
@@ -259,37 +264,6 @@ class AperturaCierreDiaResource extends Resource
         return [
             'index' => \App\Filament\Resources\AperturaCierreDiaResource\Pages\GestionarAperturaCierre::route('/'),
         ];
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->hasRole('super_admin') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        if (!auth()->user()?->hasRole('super_admin')) {
-            return false;
-        }
-
-        $diaAbierto = AperturaCierreDia::where('EstadoDia', 'ABIERTO')->first();
-        
-        return true;
-    }
-
-    public static function canEdit(Model $record): bool
-    {
-        return auth()->user()?->hasRole('super_admin') ?? false;
-    }
-
-    public static function canDelete(Model $record): bool
-    {
-        return auth()->user()?->hasRole('super_admin') ?? false;
-    }
-
-    public static function canDeleteAny(): bool
-    {
-        return auth()->user()?->hasRole('super_admin') ?? false;
     }
 
     public static function cerrarDia(AperturaCierreDia $record): void

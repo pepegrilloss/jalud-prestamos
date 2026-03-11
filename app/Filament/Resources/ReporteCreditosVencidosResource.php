@@ -11,6 +11,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+use App\Models\Sede;
 class ReporteCreditosVencidosResource extends Resource
 {
     protected static ?string $model = Credito::class;
@@ -82,6 +83,10 @@ class ReporteCreditosVencidosResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('SedeID')
+                    ->label('Sede')
+                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('cliente')
                     ->label('Cliente')
                     ->relationship('proposicion.cliente', 'NombresApellidos')
