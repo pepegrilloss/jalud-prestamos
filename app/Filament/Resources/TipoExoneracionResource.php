@@ -53,13 +53,19 @@ class TipoExoneracionResource extends Resource
                     ->label('Código')
                     ->required()
                     ->maxLength(1)
-                    ->unique(ignoreRecord: true)
+                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId);
+                    })
                     ->helperText('P=Pronto Pago, I=Interés, M=Mora'),
                 Forms\Components\TextInput::make('Nombre')
                     ->label('Nombre')
                     ->required()
                     ->maxLength(50)
-                    ->unique(ignoreRecord: true),
+                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId);
+                    }),
                 Forms\Components\Textarea::make('Descripcion')
                     ->label('Descripción')
                     ->maxLength(200),

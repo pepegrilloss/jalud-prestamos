@@ -38,7 +38,12 @@ class SubGiroResource extends Resource
                     ->searchable(),
                 Forms\Components\TextInput::make('Descripcion')
                     ->required()
-                    ->maxLength(400),
+                    ->maxLength(400)
+                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule, Forms\Get $get) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId)
+                                    ->where('GiroID', $get('GiroID'));
+                    }),
                 Forms\Components\Toggle::make('Activo')
                     ->hidden()
                     ->default(true),

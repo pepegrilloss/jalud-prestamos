@@ -32,7 +32,10 @@ class GiroResource extends Resource
                 Forms\Components\TextInput::make('Codigo')
                     ->required()
                     ->maxLength(20)
-                    ->unique(ignoreRecord: true)
+                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId);
+                    })
                     ->validationMessages([
                         'unique' => 'Este código ya está registrado en el sistema.',
                     ]),

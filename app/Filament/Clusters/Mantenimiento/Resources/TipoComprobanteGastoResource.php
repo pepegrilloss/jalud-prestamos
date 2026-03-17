@@ -36,7 +36,10 @@ class TipoComprobanteGastoResource extends Resource
                     ->label('Nombre del Tipo de Comprobante')
                     ->required()
                     ->maxLength(50)
-                    ->unique(ignoreRecord: true),
+                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId);
+                    }),
                 Forms\Components\Toggle::make('Activo')
                     ->label('Activo')
                     ->default(true)

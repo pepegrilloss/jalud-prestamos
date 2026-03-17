@@ -33,7 +33,10 @@ class MotivoResource extends Resource
                     ->label('Nombre del Motivo')
                     ->required()
                     ->maxLength(100)
-                    ->unique(ignoreRecord: true),
+                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId);
+                    }),
                 Forms\Components\Toggle::make('Activo')
                     ->label('Activo')
                     ->default(true)

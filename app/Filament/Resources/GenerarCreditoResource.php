@@ -197,7 +197,8 @@ class GenerarCreditoResource extends Resource
             ->modifyQueryUsing(function (Builder $query) {
                 return $query->where('Estado', 'APROBADO')
                     ->whereDoesntHave('credito');
-            })([
+            })
+            ->filters([
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))

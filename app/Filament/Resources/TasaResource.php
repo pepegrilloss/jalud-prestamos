@@ -32,7 +32,11 @@ class TasaResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('Nombre')
                     ->required()
-                    ->maxLength(100),
+                    ->maxLength(100)
+                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId);
+                    }),
                 Forms\Components\TextInput::make('Valor')
                     ->required()
                     ->numeric(),

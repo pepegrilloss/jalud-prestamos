@@ -38,7 +38,12 @@ class ZonaResource extends Resource
                     ->searchable(),
                 Forms\Components\TextInput::make('Nombre')
                     ->required()
-                    ->maxLength(200),
+                    ->maxLength(200)
+                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule, Forms\Get $get) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId)
+                                    ->where('CiudadID', $get('CiudadID'));
+                    }),
                 Forms\Components\DateTimePicker::make('FechaCreacion')
                     ->hidden()
                     ->default(now()),

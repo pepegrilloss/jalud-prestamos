@@ -45,7 +45,10 @@ class CiudadResource extends Resource
                         Forms\Components\TextInput::make('Nombre')
                             ->required()
                             ->maxLength(200)
-                            ->unique(ignoreRecord: true)
+                            ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                                $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                                return $rule->where('SedeID', $sedeId);
+                            })
                             ->columnSpanFull(),
                         
                         Forms\Components\Toggle::make('Activo')
