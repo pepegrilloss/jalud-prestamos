@@ -52,6 +52,12 @@ class MotivoResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\IconColumn::make('Activo')
                     ->label('Estado')
                     ->boolean()
@@ -70,7 +76,7 @@ class MotivoResource extends Resource
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
                     ->visible(fn () => auth()->user()->esAdmin()),
-])
+            ])
             ->actions([
                 Tables\Actions\EditAction::make()
                     ->visible(fn() => AperturaCierreDia::estaAbierto()),

@@ -66,6 +66,11 @@ class SubGiroResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('Descripcion')
                     ->searchable(),
+
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\IconColumn::make('Activo')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('FechaCreacion')

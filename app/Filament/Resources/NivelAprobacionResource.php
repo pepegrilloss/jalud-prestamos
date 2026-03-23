@@ -111,6 +111,11 @@ class NivelAprobacionResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('MontoMinimo')
                     ->label('Monto Mínimo')
                     ->money('PEN')

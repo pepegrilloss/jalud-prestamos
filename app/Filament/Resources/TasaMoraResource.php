@@ -73,6 +73,11 @@ class TasaMoraResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('Porcentaje')
                     ->label('Porcentaje')
                     ->formatStateUsing(fn($state) => "{$state}%")

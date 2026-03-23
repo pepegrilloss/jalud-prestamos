@@ -63,6 +63,11 @@ class ZonaResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('Nombre')
                     ->searchable(),
+
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\IconColumn::make('Activo')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('FechaCreacion')

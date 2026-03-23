@@ -60,6 +60,11 @@ class TasaResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('Nombre')
                     ->searchable(),
+
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('Valor')
                     ->numeric()
                     ->sortable(),

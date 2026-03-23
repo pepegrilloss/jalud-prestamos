@@ -88,6 +88,12 @@ class TipoExoneracionResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('Descripcion')
                     ->label('Descripción')
                     ->limit(50)

@@ -55,6 +55,11 @@ class TipoComprobanteGastoResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\IconColumn::make('Activo')
                     ->label('Estado')
                     ->boolean()
