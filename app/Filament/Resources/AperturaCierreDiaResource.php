@@ -75,6 +75,11 @@ class AperturaCierreDiaResource extends Resource
                     ->sortable()
                     ->searchable(),
 
+                Tables\Columns\TextColumn::make('sede.Nombre')
+                    ->label('Sede')
+                    ->sortable()
+                    ->searchable(),
+
                 Tables\Columns\BadgeColumn::make('EstadoDia')
                     ->colors([
                         'success' => 'ABIERTO',

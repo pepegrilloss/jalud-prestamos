@@ -11,7 +11,9 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Support\RawJs;
+use Illuminate\Support\HtmlString;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,7 +33,33 @@ class PagoResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\Section::make('Método de Pago')
+                    ->schema([
+                        Forms\Components\Select::make('TipoPago')
+                            ->label('Seleccionar Método de Pago')
+                            ->options([
+                                'EFECTIVO' => '💵 Efectivo',
+                                'YAPE_PLIN' => '📱 Yape o Plin',
+                                'TRANSFERENCIA_BANCARIA' => '🏦 Transferencia Bancaria',
+                            ])
+                            ->required()
+                            ->live()
+                            ->native(false)
+                            ->hidden(fn(Get $get) => filled($get('TipoPago'))),
+
+                        Forms\Components\Placeholder::make('metodo_seleccionado_display')
+                            ->label('Método de Pago Seleccionado')
+                            ->content(fn(Get $get) => match ($get('TipoPago')) {
+                                'EFECTIVO' => '💵 EFECTIVO',
+                                'YAPE_PLIN' => '📱 YAPE O PLIN',
+                                'TRANSFERENCIA_BANCARIA' => '🏦 TRANSFERENCIA BANCARIA',
+                                default => 'Ninguno',
+                            })
+                            ->visible(fn(Get $get) => filled($get('TipoPago'))),
+                    ]),
+
                 Forms\Components\Section::make('Información del Pago')
+                    ->hidden(fn(Get $get) => !$get('TipoPago'))
                     ->schema([
                         Forms\Components\Placeholder::make('cliente_info')
                             ->label('Cliente')
@@ -361,6 +389,7 @@ class PagoResource extends Resource
                     ]),
 
                 Forms\Components\Section::make('Detalles del Pago')
+                    ->hidden(fn(Get $get) => !$get('TipoPago'))
                     ->schema([
                         Forms\Components\TextInput::make('MontoPagado')
                             ->label('Monto Pagado')
@@ -381,21 +410,8 @@ class PagoResource extends Resource
                             ->displayFormat('d/m/Y'),
                     ]),
 
-                Forms\Components\Section::make('Método de Pago')
-                    ->schema([
-                        Forms\Components\Select::make('TipoPago')
-                            ->label('Método de Pago')
-                            ->options([
-                                'EFECTIVO' => '💵 Efectivo',
-                                'YAPE_PLIN' => '📱 Yape o Plin',
-                                'TRANSFERENCIA_BANCARIA' => '🏦 Transferencia Bancaria',
-                            ])
-                            ->required()
-                            ->default('EFECTIVO')
-                            ->native(false),
-                    ]),
-
                 Forms\Components\Section::make('Comentarios')
+                    ->hidden(fn(Get $get) => !$get('TipoPago'))
                     ->schema([
                         Forms\Components\Textarea::make('Comentario')
                             ->label('Comentario')
@@ -485,111 +501,95 @@ class PagoResource extends Resource
                     ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('SedeID')
-                    ->label('Sede')
-                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
-                    ->visible(fn () => auth()->user()->esAdmin()),
-                Tables\Filters\SelectFilter::make('cliente')
-                    ->label('Cliente')
-                    ->options(function () {
-                        return \App\Models\Cliente::where('Activo', true)
-                            ->whereHas('proposiciones.credito')
-                            ->pluck('NombresApellidos', 'ClienteID')
-                            ->toArray();
-                    })
-                    ->query(function (Builder $query, array $data) {
-                        return $query->when(
-                            $data['value'] ?? null,
-                            function (Builder $q) use ($data) {
-                                return $q->where(
-                                    function (Builder $subQ) use ($data) {
-                                        $subQ->whereHas(
-                                            'cuota.credito.proposicion.cliente', 
-                                            fn(Builder $sq) => $sq->where('ClienteID', $data['value'])
-                                        )
-                                        ->orWhereHas(
-                                            'credito.proposicion.cliente',
-                                            fn(Builder $sq) => $sq->where('ClienteID', $data['value'])
-                                        );
-                                    }
-                                );
-                            }
-                        );
-                    })
-                    ->searchable()
-                    ->native(false),
-
-                Tables\Filters\Filter::make('dni')
-                    ->label('DNI')
+                Tables\Filters\Filter::make('filtros_dinamicos')
                     ->form([
-                        Forms\Components\TextInput::make('dni')
-                            ->label('DNI')
-                            ->placeholder('Ingrese DNI'),
-                    ])
-                    ->query(function (Builder $query, array $data) {
-                        return $query->when(
-                            $data['dni'] ?? null,
-                            function (Builder $q) use ($data) {
-                                return $q->where(
-                                    function (Builder $subQ) use ($data) {
-                                        $subQ->whereHas(
-                                            'cuota.credito.proposicion.cliente',
-                                            fn(Builder $sq) => $sq->where('DNI', 'like', '%' . $data['dni'] . '%')
-                                        )
-                                        ->orWhereHas(
-                                            'credito.proposicion.cliente',
-                                            fn(Builder $sq) => $sq->where('DNI', 'like', '%' . $data['dni'] . '%')
-                                        );
-                                    }
-                                );
-                            }
-                        );
-                    }),
+                        Forms\Components\Select::make('campos_activos')
+                            ->label('🔍 Seleccionar Filtros a Aplicar')
+                            ->placeholder('Haz clic para elegir filtros...')
+                            ->multiple()
+                            ->options([
+                                'sede' => '🏢 Sede/Sucursal',
+                                'cliente' => '👤 Cliente (Nombre/ID)',
+                                'dni' => '🆔 DNI del Cliente',
+                                'zona' => '📍 Zona/Sector',
+                                'fecha' => '📅 Rango de Fechas',
+                            ])
+                            ->live()
+                            ->columnSpanFull()
+                            ->native(false),
 
-                Tables\Filters\SelectFilter::make('zona')
-                    ->label('Zona')
-                    ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
-                    ->query(function (Builder $query, array $data) {
-                        return $query->when(
-                            $data['value'] ?? null,
-                            function (Builder $q) use ($data) {
-                                return $q->where(
-                                    function (Builder $subQ) use ($data) {
-                                        $subQ->whereHas(
-                                            'cuota.credito.proposicion.cliente.negocio', 
-                                            fn(Builder $sq) => $sq->where('ZonaID', $data['value'])
-                                        )
-                                        ->orWhereHas(
-                                            'credito.proposicion.cliente.negocio',
-                                            fn(Builder $sq) => $sq->where('ZonaID', $data['value'])
-                                        );
-                                    }
-                                );
-                            }
-                        );
-                    })
-                    ->native(false),
+                        Forms\Components\Grid::make(4)
+                            ->schema([
+                                Forms\Components\Select::make('SedeID')
+                                    ->label('Sede')
+                                    ->options(\App\Models\Sede::all()->pluck('Nombre', 'SedeID')->toArray())
+                                    ->searchable()
+                                    ->native(false)
+                                    ->visible(fn(Get $get) => in_array('sede', $get('campos_activos') ?? [])),
 
-                Tables\Filters\Filter::make('FechaPago')
-                    ->label('Fecha de Pago')
-                    ->form([
-                        Forms\Components\DatePicker::make('FechaPago_from')
-                            ->label('Desde'),
-                        Forms\Components\DatePicker::make('FechaPago_to')
-                            ->label('Hasta'),
+                                Forms\Components\Select::make('ClienteID')
+                                    ->label('Cliente')
+                                    ->options(\App\Models\Cliente::all()->pluck('NombresApellidos', 'ClienteID')->toArray())
+                                    ->searchable()
+                                    ->native(false)
+                                    ->visible(fn(Get $get) => in_array('cliente', $get('campos_activos') ?? [])),
+
+                                Forms\Components\TextInput::make('DNI')
+                                    ->label('DNI')
+                                    ->placeholder('Ingrese DNI')
+                                    ->visible(fn(Get $get) => in_array('dni', $get('campos_activos') ?? [])),
+
+                                Forms\Components\Select::make('ZonaID')
+                                    ->label('Zona')
+                                    ->options(\App\Models\Zona::all()->pluck('Nombre', 'ZonaID')->toArray())
+                                    ->searchable()
+                                    ->native(false)
+                                    ->visible(fn(Get $get) => in_array('zona', $get('campos_activos') ?? [])),
+
+                                Forms\Components\DatePicker::make('FechaDesde')
+                                    ->label('Desde')
+                                    ->native(false)
+                                    ->visible(fn(Get $get) => in_array('fecha', $get('campos_activos') ?? [])),
+
+                                Forms\Components\DatePicker::make('FechaHasta')
+                                    ->label('Hasta')
+                                    ->native(false)
+                                    ->visible(fn(Get $get) => in_array('fecha', $get('campos_activos') ?? [])),
+                            ])
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
-                                $data['FechaPago_from'],
-                                fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) >= ?', [$data['FechaPago_from']]),
+                                isset($data['SedeID']) && $data['SedeID'],
+                                fn(Builder $q) => $q->where('pago.SedeID', $data['SedeID'])
                             )
                             ->when(
-                                $data['FechaPago_to'],
-                                fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) <= ?', [$data['FechaPago_to']]),
+                                isset($data['ClienteID']) && $data['ClienteID'],
+                                fn(Builder $q) => $q->where('pago.ClienteID', $data['ClienteID'])
+                            )
+                            ->when(
+                                isset($data['DNI']) && $data['DNI'],
+                                fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente', function ($subQ) use ($data) {
+                                    $subQ->where('DNI', 'like', "%{$data['DNI']}%");
+                                })
+                            )
+                            ->when(
+                                isset($data['ZonaID']) && $data['ZonaID'],
+                                fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente.negocio', function ($subQ) use ($data) {
+                                    $subQ->where('ZonaID', $data['ZonaID']);
+                                })
+                            )
+                            ->when(
+                                isset($data['FechaDesde']) && $data['FechaDesde'],
+                                fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) >= ?', [$data['FechaDesde']])
+                            )
+                            ->when(
+                                isset($data['FechaHasta']) && $data['FechaHasta'],
+                                fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) <= ?', [$data['FechaHasta']])
                             );
                     }),
-            ])
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormColumns(1)
             ->modifyQueryUsing(function (Builder $query) {
                 // Excluir pagos automáticos SOLO si TipoConcepto = 'C' (cuotas normales)
                 // Se muestran pagos de TODOS los tipos de crédito incluyendo Refinanciamiento

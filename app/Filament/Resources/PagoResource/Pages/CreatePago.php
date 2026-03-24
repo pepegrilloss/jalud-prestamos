@@ -34,6 +34,13 @@ class CreatePago extends CreateRecord
     // Agregar el botón ABAJO del formulario
     protected function getFormActions(): array
     {
+        $data = $this->form->getRawState();
+        if (empty($data['TipoPago'])) {
+            return [
+                $this->getCancelFormAction(),
+            ];
+        }
+
         // Verificar si es pago inicial
         $esPagoInicial = false;
         try {

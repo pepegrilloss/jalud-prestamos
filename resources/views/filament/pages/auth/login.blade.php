@@ -74,4 +74,55 @@
         </div>
     </div>
 
+    <style>
+        /* 
+           FIX PARA MODO OSCURO EN LOGIN 
+           Aseguramos que los labels y textos sean visibles 
+        */
+        .dark .jalud-login-form-side {
+            background-color: #111827 !important;
+        }
+
+        .dark .jalud-form-title {
+            color: #ffffff !important;
+        }
+
+        .dark .jalud-form-subtitle, 
+        .dark .jalud-form-footer p {
+            color: #9ca3af !important;
+        }
+
+        /* Labels de Filament en modo oscuro */
+        .dark .fi-fo-field-label {
+            color: #e5e7eb !important;
+        }
+
+        /* Inputs de Filament en modo oscuro */
+        .dark .fi-input-wrp {
+            background-color: #1f2937 !important;
+            border-color: #374151 !important;
+        }
+        
+        .dark .fi-input {
+            color: #ffffff !important;
+        }
+
+        /* Asegurar visibilidad de labels específicos si son blancos por error */
+        .dark label {
+            color: #e5e7eb !important;
+        }
+
+        /* Ajustes para el contenedor principal en responsive */
+        @media (max-width: 1024px) {
+            .jalud-login-wrapper {
+                flex-direction: column;
+            }
+            .jalud-login-image-side {
+                display: none;
+            }
+            .jalud-login-form-side {
+                width: 100%;
+            }
+        }
+    </style>
 </div>

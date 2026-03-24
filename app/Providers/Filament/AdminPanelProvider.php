@@ -53,7 +53,30 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                fn(): string => Blade::render('@livewire("sede-switcher")')
+                fn(): string => Blade::render('
+                    <div class="flex items-center gap-x-4 px-4 py-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm mr-4">
+                        <div class="flex items-center gap-x-2">
+                            <div class="w-2 h-2 rounded-full {{ \App\Services\DateFieldResolver::getFechaAbierta() ? "bg-success-500" : "bg-danger-500" }}"></div>
+                            <div class="flex flex-col items-center leading-tight">
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter text-center">Fecha Abierta</span>
+                                <span class="text-xs font-black text-gray-700 dark:text-gray-200 text-center">
+                                    {{ \App\Services\DateFieldResolver::getFechaAbierta()?->format("d/m/Y") ?? "CERRADO" }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
+                        <div class="flex flex-col items-center leading-tight">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter text-center">Contexto Sede</span>
+                            <span class="text-xs font-black text-primary-600 dark:text-primary-400 text-center">
+                                @php
+                                    $sedeId = session("sede_activa");
+                                    $sedeNombre = $sedeId ? \App\Models\Sede::find($sedeId)?->Nombre : "GLOBAL";
+                                @endphp
+                                {{ $sedeNombre }}
+                            </span>
+                        </div>
+                    </div>
+                ')
             )
             ->favicon(asset('favicon-j.svg'))
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
@@ -77,7 +100,7 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
                 \Hasnayeen\Themes\Http\Middleware\SetTheme::class,
-
+                \App\Http\Middleware\EnsureSedeIsSelected::class,
             ])
 
             ->plugins([
