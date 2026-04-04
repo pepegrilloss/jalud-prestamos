@@ -46,15 +46,16 @@ return [
     ],
 
     'entities' => [
-        'pages' => true,
+        'pages' => false,
         'widgets' => true,
         'resources' => true,
         'custom_permissions' => true,
     ],
 
     'custom_permissions' => [
-        'page_Themes',
         'ver_todas_las_sedes',
+        'abrir_dia_apertura',
+        'cerrar_dia_apertura',
     ],
 
     'generator' => [
