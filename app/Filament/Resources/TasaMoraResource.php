@@ -26,6 +26,21 @@ class TasaMoraResource extends Resource
 
     protected static ?string $cluster = Mantenimiento::class;
 
+    public static function canCreate(): bool
+    {
+        return \App\Services\DateFieldResolver::getFechaAbierta() !== null;
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return \App\Services\DateFieldResolver::getFechaAbierta() !== null;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return \App\Services\DateFieldResolver::getFechaAbierta() !== null;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
