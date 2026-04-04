@@ -67,7 +67,10 @@ class ClienteResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('DNI')
                                     ->required()
-                                    ->unique(ignoreRecord: true)
+                                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                                        return $rule->where('SedeID', $sedeId);
+                                    })
                                     ->maxLength(20)
                                     ->label('Dni')
                                     ->placeholder('Ingrese DNI')
