@@ -54,20 +54,16 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn(): string => Blade::render('
-                    <div class="flex items-center gap-x-4 px-4 py-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm mr-4">
+                    <div class="flex items-center gap-x-3 px-4 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm mr-4">
                         <div class="flex items-center gap-x-2">
-                            <div class="w-2 h-2 rounded-full {{ \App\Services\DateFieldResolver::getFechaAbierta() ? "bg-success-500" : "bg-danger-500" }}"></div>
-                            <div class="flex flex-col items-center leading-tight">
-                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter text-center">Fecha Abierta</span>
-                                <span class="text-xs font-black text-gray-700 dark:text-gray-200 text-center">
-                                    {{ \App\Services\DateFieldResolver::getFechaAbierta()?->format("d/m/Y") ?? "CERRADO" }}
-                                </span>
-                            </div>
+                            <div class="w-2.5 h-2.5 rounded-full {{ \App\Services\DateFieldResolver::getFechaAbierta() ? "bg-success-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-danger-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" }}"></div>
+                            <span class="text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 leading-none">
+                                {{ \App\Services\DateFieldResolver::getFechaAbierta()?->format("d/m/Y") ?? "CERRADO" }}
+                            </span>
                         </div>
-                        <div class="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
-                        <div class="flex flex-col items-center leading-tight">
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter text-center">Sede</span>
-                            <span class="text-xs font-black text-primary-600 dark:text-primary-400 text-center">
+                        <div class="w-px h-5 bg-gray-300 dark:bg-gray-600"></div>
+                        <div class="flex items-center leading-none">
+                            <span class="text-sm md:text-base font-bold text-primary-600 dark:text-primary-400">
                                 @php
                                     $sedeId = session("sede_activa");
                                     $sedeNombre = $sedeId ? \App\Models\Sede::find($sedeId)?->Nombre : "GLOBAL";
