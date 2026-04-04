@@ -46,7 +46,10 @@ class AperturaCierreDiaResource extends Resource
                     ->disabled(fn(string $operation): bool => $operation === 'edit')
                     ->maxDate(today())
                     ->native(false)
-                    ->unique(AperturaCierreDia::class, 'Fecha', ignoreRecord: true),
+                    ->unique(AperturaCierreDia::class, 'Fecha', ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                        return $rule->where('SedeID', $sedeId);
+                    }),
 
                 Forms\Components\Select::make('EstadoDia')
                     ->options([
