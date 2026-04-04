@@ -11,8 +11,4 @@ class Mantenimiento extends Cluster
     protected static ?int $navigationGroupSort = 10;
     protected static ?int $navigationSort = 10;
 
-    public static function shouldRegisterNavigation(): bool
-    {
-        return auth()->check() && auth()->user()->can('page_Mantenimiento');
-    }
 }
