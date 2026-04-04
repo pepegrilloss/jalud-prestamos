@@ -114,12 +114,6 @@ class User extends Authenticatable implements FilamentUser
      */
     public function esAdmin(): bool
     {
-        // Un administrador (que puede ver todas las sedes) es quien cumpla alguna de estas condiciones:
-        // 1. Es super_admin de Filament Shield
-        // 2. Tiene el permiso específico 'ver_todas_las_sedes'
-        // 3. Tiene un rol con jerarquía global (ej. 'admin', 'gerente_general')
-        return $this->hasRole(\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName())
-            || $this->can('ver_todas_las_sedes')
-            || $this->hasAnyRole(['admin', 'gerente_general']);
+        return $this->hasRole(\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName());
     }
 }
