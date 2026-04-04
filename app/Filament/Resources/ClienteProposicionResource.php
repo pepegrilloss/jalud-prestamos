@@ -31,38 +31,41 @@ class ClienteProposicionResource extends Resource
     protected static ?string $navigationLabel = 'Proposiciones';
     protected static ?string $modelLabel = 'Proposición';
     protected static ?string $pluralModelLabel = 'Proposiciones';
-
-
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Section::make('Detalles del Crédito')
                     ->schema([
-                        Forms\Components\TextInput::make('CodigoCredito')
-                            ->label('Código de Crédito')
-                            ->disabled()
-                            ->dehydrated()
-                            ->columnSpanFull(),
-
                         Forms\Components\Select::make('ClienteID')
                             ->label('Cliente')
                             ->relationship('cliente', 'NombresApellidos')
                             ->disabled()
                             ->dehydrated(false)
-                            ->columnSpanFull(),
+                            ->columnSpan(8),
+
+                        Forms\Components\TextInput::make('CodigoCredito')
+                            ->label('Código de Crédito')
+                            ->disabled()
+                            ->dehydrated()
+                            ->columnSpan(4)
+                            ->prefixIcon('heroicon-o-hashtag'),
 
                         Forms\Components\Select::make('TipoCreditoID')
                             ->label('Tipo de Crédito')
                             ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID'))
                             ->required()
                             ->searchable()
-                            ->native(false),
+                            ->native(false)
+                            ->columnSpan(8)
+                            ->prefixIcon('heroicon-o-tag'),
 
                         Forms\Components\TextInput::make('MontoTotal')
                             ->label('Monto Total')
                             ->required()
                             ->numeric()
+                            ->prefix('S/')
+                            ->columnSpan(4)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn(Set $set, Get $get, $state) => static::calcularTotales($set, $get, $state)),
 
@@ -70,7 +73,11 @@ class ClienteProposicionResource extends Resource
                             ->label('Tasa de Interés')
                             ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
                             ->required()
+                            ->searchable()
+                            ->native(false)
                             ->live()
+                            ->columnSpan(8)
+                            ->prefixIcon('heroicon-o-receipt-percent')
                             ->afterStateUpdated(function (Set $set, $state, Get $get) {
                                 if ($tasa = Tasa::find($state)) {
                                     $set('TasaInteres', $tasa->Valor);
@@ -80,16 +87,68 @@ class ClienteProposicionResource extends Resource
                                 }
                             }),
 
-                        Forms\Components\TextInput::make('TasaInteres')->label('Tasa (%)')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('Plazo')->label('Plazo (días)')->required()->numeric(),
-                        Forms\Components\TextInput::make('NumeroCuotas')->label('N° Cuotas')->required()->numeric()
-                            ->live(onBlur: true)->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
+                        Forms\Components\TextInput::make('TasaInteres')
+                            ->label('Tasa (%)')
+                            ->disabled()
+                            ->dehydrated()
+                            ->suffix('%')
+                            ->columnSpan(4)
+                            ->extraInputAttributes(['class' => 'bg-gray-50 border-gray-200 cursor-not-allowed'])
+                            ->hint('Valor según tasa seleccionada'),
 
-                        Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->numeric()->required()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->disabled()->dehydrated(false),
-                        Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric(),
-                    ])->columns(3),
+                        Forms\Components\TextInput::make('Plazo')
+                            ->label('Plazo (días)')
+                            ->required()
+                            ->numeric()
+                            ->suffix('días')
+                            ->columnSpan(4),
+
+                        Forms\Components\TextInput::make('TasaMora')
+                            ->label('Mora (S/)')
+                            ->required()
+                            ->numeric()
+                            ->prefix('S/')
+                            ->columnSpan(4),
+
+                        Forms\Components\TextInput::make('NumeroCuotas')
+                            ->label('N° Cuotas')
+                            ->required()
+                            ->numeric()
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal')))
+                            ->columnSpan(4),
+
+                        Forms\Components\Fieldset::make('Resumen del Crédito')
+                            ->schema([
+                                Forms\Components\TextInput::make('MontoCuota')
+                                    ->label('Monto por Cuota')
+                                    ->prefix('S/')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(4)
+                                    ->extraInputAttributes(['class' => 'bg-gray-100 font-medium'])
+                                    ->hint('Calculado'),
+
+                                Forms\Components\TextInput::make('MontoInteres')
+                                    ->label('Monto Total Interés')
+                                    ->prefix('S/')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(4)
+                                    ->extraInputAttributes(['class' => 'bg-gray-100 font-medium'])
+                                    ->hint('Calculado'),
+
+                                Forms\Components\TextInput::make('MontoTotalPagar')
+                                    ->label('Monto Total a Pagar')
+                                    ->prefix('S/')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->columnSpan(4)
+                                    ->extraInputAttributes(['class' => 'bg-primary-50 border-primary-600 font-bold text-lg text-primary-700'])
+                                    ->hint('Monto final estimado'),
+                            ])->columns(12)
+                            ->columnSpanFull(),
+                    ])->columns(12),
 
                 Forms\Components\Section::make('Información Adicional')
                     ->schema([
@@ -97,7 +156,8 @@ class ClienteProposicionResource extends Resource
                             ->label('Zona')
                             ->relationship('zona', 'Nombre')
                             ->disabled()
-                            ->dehydrated(false),
+                            ->dehydrated(false)
+                            ->columnSpanFull(),
                         Forms\Components\Textarea::make('Observaciones')->rows(3)->columnSpanFull(),
                         Forms\Components\Select::make('Estado')
                             ->label('Estado')

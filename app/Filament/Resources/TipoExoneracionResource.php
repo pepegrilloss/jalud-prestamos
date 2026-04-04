@@ -127,19 +127,19 @@ class TipoExoneracionResource extends Resource
                     ->visible(fn() => AperturaCierreDia::estaAbierto()),
                 Tables\Actions\Action::make('toggleActive')
                     ->visible(fn() => AperturaCierreDia::estaAbierto())
-                    ->label(fn($record) => $record->Activo ? 'Desactivar' : 'Activar')
+                    ->label(fn($record) => $record->Activo ? 'Eliminar' : 'Activar')
                     ->color(fn($record) => $record->Activo ? 'danger' : 'success')
                     ->icon(fn($record) => $record->Activo ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
                     ->requiresConfirmation()
-                    ->modalHeading(fn($record) => $record->Activo ? 'Desactivar Tipo de Exoneración' : 'Activar Tipo de Exoneración')
+                    ->modalHeading(fn($record) => $record->Activo ? 'Eliminar Tipo de Exoneración' : 'Activar Tipo de Exoneración')
                     ->modalDescription(fn($record) => $record->Activo 
-                        ? '¿Está seguro que desea desactivar este tipo de exoneración?' 
+                        ? '¿Está seguro que desea eliminar este tipo de exoneración?' 
                         : '¿Está seguro que desea activar este tipo de exoneración?')
                     ->modalSubmitActionLabel('Confirmar')
                     ->action(fn($record) => $record->update([
                         'Activo' => !$record->Activo,
                     ]))
-                    ->successNotificationTitle(fn($record) => $record->Activo ? 'Tipo de Exoneración activado correctamente' : 'Tipo de Exoneración desactivado correctamente'),
+                    ->successNotificationTitle(fn($record) => $record->Activo ? 'Tipo de Exoneración activado correctamente' : 'Tipo de Exoneración eliminado correctamente'),
             ])
             ->bulkActions([])
             ->recordUrl(null)
@@ -165,8 +165,6 @@ class TipoExoneracionResource extends Resource
     {
         return [
             'index' => Pages\ListTipoExoneraciones::route('/'),
-            'create' => Pages\CreateTipoExoneracion::route('/create'),
-            'edit' => Pages\EditTipoExoneracion::route('/{record}/edit'),
         ];
     }
 

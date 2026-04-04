@@ -37,10 +37,11 @@ class PagoResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('TipoPago')
                             ->label('Seleccionar Método de Pago')
+                            ->prefixIcon('heroicon-m-credit-card')
                             ->options([
-                                'EFECTIVO' => '💵 Efectivo',
-                                'YAPE_PLIN' => '📱 Yape o Plin',
-                                'TRANSFERENCIA_BANCARIA' => '🏦 Transferencia Bancaria',
+                                'EFECTIVO' => 'Efectivo',
+                                'YAPE_PLIN' => 'Yape o Plin',
+                                'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
                             ])
                             ->required()
                             ->live()
@@ -50,9 +51,9 @@ class PagoResource extends Resource
                         Forms\Components\Placeholder::make('metodo_seleccionado_display')
                             ->label('Método de Pago Seleccionado')
                             ->content(fn(Get $get) => match ($get('TipoPago')) {
-                                'EFECTIVO' => '💵 EFECTIVO',
-                                'YAPE_PLIN' => '📱 YAPE O PLIN',
-                                'TRANSFERENCIA_BANCARIA' => '🏦 TRANSFERENCIA BANCARIA',
+                                'EFECTIVO' => 'EFECTIVO',
+                                'YAPE_PLIN' => 'YAPE O PLIN',
+                                'TRANSFERENCIA_BANCARIA' => 'TRANSFERENCIA BANCARIA',
                                 default => 'Ninguno',
                             })
                             ->visible(fn(Get $get) => filled($get('TipoPago'))),
@@ -91,6 +92,7 @@ class PagoResource extends Resource
 
                         Forms\Components\Select::make('ClienteID')
                             ->label('Cliente - DNI')
+                            ->prefixIcon('heroicon-m-user')
                             ->options(function () {
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
@@ -194,6 +196,7 @@ class PagoResource extends Resource
 
                         Forms\Components\Select::make('CreditoID')
                             ->label('Seleccionar Crédito')
+                            ->prefixIcon('heroicon-m-identification')
                             ->options(function (Forms\Get $get) {
                                 $clienteID = $get('ClienteID');
                                 if (!$clienteID) {
@@ -298,6 +301,7 @@ class PagoResource extends Resource
 
                         Forms\Components\TextInput::make('TipoCredito')
                             ->label('Tipo de Crédito')
+                            ->prefixIcon('heroicon-m-clipboard-document-list')
                             ->disabled()
                             ->dehydrated(false)
                             ->placeholder('Información del crédito')
@@ -393,6 +397,7 @@ class PagoResource extends Resource
                     ->schema([
                         Forms\Components\TextInput::make('MontoPagado')
                             ->label('Monto Pagado')
+                            ->prefixIcon('heroicon-m-banknotes')
                             ->numeric()
                             ->required()
                             ->minValue(0.01)
@@ -400,6 +405,7 @@ class PagoResource extends Resource
 
                         Forms\Components\DatePicker::make('FechaPago')
                             ->label('Fecha de Pago')
+                            ->prefixIcon('heroicon-m-calendar')
                             ->required()
                             ->default(function () {
                                 $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
@@ -504,15 +510,15 @@ class PagoResource extends Resource
                 Tables\Filters\Filter::make('filtros_dinamicos')
                     ->form([
                         Forms\Components\Select::make('campos_activos')
-                            ->label('🔍 Seleccionar Filtros a Aplicar')
+                            ->label('Seleccionar Filtros a Aplicar')
                             ->placeholder('Haz clic para elegir filtros...')
                             ->multiple()
                             ->options([
-                                'sede' => '🏢 Sede/Sucursal',
-                                'cliente' => '👤 Cliente (Nombre/ID)',
-                                'dni' => '🆔 DNI del Cliente',
-                                'zona' => '📍 Zona/Sector',
-                                'fecha' => '📅 Rango de Fechas',
+                                'sede' => 'Sede/Sucursal',
+                                'cliente' => 'Cliente (Nombre/ID)',
+                                'dni' => 'DNI del Cliente',
+                                'zona' => 'Zona/Sector',
+                                'fecha' => 'Rango de Fechas',
                             ])
                             ->live()
                             ->columnSpanFull()
@@ -565,13 +571,11 @@ class PagoResource extends Resource
                             )
                             ->when(
                                 isset($data['ClienteID']) && $data['ClienteID'],
-                                fn(Builder $q) => $q->where('pago.ClienteID', $data['ClienteID'])
+                                fn(Builder $q) => $q->where('Cliente.ClienteID', $data['ClienteID'])
                             )
                             ->when(
                                 isset($data['DNI']) && $data['DNI'],
-                                fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente', function ($subQ) use ($data) {
-                                    $subQ->where('DNI', 'like', "%{$data['DNI']}%");
-                                })
+                                fn(Builder $q) => $q->where('Cliente.DNI', 'like', "%{$data['DNI']}%")
                             )
                             ->when(
                                 isset($data['ZonaID']) && $data['ZonaID'],
@@ -648,7 +652,7 @@ class PagoResource extends Resource
     {
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
+                ->title('Día Cerrado')
                 ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
                 ->danger()
                 ->persistent()

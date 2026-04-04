@@ -33,39 +33,45 @@ class GastoResource extends Resource
                 Forms\Components\Section::make('Información del Comprobante')
                     ->schema([
                         Forms\Components\Select::make('TipoComprobanteGastoID')
+                            ->prefixIcon('heroicon-m-document-text')
                             ->label('Tipo de Comprobante')
                             ->options(TipoComprobanteGasto::where('Activo', true)->pluck('Nombre', 'TipoComprobanteGastoID'))
                             ->required()
                             ->searchable(),
                         Forms\Components\TextInput::make('Numero')
+                            ->prefixIcon('heroicon-m-hashtag')
                             ->label('Número')
                             ->required()
                             ->maxLength(20),
                         Forms\Components\DatePicker::make('FechaEmision')
+                            ->prefixIcon('heroicon-m-calendar-days')
                             ->label('Fecha Emisión')
                             ->required()
                             ->minDate(now()->startOfMonth())
                             ->maxDate(now()->endOfMonth()),
-                    ])->columns(2),
+                    ])->columns(3),
 
                 Forms\Components\Section::make('Datos del Gasto')
                     ->schema([
                         Forms\Components\TextInput::make('NombreProveedor')
+                            ->prefixIcon('heroicon-m-building-storefront')
                             ->label('Proveedor')
                             ->required()
                             ->maxLength(150),
                         Forms\Components\Select::make('MotivoID')
+                            ->prefixIcon('heroicon-m-tag')
                             ->label('Motivo')
                             ->options(Motivo::where('Activo', true)->pluck('Nombre', 'MotivoID'))
                             ->required()
                             ->searchable(),
                         Forms\Components\Select::make('MetodoGasto')
+                            ->prefixIcon('heroicon-m-credit-card')
                             ->label('Método de Gasto')
                             ->options([
                                 'CAJA CHICA' => 'CAJA CHICA',
                             ])
                             ->required(),
-                    ])->columns(2),
+                    ])->columns(3),
 
                 Forms\Components\Section::make('Detalle del Gasto')
                     ->schema([
@@ -73,11 +79,12 @@ class GastoResource extends Resource
                             ->label('Líneas de Gasto')
                             ->relationship()
                             ->schema([
-                                Forms\Components\Textarea::make('Descripcion')
+                                Forms\Components\TextInput::make('Descripcion')
+                                    ->prefixIcon('heroicon-m-bars-3-bottom-left')
                                     ->label('Descripción')
                                     ->required()
                                     ->maxLength(500)
-                                    ->rows(2)
+
                                     ->columnSpan(2),
                                 Forms\Components\TextInput::make('Monto')
                                     ->label('Monto')

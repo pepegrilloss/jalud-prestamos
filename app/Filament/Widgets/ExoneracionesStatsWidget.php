@@ -16,7 +16,7 @@ class ExoneracionesStatsWidget extends BaseWidget
     {
         $totalExonerado = HistorialExoneracion::sum('MontoExonerado');
         $totalExoneraciones = HistorialExoneracion::count();
-        
+
         $exoneracionesInteres = HistorialExoneracion::where('TipoExoneracion', 'I')->sum('MontoExonerado');
         $exoneracionesMora = HistorialExoneracion::where('TipoExoneracion', 'M')->sum('MontoExonerado');
 

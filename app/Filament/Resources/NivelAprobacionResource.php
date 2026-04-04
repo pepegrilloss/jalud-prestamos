@@ -165,9 +165,9 @@ class NivelAprobacionResource extends Resource
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar Nivel de Aprobación')
-                    ->modalDescription('¿Está seguro que desea desactivar este nivel de aprobación?')
-                    ->modalSubmitActionLabel('Sí, desactivar')
+                    ->modalHeading('Eliminar Nivel de Aprobación')
+                    ->modalDescription('¿Está seguro que desea eliminar este nivel de aprobación?')
+                    ->modalSubmitActionLabel('Sí, eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
@@ -175,7 +175,7 @@ class NivelAprobacionResource extends Resource
                         'Activo' => false,
                         'FechaModificacion' => now()
                     ]))
-                    ->successNotificationTitle('Nivel de Aprobación desactivado correctamente'),
+                    ->successNotificationTitle('Nivel de Aprobación eliminado correctamente'),
             ])
             ->bulkActions([])
             ->recordUrl(null)
@@ -209,9 +209,6 @@ class NivelAprobacionResource extends Resource
     {
         return [
             'index' => Pages\ListNivelAprobacions::route('/'),
-            'create' => Pages\CreateNivelAprobacion::route('/create'),
-            'view' => Pages\ViewNivelAprobacion::route('/{record}'),
-            'edit' => Pages\EditNivelAprobacion::route('/{record}/edit'),
         ];
     }
 }

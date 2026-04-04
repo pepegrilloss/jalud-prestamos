@@ -144,7 +144,7 @@ class EditCliente extends EditRecord
                 ])
                 ->action(function (array $data) {
                     try {
-                        // Desactivar análisis anteriores
+                        // Eliminar análisis anteriores
                         \App\Models\AnalisisEconomico::where('ClienteID', $this->record->ClienteID)
                             ->where('Activo', 1)
                             ->update([

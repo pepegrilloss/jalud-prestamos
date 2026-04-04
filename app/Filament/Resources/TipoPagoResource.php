@@ -85,19 +85,19 @@ class TipoPagoResource extends Resource
                     ->visible(fn() => AperturaCierreDia::estaAbierto()),
                 Tables\Actions\Action::make('toggleActive')
                     ->visible(fn() => AperturaCierreDia::estaAbierto())
-                    ->label(fn($record) => $record->Activo ? 'Desactivar' : 'Activar')
+                    ->label(fn($record) => $record->Activo ? 'Eliminar' : 'Activar')
                     ->color(fn($record) => $record->Activo ? 'danger' : 'success')
                     ->icon(fn($record) => $record->Activo ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
                     ->requiresConfirmation()
-                    ->modalHeading(fn($record) => $record->Activo ? 'Desactivar Tipo de Pago' : 'Activar Tipo de Pago')
+                    ->modalHeading(fn($record) => $record->Activo ? 'Eliminar Tipo de Pago' : 'Activar Tipo de Pago')
                     ->modalDescription(fn($record) => $record->Activo 
-                        ? '¿Está seguro que desea desactivar este tipo de pago?' 
+                        ? '¿Está seguro que desea eliminar este tipo de pago?' 
                         : '¿Está seguro que desea activar este tipo de pago?')
                     ->modalSubmitActionLabel('Confirmar')
                     ->action(fn($record) => $record->update([
                         'Activo' => !$record->Activo,
                     ]))
-                    ->successNotificationTitle(fn($record) => $record->Activo ? 'Tipo de Pago activado correctamente' : 'Tipo de Pago desactivado correctamente'),
+                    ->successNotificationTitle(fn($record) => $record->Activo ? 'Tipo de Pago activado correctamente' : 'Tipo de Pago eliminado correctamente'),
             ])
             ->bulkActions([])
             ->recordUrl(null)
@@ -123,8 +123,6 @@ class TipoPagoResource extends Resource
     {
         return [
             'index' => Pages\ListTipoPagos::route('/'),
-            'create' => Pages\CreateTipoPago::route('/create'),
-            'edit' => Pages\EditTipoPago::route('/{record}/edit'),
         ];
     }
 

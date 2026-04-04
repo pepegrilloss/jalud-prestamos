@@ -66,7 +66,7 @@ class AdminPanelProvider extends PanelProvider
                         </div>
                         <div class="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
                         <div class="flex flex-col items-center leading-tight">
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter text-center">Contexto Sede</span>
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter text-center">Sede</span>
                             <span class="text-xs font-black text-primary-600 dark:text-primary-400 text-center">
                                 @php
                                     $sedeId = session("sede_activa");

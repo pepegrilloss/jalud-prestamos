@@ -1,0 +1,108 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\User;
+use App\Models\FondoSede;
+use Illuminate\Auth\Access\HandlesAuthorization;
+
+class FondoSedePolicy
+{
+    use HandlesAuthorization;
+
+    /**
+     * Determine whether the user can view any models.
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->can('view_any_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can view the model.
+     */
+    public function view(User $user, FondoSede $fondoSede): bool
+    {
+        return $user->can('view_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can create models.
+     */
+    public function create(User $user): bool
+    {
+        return $user->can('create_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function update(User $user, FondoSede $fondoSede): bool
+    {
+        return $user->can('update_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can delete the model.
+     */
+    public function delete(User $user, FondoSede $fondoSede): bool
+    {
+        return $user->can('delete_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can bulk delete.
+     */
+    public function deleteAny(User $user): bool
+    {
+        return $user->can('delete_any_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can permanently delete.
+     */
+    public function forceDelete(User $user, FondoSede $fondoSede): bool
+    {
+        return $user->can('force_delete_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can permanently bulk delete.
+     */
+    public function forceDeleteAny(User $user): bool
+    {
+        return $user->can('force_delete_any_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can restore.
+     */
+    public function restore(User $user, FondoSede $fondoSede): bool
+    {
+        return $user->can('restore_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can bulk restore.
+     */
+    public function restoreAny(User $user): bool
+    {
+        return $user->can('restore_any_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can replicate.
+     */
+    public function replicate(User $user, FondoSede $fondoSede): bool
+    {
+        return $user->can('replicate_fondo::sede');
+    }
+
+    /**
+     * Determine whether the user can reorder.
+     */
+    public function reorder(User $user): bool
+    {
+        return $user->can('reorder_fondo::sede');
+    }
+}

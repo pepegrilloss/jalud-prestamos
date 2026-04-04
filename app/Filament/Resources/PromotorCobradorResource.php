@@ -147,9 +147,9 @@ class PromotorCobradorResource extends Resource
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar Promotor/Cobrador')
-                    ->modalDescription('¿Está seguro que desea desactivar este registro?')
-                    ->modalSubmitActionLabel('Sí, desactivar')
+                    ->modalHeading('Eliminar Promotor/Cobrador')
+                    ->modalDescription('¿Está seguro que desea eliminar este registro?')
+                    ->modalSubmitActionLabel('Sí, eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
@@ -157,7 +157,7 @@ class PromotorCobradorResource extends Resource
                         'Activo' => false,
                         'FechaModificacion' => now()
                     ]))
-                    ->successNotificationTitle('Registro desactivado correctamente'),
+                    ->successNotificationTitle('Registro eliminado correctamente'),
             ])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
@@ -189,9 +189,6 @@ class PromotorCobradorResource extends Resource
     {
         return [
             'index' => Pages\ListPromotorCobradors::route('/'),
-            'create' => Pages\CreatePromotorCobrador::route('/create'),
-            'view' => Pages\ViewPromotorCobrador::route('/{record}'),
-            'edit' => Pages\EditPromotorCobrador::route('/{record}/edit'),
         ];
     }
 }

@@ -76,7 +76,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->searchable()
                             ->preload()
                             ->native(false)
-                            ->columnSpanFull()
+                            ->columnSpan(8)
                             ->dehydrated()
                             ->live(debounce: 0)
                             ->afterStateUpdated(function (Set $set, $state) {
@@ -93,7 +93,8 @@ class CrearProposicionCreditoResource extends Resource
                             ->disabled()
                             ->dehydrated()
                             ->default(fn() => ProposicionCredito::generarCodigoCredito())
-                            ->columnSpanFull(),
+                            ->columnSpan(4)
+                            ->prefixIcon('heroicon-o-hashtag'),
 
                         Forms\Components\Select::make('TipoCreditoID')
                             ->label('Tipo de Crédito')
@@ -102,7 +103,8 @@ class CrearProposicionCreditoResource extends Resource
                             ->searchable()
                             ->native(false)
                             ->live()
-                            ->columnSpan(2)
+                            ->columnSpan(8)
+                            ->prefixIcon('heroicon-o-tag')
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                 // Si se selecciona Refinanciamiento, crear una acción
                                 if ($state) {
@@ -112,7 +114,7 @@ class CrearProposicionCreditoResource extends Resource
                                         if (!$clienteID) {
                                             Notification::make()
                                                 ->warning()
-                                                ->title('⚠️ Seleccione un Cliente')
+                                                ->title('Seleccione un Cliente')
                                                 ->body("Primero debe seleccionar un cliente para proceder con el refinanciamiento.")
                                                 ->send();
                                             $set('TipoCreditoID', null);
@@ -124,7 +126,7 @@ class CrearProposicionCreditoResource extends Resource
                                         if ($creditosDisponibles->isEmpty()) {
                                             Notification::make()
                                                 ->warning()
-                                                ->title('⚠️ Sin Créditos Disponibles')
+                                                ->title('Sin Créditos Disponibles')
                                                 ->body("Este cliente no tiene créditos activos con saldo pendiente para refinanciar.")
                                                 ->send();
                                             $set('TipoCreditoID', null);
@@ -148,7 +150,7 @@ class CrearProposicionCreditoResource extends Resource
                                         if ($clienteID) {
                                             $creditosDisponibles = ProposicionCredito::obtenerCreditosActivosConSaldo($clienteID);
                                             if (!$creditosDisponibles->isEmpty()) {
-                                                return "👉 Se encontraron " . count($creditosDisponibles) . " crédito(s) para refinanciar";
+                                                return "Se encontraron " . count($creditosDisponibles) . " crédito(s) para refinanciar";
                                             }
                                         }
                                     }
@@ -175,19 +177,19 @@ class CrearProposicionCreditoResource extends Resource
                                     ->content(function (Get $get) {
                                         $proposicionID = $get('ProposicionCreditoAnteriorID');
                                         if (!$proposicionID) {
-                                            return '❌ No se ha seleccionado un crédito';
+                                            return 'No se ha seleccionado un crédito';
                                         }
                                         $proposicion = ProposicionCredito::find($proposicionID);
                                         if (!$proposicion)
-                                            return '❌ Crédito no encontrado';
+                                            return 'Crédito no encontrado';
                                         $info = $proposicion->obtenerInfoRefinanciamiento();
-                                        return "✓ {$proposicion->CodigoCredito} | Saldo: S/ " . number_format($info['SaldoPendiente'], 2) . " | Cuotas Pendientes: {$info['CuotasPendientes']}";
+                                        return "{$proposicion->CodigoCredito} | Saldo: S/ " . number_format($info['SaldoPendiente'], 2) . " | Cuotas Pendientes: {$info['CuotasPendientes']}";
                                     })
                                     ->dehydrated(false),
 
                                 Forms\Components\Actions::make([
                                     Forms\Components\Actions\Action::make('abrirModalRefinanciamiento')
-                                        ->label('🔍 Seleccionar Crédito')
+                                        ->label('Seleccionar Crédito')
                                         ->modalHeading('Seleccionar Crédito a Refinanciar')
                                         ->modalDescription('Seleccione el crédito que desea refinanciar')
                                         ->form(function (Get $get) {
@@ -200,7 +202,7 @@ class CrearProposicionCreditoResource extends Resource
                                                         $info = $proposicion->obtenerInfoRefinanciamiento();
                                                         return [
                                                             $proposicion->ProposicionCreditoID =>
-                                                                "📌 {$proposicion->CodigoCredito} | Saldo: S/ " . number_format($info['SaldoPendiente'], 2) . " | Cuotas: {$info['CuotasPendientes']} | Tasa: {$info['TasaInteres']}% | Plazo: {$info['Plazo']} días"
+                                                                "{$proposicion->CodigoCredito} | Saldo: S/ " . number_format($info['SaldoPendiente'], 2) . " | Cuotas: {$info['CuotasPendientes']} | Tasa: {$info['TasaInteres']}% | Plazo: {$info['Plazo']} días"
                                                         ];
                                                     })
                                                     ->toArray();
@@ -234,7 +236,8 @@ class CrearProposicionCreditoResource extends Resource
                             ->label('Monto Total')
                             ->required()
                             ->numeric()
-                            ->columnSpan(1)
+                            ->prefix('S/')
+                            ->columnSpan(4)
                             ->live(debounce: 500)
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                 // Calcular totales siempre
@@ -267,14 +270,14 @@ class CrearProposicionCreditoResource extends Resource
                                 $montoActual = (float) $state;
 
                                 if ($disponible['montoDisponible'] <= 0) {
-                                    return "❌ No hay monto disponible. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
+                                    return "No hay monto disponible. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
                                 }
 
                                 if ($montoActual > $disponible['montoDisponible']) {
-                                    return "❌ Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
+                                    return "Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
                                 }
 
-                                return "✓ Disponible: S/ {$disponible['montoDisponible']} (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
+                                return "Disponible: S/ {$disponible['montoDisponible']} (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
                             })
                             ->suffixIcon(function (Get $get, $state) {
                                 if (!$state || !$get('ClienteID')) {
@@ -322,8 +325,11 @@ class CrearProposicionCreditoResource extends Resource
                             ->label('Tasa de Interés')
                             ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
                             ->required()
+                            ->searchable()
+                            ->native(false)
                             ->live()
-                            ->columnSpan(1)
+                            ->columnSpan(8)
+                            ->prefixIcon('heroicon-o-receipt-percent')
                             ->afterStateUpdated(function (Set $set, $state, Get $get) {
                                 if ($tasa = Tasa::find($state)) {
                                     $set('TasaInteres', $tasa->Valor);
@@ -333,16 +339,69 @@ class CrearProposicionCreditoResource extends Resource
                                 }
                             }),
 
-                        Forms\Components\TextInput::make('TasaInteres')->label('Tasa (%)')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('Plazo')->label('Plazo (días)')->required()->numeric(),
-                        Forms\Components\TextInput::make('NumeroCuotas')->label('N° Cuotas')->required()->numeric()
-                            ->live(onBlur: true)->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
+                        Forms\Components\TextInput::make('TasaInteres')
+                            ->label('Tasa (%)')
+                            ->disabled()
+                            ->dehydrated()
+                            ->suffix('%')
+                            ->columnSpan(4)
+                            ->extraInputAttributes(['class' => 'bg-gray-50 border-gray-200 cursor-not-allowed'])
+                            ->hint('Valor según tasa seleccionada'),
 
-                        Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->dehydrated(),
-                        Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('MontoTotalPagar')->label('Monto Total a Pagar')->disabled()->dehydrated(),
-                        Forms\Components\TextInput::make('TasaMora')->label('Mora (S/)')->required()->numeric()->default(0.50),
-                    ])->columns(3),
+                        Forms\Components\TextInput::make('Plazo')
+                            ->label('Plazo (días)')
+                            ->required()
+                            ->numeric()
+                            ->suffix('días')
+                            ->columnSpan(4),
+
+                        Forms\Components\TextInput::make('TasaMora')
+                            ->label('Mora (S/)')
+                            ->required()
+                            ->numeric()
+                            ->prefix('S/')
+                            ->default(0.50)
+                            ->columnSpan(4),
+
+                        Forms\Components\TextInput::make('NumeroCuotas')
+                            ->label('N° Cuotas')
+                            ->required()
+                            ->numeric()
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal')))
+                            ->columnSpan(4),
+
+                        Forms\Components\Fieldset::make('Resumen del Crédito')
+                            ->schema([
+                                Forms\Components\TextInput::make('MontoCuota')
+                                    ->label('Monto por Cuota')
+                                    ->prefix('S/')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(4)
+                                    ->extraInputAttributes(['class' => 'bg-gray-100 font-medium'])
+                                    ->hint('Calculado'),
+
+                                Forms\Components\TextInput::make('MontoInteres')
+                                    ->label('Monto Total Interés')
+                                    ->prefix('S/')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(4)
+                                    ->extraInputAttributes(['class' => 'bg-gray-100 font-medium'])
+                                    ->hint('Calculado'),
+
+                                Forms\Components\TextInput::make('MontoTotalPagar')
+                                    ->label('Monto Total a Pagar')
+                                    ->prefix('S/')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->columnSpan(4)
+                                    ->extraInputAttributes(['class' => 'bg-primary-50 border-primary-600 font-bold text-lg text-primary-700'])
+                                    ->hint('Monto final estimado'),
+                            ])->columns(12)
+                            ->columnSpanFull(),
+                    ])->columns(12),
 
                 Forms\Components\Section::make('Información Adicional')
                     ->schema([
@@ -352,7 +411,8 @@ class CrearProposicionCreditoResource extends Resource
                             ->required()
                             ->searchable()
                             ->native(false)
-                            ->dehydrated(),
+                            ->dehydrated()
+                            ->columnSpanFull(),
                         Forms\Components\Textarea::make('Observaciones')->rows(3)->columnSpanFull(),
                     ])->columns(2),
             ]);
@@ -378,10 +438,10 @@ class CrearProposicionCreditoResource extends Resource
             $montoCuotasTotal = $creditoCorriendo->credito->cuotas()->sum('MontoCuota');
             $saldoTotal = number_format(max(0, $montoCuotasTotal - $totalPagado), 2);
 
-            return "🔴 Este cliente tiene un crédito corriendo con saldo pendiente de S/ {$saldoTotal}";
+            return "Este cliente tiene un crédito corriendo con saldo pendiente de S/ {$saldoTotal}";
         }
 
-        return '🔴 Este cliente tiene un crédito corriendo';
+        return 'Este cliente tiene un crédito corriendo';
     }
 
     protected static function clienteTieneCreditoCorriendo($clienteID): bool
@@ -432,13 +492,13 @@ class CrearProposicionCreditoResource extends Resource
                 // Si el total de pagos es menor a lo esperado, el cliente NO está al día
                 if ($totalPagos < $montoCuotasEsperadas) {
                     $deuda = number_format($montoCuotasEsperadas - $totalPagos, 2);
-                    return "❌ Cliente NO está al día. Deuda en cuotas: S/ {$deuda}";
+                    return "Cliente NO está al día. Deuda en cuotas: S/ {$deuda}";
                 }
             }
 
-            return "✅ Cliente está al día en el pago de sus cuotas";
+            return "Cliente está al día en el pago de sus cuotas";
         } catch (\Exception $e) {
-            return "⚠️ Error al verificar estado de cuotas";
+            return "Error al verificar estado de cuotas";
         }
     }
 
@@ -519,7 +579,7 @@ class CrearProposicionCreditoResource extends Resource
         if ($montoTotal > $disponible['montoDisponible']) {
             Notification::make()
                 ->warning()
-                ->title('⚠️ Monto Excede el Límite Disponible')
+                ->title('Monto Excede el Límite Disponible')
                 ->body("El monto de S/ {$montoTotal} excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']}).")
                 ->send();
         }
@@ -535,7 +595,7 @@ class CrearProposicionCreditoResource extends Resource
         if ($creditosDisponibles->isEmpty()) {
             Notification::make()
                 ->warning()
-                ->title('⚠️ Sin Créditos Disponibles')
+                ->title('Sin Créditos Disponibles')
                 ->body("Este cliente no tiene créditos activos con saldo pendiente para refinanciar.")
                 ->send();
             return;
@@ -551,7 +611,7 @@ class CrearProposicionCreditoResource extends Resource
 
         // Mostrar notificación con instrucciones
         Notification::make()
-            ->title('📋 Seleccionar Crédito para Refinanciar')
+            ->title('Seleccionar Crédito para Refinanciar')
             ->body('Se abrirá un modal con los créditos disponibles. Seleccione el que desea refinanciar.')
             ->info()
             ->send();
@@ -570,7 +630,7 @@ class CrearProposicionCreditoResource extends Resource
         if (!$proposicionAnterior) {
             Notification::make()
                 ->danger()
-                ->title('❌ Error')
+                ->title('Error')
                 ->body("No se encontró el crédito seleccionado.")
                 ->send();
             return;
@@ -593,8 +653,8 @@ class CrearProposicionCreditoResource extends Resource
 
         Notification::make()
             ->success()
-            ->title('✓ Datos Cargados')
-            ->body("Se han cargado los datos del crédito {$proposicionAnterior->CodigoCredito} con saldo S/ {$infoRefinanciamiento['SaldoPendiente']}")
+            ->title('Datos Cargados')
+            ->body("Se han cargados los datos del crédito {$proposicionAnterior->CodigoCredito} con saldo S/ {$infoRefinanciamiento['SaldoPendiente']}")
             ->send();
     }
 
@@ -615,12 +675,12 @@ class CrearProposicionCreditoResource extends Resource
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 return $query->where('Estado', 'PENDIENTE');
-            })([
+            })
+            ->filters([
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
                     ->visible(fn () => auth()->user()->esAdmin()),
-
             ])
 
             ->actions([])
@@ -639,7 +699,7 @@ class CrearProposicionCreditoResource extends Resource
     {
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
-                ->title('❌ Día Cerrado')
+                ->title('Día Cerrado')
                 ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
                 ->danger()
                 ->persistent()

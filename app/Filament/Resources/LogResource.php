@@ -21,11 +21,6 @@ class LogResource extends Resource
     protected static ?string $modelLabel = 'Log';
     protected static ?string $pluralModelLabel = 'Logs';
 
-    public static function canAccess(): bool
-    {
-        return auth()->user()->esAdmin();
-    }
-
     public static function form(Form $form): Form
     {
         return $form
@@ -91,7 +86,7 @@ class LogResource extends Resource
 
                 Tables\Columns\BadgeColumn::make('accion')
                     ->label('Acción')
-                    ->color(fn (string $state) => match ($state) {
+                    ->color(fn(string $state) => match ($state) {
                         'CREAR' => 'success',
                         'ACTUALIZAR' => 'info',
                         'ELIMINAR' => 'danger',
@@ -128,7 +123,7 @@ class LogResource extends Resource
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
-                    ->visible(fn () => auth()->user()->esAdmin()),
+                    ->visible(fn() => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('accion')
                     ->label('Acción')
                     ->options([
@@ -141,7 +136,7 @@ class LogResource extends Resource
 
                 Tables\Filters\SelectFilter::make('modelo')
                     ->label('Modelo')
-                    ->options(fn () => \App\Models\Log::distinct()->pluck('modelo', 'modelo')->toArray()),
+                    ->options(fn() => \App\Models\Log::distinct()->pluck('modelo', 'modelo')->toArray()),
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([

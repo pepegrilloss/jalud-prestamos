@@ -33,25 +33,29 @@ class CompraResource extends Resource
                 Forms\Components\Section::make('Información del Comprobante')
                     ->schema([
                         Forms\Components\Select::make('TipoComprobanteID')
+                            ->prefixIcon('heroicon-m-document-text')
                             ->label('Tipo de Comprobante')
                             ->options(TipoComprobante::where('Activo', true)->pluck('Nombre', 'TipoComprobanteID'))
                             ->required()
                             ->searchable()
                             ->live(),
                         Forms\Components\TextInput::make('Numero')
+                            ->prefixIcon('heroicon-m-hashtag')
                             ->label('Serie / Número')
                             ->required()
                             ->maxLength(20),
                         Forms\Components\DatePicker::make('FechaEmision')
+                            ->prefixIcon('heroicon-m-calendar-days')
                             ->label('Fecha Emisión')
                             ->required()
                             ->minDate(now()->startOfMonth())
                             ->maxDate(now()->endOfMonth()),
-                    ])->columns(2),
+                    ])->columns(3),
 
                 Forms\Components\Section::make('Proveedor')
                     ->schema([
                         Forms\Components\TextInput::make('NombreProveedor')
+                            ->prefixIcon('heroicon-m-building-storefront')
                             ->label('Nombre del Proveedor')
                             ->required()
                             ->maxLength(150),
@@ -64,11 +68,13 @@ class CompraResource extends Resource
                             ->relationship()
                             ->schema([
                                 Forms\Components\TextInput::make('ProductoServicio')
+                                    ->prefixIcon('heroicon-m-shopping-bag')
                                     ->label('Producto o Servicio')
                                     ->required()
                                     ->maxLength(255)
                                     ->columnSpan(2),
                                 Forms\Components\TextInput::make('Cantidad')
+                                    ->prefixIcon('heroicon-m-scale')
                                     ->label('Cantidad')
                                     ->numeric()
                                     ->required()

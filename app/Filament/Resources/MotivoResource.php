@@ -112,8 +112,6 @@ class MotivoResource extends Resource
     {
         return [
             'index' => Pages\ListMotivos::route('/'),
-            'create' => Pages\CreateMotivo::route('/create'),
-            'edit' => Pages\EditMotivo::route('/{record}/edit'),
         ];
     }
 

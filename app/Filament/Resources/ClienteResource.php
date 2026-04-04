@@ -32,6 +32,18 @@ class ClienteResource extends Resource
     protected static ?int $navigationGroupSort = 1;
     protected static ?int $navigationSort = 1;
 
+    protected static ?string $recordTitleAttribute = 'NombresApellidos';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['NombresApellidos', 'DNI'];
+    }
+
+    public static function getGlobalSearchResultUrl(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return static::getUrl('view', ['record' => $record]);
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -41,7 +53,7 @@ class ClienteResource extends Resource
                     ->label('')
                     ->content(
                         fn($record) => $record && !$record->analisisEconomico
-                        ? '⚠️ Este cliente NO tiene un Análisis Económico registrado. Es OBLIGATORIO antes de continuar.'
+                        ? 'Este cliente NO tiene un Análisis Económico registrado. Es OBLIGATORIO antes de continuar.'
                         : ''
                     )
                     ->visible(fn($record) => $record && !$record->analisisEconomico)
@@ -59,6 +71,7 @@ class ClienteResource extends Resource
                                     ->maxLength(20)
                                     ->label('Dni')
                                     ->placeholder('Ingrese DNI')
+                                    ->prefixIcon('heroicon-m-identification')
                                     ->live(onBlur: true)
                                     ->suffixAction(
                                         Forms\Components\Actions\Action::make('buscarReniec')
@@ -118,6 +131,7 @@ class ClienteResource extends Resource
                                     ->maxLength(200)
                                     ->label('Nombres y Apellidos')
                                     ->placeholder('Se llenará automáticamente con RENIEC')
+                                    ->prefixIcon('heroicon-m-user')
                                     ->columnSpan(2),
                             ]),
 
@@ -125,6 +139,7 @@ class ClienteResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('Sexo')
                                     ->required()
+                                    ->prefixIcon('heroicon-m-users')
                                     ->options([
                                         'M' => 'Masculino',
                                         'F' => 'Femenino',
@@ -133,12 +148,14 @@ class ClienteResource extends Resource
 
                                 Forms\Components\DatePicker::make('FechaNacimiento')
                                     ->label('Fecha de Nacimiento')
+                                    ->prefixIcon('heroicon-m-calendar-days')
                                     ->native(false)
                                     ->displayFormat('d/m/Y')
                                     ->maxDate(now()),
 
                                 Forms\Components\Select::make('Estado')
                                     ->required()
+                                    ->prefixIcon('heroicon-m-check-badge')
                                     ->options([
                                         'NO OBSERVADO' => 'No Observado',
                                         'OBSERVADO' => 'Observado',
@@ -157,6 +174,7 @@ class ClienteResource extends Resource
                                     ->maxLength(20)
                                     ->label('DNI del Cónyuge')
                                     ->placeholder('Ingrese DNI del cónyuge')
+                                    ->prefixIcon('heroicon-m-identification')
                                     ->live(onBlur: true)
                                     ->suffixAction(
                                         Forms\Components\Actions\Action::make('buscarConyugeReniec')
@@ -211,6 +229,7 @@ class ClienteResource extends Resource
                                 Forms\Components\TextInput::make('ConyugeNombresApellidos')
                                     ->maxLength(200)
                                     ->label('Nombres y Apellidos del Cónyuge')
+                                    ->prefixIcon('heroicon-m-user')
                                     ->placeholder('Se llenará automáticamente con RENIEC'),
                             ]),
                     ])
@@ -219,8 +238,8 @@ class ClienteResource extends Resource
 
                 Forms\Components\Section::make('Domicilio')
                     ->schema([
-                        Forms\Components\Textarea::make('Domicilio')
-                            ->rows(3)
+                        Forms\Components\TextInput::make('Domicilio')
+                            ->prefixIcon('heroicon-m-map-pin')
                             ->maxLength(500)
                             ->placeholder('Dirección completa del domicilio del cliente'),
                     ])
@@ -233,6 +252,7 @@ class ClienteResource extends Resource
                                 Forms\Components\Select::make('TasaID')
                                     ->required()
                                     ->label('Tasa de Interés')
+                                    ->prefixIcon('heroicon-m-receipt-percent')
                                     ->options(
                                         Tasa::where('Activo', 1)
                                             ->get()
@@ -243,35 +263,10 @@ class ClienteResource extends Resource
                                     ->searchable()
                                     ->native(false),
 
-                                Forms\Components\Select::make('negocio.Calificacion')
-                                    ->required()
-                                    ->label('Calificación')
-                                    ->options([
-                                        'MALO' => 'Malo',
-                                        'REGULAR' => 'Regular',
-                                        'BUENO' => 'Bueno',
-                                    ])
-                                    ->native(false)
-                                    ->placeholder('Seleccione'),
-                            ]),
-
-                        Forms\Components\Grid::make(1)
-                            ->schema([
-                                Forms\Components\Select::make('PromotorCobradorID')
-                                    ->label('Promotor/Cobrador')
-                                    ->options(
-                                        PromotorCobrador::where('Activo', 1)
-                                            ->get()
-                                            ->mapWithKeys(fn($pc) => [
-                                                $pc->PromotorCobradorID => "{$pc->Codigo} - {$pc->Descripcion}"
-                                            ])
-                                    )
-                                    ->searchable()
-                                    ->native(false),
-
                                 Forms\Components\Select::make('TasaMoraID')
                                     ->required()
                                     ->label('Tasa de Mora')
+                                    ->prefixIcon('heroicon-m-exclamation-triangle')
                                     ->options(
                                         TasaMora::where('Activo', 1)
                                             ->get()
@@ -282,6 +277,31 @@ class ClienteResource extends Resource
                                     ->searchable()
                                     ->native(false)
                                     ->placeholder('Seleccione una tasa de mora'),
+
+                                Forms\Components\Select::make('negocio.Calificacion')
+                                    ->required()
+                                    ->label('Calificación')
+                                    ->prefixIcon('heroicon-m-star')
+                                    ->options([
+                                        'MALO' => 'Malo',
+                                        'REGULAR' => 'Regular',
+                                        'BUENO' => 'Bueno',
+                                    ])
+                                    ->native(false)
+                                    ->placeholder('Seleccione'),
+
+                                Forms\Components\Select::make('PromotorCobradorID')
+                                    ->label('Promotor/Cobrador')
+                                    ->prefixIcon('heroicon-m-briefcase')
+                                    ->options(
+                                        PromotorCobrador::where('Activo', 1)
+                                            ->get()
+                                            ->mapWithKeys(fn($pc) => [
+                                                $pc->PromotorCobradorID => "{$pc->Codigo} - {$pc->Descripcion}"
+                                            ])
+                                    )
+                                    ->searchable()
+                                    ->native(false),
                             ]),
                     ])
                     ->collapsible(),
@@ -293,6 +313,7 @@ class ClienteResource extends Resource
                                 Forms\Components\Select::make('negocio.CiudadID')
                                     ->required()
                                     ->label('Ciudad')
+                                    ->prefixIcon('heroicon-m-building-office')
                                     ->options(Ciudad::where('Activo', 1)->pluck('Nombre', 'CiudadID'))
                                     ->searchable()
                                     ->native(false)
@@ -301,6 +322,7 @@ class ClienteResource extends Resource
 
                                 Forms\Components\Select::make('negocio.ZonaID')
                                     ->label('Zona')
+                                    ->prefixIcon('heroicon-m-map')
                                     ->options(
                                         fn(Get $get) =>
                                         Zona::where('CiudadID', $get('negocio.CiudadID'))
@@ -310,19 +332,21 @@ class ClienteResource extends Resource
                                     ->searchable()
                                     ->native(false)
                                     ->disabled(fn(Get $get) => !$get('negocio.CiudadID')),
+                                    
+                                Forms\Components\TextInput::make('negocio.DireccionNegocio')
+                                    ->label('Dirección del Negocio')
+                                    ->required()
+                                    ->maxLength(500)
+                                    ->prefixIcon('heroicon-m-map-pin')
+                                    ->placeholder('Dirección completa del negocio')
+                                    ->columnSpan(2),
                             ]),
-
-                        Forms\Components\Textarea::make('negocio.DireccionNegocio')
-                            ->label('Dirección del Negocio')
-                            ->required()
-                            ->rows(3)
-                            ->maxLength(500)
-                            ->placeholder('Dirección completa del negocio'),
 
                         Forms\Components\Grid::make(3)
                             ->schema([
                                 Forms\Components\TextInput::make('negocio.Antiguedad')
                                     ->label('Antigüedad (años)')
+                                    ->prefixIcon('heroicon-m-clock')
                                     ->numeric()
                                     ->step(0.1)
                                     ->suffix('años'),
@@ -330,6 +354,7 @@ class ClienteResource extends Resource
                                 Forms\Components\Select::make('negocio.GiroID')
                                     ->required()
                                     ->label('Giro')
+                                    ->prefixIcon('heroicon-m-briefcase')
                                     ->options(
                                         Giro::where('Activo', 1)
                                             ->get()
@@ -344,6 +369,7 @@ class ClienteResource extends Resource
 
                                 Forms\Components\Select::make('negocio.SubGiroID')
                                     ->label('Sub Giro')
+                                    ->prefixIcon('heroicon-m-tag')
                                     ->options(
                                         fn(Get $get) =>
                                         SubGiro::where('GiroID', $get('negocio.GiroID'))
@@ -363,12 +389,14 @@ class ClienteResource extends Resource
                                         Forms\Components\TextInput::make('Telefono')
                                             ->label('Número de Teléfono')
                                             ->required()
+                                            ->prefixIcon('heroicon-m-phone')
                                             ->tel()
                                             ->maxLength(20)
                                             ->placeholder('Ej: 987654321'),
 
                                         Forms\Components\Select::make('TipoTelefono')
                                             ->label('Tipo')
+                                            ->prefixIcon('heroicon-m-device-phone-mobile')
                                             ->options([
                                                 'PRINCIPAL' => 'Principal',
                                                 'SECUNDARIO' => 'Secundario',
@@ -379,6 +407,7 @@ class ClienteResource extends Resource
 
                                         Forms\Components\TextInput::make('Observacion')
                                             ->label('Observación')
+                                            ->prefixIcon('heroicon-m-chat-bubble-bottom-center-text')
                                             ->maxLength(200)
                                             ->placeholder('Ej: WhatsApp, Personal, etc.'),
                                     ]),
@@ -401,14 +430,16 @@ class ClienteResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('analisis_economico.CapitalManifestado')
                                     ->required()
-                                    ->label('Capital Manifestado por el Cliente')
+                                    ->label('Capital Manifestado')
+                                    ->prefixIcon('heroicon-m-banknotes')
                                     ->numeric()
                                     ->placeholder('Ej: 2000.00')
-                                    ->helperText('Monto que el cliente indica como capital'),
+                                    ->helperText('Capital que el cliente indica'),
 
                                 Forms\Components\TextInput::make('analisis_economico.CapitalEstimado')
                                     ->required()
-                                    ->label('Capital Estimado por el Jefe de Oficina')
+                                    ->label('Capital Estimado')
+                                    ->prefixIcon('heroicon-m-currency-dollar')
                                     ->numeric()
                                     ->placeholder('Ej: 4000.00')
                                     ->helperText('Estimación del jefe de oficina'),
@@ -418,33 +449,37 @@ class ClienteResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('analisis_economico.VentaManifestadaMin')
                                     ->required()
-                                    ->label('Venta Manifestada Mínima')
+                                    ->label('Venta Min. Manifestada')
+                                    ->prefixIcon('heroicon-m-presentation-chart-line')
                                     ->numeric()
                                     ->placeholder('Ej: 500.00')
                                     ->helperText('Venta mínima declarada'),
 
                                 Forms\Components\TextInput::make('analisis_economico.VentaManifestadaMax')
                                     ->required()
-                                    ->label('Venta Manifestada Máxima')
+                                    ->label('Venta Max. Manifestada')
+                                    ->prefixIcon('heroicon-m-presentation-chart-line')
                                     ->numeric()
                                     ->placeholder('Ej: 800.00')
                                     ->helperText('Venta máxima declarada'),
 
                                 Forms\Components\TextInput::make('analisis_economico.VentaEstimada')
                                     ->required()
-                                    ->label('Venta Estimada por Jefe de Oficina')
+                                    ->label('Venta Estimada')
+                                    ->prefixIcon('heroicon-m-chart-bar')
                                     ->numeric()
                                     ->placeholder('Ej: 400.00')
-                                    ->helperText('Estimación del jefe de oficina'),
+                                    ->helperText('Estimación de oficina'),
                             ]),
 
                         Forms\Components\TextInput::make('analisis_economico.MontoMaxRecomendado')
                             ->required()
                             ->label('Monto Máximo Recomendado')
+                            ->prefixIcon('heroicon-m-shield-check')
                             ->numeric()
                             ->step(0.01)
                             ->placeholder('Ej: 5000.00')
-                            ->helperText('Monto máximo que se recomienda prestar a este cliente'),
+                            ->helperText('Monto recomendado para préstamo'),
                     ])
                     ->collapsible()
                     ->visible(fn($livewire) => $livewire instanceof \App\Filament\Resources\ClienteResource\Pages\CreateCliente),
@@ -461,9 +496,9 @@ class ClienteResource extends Resource
                                                 if (request()->route('record')) {
                                                     $record = \App\Models\Cliente::find(request()->route('record'));
                                                     $doc = $record->getDocumentoDNI();
-                                                    return $doc ? '📄 ' . $doc->NombreOriginal : '❌ Sin archivo';
+                                                    return $doc ? $doc->NombreOriginal : 'Sin archivo';
                                                 }
-                                                return '📄 Nuevo archivo';
+                                                return 'Nuevo archivo';
                                             })
                                             ->visible(fn($livewire) => !($livewire instanceof \App\Filament\Resources\ClienteResource\Pages\CreateCliente)),
 
@@ -494,9 +529,9 @@ class ClienteResource extends Resource
                                                 if (request()->route('record')) {
                                                     $record = \App\Models\Cliente::find(request()->route('record'));
                                                     $doc = $record->getDocumentoReciboServicio();
-                                                    return $doc ? '📄 ' . $doc->NombreOriginal : '❌ Sin archivo';
+                                                    return $doc ? $doc->NombreOriginal : 'Sin archivo';
                                                 }
-                                                return '📄 Nuevo archivo';
+                                                return 'Nuevo archivo';
                                             })
                                             ->visible(fn($livewire) => !($livewire instanceof \App\Filament\Resources\ClienteResource\Pages\CreateCliente)),
 
@@ -526,6 +561,7 @@ class ClienteResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('GaranteID')
                             ->label('Garante')
+                            ->prefixIcon('heroicon-m-user-plus')
                             ->options(function ($record) {
                                 // Obtener todos los clientes activos excepto el cliente actual
                                 return Cliente::where('Activo', 1)

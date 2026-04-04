@@ -55,7 +55,6 @@ class CreatePago extends CreateRecord
                 Actions\Action::make('registrar_como_inicial')
                     ->label('REGISTRA COMO INICIAL')
                     ->icon('heroicon-o-check-circle')
-                    ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('⚠️ Confirmar Registro de Pago')
                     ->modalDescription(function () {
@@ -80,17 +79,17 @@ class CreatePago extends CreateRecord
                             $nombre = e($cliente->NombresApellidos ?? '');
 
                             return new \Illuminate\Support\HtmlString(
-                                '<div style="text-align:center; padding: 10px 0;">' .
-                                '<div style="font-size: 1.1rem; color: #666; margin-bottom: 4px;">👤 Cliente:</div>' .
-                                '<div style="font-size: 2.25rem; line-height: 2.5rem; font-weight: 800; color: #111; margin-bottom: 20px; text-transform: uppercase; letter-spacing: -0.025em;">' . $nombre . '</div>' .
-                                '<div style="display: flex; justify-content: center; gap: 40px; border-top: 1px solid #eee; pt-4; margin-top: 10px; padding-top: 20px;">' .
+                                '<div class="text-center py-3">' .
+                                '<div class="text-lg text-gray-500 dark:text-gray-400 mb-1">👤 Cliente:</div>' .
+                                '<div class="text-4xl font-extrabold text-gray-900 dark:text-white mb-5 uppercase tracking-tight leading-tight">' . $nombre . '</div>' .
+                                '<div class="flex justify-center gap-10 border-t border-gray-200 dark:border-gray-700 mt-3 pt-5">' .
                                 '<div>' .
-                                '<div style="font-size: 0.875rem; color: #666;">📝 Tipo de Crédito</div>' .
-                                '<div style="font-size: 1.25rem; font-weight: 600;">' . $tipoCredito . '</div>' .
+                                '<div class="text-sm text-gray-500 dark:text-gray-400">📝 Tipo de Crédito</div>' .
+                                '<div class="text-xl font-bold text-gray-900 dark:text-white">' . $tipoCredito . '</div>' .
                                 '</div>' .
                                 '<div>' .
-                                '<div style="font-size: 0.875rem; color: #666;">💰 Monto a Pagar</div>' .
-                                '<div style="font-size: 1.5rem; font-weight: 700; color: #059669;">S/ ' . $monto . '</div>' .
+                                '<div class="text-sm text-gray-500 dark:text-gray-400">💰 Monto a Pagar</div>' .
+                                '<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">S/ ' . $monto . '</div>' .
                                 '</div>' .
                                 '</div>' .
                                 '</div>'
@@ -135,17 +134,17 @@ class CreatePago extends CreateRecord
                             $nombre = e($cliente->NombresApellidos ?? '');
 
                             return new \Illuminate\Support\HtmlString(
-                                '<div style="text-align:center; padding: 10px 0;">' .
-                                '<div style="font-size: 1.1rem; color: #666; margin-bottom: 4px;">👤 Cliente:</div>' .
-                                '<div style="font-size: 2.25rem; line-height: 2.5rem; font-weight: 800; color: #111; margin-bottom: 20px; text-transform: uppercase; letter-spacing: -0.025em;">' . $nombre . '</div>' .
-                                '<div style="display: flex; justify-content: center; gap: 40px; border-top: 1px solid #eee; pt-4; margin-top: 10px; padding-top: 20px;">' .
+                                '<div class="text-center py-3">' .
+                                '<div class="text-lg text-gray-500 dark:text-gray-400 mb-1">👤 Cliente:</div>' .
+                                '<div class="text-4xl font-extrabold text-gray-900 dark:text-white mb-5 uppercase tracking-tight leading-tight">' . $nombre . '</div>' .
+                                '<div class="flex justify-center gap-10 border-t border-gray-200 dark:border-gray-700 mt-3 pt-5">' .
                                 '<div>' .
-                                '<div style="font-size: 0.875rem; color: #666;">📝 Tipo de Crédito</div>' .
-                                '<div style="font-size: 1.25rem; font-weight: 600;">' . $tipoCredito . '</div>' .
+                                '<div class="text-sm text-gray-500 dark:text-gray-400">📝 Tipo de Crédito</div>' .
+                                '<div class="text-xl font-bold text-gray-900 dark:text-white">' . $tipoCredito . '</div>' .
                                 '</div>' .
                                 '<div>' .
-                                '<div style="font-size: 0.875rem; color: #666;">💰 Monto a Pagar</div>' .
-                                '<div style="font-size: 1.5rem; font-weight: 700; color: #059669;">S/ ' . $monto . '</div>' .
+                                '<div class="text-sm text-gray-500 dark:text-gray-400">💰 Monto a Pagar</div>' .
+                                '<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">S/ ' . $monto . '</div>' .
                                 '</div>' .
                                 '</div>' .
                                 '</div>'
@@ -195,17 +194,17 @@ class CreatePago extends CreateRecord
                         $nombre = e($cliente->NombresApellidos ?? '');
 
                         return new \Illuminate\Support\HtmlString(
-                            '<div style="text-align:center; padding: 10px 0;">' .
-                            '<div style="font-size: 1.1rem; color: #666; margin-bottom: 4px;">👤 Cliente:</div>' .
-                            '<div style="font-size: 2.25rem; line-height: 2.5rem; font-weight: 800; color: #111; margin-bottom: 20px; text-transform: uppercase; letter-spacing: -0.025em;">' . $nombre . '</div>' .
-                            '<div style="display: flex; justify-content: center; gap: 40px; border-top: 1px solid #eee; pt-4; margin-top: 10px; padding-top: 20px;">' .
+                            '<div class="text-center py-3">' .
+                            '<div class="text-lg text-gray-500 dark:text-gray-400 mb-1">👤 Cliente:</div>' .
+                            '<div class="text-4xl font-extrabold text-gray-900 dark:text-white mb-5 uppercase tracking-tight leading-tight">' . $nombre . '</div>' .
+                            '<div class="flex justify-center gap-10 border-t border-gray-200 dark:border-gray-700 mt-3 pt-5">' .
                             '<div>' .
-                            '<div style="font-size: 0.875rem; color: #666;">📝 Tipo de Crédito</div>' .
-                            '<div style="font-size: 1.25rem; font-weight: 600;">' . $tipoCredito . '</div>' .
+                            '<div class="text-sm text-gray-500 dark:text-gray-400">📝 Tipo de Crédito</div>' .
+                            '<div class="text-xl font-bold text-gray-900 dark:text-white">' . $tipoCredito . '</div>' .
                             '</div>' .
                             '<div>' .
-                            '<div style="font-size: 0.875rem; color: #666;">💰 Monto a Pagar</div>' .
-                            '<div style="font-size: 1.5rem; font-weight: 700; color: #059669;">S/ ' . $monto . '</div>' .
+                            '<div class="text-sm text-gray-500 dark:text-gray-400">💰 Monto a Pagar</div>' .
+                            '<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">S/ ' . $monto . '</div>' .
                             '</div>' .
                             '</div>' .
                             '</div>'
@@ -232,7 +231,7 @@ class CreatePago extends CreateRecord
         // Máximo 10 pagos por usuario cada 60 minutos
         $userID = auth()->id();
         $key = "pago_creation_filament:{$userID}";
-        
+
         if (RateLimiter::tooManyAttempts($key, 10)) {
             $retryAfter = RateLimiter::availableIn($key);
             \Log::warning('SEGURIDAD - RATE LIMIT PAGO: Demasiados intentos', [
@@ -242,9 +241,9 @@ class CreatePago extends CreateRecord
             ]);
             throw new \Exception('Has intentado crear demasiados pagos. Intenta nuevamente en ' . ceil($retryAfter / 60) . ' minutos. Este intento ha sido registrado.');
         }
-        
+
         RateLimiter::hit($key, 3600); // 1 hora
-        
+
         // Obtener la zona del promotor actual
         $promotorCobrador = auth()->user()?->promotorCobrador;
         $zonaID = $promotorCobrador?->ZonaID;
@@ -282,19 +281,19 @@ class CreatePago extends CreateRecord
         if (empty($data['MontoPagado'])) {
             throw new \Exception('El monto pagado es obligatorio.');
         }
-        
+
         $monto = (float) $data['MontoPagado'];
-        
+
         // CRÍTICO: Validación exhaustiva de monto
         if ($monto <= 0) {
             throw new \Exception('El monto pagado debe ser mayor a S/ 0.00');
         }
-        
+
         // Límite mínimo: S/ 0.01
         if ($monto < 0.01) {
             throw new \Exception('El monto mínimo a pagar es S/ 0.01');
         }
-        
+
         // Límite máximo: S/ 1,000,000 (ajustar según políticas del negocio)
         $montoMaximo = 1000000;
         if ($monto > $montoMaximo) {
@@ -303,30 +302,30 @@ class CreatePago extends CreateRecord
 
         // CRÍTICO: Validación de fechas permitidas
         $fechaPago = $data['FechaPago'] ?? now();
-        
+
         // No puede ser en el futuro
         if (Carbon::parse($fechaPago)->gt(Carbon::now())) {
             throw new \Exception('La fecha del pago no puede ser en el futuro. Usa la fecha actual o anterior.');
         }
-        
+
         // No puede ser más de 30 días en el pasado (ajustar según políticas)
         $fechaMinima = Carbon::now()->subDays(30);
         if (Carbon::parse($fechaPago)->lt($fechaMinima)) {
             throw new \Exception('La fecha del pago no puede ser más de 30 días anterior. Por favor contacta a administración para registros históricos.');
         }
-        
+
         // Validar que la fecha esté dentro del período del crédito
         $creditoID = $data['CreditoID'] ?? null;
         if ($creditoID) {
             $credito = \App\Models\Credito::find($creditoID);
             if ($credito) {
-                $fechaInicio = Carbon::parse($credito->FechaInicio);
+                $fechaGeneracion = $credito->FechaGeneracion ? Carbon::parse($credito->FechaGeneracion)->startOfDay() : Carbon::parse($credito->FechaInicio)->startOfDay();
                 $fechaVencimiento = Carbon::parse($credito->FechaVencimiento);
-                
-                if (Carbon::parse($fechaPago)->lt($fechaInicio)) {
-                    throw new \Exception('No se puede registrar un pago antes de la fecha de inicio del crédito.');
+
+                if (Carbon::parse($fechaPago)->startOfDay()->lt($fechaGeneracion)) {
+                    throw new \Exception('No se puede registrar un pago antes de la fecha de creación del crédito.');
                 }
-                
+
                 // Permitir pagos después del vencimiento (para mora), pero alertar
                 if (Carbon::parse($fechaPago)->gt($fechaVencimiento->addDays(365))) {
                     throw new \Exception('Fecha de pago fuera del rango permitido del crédito. Contacta a administración.');
@@ -361,18 +360,18 @@ class CreatePago extends CreateRecord
         // 3. Asignar PromotorCobradorID basado en la zona
         // El promotor cobrador debe ser del mismo usuario autenticado si su zona coincide con la de la proposición
         $promotorCobradorDelUsuario = auth()->user()?->promotorCobrador;
-        
+
         if ($promotorCobradorDelUsuario) {
             // Obtener la zona del promotor cobrador del usuario
             $zonaDelPromotorCobradorDelUsuario = $promotorCobradorDelUsuario->ZonaID;
-            
+
             // Obtener la proposición del crédito
             $creditoID = $data['CreditoID'] ?? null;
             if ($creditoID) {
                 $credito = \App\Models\Credito::with('proposicion')->find($creditoID);
                 if ($credito && $credito->proposicion) {
                     $zonaDelCredito = $credito->proposicion->ZonaID;
-                    
+
                     // Si las zonas coinciden, asignar el PromotorCobradorID del usuario
                     if ($zonaDelPromotorCobradorDelUsuario === $zonaDelCredito) {
                         $data['PromotorCobradorID'] = $promotorCobradorDelUsuario->PromotorCobradorID;
@@ -390,21 +389,21 @@ class CreatePago extends CreateRecord
         // Obtener el usuario actual
         $data['UsuarioRegistro'] = auth()->user()->name ?? auth()->id();
         $data['Activo'] = true;
-        
+
         // Validar y asignar el método de pago
         $metodoPagoValidos = ['EFECTIVO', 'YAPE_PLIN', 'TRANSFERENCIA_BANCARIA'];
         $tipoPago = $data['TipoPago'] ?? 'EFECTIVO';
-        
+
         if (!in_array($tipoPago, $metodoPagoValidos)) {
             throw new \Exception('Método de pago inválido. Use: EFECTIVO, YAPE_PLIN o TRANSFERENCIA_BANCARIA');
         }
-        
+
         $data['TipoPago'] = $tipoPago;
-        
+
         // Mantener para compatibilidad con datos históricos (ya no se usan en el formulario)
         $data['EsMora'] = false;
         $data['EsPagoAMayor'] = false;
-        
+
         // Usar el valor que el usuario seleccionó en los botones
         // Si no seleccionó nada explícitamente, hacer detección automática
         if ($this->pagoInicialSeleccionado !== null) {
@@ -414,15 +413,15 @@ class CreatePago extends CreateRecord
             // Para pagos normales (sin detección), usar false
             $data['EsPagoInicial'] = false;
         }
-        
+
         // Inyectar fecha abierta en AMBOS campos de fecha (con hora actual)
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
         $fechaAAsignar = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-        
+
         if (!isset($data['FechaCreacion'])) {
             $data['FechaCreacion'] = $fechaAAsignar;
         }
-        
+
         if (!isset($data['FechaPago'])) {
             $data['FechaPago'] = $fechaAAsignar;
         }
@@ -509,7 +508,7 @@ class CreatePago extends CreateRecord
                         ->where('Activo', 1)
                         ->sum('MontoPagado');
                     $nuevoSaldoPendiente = $montoCuotasTotal - $totalPagado;
-                    
+
                     $proposicion->update([
                         'SaldoPendiente' => $nuevoSaldoPendiente,
                     ]);
@@ -524,7 +523,7 @@ class CreatePago extends CreateRecord
                     if ($nuevoSaldoPendiente <= 0) {
                         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                         $fechaSaldamiento = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-                        
+
                         $credito->update([
                             'EstatusCreditoFinal' => 'SALDADO',
                             'FechaSaldamiento' => $fechaSaldamiento,
@@ -538,7 +537,7 @@ class CreatePago extends CreateRecord
                     }
                 }
             }, 2); // Máximo 2 reintentos si hay conflicto de concurrencia
-            
+
             // Mostrar notificación al completar transacción
             $cuota = $this->record->cuota;
             Notification::make()
@@ -580,7 +579,7 @@ class CreatePago extends CreateRecord
             }
 
             $credito = \App\Models\Credito::find($creditoID);
-            
+
             if (!$credito || !$credito->FechaGeneracion) {
                 return false;
             }

@@ -112,8 +112,6 @@ class TipoComprobanteResource extends Resource
     {
         return [
             'index' => Pages\ListTipoComprobantes::route('/'),
-            'create' => Pages\CreateTipoComprobante::route('/create'),
-            'edit' => Pages\EditTipoComprobante::route('/{record}/edit'),
         ];
     }
 

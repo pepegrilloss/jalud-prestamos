@@ -132,8 +132,6 @@ class TasaMoraResource extends Resource
     {
         return [
             'index' => Pages\ListTasaMoras::route('/'),
-            'create' => Pages\CreateTasaMora::route('/create'),
-            'edit' => Pages\EditTasaMora::route('/{record}/edit'),
         ];
     }
 }

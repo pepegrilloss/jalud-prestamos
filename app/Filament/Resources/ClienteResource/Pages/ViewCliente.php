@@ -132,218 +132,236 @@ class ViewCliente extends ViewRecord
 
         return $infolist
             ->schema([
-                Components\Section::make('Información Personal')
+                Components\Section::make('Perfil del Cliente')
+                    ->description('Información personal básica e identificación')
+                    ->icon('heroicon-m-user-circle')
                     ->schema([
-                        Components\Grid::make(3)
+                        Components\Grid::make(4)
                             ->schema([
                                 Components\TextEntry::make('DNI')
-                                    ->label('Dni'),
+                                    ->label('DNI')
+                                    ->icon('heroicon-m-identification')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->columnSpan(1),
+
                                 Components\TextEntry::make('NombresApellidos')
                                     ->label('Nombres y Apellidos')
+                                    ->icon('heroicon-m-user')
+                                    ->weight(\Filament\Support\Enums\FontWeight::Bold)
+                                    ->size(\Filament\Infolists\Components\TextEntry\TextEntrySize::Large)
                                     ->columnSpan(2),
+
+                                Components\TextEntry::make('Estado')
+                                    ->label('Estado Crediticio')
+                                    ->badge()
+                                    ->icon(fn($state) => $state === 'NO OBSERVADO' ? 'heroicon-m-check-badge' : 'heroicon-m-exclamation-triangle')
+                                    ->color(fn(string $state): string => match ($state) {
+                                        'NO OBSERVADO' => 'success',
+                                        'OBSERVADO' => 'danger',
+                                        default => 'warning',
+                                    })
+                                    ->columnSpan(1),
                             ]),
+                            
                         Components\Grid::make(3)
                             ->schema([
                                 Components\TextEntry::make('Sexo')
+                                    ->icon('heroicon-m-users')
                                     ->formatStateUsing(fn($state) => $state === 'M' ? 'Masculino' : 'Femenino'),
+                                    
                                 Components\TextEntry::make('FechaNacimiento')
-                                    ->label('Fecha de Nacimiento')
+                                    ->label('Fec. Nacimiento')
+                                    ->icon('heroicon-m-cake')
                                     ->date('d/m/Y'),
-                                Components\TextEntry::make('Estado')
-                                    ->badge()
-                                    ->color(fn(string $state): string => match ($state) {
-                                        'NO OBSERVADO' => 'success',
-                                        'OBSERVADO' => 'warning',
-                                    }),
-                            ]),
-                    ], ),
+                                    
+                                Components\TextEntry::make('Edad') // Computado si es posible, o solo el domicilio
+                                    ->label('Domicilio Actual')
+                                    ->icon('heroicon-m-home')
+                                    ->state(fn($record) => $record->Domicilio ?? 'No registrado')
+                                    ->columnSpanFull(),
+                            ])->extraAttributes(['class' => 'mt-4']),
 
-                Components\Section::make('Datos del Cónyuge')
-                    ->schema([
-                        Components\Grid::make(2)
+                        Components\Fieldset::make('Información Familar Extra')
                             ->schema([
                                 Components\TextEntry::make('ConyugeDNI')
                                     ->label('DNI del Cónyuge')
+                                    ->icon('heroicon-m-identification')
                                     ->placeholder('No registrado'),
                                 Components\TextEntry::make('ConyugeNombresApellidos')
-                                    ->label('Nombres y Apellidos del Cónyuge')
+                                    ->label('Nombres del Cónyuge')
+                                    ->icon('heroicon-m-heart')
                                     ->placeholder('No registrado'),
-                            ]),
-                    ])
-                    ->collapsible()
-                    ->Visible(),
+                            ])->columns(2)->visible(fn($record) => filled($record->ConyugeDNI) || filled($record->ConyugeNombresApellidos))
+                    ]),
 
-                Components\Section::make('Ubicación')
+                Components\Section::make('Ficha Operativa y Financiera')
+                    ->description('Asignaciones internas y detalles de riesgo')
+                    ->icon('heroicon-m-briefcase')
                     ->schema([
-                        Components\TextEntry::make('Domicilio')
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsible(),
-
-                Components\Section::make('Información Financiera')
-                    ->schema([
-                        Components\Grid::make(2)
+                        Components\Grid::make(3)
                             ->schema([
                                 Components\TextEntry::make('tasa.Nombre')
-                                    ->label('Tasa de Interés')
+                                    ->label('Tasa de Interés Asignada')
+                                    ->icon('heroicon-m-receipt-percent')
+                                    ->color('info')
+                                    ->badge()
                                     ->formatStateUsing(
                                         fn($record) =>
                                         $record->tasa ? "{$record->tasa->Nombre} - {$record->tasa->Valor}%" : 'No asignada'
                                     ),
                                 Components\TextEntry::make('promotorCobrador.Descripcion')
-                                    ->label('Promotor/Cobrador')
+                                    ->label('Promotor / Cobrador')
+                                    ->icon('heroicon-m-user-group')
+                                    ->color('success')
+                                    ->badge()
                                     ->formatStateUsing(
                                         fn($record) =>
                                         $record->promotorCobrador
                                         ? "{$record->promotorCobrador->Codigo} - {$record->promotorCobrador->Descripcion}"
                                         : 'No asignado'
                                     ),
+                                Components\TextEntry::make('garante.NombresApellidos')
+                                    ->label('Aval / Garante')
+                                    ->icon('heroicon-m-shield-check')
+                                    ->placeholder('Sin garante registrado'),
                             ]),
-                    ])
-                    ->collapsible(),
+                    ]),
 
-                Components\Section::make('Información del Negocio')
+                Components\Section::make('Unidad de Negocio')
+                    ->description('Datos comerciales del negocio del cliente')
+                    ->icon('heroicon-m-building-storefront')
                     ->schema([
                         Components\TextEntry::make('negocio.DireccionNegocio')
-                            ->label('Dirección del Negocio')
+                            ->label('Ubicación del Negocio')
+                            ->icon('heroicon-m-map')
+                            ->weight(\Filament\Support\Enums\FontWeight::SemiBold)
                             ->columnSpanFull(),
-                        Components\Grid::make(5)
+
+                        Components\Grid::make(4)
                             ->schema([
                                 Components\TextEntry::make('negocio.Antiguedad')
-                                    ->label('Antigüedad')
+                                    ->label('Tiempo Operando')
+                                    ->icon('heroicon-m-calendar-days')
+                                    ->badge()
+                                    ->color('success')
                                     ->suffix(' años'),
                                 Components\TextEntry::make('negocio.giro.Descripcion')
-                                    ->label('Giro'),
-                                Components\TextEntry::make('negocio.subGiro.Descripcion')
-                                    ->label('Sub Giro'),
-                                // Mostrar Ciudad y Zona del negocio
+                                    ->label('Rubro / Giro')
+                                    ->icon('heroicon-m-shopping-bag'),
                                 Components\TextEntry::make('negocio.ciudad.Nombre')
                                     ->label('Ciudad')
+                                    ->icon('heroicon-m-map-pin')
                                     ->placeholder('No registrada'),
-
                                 Components\TextEntry::make('negocio.zona.Nombre')
-                                    ->label('Zona')
+                                    ->label('Zona Comercial')
+                                    ->icon('heroicon-m-flag')
+                                    ->color('primary')
+                                    ->badge()
                                     ->placeholder('No registrada'),
-                            ]),
-                        Components\RepeatableEntry::make('negocio.telefonos')
-                            ->label('Teléfonos')
+                            ])->extraAttributes(['class' => 'mt-4']),
+
+                        Components\Fieldset::make('Contactos Telefónicos')
                             ->schema([
-                                Components\TextEntry::make('Telefono')
-                                    ->label('Teléfono'),
-                                Components\TextEntry::make('TipoTelefono')
-                                    ->label('Tipo')
-                                    ->badge(),
-                                Components\TextEntry::make('Observacion')
-                                    ->label('Observación'),
-                            ])
-                            ->columns(3),
+                                Components\RepeatableEntry::make('negocio.telefonos')
+                                    ->label('')
+                                    ->schema([
+                                        Components\Grid::make(3)
+                                            ->schema([
+                                                Components\TextEntry::make('Telefono')
+                                                    ->label('Número')
+                                                    ->icon('heroicon-m-phone')
+                                                    ->weight(\Filament\Support\Enums\FontWeight::Bold),
+                                                Components\TextEntry::make('TipoTelefono')
+                                                    ->label('Categoría')
+                                                    ->badge()
+                                                    ->color('info'),
+                                                Components\TextEntry::make('Observacion')
+                                                    ->label('Nota')
+                                                    ->icon('heroicon-m-chat-bubble-left-ellipsis')
+                                                    ->placeholder('-'),
+                                            ])
+                                    ])->contained(true)->columns(1)
+                            ])->columnSpanFull(),
                     ])
-                    ->collapsible()
                     ->visible(fn($record) => $record->negocio !== null),
 
-                Components\Section::make('Documentación')
+                Components\Section::make('Gestión Documental')
+                    ->description('Archivos adjuntos capturados del cliente')
+                    ->icon('heroicon-m-photo')
+                    ->collapsed() // Optionally collapse to keep the view clean initially
                     ->schema([
                         Components\Grid::make([
                             'default' => 1,
-                            'sm' => 1,
                             'md' => 2,
                         ])
-                            ->schema([
-                                // Foto DNI - Usando TextEntry con HTML para mostrar imagen
-                                Components\TextEntry::make('foto_dni')
-                                    ->label('Foto del DNI')
-                                    ->state(function () use ($docDNI) {
-                                        if (!$docDNI || !$docDNI->RutaArchivo) {
-                                            return 'Sin documento';
-                                        }
+                        ->schema([
+                            Components\TextEntry::make('foto_dni')
+                                ->label('Fotografía del DNI')
+                                ->icon('heroicon-m-identification')
+                                ->state(function () use ($docDNI) {
+                                    if (!$docDNI || !$docDNI->RutaArchivo) {
+                                        return '<div class="text-gray-400 italic">No se ha subido fotografía</div>';
+                                    }
+                                    $rutaPartes = explode('/', $docDNI->RutaArchivo);
+                                    $rutaPartes = array_map('rawurlencode', $rutaPartes);
+                                    $url = url('storage/' . implode('/', $rutaPartes));
+                                    return new \Illuminate\Support\HtmlString('
+                                        <div class="mt-3 p-2 border rounded-xl bg-gray-50">
+                                            <img src="' . $url . '" alt="DNI" class="rounded-lg shadow-sm w-full h-auto max-w-md hover:scale-105 transition-transform duration-300" style="max-height: 250px; object-fit: cover;" onerror="this.parentElement.innerHTML=\'<p class=text-red-500>Error técnico al cargar la imagen.</p>\'">
+                                        </div>
+                                    ');
+                                })->html(),
 
-                                        // Codificar correctamente la URL para manejar espacios y caracteres especiales
-                                        $rutaPartes = explode('/', $docDNI->RutaArchivo);
-                                        $rutaPartes = array_map('rawurlencode', $rutaPartes);
-                                        $rutaCodificada = implode('/', $rutaPartes);
-                                        $url = url('storage/' . $rutaCodificada);
-
-                                        return new \Illuminate\Support\HtmlString('
-                                            <div class="mt-2">
-                                                <img src="' . $url . '" 
-                                                     alt="DNI" 
-                                                     class="rounded-lg shadow-lg w-full h-auto max-w-md"
-                                                     style="max-height: 400px; object-fit: contain;"
-                                                     onerror="this.parentElement.innerHTML=\'<p class=text-red-500>Error: No se pudo cargar la imagen.<br>URL: ' . htmlspecialchars($url) . '</p>\'">
-                                            </div>
-                                        ');
-                                    })
-                                    ->html()
-                                    ->visible(fn() => $docDNI !== null)
-                                    ->columnSpan(1),
-
-                                // Recibo - Usando TextEntry con HTML para mostrar imagen
-                                Components\TextEntry::make('foto_recibo')
-                                    ->label('Recibo de Servicio')
-                                    ->state(function () use ($docRecibo) {
-                                        if (!$docRecibo || !$docRecibo->RutaArchivo) {
-                                            return 'Sin documento';
-                                        }
-
-                                        // Codificar correctamente la URL para manejar espacios y caracteres especiales
-                                        $rutaPartes = explode('/', $docRecibo->RutaArchivo);
-                                        $rutaPartes = array_map('rawurlencode', $rutaPartes);
-                                        $rutaCodificada = implode('/', $rutaPartes);
-                                        $url = url('storage/' . $rutaCodificada);
-
-                                        return new \Illuminate\Support\HtmlString('
-                                            <div class="mt-2">
-                                                <img src="' . $url . '" 
-                                                     alt="Recibo" 
-                                                     class="rounded-lg shadow-lg w-full h-auto max-w-md"
-                                                     style="max-height: 400px; object-fit: contain;"
-                                                     onerror="this.parentElement.innerHTML=\'<p class=text-red-500>Error: No se pudo cargar la imagen.<br>URL: ' . htmlspecialchars($url) . '</p>\'">
-                                            </div>
-                                        ');
-                                    })
-                                    ->html()
-                                    ->visible(fn() => $docRecibo !== null)
-                                    ->columnSpan(1),
-                            ]),
+                            Components\TextEntry::make('foto_recibo')
+                                ->label('Fotografía Formato Recibo')
+                                ->icon('heroicon-m-document-text')
+                                ->state(function () use ($docRecibo) {
+                                    if (!$docRecibo || !$docRecibo->RutaArchivo) {
+                                        return '<div class="text-gray-400 italic">No se ha subido fotografía</div>';
+                                    }
+                                    $rutaPartes = explode('/', $docRecibo->RutaArchivo);
+                                    $rutaPartes = array_map('rawurlencode', $rutaPartes);
+                                    $url = url('storage/' . implode('/', $rutaPartes));
+                                    return new \Illuminate\Support\HtmlString('
+                                        <div class="mt-3 p-2 border rounded-xl bg-gray-50">
+                                            <img src="' . $url . '" alt="Recibo" class="rounded-lg shadow-sm w-full h-auto max-w-md hover:scale-105 transition-transform duration-300" style="max-height: 250px; object-fit: cover;" onerror="this.parentElement.innerHTML=\'<p class=text-red-500>Error técnico al cargar la imagen.</p>\'">
+                                        </div>
+                                    ');
+                                })->html(),
+                        ]),
                     ])
-                    ->collapsible()
                     ->visible(fn() => $docDNI !== null || $docRecibo !== null),
 
-                Components\Section::make('Garantías y Observaciones')
+                Components\Section::make('Bitácora y Sistema')
+                    ->icon('heroicon-m-server-stack')
+                    ->collapsed() // Always collapsed as it is purely administrative
                     ->schema([
-                        Components\TextEntry::make('garante.NombresApellidos')
-                            ->label('Garante')
-                            ->placeholder('No registrado'),
-                        Components\TextEntry::make('Observaciones')
-                            ->placeholder('Sin observaciones')
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsible()
-                    ->Visible(),
-
-                Components\Section::make('Información de Auditoría')
-                    ->schema([
-                        Components\Grid::make(2)
+                        Components\Grid::make(4)
                             ->schema([
+                                Components\TextEntry::make('Observaciones')
+                                    ->label('Anotaciones Extras')
+                                    ->icon('heroicon-m-pencil-square')
+                                    ->placeholder('Sin observaciones de registro')
+                                    ->columnSpanFull(),
                                 Components\TextEntry::make('UsuarioRegistro')
-                                    ->label('Registrado por'),
+                                    ->label('Alta por')
+                                    ->icon('heroicon-m-user-plus'),
                                 Components\TextEntry::make('FechaRegistro')
-                                    ->label('Fecha de Registro')
-                                    ->dateTime('d/m/Y H:i:s'),
-                            ]),
-                        Components\Grid::make(2)
-                            ->schema([
+                                    ->label('Fec. Alta')
+                                    ->icon('heroicon-m-calendar')
+                                    ->dateTime('d/m/Y h:i A'),
                                 Components\TextEntry::make('UsuarioModificacion')
-                                    ->label('Modificado por')
-                                    ->placeholder('Sin modificaciones'),
+                                    ->label('Últ. Modif. por')
+                                    ->icon('heroicon-m-pencil')
+                                    ->placeholder('-'),
                                 Components\TextEntry::make('FechaModificacion')
-                                    ->label('Fecha de Modificación')
-                                    ->dateTime('d/m/Y H:i:s')
-                                    ->placeholder('Sin modificaciones'),
+                                    ->label('Fec. Modif.')
+                                    ->icon('heroicon-m-calendar')
+                                    ->dateTime('d/m/Y h:i A')
+                                    ->placeholder('-'),
                             ]),
                     ])
-                    ->collapsible()
-                    ->Visible(),
             ]);
     }
 }

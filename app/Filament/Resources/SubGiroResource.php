@@ -96,9 +96,9 @@ class SubGiroResource extends Resource
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar Sub Giro')
-                    ->modalDescription('¿Está seguro que desea desactivar este sub giro?')
-                    ->modalSubmitActionLabel('Sí, desactivar')
+                    ->modalHeading('Eliminar Sub Giro')
+                    ->modalDescription('¿Está seguro que desea eliminar este sub giro?')
+                    ->modalSubmitActionLabel('Sí, eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
@@ -106,7 +106,7 @@ class SubGiroResource extends Resource
                         'Activo' => false,
                         'FechaModificacion' => now()
                     ]))
-                    ->successNotificationTitle('Sub Giro desactivado correctamente'),
+                    ->successNotificationTitle('Sub Giro eliminado correctamente'),
             ])
             ->bulkActions([])
             ->recordUrl(null)
@@ -139,9 +139,6 @@ class SubGiroResource extends Resource
     {
         return [
             'index' => Pages\ListSubGiros::route('/'),
-            'create' => Pages\CreateSubGiro::route('/create'),
-            'view' => Pages\ViewSubGiro::route('/{record}'),
-            'edit' => Pages\EditSubGiro::route('/{record}/edit'),
         ];
     }
 }

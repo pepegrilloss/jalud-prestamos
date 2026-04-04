@@ -99,16 +99,16 @@ class TasaResource extends Resource
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar Tasa')
-                    ->modalDescription('¿Está seguro que desea desactivar esta tasa?')
-                    ->modalSubmitActionLabel('Sí, desactivar')
+                    ->modalHeading('Eliminar Tasa')
+                    ->modalDescription('¿Está seguro que desea eliminar esta tasa?')
+                    ->modalSubmitActionLabel('Sí, eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                     ]))
-                    ->successNotificationTitle('Tasa desactivada correctamente'),
+                    ->successNotificationTitle('Tasa eliminada correctamente'),
             ])
             ->bulkActions([])
             ->recordUrl(null)
@@ -141,9 +141,6 @@ class TasaResource extends Resource
     {
         return [
             'index' => Pages\ListTasas::route('/'),
-            'create' => Pages\CreateTasa::route('/create'),
-            'view' => Pages\ViewTasa::route('/{record}'),
-            'edit' => Pages\EditTasa::route('/{record}/edit'),
         ];
     }
 }

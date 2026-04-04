@@ -155,9 +155,6 @@ class TipoCreditoResource extends Resource
     {
         return [
             'index' => Pages\ListTiposCredito::route('/'),
-            'create' => Pages\CreateTipoCredito::route('/create'),
-            'view' => Pages\ViewTipoCredito::route('/{record}'),
-            'edit' => Pages\EditTipoCredito::route('/{record}/edit'),
         ];
     }
 }

@@ -26,6 +26,18 @@ class CreditoResource extends Resource
     protected static ?string $label = 'Créditos Generados';
     protected static ?string $pluralLabel = 'Créditos Generados';
 
+    protected static ?string $recordTitleAttribute = 'CreditoID';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['proposicion.CodigoCredito', 'proposicion.cliente.NombresApellidos', 'proposicion.cliente.DNI'];
+    }
+
+    public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
+    {
+        return 'Crédito: ' . ($record->proposicion?->CodigoCredito ?? '#' . $record->CreditoID) . ' (' . ($record->proposicion?->cliente?->NombresApellidos ?? 'Sin cliente') . ')';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -142,17 +154,18 @@ class CreditoResource extends Resource
                     ->date('d/m/Y')
                     ->sortable()
                     ->color(function ($record) {
-                        if (!$record->FechaVencimiento) return 'gray';
-                        
+                        if (!$record->FechaVencimiento)
+                            return 'gray';
+
                         if ($record->FechaVencimiento < today()) {
                             return 'danger'; // Vencido (fecha pasada) = Rojo
                         }
-                        
+
                         $diasFaltantes = today()->diffInDays($record->FechaVencimiento);
                         if ($diasFaltantes <= 5) {
                             return 'warning'; // Próximo a vencer (0-5 días) = Amarillo
                         }
-                        
+
                         return 'success'; // Al día (más de 5 días) = Verde
                     }),
 
@@ -177,7 +190,7 @@ class CreditoResource extends Resource
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
-                    ->visible(fn () => auth()->user()->esAdmin()),
+                    ->visible(fn() => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('TipoPagoID')
                     ->label('Tipo de Pago')
                     ->relationship('tipoPago', 'Nombre'),
@@ -237,7 +250,6 @@ class CreditoResource extends Resource
                     ->label('Imprimir')
                     ->tooltip('Ver Libreta de Pagos para Imprimir')
                     ->icon('heroicon-o-printer')
-                    ->color('success')
                     ->url(fn($record) => route('libreta-pagos.html', $record->CreditoID))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('descargar_ticket')
@@ -284,7 +296,7 @@ class CreditoResource extends Resource
         // Verificar si el día de generación está cerrado
         $fechaGeneracion = $record->FechaGeneracion->toDateString();
         $fechaHoy = now()->toDateString();
-        
+
         if ($fechaGeneracion !== $fechaHoy) {
             $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaGeneracion)->first();
             if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {
@@ -304,7 +316,7 @@ class CreditoResource extends Resource
         // Verificar si el día de generación está cerrado
         $fechaGeneracion = $record->FechaGeneracion->toDateString();
         $fechaHoy = now()->toDateString();
-        
+
         if ($fechaGeneracion !== $fechaHoy) {
             $diaDel = \App\Models\AperturaCierreDia::whereDate('Fecha', $fechaGeneracion)->first();
             if ($diaDel && $diaDel->EstadoDia === 'CERRADO') {

@@ -121,9 +121,9 @@ class CiudadResource extends Resource
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar Ciudad')
-                    ->modalDescription('¿Está seguro que desea desactivar esta ciudad?')
-                    ->modalSubmitActionLabel('Sí, desactivar')
+                    ->modalHeading('Eliminar Ciudad')
+                    ->modalDescription('¿Está seguro que desea eliminar esta ciudad?')
+                    ->modalSubmitActionLabel('Sí, eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
@@ -131,7 +131,7 @@ class CiudadResource extends Resource
                         'Activo' => false,
                         'FechaModificacion' => now()
                     ]))
-                    ->successNotificationTitle('Ciudad desactivada correctamente'),
+                    ->successNotificationTitle('Ciudad eliminada correctamente'),
             ])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50]);
@@ -163,9 +163,6 @@ class CiudadResource extends Resource
     {
         return [
             'index' => Pages\ListCiudads::route('/'),
-            'create' => Pages\CreateCiudad::route('/create'),
-            'view' => Pages\ViewCiudad::route('/{record}'),
-            'edit' => Pages\EditCiudad::route('/{record}/edit'),
         ];
     }
 }

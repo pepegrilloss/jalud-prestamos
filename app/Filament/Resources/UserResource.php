@@ -22,6 +22,13 @@ class UserResource extends Resource
 
     protected static ?string $navigationLabel = 'Usuarios';
 
+    protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['name', 'username'];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -52,9 +59,9 @@ class UserResource extends Resource
 
                         Forms\Components\Select::make('roles')
                             ->relationship('roles', 'name')
-                            ->multiple()
                             ->preload()
                             ->searchable()
+                            ->live()
                             ->required()
                             ->label('Roles'),
 
@@ -64,6 +71,23 @@ class UserResource extends Resource
                             ->searchable()
                             ->preload()
                             ->native(false)
+                            ->visible(function (Forms\Get $get) {
+                                $roleId = $get('roles');
+                                if (!$roleId) return false;
+                                
+                                // Asegurar que tengamos un solo ID si Filament devuelve un array
+                                $roleId = is_array($roleId) ? ($roleId[0] ?? null) : $roleId;
+                                
+                                if (!$roleId) return false;
+
+                                $roleModel = \BezhanSalleh\FilamentShield\Support\Utils::getRoleModel();
+                                $role = $roleModel::find($roleId);
+                                
+                                // find() puede devolver una colección si recibe un array por error, 
+                                // validamos que sea un objeto individual
+                                return $role instanceof \Illuminate\Database\Eloquent\Model && $role->name === 'promotor_cobrador';
+                            })
+                            ->required()
                             ->helperText('Asignar un promotor cobrador a este usuario'),
 
                         Forms\Components\Select::make('SedeID')
@@ -152,7 +176,7 @@ class UserResource extends Resource
                             ->label('Nivel de Aprobación'),
                     ])
                     ->action(function (User $record, array $data) {
-                        // Desactivar nivel anterior si existe
+                        // Eliminar nivel anterior si existe
                         UserNivelAprobacion::where('UserID', $record->id)
                             ->where('Activo', true)
                             ->update(['Activo' => false]);

@@ -18,7 +18,8 @@ class ProposicionCreditoStats extends BaseWidget
             Stat::make('Total Propuesto', 'S/ ' . number_format(
                 ProposicionCredito::where('Estado', 'APROBADO')
                     ->whereDoesntHave('credito')
-                    ->sum('MontoTotal'), 2
+                    ->sum('MontoTotal'),
+                2
             ))
                 ->description('Suma de todos los montos totales propuestos')
                 ->descriptionIcon('heroicon-m-banknotes')

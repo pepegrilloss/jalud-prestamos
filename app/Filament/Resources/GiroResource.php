@@ -92,9 +92,9 @@ class GiroResource extends Resource
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar Giro')
-                    ->modalDescription('¿Está seguro que desea desactivar este giro?')
-                    ->modalSubmitActionLabel('Sí, desactivar')
+                    ->modalHeading('Eliminar Giro')
+                    ->modalDescription('¿Está seguro que desea eliminar este giro?')
+                    ->modalSubmitActionLabel('Sí, eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
@@ -102,7 +102,7 @@ class GiroResource extends Resource
                         'Activo' => false,
                         'FechaModificacion' => now()
                     ]))
-                    ->successNotificationTitle('Giro desactivado correctamente'),
+                    ->successNotificationTitle('Giro eliminado correctamente'),
             ])
             ->bulkActions([])
             ->recordUrl(null)
@@ -135,9 +135,6 @@ class GiroResource extends Resource
     {
         return [
             'index' => Pages\ListGiros::route('/'),
-            'create' => Pages\CreateGiro::route('/create'),
-            'view' => Pages\ViewGiro::route('/{record}'),
-            'edit' => Pages\EditGiro::route('/{record}/edit'),
         ];
     }
 }

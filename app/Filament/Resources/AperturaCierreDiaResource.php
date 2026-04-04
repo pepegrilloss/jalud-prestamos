@@ -29,6 +29,7 @@ class AperturaCierreDiaResource extends Resource
             ->schema([
                 Forms\Components\DatePicker::make('Fecha')
                     ->required()
+                    ->default(today())
                     ->disabled(fn(string $operation): bool => $operation === 'edit')
                     ->maxDate(today())
                     ->native(false)
@@ -41,23 +42,38 @@ class AperturaCierreDiaResource extends Resource
                     ])
                     ->required()
                     ->live()
+                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                        if ($state === 'ABIERTO') {
+                            $set('FechaApertura', now()->toDateTimeString());
+                            $set('UsuarioAperturaID', auth()->id());
+                        } else {
+                            $set('FechaApertura', null);
+                            $set('UsuarioAperturaID', null);
+                        }
+                    })
                     ->disabled(fn(string $operation): bool => $operation === 'edit'),
 
                 Forms\Components\DateTimePicker::make('FechaApertura')
                     ->visible(fn(Forms\Get $get): bool => $get('EstadoDia') === 'ABIERTO')
+                    ->native(false)
+                    ->dehydrated()
                     ->disabled(),
 
                 Forms\Components\DateTimePicker::make('FechaCierre')
                     ->visible(fn(Forms\Get $get): bool => $get('EstadoDia') === 'CERRADO')
+                    ->native(false)
+                    ->dehydrated()
                     ->disabled(),
 
                 Forms\Components\Select::make('UsuarioAperturaID')
                     ->relationship('usuarioApertura', 'name')
+                    ->dehydrated()
                     ->disabled()
                     ->visible(fn(Forms\Get $get): bool => $get('EstadoDia') === 'ABIERTO'),
 
                 Forms\Components\Select::make('UsuarioCierreID')
                     ->relationship('usuarioCierre', 'name')
+                    ->dehydrated()
                     ->disabled()
                     ->visible(fn(Forms\Get $get): bool => $get('EstadoDia') === 'CERRADO'),
 
@@ -161,7 +177,7 @@ class AperturaCierreDiaResource extends Resource
 
                             \Filament\Notifications\Notification::make()
                                 ->success()
-                                ->title('✅ Día cerrado')
+                                ->title('Día cerrado')
                                 ->body("El día {$record->Fecha->format('d/m/Y')} ha sido cerrado.")
                                 ->persistent()
                                 ->send();
@@ -173,7 +189,7 @@ class AperturaCierreDiaResource extends Resource
 
                             \Filament\Notifications\Notification::make()
                                 ->danger()
-                                ->title('❌ Error al cerrar')
+                                ->title('Error al cerrar')
                                 ->body($e->getMessage())
                                 ->persistent()
                                 ->send();
@@ -228,7 +244,7 @@ class AperturaCierreDiaResource extends Resource
 
                             \Filament\Notifications\Notification::make()
                                 ->success()
-                                ->title('✅ Fecha abierta')
+                                ->title('Fecha abierta')
                                 ->body("La fecha {$record->Fecha->format('d/m/Y')} ha sido abierta para operaciones.")
                                 ->persistent()
                                 ->send();
@@ -240,7 +256,7 @@ class AperturaCierreDiaResource extends Resource
 
                             \Filament\Notifications\Notification::make()
                                 ->danger()
-                                ->title('🔒 No se puede abrir')
+                                ->title('No se puede abrir')
                                 ->body($diaAbierto
                                     ? "Ya existe un día abierto: {$diaAbierto->Fecha->format('d/m/Y')}. Debe cerrarlo primero."
                                     : "No se puede abrir múltiples días simultáneamente.")
@@ -254,7 +270,7 @@ class AperturaCierreDiaResource extends Resource
 
                             \Filament\Notifications\Notification::make()
                                 ->danger()
-                                ->title('❌ No se puede abrir')
+                                ->title('No se puede abrir')
                                 ->body($e->getMessage())
                                 ->persistent()
                                 ->send();

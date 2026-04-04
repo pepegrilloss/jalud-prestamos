@@ -28,9 +28,9 @@ class ClienteProposicionStats extends BaseWidget
             // Filtrar clientes que tengan proposiciones activas en la zona del promotor
             $clientesQuery->whereHas('proposiciones', function ($q) use ($zonaID) {
                 $q->where('ZonaID', $zonaID)
-                  ->whereHas('credito', function ($q2) {
-                      $q2->where('Activo', true);
-                  });
+                    ->whereHas('credito', function ($q2) {
+                        $q2->where('Activo', true);
+                    });
             });
         }
         $clientesActivos = $clientesQuery->distinct('ClienteID')->count('ClienteID');
@@ -80,10 +80,10 @@ class ClienteProposicionStats extends BaseWidget
             // Mostrar "Mi Total Prestado" solo si NO es Promotor Cobrador
             // Contar TODOS los créditos (activos e inactivos/cancelados)
             // Excluir proposiciones que SON refinanciamiento (EsRefinanciamiento = true)
-            
+
             $totalPrestadoQuery = ProposicionCredito::whereHas('credito')
                 ->where('EsRefinanciamiento', 0);
-            
+
             $totalPrestado = $totalPrestadoQuery->sum('MontoTotal');
 
             $stats[] = Stat::make('Mi Total Prestado', 'S/ ' . number_format($totalPrestado, 2))

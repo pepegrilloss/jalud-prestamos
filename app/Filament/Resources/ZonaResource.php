@@ -93,9 +93,9 @@ class ZonaResource extends Resource
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
                     ->requiresConfirmation()
-                    ->modalHeading('Desactivar Zona')
-                    ->modalDescription('¿Está seguro que desea desactivar esta zona?')
-                    ->modalSubmitActionLabel('Sí, desactivar')
+                    ->modalHeading('Eliminar Zona')
+                    ->modalDescription('¿Está seguro que desea eliminar esta zona?')
+                    ->modalSubmitActionLabel('Sí, eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
@@ -103,7 +103,7 @@ class ZonaResource extends Resource
                         'Activo' => false,
                         'FechaModificacion' => now()
                     ]))
-                    ->successNotificationTitle('Zona desactivada correctamente'),
+                    ->successNotificationTitle('Zona eliminada correctamente'),
             ])
             ->bulkActions([])
             ->recordUrl(null)
@@ -136,9 +136,6 @@ class ZonaResource extends Resource
     {
         return [
             'index' => Pages\ListZonas::route('/'),
-            'create' => Pages\CreateZona::route('/create'),
-            'view' => Pages\ViewZona::route('/{record}'),
-            'edit' => Pages\EditZona::route('/{record}/edit'),
         ];
     }
 }
