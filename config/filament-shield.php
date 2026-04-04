@@ -46,13 +46,14 @@ return [
     ],
 
     'entities' => [
-        'pages' => false,
+        'pages' => true,
         'widgets' => true,
         'resources' => true,
         'custom_permissions' => true,
     ],
 
     'custom_permissions' => [
+        'page_Themes',
         'ver_todas_las_sedes',
         'abrir_dia_apertura',
         'cerrar_dia_apertura',
@@ -71,6 +72,7 @@ return [
             'Dashboard',
             'SelectSede',
             'EvaluacionDeCredito',
+            'Mantenimiento',
         ],
 
         'widgets' => [
