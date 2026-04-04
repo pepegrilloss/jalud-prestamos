@@ -23,6 +23,20 @@ class AperturaCierreDiaResource extends Resource
     protected static ?string $navigationGroup = 'Administración';
     protected static ?int $navigationSort = 1;
 
+    public static function getPermissionPrefixes(): array
+    {
+        return [
+            'view',
+            'view_any',
+            'create',
+            'update',
+            'delete',
+            'delete_any',
+            'abrir_fecha',
+            'cerrar_dia',
+        ];
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -148,7 +162,7 @@ class AperturaCierreDiaResource extends Resource
                     ->label('Cerrar Día')
                     ->icon('heroicon-o-lock-closed')
                     ->color('danger')
-                    ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'ABIERTO')
+                    ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'ABIERTO' && auth()->user()->can('cerrar_dia_apertura'))
                     ->action(function (AperturaCierreDia $record) {
                         $logger = new AperturaCierreDiaLogger();
 
@@ -200,8 +214,7 @@ class AperturaCierreDiaResource extends Resource
                 Tables\Actions\Action::make('abrirFecha')
                     ->label('Abrir Fecha')
                     ->icon('heroicon-o-lock-open')
-                    ->color('success')
-                    ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'CERRADO')
+                    ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'CERRADO' && auth()->user()->can('abrir_dia_apertura'))
                     ->action(function (AperturaCierreDia $record) {
                         $logger = new AperturaCierreDiaLogger();
 
