@@ -22,7 +22,13 @@ class TasaMoraResource extends Resource
     protected static ?int $navigationGroupSort = 10;
     protected static ?int $navigationSort = 5;
     protected static ?string $modelLabel = 'Tasa de Mora';
-    protected static ?string $pluralModelLabel = 'Tasas de Mora';
+
+    public static function getPluralModelLabel(): string
+    {
+        return \App\Services\DateFieldResolver::getFechaAbierta() !== null
+            ? 'Tasas de Mora'
+            : 'Tasas de Mora ⚠️ (Día Cerrado)';
+    }
 
     protected static ?string $cluster = Mantenimiento::class;
 
