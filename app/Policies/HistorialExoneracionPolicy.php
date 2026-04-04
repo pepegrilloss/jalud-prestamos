@@ -55,7 +55,7 @@ class HistorialExoneracionPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_historial::exoneracion');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class HistorialExoneracionPolicy
      */
     public function forceDelete(User $user, HistorialExoneracion $historialExoneracion): bool
     {
-        return $user->can('force_delete_historial::exoneracion');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class HistorialExoneracionPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_historial::exoneracion');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class HistorialExoneracionPolicy
      */
     public function restore(User $user, HistorialExoneracion $historialExoneracion): bool
     {
-        return $user->can('restore_historial::exoneracion');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class HistorialExoneracionPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_historial::exoneracion');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class HistorialExoneracionPolicy
      */
     public function replicate(User $user, HistorialExoneracion $historialExoneracion): bool
     {
-        return $user->can('replicate_historial::exoneracion');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,6 +103,6 @@ class HistorialExoneracionPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_historial::exoneracion');
+        return $user->can('{{ Reorder }}');
     }
 }

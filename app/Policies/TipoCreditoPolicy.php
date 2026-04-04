@@ -55,7 +55,7 @@ class TipoCreditoPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_tipo::credito');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class TipoCreditoPolicy
      */
     public function forceDelete(User $user, TipoCredito $tipoCredito): bool
     {
-        return $user->can('force_delete_tipo::credito');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class TipoCreditoPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_tipo::credito');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class TipoCreditoPolicy
      */
     public function restore(User $user, TipoCredito $tipoCredito): bool
     {
-        return $user->can('restore_tipo::credito');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class TipoCreditoPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_tipo::credito');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class TipoCreditoPolicy
      */
     public function replicate(User $user, TipoCredito $tipoCredito): bool
     {
-        return $user->can('replicate_tipo::credito');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,6 +103,6 @@ class TipoCreditoPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_tipo::credito');
+        return $user->can('{{ Reorder }}');
     }
 }

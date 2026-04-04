@@ -55,7 +55,7 @@ class NivelAprobacionPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_nivel::aprobacion');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class NivelAprobacionPolicy
      */
     public function forceDelete(User $user, NivelAprobacion $nivelAprobacion): bool
     {
-        return $user->can('force_delete_nivel::aprobacion');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class NivelAprobacionPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_nivel::aprobacion');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class NivelAprobacionPolicy
      */
     public function restore(User $user, NivelAprobacion $nivelAprobacion): bool
     {
-        return $user->can('restore_nivel::aprobacion');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class NivelAprobacionPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_nivel::aprobacion');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class NivelAprobacionPolicy
      */
     public function replicate(User $user, NivelAprobacion $nivelAprobacion): bool
     {
-        return $user->can('replicate_nivel::aprobacion');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,6 +103,6 @@ class NivelAprobacionPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_nivel::aprobacion');
+        return $user->can('{{ Reorder }}');
     }
 }

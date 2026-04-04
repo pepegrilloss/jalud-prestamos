@@ -71,8 +71,6 @@ return [
         'pages' => [
             'Dashboard',
             'SelectSede',
-            'EvaluacionDeCredito',
-            'Mantenimiento',
         ],
 
         'widgets' => [

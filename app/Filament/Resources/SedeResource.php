@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Filament\Clusters\Mantenimiento;
 
 class SedeResource extends Resource
 {
@@ -19,6 +20,8 @@ class SedeResource extends Resource
     protected static ?int $navigationSort = 3001;
     protected static ?string $label = 'Sede';
     protected static ?string $pluralLabel = 'Sedes';
+
+    protected static ?string $cluster = Mantenimiento::class;
 
     public static function form(Form $form): Form
     {

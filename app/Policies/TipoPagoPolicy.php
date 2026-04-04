@@ -55,7 +55,7 @@ class TipoPagoPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_tipo::pago');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class TipoPagoPolicy
      */
     public function forceDelete(User $user, TipoPago $tipoPago): bool
     {
-        return $user->can('force_delete_tipo::pago');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class TipoPagoPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_tipo::pago');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class TipoPagoPolicy
      */
     public function restore(User $user, TipoPago $tipoPago): bool
     {
-        return $user->can('restore_tipo::pago');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class TipoPagoPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_tipo::pago');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class TipoPagoPolicy
      */
     public function replicate(User $user, TipoPago $tipoPago): bool
     {
-        return $user->can('replicate_tipo::pago');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,6 +103,6 @@ class TipoPagoPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_tipo::pago');
+        return $user->can('{{ Reorder }}');
     }
 }

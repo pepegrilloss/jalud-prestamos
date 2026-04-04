@@ -55,7 +55,7 @@ class ProposicionCreditoPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_reporte::cuentas::canceladas');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class ProposicionCreditoPolicy
      */
     public function forceDelete(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('force_delete_reporte::cuentas::canceladas');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class ProposicionCreditoPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_reporte::cuentas::canceladas');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class ProposicionCreditoPolicy
      */
     public function restore(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('restore_reporte::cuentas::canceladas');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class ProposicionCreditoPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_reporte::cuentas::canceladas');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class ProposicionCreditoPolicy
      */
     public function replicate(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('replicate_reporte::cuentas::canceladas');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,6 +103,6 @@ class ProposicionCreditoPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_reporte::cuentas::canceladas');
+        return $user->can('{{ Reorder }}');
     }
 }

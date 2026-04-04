@@ -55,7 +55,7 @@ class PromotorCobradorPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_promotor::cobrador');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class PromotorCobradorPolicy
      */
     public function forceDelete(User $user, PromotorCobrador $promotorCobrador): bool
     {
-        return $user->can('force_delete_promotor::cobrador');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class PromotorCobradorPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_promotor::cobrador');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class PromotorCobradorPolicy
      */
     public function restore(User $user, PromotorCobrador $promotorCobrador): bool
     {
-        return $user->can('restore_promotor::cobrador');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class PromotorCobradorPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_promotor::cobrador');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class PromotorCobradorPolicy
      */
     public function replicate(User $user, PromotorCobrador $promotorCobrador): bool
     {
-        return $user->can('replicate_promotor::cobrador');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,6 +103,6 @@ class PromotorCobradorPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_promotor::cobrador');
+        return $user->can('{{ Reorder }}');
     }
 }

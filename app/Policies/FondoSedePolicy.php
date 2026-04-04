@@ -55,7 +55,7 @@ class FondoSedePolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_fondo::sede');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class FondoSedePolicy
      */
     public function forceDelete(User $user, FondoSede $fondoSede): bool
     {
-        return $user->can('force_delete_fondo::sede');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class FondoSedePolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_fondo::sede');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class FondoSedePolicy
      */
     public function restore(User $user, FondoSede $fondoSede): bool
     {
-        return $user->can('restore_fondo::sede');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class FondoSedePolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_fondo::sede');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class FondoSedePolicy
      */
     public function replicate(User $user, FondoSede $fondoSede): bool
     {
-        return $user->can('replicate_fondo::sede');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,6 +103,6 @@ class FondoSedePolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_fondo::sede');
+        return $user->can('{{ Reorder }}');
     }
 }

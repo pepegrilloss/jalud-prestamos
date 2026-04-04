@@ -55,7 +55,7 @@ class CiudadPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_ciudad');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class CiudadPolicy
      */
     public function forceDelete(User $user, Ciudad $ciudad): bool
     {
-        return $user->can('force_delete_ciudad');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class CiudadPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_ciudad');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class CiudadPolicy
      */
     public function restore(User $user, Ciudad $ciudad): bool
     {
-        return $user->can('restore_ciudad');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class CiudadPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_ciudad');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class CiudadPolicy
      */
     public function replicate(User $user, Ciudad $ciudad): bool
     {
-        return $user->can('replicate_ciudad');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,6 +103,6 @@ class CiudadPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_ciudad');
+        return $user->can('{{ Reorder }}');
     }
 }

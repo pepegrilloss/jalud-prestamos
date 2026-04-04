@@ -97,7 +97,6 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                     Tables\Actions\Action::make('registrarEvaluacion')
                         ->label('Registrar Evaluación')
                         ->icon('heroicon-o-plus-circle')
-                        ->color('success')
                         ->visible(fn() => AperturaCierreDia::estaAbierto())
                         ->modalHeading(fn($record) => 'Nueva Evaluación de Crédito')
                         ->modalDescription(fn($record) => $record->NombresApellidos . ' - DNI: ' . $record->DNI)
@@ -118,7 +117,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                         ->action(function ($record, array $data) {
                             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                             $fechaRegistro = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-                            
+
                             EvaluacionCredito::create([
                                 'ClienteID' => $record->ClienteID,
                                 'Comentario' => $data['Comentario'],
@@ -135,18 +134,18 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                         ->successNotificationTitle('Evaluación registrada'),
 
                     Tables\Actions\Action::make('analisisEconomico')
-                        ->label(fn($record) => $record->analisisEconomico 
-                            ? 'Ver Análisis Económico' 
+                        ->label(fn($record) => $record->analisisEconomico
+                            ? 'Ver Análisis Económico'
                             : '⚠️ Análisis Económico')
-                        ->icon(fn($record) => $record->analisisEconomico 
-                            ? 'heroicon-o-document-chart-bar' 
+                        ->icon(fn($record) => $record->analisisEconomico
+                            ? 'heroicon-o-document-chart-bar'
                             : 'heroicon-o-exclamation-triangle')
-                        ->color(fn($record) => $record->analisisEconomico 
-                            ? 'info' 
+                        ->color(fn($record) => $record->analisisEconomico
+                            ? 'info'
                             : 'warning')
                         ->disabled(fn() => !AperturaCierreDia::estaAbierto())
-                        ->modalHeading(fn($record) => $record->analisisEconomico 
-                            ? 'Ver/Actualizar Análisis Económico' 
+                        ->modalHeading(fn($record) => $record->analisisEconomico
+                            ? 'Ver/Actualizar Análisis Económico'
                             : 'Registrar Análisis Económico')
                         ->modalDescription(fn($record) => 'Cliente: ' . $record->NombresApellidos . ' (DNI: ' . $record->DNI . ')')
                         ->modalWidth('3xl')
@@ -165,7 +164,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->helperText('Monto que el cliente indica como capital')
                                                 ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                                 ->live(),
-                                            
+
                                             Forms\Components\TextInput::make('CapitalEstimado')
                                                 ->label('Capital Estimado por el Jefe de Oficina')
                                                 ->required()
@@ -176,7 +175,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                                 ->live(),
                                         ]),
-                                    
+
                                     Forms\Components\Grid::make(3)
                                         ->schema([
                                             Forms\Components\TextInput::make('VentaManifestadaMin')
@@ -187,7 +186,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->placeholder('Ej: 500.00')
                                                 ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                                 ->live(),
-                                            
+
                                             Forms\Components\TextInput::make('VentaManifestadaMax')
                                                 ->label('Venta Manifestada Máxima  por el cliente')
                                                 ->required()
@@ -197,13 +196,13 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                                 ->live()
                                                 ->rules([
-                                                    fn (Forms\Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                                    fn(Forms\Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
                                                         if ($value < $get('VentaManifestadaMin')) {
                                                             $fail('La venta máxima debe ser mayor o igual a la venta mínima.');
                                                         }
                                                     },
                                                 ]),
-                                            
+
                                             Forms\Components\TextInput::make('VentaEstimada')
                                                 ->label('Venta Estimada por Jefe de Oficina')
                                                 ->required()
@@ -213,29 +212,29 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                 ->disabled(fn() => !AperturaCierreDia::estaAbierto())
                                         ]),
 
-                                Forms\Components\TextInput::make('MontoMaxRecomendado')
-                                    ->label('Monto Máximo Recomendado')
-                                    ->required()
-                                    ->numeric()
-                                    ->minValue(0)
-                                    ->step(0.01)
-                                    ->placeholder('Ej: 5000.00')
-                                    ->helperText('Monto máximo que se recomienda prestar a este cliente')
-                                    ->disabled(fn() => !AperturaCierreDia::estaAbierto())
-                                    ->live(),
+                                    Forms\Components\TextInput::make('MontoMaxRecomendado')
+                                        ->label('Monto Máximo Recomendado')
+                                        ->required()
+                                        ->numeric()
+                                        ->minValue(0)
+                                        ->step(0.01)
+                                        ->placeholder('Ej: 5000.00')
+                                        ->helperText('Monto máximo que se recomienda prestar a este cliente')
+                                        ->disabled(fn() => !AperturaCierreDia::estaAbierto())
+                                        ->live(),
 
-                                // Resumen visual
-                                Forms\Components\Placeholder::make('resumen')
-                                    ->label('📋 Resumen del Análisis')
-                                    ->content(function (Forms\Get $get) {
-                                        $capManifestado = (float) ($get('CapitalManifestado') ?? 0);
-                                        $capEstimado = (float) ($get('CapitalEstimado') ?? 0);
-                                        $ventaMin = (float) ($get('VentaManifestadaMin') ?? 0);
-                                        $ventaMax = (float) ($get('VentaManifestadaMax') ?? 0);
-                                        $ventaEst = (float) ($get('VentaEstimada') ?? 0);
+                                    // Resumen visual
+                                    Forms\Components\Placeholder::make('resumen')
+                                        ->label('📋 Resumen del Análisis')
+                                        ->content(function (Forms\Get $get) {
+                                            $capManifestado = (float) ($get('CapitalManifestado') ?? 0);
+                                            $capEstimado = (float) ($get('CapitalEstimado') ?? 0);
+                                            $ventaMin = (float) ($get('VentaManifestadaMin') ?? 0);
+                                            $ventaMax = (float) ($get('VentaManifestadaMax') ?? 0);
+                                            $ventaEst = (float) ($get('VentaEstimada') ?? 0);
 
-                                        if ($capManifestado > 0 || $capEstimado > 0) {
-                                            return new \Illuminate\Support\HtmlString('
+                                            if ($capManifestado > 0 || $capEstimado > 0) {
+                                                return new \Illuminate\Support\HtmlString('
                                                 <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                                     <div>
                                                         <div class="text-sm text-gray-500 dark:text-gray-400">Capital Manifestado vs Estimado</div>
@@ -249,10 +248,10 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                                     </div>
                                                 </div>
                                             ');
-                                        }
-                                        return 'Complete los campos para ver el resumen';
-                                    })
-                                    ->columnSpanFull(),
+                                            }
+                                            return 'Complete los campos para ver el resumen';
+                                        })
+                                        ->columnSpanFull(),
                                 ]),
                         ])
                         ->fillForm(fn($record) => [
@@ -277,7 +276,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                                 // Crear nuevo análisis con fecha abierta
                                 $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                                 $fechaAnalisis = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-                                
+
                                 \App\Models\AnalisisEconomico::create([
                                     'ClienteID' => $record->ClienteID,
                                     'CapitalManifestado' => $data['CapitalManifestado'],
