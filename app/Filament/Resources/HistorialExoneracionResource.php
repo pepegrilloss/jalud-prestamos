@@ -25,6 +25,8 @@ class HistorialExoneracionResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
+        if (!parent::shouldRegisterNavigation()) { return false; }
+
         $user = auth()->user();
         // Ocultar para promotores/cobradores
         if ($user && $user->PromotorCobradorID) {
@@ -35,6 +37,8 @@ class HistorialExoneracionResource extends Resource
 
     public static function canViewAny(): bool
     {
+        if (!parent::canViewAny()) { return false; }
+
         $user = auth()->user();
         // Denegar acceso a promotores/cobradores
         if ($user && $user->PromotorCobradorID) {
@@ -138,16 +142,22 @@ class HistorialExoneracionResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return false;
     }
 
     public static function canEdit($record): bool
     {
+        if (!parent::canEdit($record)) { return false; }
+
         return false;
     }
 
     public static function canDelete($record): bool
     {
+        if (!parent::canDelete($record)) { return false; }
+
         return false;
     }
 

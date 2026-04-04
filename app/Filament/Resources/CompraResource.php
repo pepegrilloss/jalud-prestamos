@@ -233,10 +233,9 @@ class CompraResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make()
-                    ->visible(fn() => AperturaCierreDia::estaAbierto()),
+                Tables\Actions\EditAction::make()->visible(fn($record) => static::canEdit($record)),
                 Tables\Actions\Action::make('delete')
-                    ->visible(fn() => AperturaCierreDia::estaAbierto())
+                    ->visible(fn($record) => static::canDelete($record))
                     ->label('Eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')

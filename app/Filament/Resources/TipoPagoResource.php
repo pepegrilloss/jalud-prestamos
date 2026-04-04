@@ -106,6 +106,8 @@ class TipoPagoResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 

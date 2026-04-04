@@ -766,11 +766,18 @@ class ClienteResource extends Resource
 
     public static function canView(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canView($record)) { return false; }
+
         return true;
     }
 
     public static function canCreate(): bool
     {
+        // Respetar Permisos de Rol (Shield)
+        if (!parent::canCreate()) {
+            return false;
+        }
+
         // Los Promotores Cobradores NO pueden crear clientes
         if (auth()->user()?->hasRole('Promotor Cobrador')) {
             return false;
@@ -782,6 +789,11 @@ class ClienteResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        // Respetar Permisos de Rol (Shield)
+        if (!parent::canEdit($record)) {
+            return false;
+        }
+
         // Los Promotores Cobradores NO pueden editar clientes
         if (auth()->user()?->hasRole('Promotor Cobrador')) {
             return false;
@@ -793,6 +805,11 @@ class ClienteResource extends Resource
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        // Respetar Permisos de Rol (Shield)
+        if (!parent::canDelete($record)) {
+            return false;
+        }
+
         // Los Promotores Cobradores NO pueden eliminar clientes
         if (auth()->user()?->hasRole('Promotor Cobrador')) {
             return false;

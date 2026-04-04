@@ -650,6 +650,8 @@ class PagoResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
                 ->title('Día Cerrado')
@@ -664,6 +666,8 @@ class PagoResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canEdit($record)) { return false; }
+
         // Si tiene FechaCierre, no se puede editar
         if ($record->FechaCierre !== null) {
             return false;
@@ -695,6 +699,8 @@ class PagoResource extends Resource
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canDelete($record)) { return false; }
+
         // Si tiene FechaCierre, no se puede eliminar
         if ($record->FechaCierre !== null) {
             return false;

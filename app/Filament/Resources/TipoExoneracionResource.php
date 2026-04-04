@@ -27,6 +27,8 @@ class TipoExoneracionResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
+        if (!parent::shouldRegisterNavigation()) { return false; }
+
         $user = auth()->user();
         // Ocultar para promotores/cobradores
         if ($user && $user->PromotorCobradorID) {
@@ -37,6 +39,8 @@ class TipoExoneracionResource extends Resource
 
     public static function canViewAny(): bool
     {
+        if (!parent::canViewAny()) { return false; }
+
         $user = auth()->user();
         // Denegar acceso a promotores/cobradores
         if ($user && $user->PromotorCobradorID) {
@@ -123,8 +127,7 @@ class TipoExoneracionResource extends Resource
                     ->falseLabel('Inactivos'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
-                    ->visible(fn() => AperturaCierreDia::estaAbierto()),
+                Tables\Actions\EditAction::make()->visible(fn($record) => static::canEdit($record)),
                 Tables\Actions\Action::make('toggleActive')
                     ->visible(fn() => AperturaCierreDia::estaAbierto())
                     ->label(fn($record) => $record->Activo ? 'Eliminar' : 'Activar')
@@ -148,6 +151,8 @@ class TipoExoneracionResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 

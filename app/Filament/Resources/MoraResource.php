@@ -159,16 +159,22 @@ class MoraResource extends Resource
     // Solo lectura - no permitir crear/editar/eliminar manualmente
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return false;
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canEdit($record)) { return false; }
+
         return false;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canDelete($record)) { return false; }
+
         return false;
     }
 

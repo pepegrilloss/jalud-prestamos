@@ -542,6 +542,8 @@ class GenerarCreditoResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
                 ->title('❌ Día Cerrado')
@@ -556,6 +558,8 @@ class GenerarCreditoResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canEdit($record)) { return false; }
+
         // Si el registro está cerrado (FechaCierre != null), no permitir editar
         // NO validar estaAbierto() porque un registro puede estar abierto aunque hoy esté cerrado
         if ($record->FechaCierre !== null) {
@@ -566,6 +570,8 @@ class GenerarCreditoResource extends Resource
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canDelete($record)) { return false; }
+
         // Si el registro está cerrado, no permitir eliminar
         // NO validar estaAbierto() porque un registro puede estar abierto aunque hoy esté cerrado
         if ($record->FechaCierre !== null) {

@@ -93,8 +93,7 @@ class TasaResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
 
-                Tables\Actions\EditAction::make()
-                    ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto()),
+                Tables\Actions\EditAction::make()->visible(fn($record) => static::canEdit($record)),
 
                 Tables\Actions\Action::make('delete')
                     ->label('Eliminar')
@@ -104,7 +103,7 @@ class TasaResource extends Resource
                     ->modalSubmitActionLabel('Sí, eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
-                    ->visible(fn() => \App\Models\AperturaCierreDia::estaAbierto())
+                    ->visible(fn($record) => static::canDelete($record))
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                     ]))
@@ -117,6 +116,8 @@ class TasaResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 

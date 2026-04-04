@@ -117,8 +117,7 @@ class TipoCreditoResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
 
-                Tables\Actions\EditAction::make()
-                    ->visible(fn() => AperturaCierreDia::estaAbierto()),
+                Tables\Actions\EditAction::make()->visible(fn($record) => static::canEdit($record)),
 
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
@@ -131,6 +130,8 @@ class TipoCreditoResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 

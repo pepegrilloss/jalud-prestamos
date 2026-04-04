@@ -34,16 +34,22 @@ class TasaMoraResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return \App\Services\DateFieldResolver::getFechaAbierta() !== null;
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canEdit($record)) { return false; }
+
         return \App\Services\DateFieldResolver::getFechaAbierta() !== null;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
+        if (!parent::canDelete($record)) { return false; }
+
         return \App\Services\DateFieldResolver::getFechaAbierta() !== null;
     }
 

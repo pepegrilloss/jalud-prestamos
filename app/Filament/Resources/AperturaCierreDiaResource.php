@@ -31,7 +31,6 @@ class AperturaCierreDiaResource extends Resource
             'create',
             'update',
             'delete',
-            'delete_any',
             'abrir_fecha',
             'cerrar_dia',
         ];

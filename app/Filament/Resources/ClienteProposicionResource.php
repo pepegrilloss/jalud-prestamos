@@ -300,6 +300,8 @@ class ClienteProposicionResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return false;
     }
 }

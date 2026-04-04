@@ -127,16 +127,22 @@ class ReporteCuentasCanceladasResource extends Resource
 
     public static function canCreate(): bool
     {
+        if (!parent::canCreate()) { return false; }
+
         return false;
     }
 
     public static function canEdit($record): bool
     {
+        if (!parent::canEdit($record)) { return false; }
+
         return false;
     }
 
     public static function canDelete($record): bool
     {
+        if (!parent::canDelete($record)) { return false; }
+
         return false;
     }
 }
