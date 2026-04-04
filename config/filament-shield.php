@@ -68,6 +68,8 @@ return [
 
         'pages' => [
             'Dashboard',
+            'SelectSede',
+            'EvaluacionDeCredito',
         ],
 
         'widgets' => [
