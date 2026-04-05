@@ -23,6 +23,19 @@ class ReporteCuentasCanceladasResource extends Resource
     protected static ?string $label = 'Cuentas Canceladas';
     protected static ?string $pluralLabel = 'Cuentas Canceladas en el Día';
 
+    /**
+     * Override para usar los permisos de 'reporte::cuentas::canceladas' explícitamente.
+     */
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_reporte::cuentas::canceladas') ?? false;
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_reporte::cuentas::canceladas') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -127,22 +140,16 @@ class ReporteCuentasCanceladasResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) { return false; }
-
         return false;
     }
 
     public static function canEdit($record): bool
     {
-        if (!parent::canEdit($record)) { return false; }
-
         return false;
     }
 
     public static function canDelete($record): bool
     {
-        if (!parent::canDelete($record)) { return false; }
-
         return false;
     }
 }

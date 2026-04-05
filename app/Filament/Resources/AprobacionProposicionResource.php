@@ -23,6 +23,35 @@ class AprobacionProposicionResource extends Resource
     protected static ?string $label = 'Aprobación de Proposición';
     protected static ?string $pluralLabel = 'Aprobaciones de Proposiciones';
 
+    /**
+     * Override para usar los permisos de 'aprobacion::proposicion' en lugar de
+     * los de ProposicionCreditoPolicy (que apunta a otro recurso).
+     */
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_aprobacion::proposicion') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create_aprobacion::proposicion') ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->can('update_aprobacion::proposicion') ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->can('delete_aprobacion::proposicion') ?? false;
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_aprobacion::proposicion') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form

@@ -31,6 +31,20 @@ class ClienteProposicionResource extends Resource
     protected static ?string $navigationLabel = 'Proposiciones';
     protected static ?string $modelLabel = 'Proposición';
     protected static ?string $pluralModelLabel = 'Proposiciones';
+
+    /**
+     * Override para usar los permisos de 'cliente::proposicion' en lugar de ProposicionCreditoPolicy.
+     */
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_cliente::proposicion') ?? false;
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_cliente::proposicion') ?? false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -272,7 +286,7 @@ class ClienteProposicionResource extends Resource
                     ->label('Nueva Proposición')
                     ->icon('heroicon-o-plus')
                     ->size('lg')
-                    ->visible(fn() => AperturaCierreDia::estaAbierto())
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()?->can('create_crear::proposicion::credito'))
                     ->url(fn(): string => '/admin/crear-proposicion-creditos/create')
                     ->openUrlInNewTab(false),
 
@@ -300,8 +314,16 @@ class ClienteProposicionResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) { return false; }
-
         return false;
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->can('update_cliente::proposicion') ?? false;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->can('delete_cliente::proposicion') ?? false;
     }
 }

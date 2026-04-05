@@ -37,6 +37,39 @@ class GenerarCreditoResource extends Resource
     protected static ?string $modelLabel = 'Generar Crédito';
     protected static ?string $pluralModelLabel = 'Generar Crédito';
 
+    /**
+     * Override para usar los permisos de 'generar::credito' en lugar de ProposicionCreditoPolicy.
+     */
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_generar::credito') ?? false;
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_generar::credito') ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        if (!(auth()->user()?->can('update_generar::credito') ?? false)) { return false; }
+
+        if ($record->FechaCierre !== null) {
+            return false;
+        }
+        return true;
+    }
+
+    public static function canDelete($record): bool
+    {
+        if (!(auth()->user()?->can('delete_generar::credito') ?? false)) { return false; }
+
+        if ($record->FechaCierre !== null) {
+            return false;
+        }
+        return true;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -542,7 +575,7 @@ class GenerarCreditoResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) { return false; }
+        if (!(auth()->user()?->can('create_generar::credito') ?? false)) { return false; }
 
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
@@ -551,30 +584,6 @@ class GenerarCreditoResource extends Resource
                 ->danger()
                 ->persistent()
                 ->send();
-            return false;
-        }
-        return true;
-    }
-
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
-    {
-        if (!parent::canEdit($record)) { return false; }
-
-        // Si el registro está cerrado (FechaCierre != null), no permitir editar
-        // NO validar estaAbierto() porque un registro puede estar abierto aunque hoy esté cerrado
-        if ($record->FechaCierre !== null) {
-            return false;
-        }
-        return true;
-    }
-
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
-    {
-        if (!parent::canDelete($record)) { return false; }
-
-        // Si el registro está cerrado, no permitir eliminar
-        // NO validar estaAbierto() porque un registro puede estar abierto aunque hoy esté cerrado
-        if ($record->FechaCierre !== null) {
             return false;
         }
         return true;
