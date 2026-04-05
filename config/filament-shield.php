@@ -80,7 +80,9 @@ return [
             'FilamentInfoWidget',
         ],
 
-        'resources' => [],
+        'resources' => [
+            'CrearProposicionCreditoResource',
+        ],
     ],
 
     'discovery' => [

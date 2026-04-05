@@ -34,16 +34,17 @@ class CrearProposicionCreditoResource extends Resource
     protected static ?string $pluralModelLabel = 'Proposiciones de Crédito';
 
     /**
-     * Override para usar los permisos de 'crear::proposicion::credito' en lugar de ProposicionCreditoPolicy.
+     * Usa los mismos permisos de 'cliente::proposicion' (Proposición en Shield)
+     * para unificar ambos recursos bajo una sola entrada.
      */
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('view_any_crear::proposicion::credito') ?? false;
+        return auth()->user()?->can('view_any_cliente::proposicion') ?? false;
     }
 
     public static function canView($record): bool
     {
-        return auth()->user()?->can('view_crear::proposicion::credito') ?? false;
+        return auth()->user()?->can('view_cliente::proposicion') ?? false;
     }
 
     public static function form(Form $form): Form
@@ -710,7 +711,7 @@ class CrearProposicionCreditoResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!(auth()->user()?->can('create_crear::proposicion::credito') ?? false)) { return false; }
+        if (!(auth()->user()?->can('create_cliente::proposicion') ?? false)) { return false; }
 
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
@@ -726,7 +727,7 @@ class CrearProposicionCreditoResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!(auth()->user()?->can('update_crear::proposicion::credito') ?? false)) { return false; }
+        if (!(auth()->user()?->can('update_cliente::proposicion') ?? false)) { return false; }
 
         // Si el registro está cerrado (FechaCierre != null), no permitir editar
         if ($record->FechaCierre !== null) {
@@ -748,7 +749,7 @@ class CrearProposicionCreditoResource extends Resource
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!(auth()->user()?->can('delete_crear::proposicion::credito') ?? false)) { return false; }
+        if (!(auth()->user()?->can('delete_cliente::proposicion') ?? false)) { return false; }
 
         // Si el registro está cerrado, no permitir eliminar
         if ($record->FechaCierre !== null) {

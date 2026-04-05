@@ -274,11 +274,11 @@ class ClienteProposicionResource extends Resource
 
                     Tables\Actions\EditAction::make()
                         ->label('Editar')
-                        ->visible(fn() => AperturaCierreDia::estaAbierto()),
+                        ->visible(fn($record) => AperturaCierreDia::estaAbierto() && static::canEdit($record)),
 
                     Tables\Actions\DeleteAction::make()
                         ->label('Eliminar')
-                        ->visible(fn() => AperturaCierreDia::estaAbierto()),
+                        ->visible(fn($record) => AperturaCierreDia::estaAbierto() && static::canDelete($record)),
                 ]),
             ])
             ->headerActions([
@@ -286,7 +286,7 @@ class ClienteProposicionResource extends Resource
                     ->label('Nueva Proposición')
                     ->icon('heroicon-o-plus')
                     ->size('lg')
-                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()?->can('create_crear::proposicion::credito'))
+                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()?->can('create_cliente::proposicion'))
                     ->url(fn(): string => '/admin/crear-proposicion-creditos/create')
                     ->openUrlInNewTab(false),
 
