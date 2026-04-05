@@ -164,19 +164,17 @@ class PromotorCobradorResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) { return false; }
-
-        return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canCreate();
     }
 
     public static function canEdit($record): bool
     {
-        return parent::canEdit(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canEdit($record);
     }
 
     public static function canDelete($record): bool
     {
-        return parent::canDelete(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canDelete($record);
     }
 
     public static function getRelations(): array

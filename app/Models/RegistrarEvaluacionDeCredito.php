@@ -4,9 +4,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Traits\BelongsToSede;
 
 class RegistrarEvaluacionDeCredito extends Model
 {
+    use BelongsToSede;
+
     protected $table = 'Cliente';
     protected $primaryKey = 'ClienteID';
     public $timestamps = false;
@@ -15,6 +18,7 @@ class RegistrarEvaluacionDeCredito extends Model
         'DNI',
         'NombresApellidos',
         'MontoMaxRecomendado',
+        'SedeID',
     ];
 
     protected $casts = [

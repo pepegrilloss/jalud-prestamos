@@ -13,11 +13,7 @@ class ListPromotorCobradors extends ListRecords
 
     public function getTitle(): string
     {
-        $title = 'Promotores y Cobradores';
-        if (!AperturaCierreDia::estaAbierto()) {
-            $title .= ' ⚠️ (Día Cerrado)';
-        }
-        return $title;
+        return 'Promotores y Cobradores';
     }
 
     protected function getHeaderActions(): array
