@@ -51,12 +51,13 @@ class User extends Authenticatable implements FilamentUser
 
     public function userNivelAprobacion()
     {
-        return $this->hasOne(UserNivelAprobacion::class, 'UserID');
+        return $this->hasOne(UserNivelAprobacion::class, 'UserID')->withoutGlobalScope('sede');
     }
 
     public function nivelAprobacionActivo()
     {
         return $this->hasOne(UserNivelAprobacion::class, 'UserID')
+            ->withoutGlobalScope('sede')
             ->where('Activo', true);
     }
 
@@ -96,7 +97,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function userNivelesAprobacion()
     {
-        return $this->hasMany(UserNivelAprobacion::class, 'UserID', 'id');
+        return $this->hasMany(UserNivelAprobacion::class, 'UserID', 'id')->withoutGlobalScope('sede');
     }
 
     public function promotorCobrador()
