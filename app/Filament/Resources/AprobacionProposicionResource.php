@@ -265,12 +265,22 @@ class AprobacionProposicionResource extends Resource
      */
     private static function puedeAprobarProposicion(ProposicionCredito $proposicion): bool
     {
-        $nivelUsuario = auth()->user()->getNivelAprobacionActivo()?->NivelAprobacionID;
-        if (!$nivelUsuario) {
+        $nivelActivo = auth()->user()->getNivelAprobacionActivo();
+        if (!$nivelActivo || !$nivelActivo->NivelAprobacionID) {
             return false;
         }
 
-        // Obtener la aprobación de este nivel
+        // Validar si es el nivel con Orden 1 (Gerencia o nivel principal)
+        $esGerencia = $nivelActivo->nivelAprobacion && $nivelActivo->nivelAprobacion->Orden === 1;
+
+        if ($esGerencia) {
+            // El nivel 1 puede aprobar todo lo que esté pendiente, saltándose la secuencia
+            return $proposicion->aprobaciones()->where('Estado', 'PENDIENTE')->exists();
+        }
+
+        $nivelUsuario = $nivelActivo->NivelAprobacionID;
+
+        // Obtener la aprobación de este nivel (para niveles normales)
         $aprobacionNivel = $proposicion->aprobaciones()
             ->where('NivelAprobacionID', $nivelUsuario)
             ->first();

@@ -65,21 +65,37 @@ trait AprobacionMultiNivel
     }
 
     /**
-     * Aprueba una proposición en su nivel
+     * Aprueba una proposición en su nivel (o aprobando todo si es Gerencia/Orden 1)
      */
     public function aprobarProposicion(ProposicionCredito $proposicion, ?string $comentario = null): bool
     {
-        $aprobacion = $proposicion->aprobaciones()
-            ->where('NivelAprobacionID', $this->getNivelAprobacionActivo()->NivelAprobacionID)
-            ->where('Estado', 'PENDIENTE')
-            ->first();
+        $nivelActivo = $this->getNivelAprobacionActivo();
+        if (!$nivelActivo) return false;
 
-        if (!$aprobacion || !$this->puedeAprobareAprobacion($aprobacion)) {
-            return false;
-        }
+        $esGerencia = $nivelActivo->nivelAprobacion && $nivelActivo->nivelAprobacion->Orden === 1;
 
-        if (!$aprobacion->aprobar($this, $comentario)) {
-            return false;
+        if ($esGerencia) {
+            // Gerencia aprueba TODOS los niveles pendientes en una sola acción
+            $pendientes = $proposicion->aprobaciones()->where('Estado', 'PENDIENTE')->get();
+            if ($pendientes->isEmpty()) return false;
+
+            foreach ($pendientes as $aprobacion) {
+                // Forzamos la aprobación omitiendo `puedeAprobareAprobacion` porque Gerencia manda
+                $aprobacion->aprobar($this, $comentario);
+            }
+        } else {
+            $aprobacion = $proposicion->aprobaciones()
+                ->where('NivelAprobacionID', $nivelActivo->NivelAprobacionID)
+                ->where('Estado', 'PENDIENTE')
+                ->first();
+
+            if (!$aprobacion || !$this->puedeAprobareAprobacion($aprobacion)) {
+                return false;
+            }
+
+            if (!$aprobacion->aprobar($this, $comentario)) {
+                return false;
+            }
         }
 
         // Actualizar el estado de la proposición
@@ -89,21 +105,34 @@ trait AprobacionMultiNivel
     }
 
     /**
-     * Rechaza una proposición en su nivel
+     * Rechaza una proposición en su nivel (o el paso actual si es Gerencia/Orden 1)
      */
     public function rechazarProposicion(ProposicionCredito $proposicion, string $comentario): bool
     {
-        $aprobacion = $proposicion->aprobaciones()
-            ->where('NivelAprobacionID', $this->getNivelAprobacionActivo()->NivelAprobacionID)
-            ->where('Estado', 'PENDIENTE')
-            ->first();
+        $nivelActivo = $this->getNivelAprobacionActivo();
+        if (!$nivelActivo) return false;
 
-        if (!$aprobacion || !$this->puedeAprobareAprobacion($aprobacion)) {
-            return false;
-        }
+        $esGerencia = $nivelActivo->nivelAprobacion && $nivelActivo->nivelAprobacion->Orden === 1;
 
-        if (!$aprobacion->rechazar($this, $comentario)) {
-            return false;
+        if ($esGerencia) {
+            // Gerencia rechaza la proposición tomando la aprobación que esté pendiente
+            $aprobacion = $proposicion->obtenerProximaAprobacionPendiente();
+            if (!$aprobacion) return false;
+
+            $aprobacion->rechazar($this, $comentario);
+        } else {
+            $aprobacion = $proposicion->aprobaciones()
+                ->where('NivelAprobacionID', $nivelActivo->NivelAprobacionID)
+                ->where('Estado', 'PENDIENTE')
+                ->first();
+
+            if (!$aprobacion || !$this->puedeAprobareAprobacion($aprobacion)) {
+                return false;
+            }
+
+            if (!$aprobacion->rechazar($this, $comentario)) {
+                return false;
+            }
         }
 
         // Actualizar el estado de la proposición
