@@ -2,47 +2,39 @@
 
 namespace App\Filament\Resources\CreditoResource\Widgets;
 
-use App\Filament\Resources\CreditoResource\Pages\ListCreditos;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Carbon\Carbon;
+use Livewire\Attributes\On;
 
 class CreditosDelDiaStats extends BaseWidget
 {
-    use InteractsWithPageTable;
+    public ?string $fechaFiltro = null;
 
-    protected function getTablePage(): string
+    #[On('update-fecha-stats')]
+    public function updateFecha($fecha)
     {
-        return ListCreditos::class;
+        $this->fechaFiltro = $fecha;
     }
 
     protected function getStats(): array
     {
-        $query = $this->getPageTableQuery();
+        $fecha = $this->fechaFiltro ?? now()->toDateString();
         
-        // 🚨 Obtener los filtros directamente desde la propiedad inyectada por InteractsWithPageTable
-        $filtros = $this->tableFilters ?? [];
-        
-        $fecha = $filtros['fecha_filtro']['fecha'] ?? null;
-        if ($fecha) {
-            $query->whereDate('FechaGeneracion', $fecha);
-        } elseif (!isset($filtros['fecha_filtro'])) {
-            // Si el componente padre apenas cargó y no ha propagado el filtro, forzamos el de por defecto (Hoy).
-            $query->whereDate('FechaGeneracion', now()->toDateString());
-        }
+        $query = \App\Models\Credito::with('proposicion')
+            ->whereHas('proposicion', function ($q) {
+                $q->where('FueRefinanciada', 0);
+            })
+            ->whereDate('FechaGeneracion', $fecha);
 
-        // Sumar monto usando get() dado que la colección no será gigantesca por día
-        $totalMonto = (clone $query)->with('proposicion')->get()->sum(function($credito) {
+        $totalMonto = (clone $query)->get()->sum(function($credito) {
             return $credito->proposicion?->MontoTotal ?? 0;
         });
 
-        // Contar cantidad de créditos
         $cantidad = (clone $query)->count();
 
         return [
             Stat::make('Monto Total Generado', 'S/ ' . number_format($totalMonto, 2))
-                ->description('Resultados Filtrados (Por defecto: Día Abierto)')
+                ->description('Día: ' . \Carbon\Carbon::parse($fecha)->format('d/m/Y'))
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('success')
                 ->extraAttributes([
