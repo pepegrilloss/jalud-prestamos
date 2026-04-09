@@ -285,7 +285,7 @@ class CreditoResource extends Resource
     public static function getWidgets(): array
     {
         return [
-            CreditoResource\Widgets\CreditosDelDiaStats::class,
+            \App\Filament\Resources\CreditoResource\Widgets\CreditosDelDiaStats::class,
         ];
     }
 
