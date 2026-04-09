@@ -24,6 +24,7 @@ class ListCreditos extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
+            CreditoResource\Widgets\CreditosDelDiaStats::class,
         ];
     }
     protected function getHeaderActions(): array

@@ -39,6 +39,9 @@ Route::get('/pdf/acta-creditos', function () {
     return $pdf->stream('Acta_Creditos_' . now()->format('Y-m-d_His') . '.pdf');
 })->name('acta-creditos.view');
 
+Route::get('/excel/acta-creditos', [\App\Http\Controllers\DescargarActaExcelController::class, 'descargar'])
+    ->name('acta-creditos.excel');
+
 Route::get('/pdf/creditos-vencidos', function () {
     $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
 

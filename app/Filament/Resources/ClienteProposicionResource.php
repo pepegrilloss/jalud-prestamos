@@ -206,7 +206,7 @@ class ClienteProposicionResource extends Resource
     {
         return $table
             ->recordUrl(null)
-            ->modifyQueryUsing(fn($query) => $query->where('Estado', '<>', 'APROBADO'))
+            ->modifyQueryUsing(fn($query) => $query->whereDoesntHave('credito'))
             ->columns([
                 Tables\Columns\TextColumn::make('CodigoCredito')
                     ->label('Código Proposición')

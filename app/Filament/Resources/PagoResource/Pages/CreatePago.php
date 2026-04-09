@@ -78,21 +78,21 @@ class CreatePago extends CreateRecord
                             $monto = number_format($montoPagado, 2);
                             $nombre = e($cliente->NombresApellidos ?? '');
 
+                            $metodoPagoBruto = $data['TipoPago'] ?? 'EFECTIVO';
+                            $metodoPagoDisplay = match($metodoPagoBruto) {
+                                'EFECTIVO' => 'Efectivo',
+                                'YAPE_PLIN' => 'Yape / Plin',
+                                'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
+                                default => $metodoPagoBruto
+                            };
+
                             return new \Illuminate\Support\HtmlString(
-                                '<div class="text-center py-3">' .
-                                '<div class="text-lg text-gray-500 dark:text-gray-400 mb-1">👤 Cliente:</div>' .
-                                '<div class="text-4xl font-extrabold text-gray-900 dark:text-white mb-5 uppercase tracking-tight leading-tight">' . $nombre . '</div>' .
-                                '<div class="flex justify-center gap-10 border-t border-gray-200 dark:border-gray-700 mt-3 pt-5">' .
-                                '<div>' .
-                                '<div class="text-sm text-gray-500 dark:text-gray-400">📝 Tipo de Crédito</div>' .
-                                '<div class="text-xl font-bold text-gray-900 dark:text-white">' . $tipoCredito . '</div>' .
-                                '</div>' .
-                                '<div>' .
-                                '<div class="text-sm text-gray-500 dark:text-gray-400">💰 Monto a Pagar</div>' .
-                                '<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">S/ ' . $monto . '</div>' .
-                                '</div>' .
-                                '</div>' .
-                                '</div>'
+                                view('filament.components.pago-modal-confirmacion', [
+                                    'nombre' => $nombre,
+                                    'tipoCredito' => $tipoCredito,
+                                    'monto' => $monto,
+                                    'metodoPago' => $metodoPagoDisplay
+                                ])->render()
                             );
 
                         } catch (\Exception $e) {
@@ -133,21 +133,21 @@ class CreatePago extends CreateRecord
                             $monto = number_format($montoPagado, 2);
                             $nombre = e($cliente->NombresApellidos ?? '');
 
+                            $metodoPagoBruto = $data['TipoPago'] ?? 'EFECTIVO';
+                            $metodoPagoDisplay = match($metodoPagoBruto) {
+                                'EFECTIVO' => 'Efectivo',
+                                'YAPE_PLIN' => 'Yape / Plin',
+                                'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
+                                default => $metodoPagoBruto
+                            };
+
                             return new \Illuminate\Support\HtmlString(
-                                '<div class="text-center py-3">' .
-                                '<div class="text-lg text-gray-500 dark:text-gray-400 mb-1">👤 Cliente:</div>' .
-                                '<div class="text-4xl font-extrabold text-gray-900 dark:text-white mb-5 uppercase tracking-tight leading-tight">' . $nombre . '</div>' .
-                                '<div class="flex justify-center gap-10 border-t border-gray-200 dark:border-gray-700 mt-3 pt-5">' .
-                                '<div>' .
-                                '<div class="text-sm text-gray-500 dark:text-gray-400">📝 Tipo de Crédito</div>' .
-                                '<div class="text-xl font-bold text-gray-900 dark:text-white">' . $tipoCredito . '</div>' .
-                                '</div>' .
-                                '<div>' .
-                                '<div class="text-sm text-gray-500 dark:text-gray-400">💰 Monto a Pagar</div>' .
-                                '<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">S/ ' . $monto . '</div>' .
-                                '</div>' .
-                                '</div>' .
-                                '</div>'
+                                view('filament.components.pago-modal-confirmacion', [
+                                    'nombre' => $nombre,
+                                    'tipoCredito' => $tipoCredito,
+                                    'monto' => $monto,
+                                    'metodoPago' => $metodoPagoDisplay
+                                ])->render()
                             );
 
                         } catch (\Exception $e) {
@@ -193,21 +193,21 @@ class CreatePago extends CreateRecord
                         $monto = number_format($montoPagado, 2);
                         $nombre = e($cliente->NombresApellidos ?? '');
 
+                        $metodoPagoBruto = $data['TipoPago'] ?? 'EFECTIVO';
+                        $metodoPagoDisplay = match($metodoPagoBruto) {
+                            'EFECTIVO' => 'Efectivo',
+                            'YAPE_PLIN' => 'Yape / Plin',
+                            'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
+                            default => $metodoPagoBruto
+                        };
+
                         return new \Illuminate\Support\HtmlString(
-                            '<div class="text-center py-3">' .
-                            '<div class="text-lg text-gray-500 dark:text-gray-400 mb-1">👤 Cliente:</div>' .
-                            '<div class="text-4xl font-extrabold text-gray-900 dark:text-white mb-5 uppercase tracking-tight leading-tight">' . $nombre . '</div>' .
-                            '<div class="flex justify-center gap-10 border-t border-gray-200 dark:border-gray-700 mt-3 pt-5">' .
-                            '<div>' .
-                            '<div class="text-sm text-gray-500 dark:text-gray-400">📝 Tipo de Crédito</div>' .
-                            '<div class="text-xl font-bold text-gray-900 dark:text-white">' . $tipoCredito . '</div>' .
-                            '</div>' .
-                            '<div>' .
-                            '<div class="text-sm text-gray-500 dark:text-gray-400">💰 Monto a Pagar</div>' .
-                            '<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">S/ ' . $monto . '</div>' .
-                            '</div>' .
-                            '</div>' .
-                            '</div>'
+                            view('filament.components.pago-modal-confirmacion', [
+                                'nombre' => $nombre,
+                                'tipoCredito' => $tipoCredito,
+                                'monto' => $monto,
+                                'metodoPago' => $metodoPagoDisplay
+                            ])->render()
                         );
 
                     } catch (\Exception $e) {

@@ -139,6 +139,16 @@ class CreditoResource extends Resource
                     ->money('PEN')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('proposicion.TasaInteres')
+                    ->label('Tasa (%)')
+                    ->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', '') . ' %')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('proposicion.MontoInteres')
+                    ->label('Interés')
+                    ->money('PEN')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('proposicion.MontoTotalPagar')
                     ->label('Monto + Interés')
                     ->money('PEN')
@@ -187,6 +197,25 @@ class CreditoResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
+                Tables\Filters\Filter::make('fecha_filtro')
+                    ->form([
+                        Forms\Components\DatePicker::make('fecha')
+                            ->label('Día de Generación')
+                            ->default(fn () => \App\Models\AperturaCierreDia::where('EstadoDia', 'ABIERTO')->value('Fecha') ?? now()->toDateString())
+                            ->native(false),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['fecha'] ?? null,
+                            fn (Builder $query, $date): Builder => $query->whereDate('FechaGeneracion', $date),
+                        );
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        if (! $data['fecha']) {
+                            return null;
+                        }
+                        return 'Día: ' . \Carbon\Carbon::parse($data['fecha'])->format('d/m/Y');
+                    }),
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
@@ -269,6 +298,13 @@ class CreditoResource extends Resource
         return [
             'index' => Pages\ListCreditos::route('/'),
             'view' => Pages\ViewCredito::route('/{record}'),
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            CreditoResource\Widgets\CreditosDelDiaStats::class,
         ];
     }
 

@@ -46,7 +46,7 @@ class PagoResource extends Resource
                             ->required()
                             ->live()
                             ->native(false)
-                            ->hidden(fn(Get $get) => filled($get('TipoPago'))),
+                            ->hidden(fn() => request()->routeIs('*.view')),
 
                         Forms\Components\Placeholder::make('metodo_seleccionado_display')
                             ->label('Método de Pago Seleccionado')
@@ -56,7 +56,7 @@ class PagoResource extends Resource
                                 'TRANSFERENCIA_BANCARIA' => 'TRANSFERENCIA BANCARIA',
                                 default => 'Ninguno',
                             })
-                            ->visible(fn(Get $get) => filled($get('TipoPago'))),
+                            ->visible(fn() => request()->routeIs('*.view')),
                     ]),
 
                 Forms\Components\Section::make('Información del Pago')
@@ -434,18 +434,18 @@ class PagoResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('cliente_nombre')
                     ->label('Cliente')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('Cliente.NombresApellidos', 'like', "%{$search}%"))
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('Cliente.NombresApellidos', $direction)),
 
                 Tables\Columns\TextColumn::make('tipo_credito_desc')
                     ->label('Tipo de Crédito')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('TipoCredito.Descripcion', 'like', "%{$search}%"))
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('TipoCredito.Descripcion', $direction)),
 
                 Tables\Columns\TextColumn::make('codigo_credito')
                     ->label('Código Crédito')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('ProposicionCredito.CodigoCredito', 'like', "%{$search}%"))
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('ProposicionCredito.CodigoCredito', $direction)),
 
                 Tables\Columns\TextColumn::make('numero_cuota')
                     ->label('Cuota #')
@@ -495,8 +495,8 @@ class PagoResource extends Resource
 
                 Tables\Columns\TextColumn::make('UsuarioRegistro')
                     ->label('Usuario Registro')
-                    ->searchable()
-                    ->sortable()
+                    ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('pago.UsuarioRegistro', 'like', "%{$search}%"))
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('pago.UsuarioRegistro', $direction))
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
 
@@ -519,6 +519,7 @@ class PagoResource extends Resource
                                 'dni' => 'DNI del Cliente',
                                 'zona' => 'Zona/Sector',
                                 'fecha' => 'Rango de Fechas',
+                                'tipo_pago' => 'Método de Pago',
                             ])
                             ->live()
                             ->columnSpanFull()
@@ -561,6 +562,16 @@ class PagoResource extends Resource
                                     ->label('Hasta')
                                     ->native(false)
                                     ->visible(fn(Get $get) => in_array('fecha', $get('campos_activos') ?? [])),
+
+                                Forms\Components\Select::make('TipoPago')
+                                    ->label('Método de Pago')
+                                    ->options([
+                                        'EFECTIVO' => 'Efectivo',
+                                        'YAPE_PLIN' => 'Yape o Plin',
+                                        'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
+                                    ])
+                                    ->native(false)
+                                    ->visible(fn(Get $get) => in_array('tipo_pago', $get('campos_activos') ?? [])),
                             ])
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -590,6 +601,10 @@ class PagoResource extends Resource
                             ->when(
                                 isset($data['FechaHasta']) && $data['FechaHasta'],
                                 fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) <= ?', [$data['FechaHasta']])
+                            )
+                            ->when(
+                                isset($data['TipoPago']) && $data['TipoPago'],
+                                fn(Builder $q) => $q->where('pago.TipoPago', $data['TipoPago'])
                             );
                     }),
             ], layout: FiltersLayout::AboveContent)

@@ -359,7 +359,7 @@ class ClienteResource extends Resource
                                     ->label('Giro')
                                     ->prefixIcon('heroicon-m-briefcase')
                                     ->options(
-                                        Giro::where('Activo', 1)
+                                        fn() => Giro::where('Activo', 1)
                                             ->get()
                                             ->mapWithKeys(fn($giro) => [
                                                 $giro->GiroID => "{$giro->Codigo} - {$giro->Descripcion}"
@@ -368,6 +368,21 @@ class ClienteResource extends Resource
                                     ->searchable()
                                     ->native(false)
                                     ->live()
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('Codigo')
+                                            ->label('Código')
+                                            ->required()
+                                            ->maxLength(10)
+                                            ->placeholder('Ej: G001'),
+                                        Forms\Components\TextInput::make('Descripcion')
+                                            ->label('Descripción')
+                                            ->required()
+                                            ->maxLength(200),
+                                    ])
+                                    ->createOptionUsing(function (array $data) {
+                                        $giro = \App\Models\Giro::create($data);
+                                        return $giro->GiroID;
+                                    })
                                     ->afterStateUpdated(fn(Set $set) => $set('negocio.SubGiroID', null)),
 
                                 Forms\Components\Select::make('negocio.SubGiroID')
@@ -381,7 +396,18 @@ class ClienteResource extends Resource
                                     )
                                     ->searchable()
                                     ->native(false)
-                                    ->disabled(fn(Get $get) => !$get('negocio.GiroID')),
+                                    ->disabled(fn(Get $get) => !$get('negocio.GiroID'))
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('Descripcion')
+                                            ->label('Descripción del Sub Giro')
+                                            ->required()
+                                            ->maxLength(200),
+                                    ])
+                                    ->createOptionUsing(function (array $data, Get $get) {
+                                        $data['GiroID'] = $get('negocio.GiroID');
+                                        $subGiro = \App\Models\SubGiro::create($data);
+                                        return $subGiro->SubGiroID;
+                                    }),
                             ]),
 
                         Forms\Components\Repeater::make('negocio.telefonos')

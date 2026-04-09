@@ -180,8 +180,8 @@ class AprobacionProposicionResource extends Resource
                     ]),
             ])
             ->modifyQueryUsing(function ($query) {
-                // Solo mostrar proposiciones PENDIENTES (que necesitan aprobación)
-                return $query->where('ProposicionCredito.Estado', 'PENDIENTE');
+                // Mostrar proposiciones que aún no tienen crédito generado
+                return $query->whereDoesntHave('credito');
             })
             ->actions([
                 Tables\Actions\Action::make('aprobar')
