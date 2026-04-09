@@ -201,7 +201,7 @@ class CreditoResource extends Resource
                     ->form([
                         Forms\Components\DatePicker::make('fecha')
                             ->label('Día de Generación')
-                            ->default(fn () => \App\Models\AperturaCierreDia::where('EstadoDia', 'ABIERTO')->value('Fecha') ?? now()->toDateString())
+                            ->default(fn () => now()->toDateString())
                             ->native(false),
                     ])
                     ->query(function (Builder $query, array $data): Builder {

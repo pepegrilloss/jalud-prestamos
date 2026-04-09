@@ -28,11 +28,8 @@ class CreditosDelDiaStats extends BaseWidget
         if ($fecha) {
             $query->whereDate('FechaGeneracion', $fecha);
         } elseif (!isset($filtros['fecha_filtro'])) {
-            // Si el componente padre apenas cargó y no ha propagado el filtro, forzamos el de por defecto.
-            $diaAbierto = \App\Models\AperturaCierreDia::where('EstadoDia', 'ABIERTO')->value('Fecha');
-            if ($diaAbierto) {
-                $query->whereDate('FechaGeneracion', $diaAbierto);
-            }
+            // Si el componente padre apenas cargó y no ha propagado el filtro, forzamos el de por defecto (Hoy).
+            $query->whereDate('FechaGeneracion', now()->toDateString());
         }
 
         // Sumar monto usando get() dado que la colección no será gigantesca por día
