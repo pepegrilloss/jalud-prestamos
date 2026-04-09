@@ -197,25 +197,6 @@ class CreditoResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
-                Tables\Filters\Filter::make('fecha_filtro')
-                    ->form([
-                        Forms\Components\DatePicker::make('fecha')
-                            ->label('Día de Generación')
-                            ->default(fn () => now()->toDateString())
-                            ->native(false),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            $data['fecha'] ?? null,
-                            fn (Builder $query, $date): Builder => $query->whereDate('FechaGeneracion', $date),
-                        );
-                    })
-                    ->indicateUsing(function (array $data): ?string {
-                        if (! $data['fecha']) {
-                            return null;
-                        }
-                        return 'Día: ' . \Carbon\Carbon::parse($data['fecha'])->format('d/m/Y');
-                    }),
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))

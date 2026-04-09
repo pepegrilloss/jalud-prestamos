@@ -21,14 +21,6 @@ class ListCreditos extends ListRecords
         return $title;
     }
 
-    public function updatedTableFilters(): void
-    {
-        // Enviar evento seguro al widget en lugar de usar InteractsWithPageTable
-        $this->dispatch('update-fecha-stats', 
-            fecha: $this->tableFilters['fecha_filtro']['fecha'] ?? now()->toDateString()
-        );
-    }
-
     protected function getHeaderWidgets(): array
     {
         return [
