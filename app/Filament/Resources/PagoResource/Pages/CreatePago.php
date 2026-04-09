@@ -79,7 +79,7 @@ class CreatePago extends CreateRecord
                             $nombre = e($cliente->NombresApellidos ?? '');
 
                             $metodoPagoBruto = $data['TipoPago'] ?? 'EFECTIVO';
-                            $metodoPagoDisplay = match($metodoPagoBruto) {
+                            $metodoPagoDisplay = match ($metodoPagoBruto) {
                                 'EFECTIVO' => 'Efectivo',
                                 'YAPE_PLIN' => 'Yape / Plin',
                                 'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
@@ -134,7 +134,7 @@ class CreatePago extends CreateRecord
                             $nombre = e($cliente->NombresApellidos ?? '');
 
                             $metodoPagoBruto = $data['TipoPago'] ?? 'EFECTIVO';
-                            $metodoPagoDisplay = match($metodoPagoBruto) {
+                            $metodoPagoDisplay = match ($metodoPagoBruto) {
                                 'EFECTIVO' => 'Efectivo',
                                 'YAPE_PLIN' => 'Yape / Plin',
                                 'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
@@ -194,7 +194,7 @@ class CreatePago extends CreateRecord
                         $nombre = e($cliente->NombresApellidos ?? '');
 
                         $metodoPagoBruto = $data['TipoPago'] ?? 'EFECTIVO';
-                        $metodoPagoDisplay = match($metodoPagoBruto) {
+                        $metodoPagoDisplay = match ($metodoPagoBruto) {
                             'EFECTIVO' => 'Efectivo',
                             'YAPE_PLIN' => 'Yape / Plin',
                             'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
@@ -333,26 +333,36 @@ class CreatePago extends CreateRecord
             }
         }
 
-        // 2. Ahora que tenemos seguro el CreditoID, asegurar la CuotaID con la siguiente en secuencia
+        // 2. Ahora que tenemos seguro el CreditoID, asegurar la CuotaID por FECHA DEL DÍA
+        // Todos los pagos del mismo día van a la misma cuota (cuota = día)
         if (!isset($data['CuotaID']) || empty($data['CuotaID'])) {
             $creditoID = $data['CreditoID'] ?? null;
             if ($creditoID) {
-                // Obtener el máximo NumeroCuota que ya tiene pagos
-                $ultimoCuotaConPago = \App\Models\Pago::where('pago.CreditoID', $creditoID)
-                    ->where('pago.Activo', 1)
-                    ->join('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
-                    ->max('cuota.NumeroCuota');
+                // Obtener la fecha del día de operación
+                $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                $fechaHoy = $fechaAbierta ? $fechaAbierta->toDateString() : now()->toDateString();
 
-                // La siguiente cuota es la que viene después
-                $siguienteCuotaNumber = ($ultimoCuotaConPago ?? 0) + 1;
-
-                $siguienteCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
-                    ->where('NumeroCuota', $siguienteCuotaNumber)
+                // Buscar la cuota cuya FechaVencimiento coincide con hoy
+                $cuotaDelDia = \App\Models\Cuota::where('CreditoID', $creditoID)
                     ->where('Activo', 1)
+                    ->where('NumeroCuota', '>', 0)
+                    ->whereDate('FechaVencimiento', $fechaHoy)
                     ->first();
 
-                if ($siguienteCuota) {
-                    $data['CuotaID'] = $siguienteCuota->CuotaID;
+                if ($cuotaDelDia) {
+                    $data['CuotaID'] = $cuotaDelDia->CuotaID;
+                } else {
+                    // Fallback: si no hay cuota para hoy, buscar la primera cuota pendiente
+                    $cuotaPendiente = \App\Models\Cuota::where('CreditoID', $creditoID)
+                        ->where('Activo', 1)
+                        ->where('NumeroCuota', '>', 0)
+                        ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
+                        ->orderBy('NumeroCuota')
+                        ->first();
+
+                    if ($cuotaPendiente) {
+                        $data['CuotaID'] = $cuotaPendiente->CuotaID;
+                    }
                 }
             }
         }

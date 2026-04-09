@@ -179,14 +179,29 @@ class PagoResource extends Resource
                                                 $montoTotal = $proposicion->MontoTotalPagar;
                                                 $set('TipoCredito', "{$tipo} - {$proposicion->CodigoCredito} - {$fechaInicio} - Monto total: S/ " . number_format($montoTotal, 2));
 
-                                                $primeraCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
+                                                // Buscar la cuota del día (cuota = día)
+                                                $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                                                $fechaHoy = $fechaAbierta ? $fechaAbierta->toDateString() : now()->toDateString();
+
+                                                $cuotaDelDia = \App\Models\Cuota::where('CreditoID', $creditoID)
                                                     ->where('Activo', 1)
                                                     ->where('NumeroCuota', '>', 0)
-                                                    ->orderBy('NumeroCuota')
+                                                    ->whereDate('FechaVencimiento', $fechaHoy)
                                                     ->first();
 
-                                                if ($primeraCuota) {
-                                                    $set('CuotaID', $primeraCuota->CuotaID);
+                                                if ($cuotaDelDia) {
+                                                    $set('CuotaID', $cuotaDelDia->CuotaID);
+                                                } else {
+                                                    // Fallback: primera cuota pendiente
+                                                    $cuotaPendiente = \App\Models\Cuota::where('CreditoID', $creditoID)
+                                                        ->where('Activo', 1)
+                                                        ->where('NumeroCuota', '>', 0)
+                                                        ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
+                                                        ->orderBy('NumeroCuota')
+                                                        ->first();
+                                                    if ($cuotaPendiente) {
+                                                        $set('CuotaID', $cuotaPendiente->CuotaID);
+                                                    }
                                                 }
                                             }
                                         }
@@ -368,25 +383,31 @@ class PagoResource extends Resource
                             ->dehydrated()
                             ->disabled(fn(Forms\Get $get) => !$get('CreditoID'))
                             ->afterStateUpdated(function (Forms\Set $set, Forms\Get $get) {
-                                // Auto-seleccionar la siguiente cuota en secuencia
+                                // Auto-seleccionar la cuota del día (cuota = día)
                                 $creditoID = $get('CreditoID');
                                 if ($creditoID && !$get('CuotaID')) {
-                                    // Obtener el máximo NumeroCuota que ya tiene pagos
-                                    $ultimoCuotaConPago = \App\Models\Pago::where('pago.CreditoID', $creditoID)
-                                        ->where('pago.Activo', 1)
-                                        ->join('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
-                                        ->max('cuota.NumeroCuota');
+                                    $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                                    $fechaHoy = $fechaAbierta ? $fechaAbierta->toDateString() : now()->toDateString();
 
-                                    // La siguiente cuota es la que viene después
-                                    $siguienteCuotaNumber = ($ultimoCuotaConPago ?? 0) + 1;
-
-                                    $siguienteCuota = \App\Models\Cuota::where('CreditoID', $creditoID)
-                                        ->where('NumeroCuota', $siguienteCuotaNumber)
+                                    $cuotaDelDia = \App\Models\Cuota::where('CreditoID', $creditoID)
                                         ->where('Activo', 1)
+                                        ->where('NumeroCuota', '>', 0)
+                                        ->whereDate('FechaVencimiento', $fechaHoy)
                                         ->first();
 
-                                    if ($siguienteCuota) {
-                                        $set('CuotaID', $siguienteCuota->CuotaID);
+                                    if ($cuotaDelDia) {
+                                        $set('CuotaID', $cuotaDelDia->CuotaID);
+                                    } else {
+                                        // Fallback: primera cuota pendiente
+                                        $cuotaPendiente = \App\Models\Cuota::where('CreditoID', $creditoID)
+                                            ->where('Activo', 1)
+                                            ->where('NumeroCuota', '>', 0)
+                                            ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
+                                            ->orderBy('NumeroCuota')
+                                            ->first();
+                                        if ($cuotaPendiente) {
+                                            $set('CuotaID', $cuotaPendiente->CuotaID);
+                                        }
                                     }
                                 }
                             }),
