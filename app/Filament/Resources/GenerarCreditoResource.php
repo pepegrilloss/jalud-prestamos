@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\GenerarCreditoResource\Pages;
+use App\Filament\Resources\GenerarCreditoResource\Widgets;
 use App\Models\ProposicionCredito;
 use App\Models\Cliente;
 use App\Models\TipoCredito;
@@ -206,8 +207,7 @@ class GenerarCreditoResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('cliente.NombresApellidos')->label('Cliente')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('MontoTotal')->label('Monto')->money('PEN')->sortable()
-                    ->summarize(Tables\Columns\Summarizers\Sum::make()->money('PEN')->label('Total')),
+                Tables\Columns\TextColumn::make('MontoTotal')->label('Monto')->money('PEN')->sortable(),
                 Tables\Columns\TextColumn::make('TasaInteres')->label('Tasa (%)')->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', '') . ' %')->sortable(),
                 Tables\Columns\TextColumn::make('MontoInteres')
                     ->label('Intereses')
@@ -564,6 +564,13 @@ class GenerarCreditoResource extends Resource
                 ->persistent()
                 ->send();
         }
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            Widgets\CreditosPorGenerarStats::class,
+        ];
     }
 
     public static function getPages(): array
