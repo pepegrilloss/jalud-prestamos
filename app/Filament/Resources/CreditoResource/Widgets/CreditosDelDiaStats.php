@@ -13,13 +13,14 @@ class CreditosDelDiaStats extends BaseWidget
 
     public function mount(): void
     {
-        $this->fechaSeleccionada = now()->toDateString();
+        $this->fechaSeleccionada = request()->query('fechaSeleccionada', now()->toDateString());
     }
 
     // Método que se llama cuando cambia la fecha desde el frontend
     public function updatedFechaSeleccionada(): void
     {
-        // Livewire re-renderiza automáticamente al cambiar la propiedad
+        // Emitir un evento para que la tabla (página ListCreditos) también actualice su filtro
+        $this->dispatch('updateFechaCreditos', fecha: $this->fechaSeleccionada);
     }
 
     protected function getStats(): array

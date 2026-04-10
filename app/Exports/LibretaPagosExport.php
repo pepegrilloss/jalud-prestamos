@@ -239,12 +239,16 @@ class LibretaPagosExport
 
             if (isset($pagosData[$cuota->CuotaID])) {
                 foreach ($pagosData[$cuota->CuotaID] as $pago) {
-                    $montoEfectivo += $pago->MontoPagado;
+                    if (empty($pago->TipoPago) || strtoupper($pago->TipoPago) === 'EFECTIVO') {
+                        $montoEfectivo += $pago->MontoPagado;
+                    } else {
+                        $montoOtros += $pago->MontoPagado;
+                    }
                 }
             }
 
             // Restar los pagos de esta cuota del saldo acumulativo
-            $saldoAcumulativo -= $montoEfectivo;
+            $saldoAcumulativo -= ($montoEfectivo + $montoOtros);
             $saldoTotalCredito = max(0, $saldoAcumulativo); // No permitir negativos
 
             if ($i < 20) {

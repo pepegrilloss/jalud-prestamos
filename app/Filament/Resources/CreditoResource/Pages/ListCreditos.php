@@ -12,6 +12,20 @@ class ListCreditos extends ListRecords
 
     protected static ?string $title = 'Créditos Generados';
 
+    public ?string $fechaFiltro = null;
+
+    public function mount(): void
+    {
+        parent::mount();
+        $this->fechaFiltro = request()->query('fechaSeleccionada', now()->toDateString());
+    }
+
+    #[\Livewire\Attributes\On('updateFechaCreditos')]
+    public function updateFechaFiltro($fecha)
+    {
+        $this->fechaFiltro = $fecha;
+    }
+
     public function getTitle(): string
     {
         $title = 'Créditos Generados';

@@ -272,6 +272,8 @@
                         @foreach($items as $cuota)
                             @php 
                                 $pago = 0;
+                                $pagoEfectivo = 0;
+                                $pagoOtros = 0;
                                 $esPagoInicialFila = $cuota->NumeroCuota == 0;
                                 $fechaMostrar = \Carbon\Carbon::parse($cuota->FechaVencimiento);
 
@@ -280,6 +282,11 @@
                                     foreach ($credito->pagos as $p) {
                                         if ($p->CuotaID == $cuota->CuotaID) {
                                             $pago += $p->MontoPagado;
+                                            if (empty($p->TipoPago) || strtoupper($p->TipoPago) === 'EFECTIVO') {
+                                                $pagoEfectivo += $p->MontoPagado;
+                                            } else {
+                                                $pagoOtros += $p->MontoPagado;
+                                            }
                                         }
                                     }
                                 }
@@ -301,8 +308,8 @@
                                         {{ $fechaMostrar->format('d/m/Y') }}
                                     @endif
                                 </td>
-                                <td>{{ $pago > 0 ? number_format($pago, 1) : '' }}</td>
-                                <td></td>
+                                <td>{{ $pagoEfectivo > 0 ? number_format($pagoEfectivo, 1) : '' }}</td>
+                                <td>{{ $pagoOtros > 0 ? number_format($pagoOtros, 1) : '' }}</td>
                                 <td>{{ $pago > 0 ? number_format(max(0, $saldoFicticio), 2) : '' }}</td>
                             </tr>
                         @endforeach

@@ -197,31 +197,7 @@ class CreditoResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
-                Tables\Filters\Filter::make('fecha_generacion')
-                    ->label('Fecha de Generación')
-                    ->form([
-                        Forms\Components\DatePicker::make('desde')
-                            ->label('Desde'),
-                        Forms\Components\DatePicker::make('hasta')
-                            ->label('Hasta'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when($data['desde'], fn (Builder $q, $date) => $q->whereDate('FechaGeneracion', '>=', $date))
-                            ->when($data['hasta'], fn (Builder $q, $date) => $q->whereDate('FechaGeneracion', '<=', $date));
-                    })
-                    ->indicateUsing(function (array $data): array {
-                        $indicators = [];
-                        if ($data['desde'] ?? null) {
-                            $indicators[] = Tables\Filters\Indicator::make('Desde: ' . \Carbon\Carbon::parse($data['desde'])->format('d/m/Y'))
-                                ->removeField('desde');
-                        }
-                        if ($data['hasta'] ?? null) {
-                            $indicators[] = Tables\Filters\Indicator::make('Hasta: ' . \Carbon\Carbon::parse($data['hasta'])->format('d/m/Y'))
-                                ->removeField('hasta');
-                        }
-                        return $indicators;
-                    }),
+
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
@@ -266,12 +242,18 @@ class CreditoResource extends Resource
                     })
                     ->native(false),
             ])
-            ->modifyQueryUsing(function ($query) {
-                return $query->with(['proposicion', 'tipoPago'])
+            ->modifyQueryUsing(function (Builder $query, \Livewire\Component $livewire) {
+                $query->with(['proposicion', 'tipoPago'])
                     // Excluir créditos de proposiciones refinanciadas
                     ->whereHas('proposicion', function (Builder $q) {
                         $q->where('FueRefinanciada', 0);
                     });
+                
+                if (property_exists($livewire, 'fechaFiltro') && $livewire->fechaFiltro) {
+                    $query->whereDate('FechaGeneracion', $livewire->fechaFiltro);
+                }
+
+                return $query;
             })
             ->actions([
                 Tables\Actions\ViewAction::make(),
