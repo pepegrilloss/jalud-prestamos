@@ -20,7 +20,9 @@ class CreditosPorGenerarStats extends BaseWidget
             $query->where('SedeID', $user->SedeID);
         }
 
-        $totalMonto = (clone $query)->sum('MontoTotal');
+        $totalMonto = (clone $query)->get()->sum(function ($record) {
+            return (float) ($record->MontoTotal ?? 0) + ((float) ($record->MontoTotal ?? 0) * ((float) ($record->TasaInteres ?? 0) / 100));
+        });
         $cantidad = (clone $query)->count();
 
         return [
