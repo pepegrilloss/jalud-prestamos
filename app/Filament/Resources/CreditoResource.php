@@ -197,6 +197,31 @@ class CreditoResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
+                Tables\Filters\Filter::make('fecha_generacion')
+                    ->label('Fecha de Generación')
+                    ->form([
+                        Forms\Components\DatePicker::make('desde')
+                            ->label('Desde'),
+                        Forms\Components\DatePicker::make('hasta')
+                            ->label('Hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when($data['desde'], fn (Builder $q, $date) => $q->whereDate('FechaGeneracion', '>=', $date))
+                            ->when($data['hasta'], fn (Builder $q, $date) => $q->whereDate('FechaGeneracion', '<=', $date));
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['desde'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('Desde: ' . \Carbon\Carbon::parse($data['desde'])->format('d/m/Y'))
+                                ->removeField('desde');
+                        }
+                        if ($data['hasta'] ?? null) {
+                            $indicators[] = Tables\Filters\Indicator::make('Hasta: ' . \Carbon\Carbon::parse($data['hasta'])->format('d/m/Y'))
+                                ->removeField('hasta');
+                        }
+                        return $indicators;
+                    }),
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
