@@ -101,8 +101,9 @@ class ClienteResource extends Resource
                                                         $persona = $response->json();
 
                                                         if (isset($persona['nombres']) && isset($persona['apellidoPaterno']) && isset($persona['apellidoMaterno'])) {
-                                                            $nombreCompleto = $persona['nombres'] . ' ' . $persona['apellidoPaterno'] . ' ' . $persona['apellidoMaterno'];
-                                                            $set('NombresApellidos', strtoupper($nombreCompleto));
+                                                            $set('ApellidoPaterno', strtoupper($persona['apellidoPaterno']));
+                                                            $set('ApellidoMaterno', strtoupper($persona['apellidoMaterno']));
+                                                            $set('Nombres', strtoupper($persona['nombres']));
 
                                                             \Filament\Notifications\Notification::make()
                                                                 ->success()
@@ -128,14 +129,30 @@ class ClienteResource extends Resource
                                     ->validationMessages([
                                         'unique' => 'Este DNI ya está registrado en el sistema.',
                                     ]),
+                            ]),
 
-                                Forms\Components\TextInput::make('NombresApellidos')
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('ApellidoPaterno')
                                     ->required()
-                                    ->maxLength(200)
-                                    ->label('Nombres y Apellidos')
-                                    ->placeholder('Se llenará automáticamente con RENIEC')
-                                    ->prefixIcon('heroicon-m-user')
-                                    ->columnSpan(2),
+                                    ->maxLength(100)
+                                    ->label('Apellido Paterno')
+                                    ->placeholder('Se llenará con RENIEC')
+                                    ->prefixIcon('heroicon-m-user'),
+
+                                Forms\Components\TextInput::make('ApellidoMaterno')
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->label('Apellido Materno')
+                                    ->placeholder('Se llenará con RENIEC')
+                                    ->prefixIcon('heroicon-m-user'),
+
+                                Forms\Components\TextInput::make('Nombres')
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->label('Nombres')
+                                    ->placeholder('Se llenará con RENIEC')
+                                    ->prefixIcon('heroicon-m-user'),
                             ]),
 
                         Forms\Components\Grid::make(3)
@@ -204,7 +221,7 @@ class ClienteResource extends Resource
                                                         $persona = $response->json();
 
                                                         if (isset($persona['nombres']) && isset($persona['apellidoPaterno']) && isset($persona['apellidoMaterno'])) {
-                                                            $nombreCompleto = $persona['nombres'] . ' ' . $persona['apellidoPaterno'] . ' ' . $persona['apellidoMaterno'];
+                                                            $nombreCompleto = $persona['apellidoPaterno'] . ' ' . $persona['apellidoMaterno'] . ' ' . $persona['nombres'];
                                                             $set('ConyugeNombresApellidos', strtoupper($nombreCompleto));
 
                                                             \Filament\Notifications\Notification::make()
@@ -231,7 +248,7 @@ class ClienteResource extends Resource
 
                                 Forms\Components\TextInput::make('ConyugeNombresApellidos')
                                     ->maxLength(200)
-                                    ->label('Nombres y Apellidos del Cónyuge')
+                                    ->label('Apellidos y Nombres del Cónyuge')
                                     ->prefixIcon('heroicon-m-user')
                                     ->placeholder('Se llenará automáticamente con RENIEC'),
                             ]),
@@ -629,7 +646,7 @@ class ClienteResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('NombresApellidos')
-                    ->label('Nombres y Apellidos')
+                    ->label('Apellidos y Nombres')
                     ->searchable()
                     ->sortable()
                     ->wrap(),
@@ -703,10 +720,10 @@ class ClienteResource extends Resource
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
                     ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\Filter::make('NombresApellidos')
-                    ->label('Nombres y Apellidos del Cliente')
+                    ->label('Apellidos y Nombres del Cliente')
                     ->form([
                         Forms\Components\TextInput::make('NombresApellidos')
-                            ->placeholder('Buscar por nombre o apellido'),
+                            ->placeholder('Buscar por apellido o nombre'),
                     ])
                     ->query(
                         fn(Builder $query, array $data): Builder =>

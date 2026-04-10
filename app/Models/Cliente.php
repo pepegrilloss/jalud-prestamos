@@ -18,6 +18,9 @@ class Cliente extends Model
     protected $fillable = [
         'DNI',
         'NombresApellidos',
+        'ApellidoPaterno',
+        'ApellidoMaterno',
+        'Nombres',
         'Sexo',
         'FechaNacimiento',
         'Estado',
@@ -46,7 +49,21 @@ class Cliente extends Model
         'Activo' => 'boolean',
     ];
 
-
+    /**
+     * Auto-sincronizar NombresApellidos desde los campos separados al guardar.
+     * Formato: "APELLIDO_PATERNO APELLIDO_MATERNO NOMBRES"
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Cliente $cliente) {
+            // Solo sincronizar si los campos separados tienen datos
+            if ($cliente->ApellidoPaterno || $cliente->ApellidoMaterno || $cliente->Nombres) {
+                $cliente->NombresApellidos = strtoupper(trim(
+                    trim($cliente->ApellidoPaterno . ' ' . $cliente->ApellidoMaterno) . ' ' . $cliente->Nombres
+                ));
+            }
+        });
+    }
 
     // Relaciones
     public function tasa(): BelongsTo

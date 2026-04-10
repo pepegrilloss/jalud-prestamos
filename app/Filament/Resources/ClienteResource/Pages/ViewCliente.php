@@ -146,7 +146,7 @@ class ViewCliente extends ViewRecord
                                     ->columnSpan(1),
 
                                 Components\TextEntry::make('NombresApellidos')
-                                    ->label('Nombres y Apellidos')
+                                    ->label('Apellidos y Nombres')
                                     ->icon('heroicon-m-user')
                                     ->weight(\Filament\Support\Enums\FontWeight::Bold)
                                     ->size(\Filament\Infolists\Components\TextEntry\TextEntrySize::Large)

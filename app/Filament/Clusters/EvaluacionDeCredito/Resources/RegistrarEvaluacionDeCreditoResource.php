@@ -51,7 +51,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                     ->iconColor('primary'),
 
                 Tables\Columns\TextColumn::make('NombresApellidos')
-                    ->label('Nombres y Apellidos')
+                    ->label('Apellidos y Nombres')
                     ->searchable()
                     ->sortable()
                     ->weight('semibold')

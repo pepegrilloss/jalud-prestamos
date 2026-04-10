@@ -27,7 +27,7 @@ class EvaluatedClients extends Page implements Tables\Contracts\HasTable
                     ->label('DNI')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('NombresApellidos')
-                    ->label('Nombres y Apellidos')
+                    ->label('Apellidos y Nombres')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('ciudad.Nombre')
                     ->label('Ciudad')
