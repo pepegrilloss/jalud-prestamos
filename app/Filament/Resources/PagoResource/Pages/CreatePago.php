@@ -10,7 +10,7 @@ use Filament\Notifications\Notification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\RateLimiter;
+
 
 class CreatePago extends CreateRecord
 {
@@ -227,22 +227,6 @@ class CreatePago extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // SEGURIDAD: Rate limiting directo en Filament para creación de pagos
-        // Máximo 10 pagos por usuario cada 60 minutos
-        $userID = auth()->id();
-        $key = "pago_creation_filament:{$userID}";
-
-        if (RateLimiter::tooManyAttempts($key, 10)) {
-            $retryAfter = RateLimiter::availableIn($key);
-            \Log::warning('SEGURIDAD - RATE LIMIT PAGO: Demasiados intentos', [
-                'UserID' => $userID,
-                'IP' => request()->ip(),
-                'RetryAfter' => $retryAfter
-            ]);
-            throw new \Exception('Has intentado crear demasiados pagos. Intenta nuevamente en ' . ceil($retryAfter / 60) . ' minutos. Este intento ha sido registrado.');
-        }
-
-        RateLimiter::hit($key, 3600); // 1 hora
 
         // Obtener la zona del promotor actual
         $promotorCobrador = auth()->user()?->promotorCobrador;
