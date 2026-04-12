@@ -103,6 +103,7 @@ class AprobacionProposicionResource extends Resource
     {
 
         return $table
+            ->persistFiltersInSession()
             ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('CodigoCredito')

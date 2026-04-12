@@ -451,6 +451,7 @@ class PagoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->persistFiltersInSession()
             ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('cliente_nombre')
@@ -553,6 +554,7 @@ class PagoResource extends Resource
                                     ->options(\App\Models\Sede::all()->pluck('Nombre', 'SedeID')->toArray())
                                     ->searchable()
                                     ->native(false)
+                                    ->live()
                                     ->visible(fn(Get $get) => in_array('sede', $get('campos_activos') ?? [])),
 
                                 Forms\Components\Select::make('ClienteID')
@@ -560,11 +562,13 @@ class PagoResource extends Resource
                                     ->options(\App\Models\Cliente::all()->pluck('NombresApellidos', 'ClienteID')->toArray())
                                     ->searchable()
                                     ->native(false)
+                                    ->live()
                                     ->visible(fn(Get $get) => in_array('cliente', $get('campos_activos') ?? [])),
 
                                 Forms\Components\TextInput::make('DNI')
                                     ->label('DNI')
                                     ->placeholder('Ingrese DNI')
+                                    ->live(debounce: 500)
                                     ->visible(fn(Get $get) => in_array('dni', $get('campos_activos') ?? [])),
 
                                 Forms\Components\Select::make('ZonaID')
@@ -572,60 +576,65 @@ class PagoResource extends Resource
                                     ->options(\App\Models\Zona::all()->pluck('Nombre', 'ZonaID')->toArray())
                                     ->searchable()
                                     ->native(false)
+                                    ->live()
                                     ->visible(fn(Get $get) => in_array('zona', $get('campos_activos') ?? [])),
 
                                 Forms\Components\DatePicker::make('FechaDesde')
                                     ->label('Desde')
                                     ->native(false)
+                                    ->live()
                                     ->visible(fn(Get $get) => in_array('fecha', $get('campos_activos') ?? [])),
 
                                 Forms\Components\DatePicker::make('FechaHasta')
                                     ->label('Hasta')
                                     ->native(false)
+                                    ->live()
                                     ->visible(fn(Get $get) => in_array('fecha', $get('campos_activos') ?? [])),
 
-                                Forms\Components\Select::make('TipoPago')
+                                Forms\Components\CheckboxList::make('TipoPago')
                                     ->label('Método de Pago')
                                     ->options([
                                         'EFECTIVO' => 'Efectivo',
                                         'YAPE_PLIN' => 'Yape o Plin',
                                         'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
                                     ])
-                                    ->native(false)
+                                    ->columns(1)
+                                    ->live()
                                     ->visible(fn(Get $get) => in_array('tipo_pago', $get('campos_activos') ?? [])),
                             ])
                     ])
                     ->query(function (Builder $query, array $data): Builder {
+                        $activos = $data['campos_activos'] ?? [];
                         return $query
                             ->when(
-                                isset($data['SedeID']) && $data['SedeID'],
+                                in_array('sede', $activos) && isset($data['SedeID']) && $data['SedeID'],
                                 fn(Builder $q) => $q->where('pago.SedeID', $data['SedeID'])
                             )
                             ->when(
-                                isset($data['ClienteID']) && $data['ClienteID'],
+                                in_array('cliente', $activos) && isset($data['ClienteID']) && $data['ClienteID'],
                                 fn(Builder $q) => $q->where('Cliente.ClienteID', $data['ClienteID'])
                             )
                             ->when(
-                                isset($data['DNI']) && $data['DNI'],
+                                in_array('dni', $activos) && isset($data['DNI']) && $data['DNI'],
                                 fn(Builder $q) => $q->where('Cliente.DNI', 'like', "%{$data['DNI']}%")
                             )
                             ->when(
-                                isset($data['ZonaID']) && $data['ZonaID'],
+                                in_array('zona', $activos) && isset($data['ZonaID']) && $data['ZonaID'],
                                 fn(Builder $q) => $q->whereHas('cuota.credito.proposicion.cliente.negocio', function ($subQ) use ($data) {
                                     $subQ->where('ZonaID', $data['ZonaID']);
                                 })
                             )
                             ->when(
-                                isset($data['FechaDesde']) && $data['FechaDesde'],
+                                in_array('fecha', $activos) && isset($data['FechaDesde']) && $data['FechaDesde'],
                                 fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) >= ?', [$data['FechaDesde']])
                             )
                             ->when(
-                                isset($data['FechaHasta']) && $data['FechaHasta'],
+                                in_array('fecha', $activos) && isset($data['FechaHasta']) && $data['FechaHasta'],
                                 fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) <= ?', [$data['FechaHasta']])
                             )
                             ->when(
-                                isset($data['TipoPago']) && $data['TipoPago'],
-                                fn(Builder $q) => $q->where('pago.TipoPago', $data['TipoPago'])
+                                in_array('tipo_pago', $activos) && !empty($data['TipoPago']),
+                                fn(Builder $q) => $q->whereIn('pago.TipoPago', $data['TipoPago'])
                             );
                     }),
             ], layout: FiltersLayout::AboveContent)

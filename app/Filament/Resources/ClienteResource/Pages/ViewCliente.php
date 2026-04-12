@@ -14,6 +14,21 @@ class ViewCliente extends ViewRecord
 {
     protected static string $resource = ClienteResource::class;
 
+    public function getTitle(): string | \Illuminate\Contracts\Support\Htmlable
+    {
+        $url = static::getResource()::getUrl('index');
+        return new \Illuminate\Support\HtmlString("
+            <div class='flex items-center gap-x-3'>
+                <a href='{$url}' class='flex items-center justify-center rounded-full p-2 hover:bg-gray-500/5 focus:outline-none focus:ring-2 focus:ring-primary-500/70 transition'>
+                    <svg class='w-5 h-5 text-gray-500 dark:text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M10 19l-7-7m0 0l7-7m-7 7h18' />
+                    </svg>
+                </a>
+                <span>Ver Cliente</span>
+            </div>
+        ");
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -240,25 +255,41 @@ class ViewCliente extends ViewRecord
 
                         Components\Grid::make(4)
                             ->schema([
-                                Components\TextEntry::make('negocio.Antiguedad')
-                                    ->label('Tiempo Operando')
-                                    ->icon('heroicon-m-calendar-days')
-                                    ->badge()
-                                    ->color('success')
-                                    ->suffix(' años'),
-                                Components\TextEntry::make('negocio.giro.Descripcion')
-                                    ->label('Rubro / Giro')
-                                    ->icon('heroicon-m-shopping-bag'),
                                 Components\TextEntry::make('negocio.ciudad.Nombre')
                                     ->label('Ciudad')
                                     ->icon('heroicon-m-map-pin')
                                     ->placeholder('No registrada'),
+                                    
                                 Components\TextEntry::make('negocio.zona.Nombre')
                                     ->label('Zona Comercial')
                                     ->icon('heroicon-m-flag')
                                     ->color('primary')
                                     ->badge()
                                     ->placeholder('No registrada'),
+
+                                Components\TextEntry::make('negocio.Antiguedad')
+                                    ->label('Tiempo Operando')
+                                    ->icon('heroicon-m-calendar-days')
+                                    ->badge()
+                                    ->color('success')
+                                    ->suffix(' años'),
+
+                                Components\TextEntry::make('negocio.giro.Descripcion')
+                                    ->label('Rubro / Giro')
+                                    ->icon('heroicon-m-shopping-bag')
+                                    ->columnSpan(2),
+                                    
+                                Components\TextEntry::make('negocio.subGiro.Descripcion')
+                                    ->label('Sub Giro')
+                                    ->icon('heroicon-m-tag')
+                                    ->placeholder('No registrado')
+                                    ->columnSpan(2),
+
+                                Components\TextEntry::make('negocio.ObservacionGiro')
+                                    ->label('Detalle / Observación')
+                                    ->icon('heroicon-m-document-text')
+                                    ->placeholder('Sin detalles')
+                                    ->columnSpanFull(),
                             ])->extraAttributes(['class' => 'mt-4']),
 
                         Components\Fieldset::make('Contactos Telefónicos')

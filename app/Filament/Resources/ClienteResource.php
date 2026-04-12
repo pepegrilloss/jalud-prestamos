@@ -298,18 +298,6 @@ class ClienteResource extends Resource
                                     ->native(false)
                                     ->placeholder('Seleccione una tasa de mora'),
 
-                                Forms\Components\Select::make('negocio.Calificacion')
-                                    ->required()
-                                    ->label('Calificación')
-                                    ->prefixIcon('heroicon-m-star')
-                                    ->options([
-                                        'MALO' => 'Malo',
-                                        'REGULAR' => 'Regular',
-                                        'BUENO' => 'Bueno',
-                                    ])
-                                    ->native(false)
-                                    ->placeholder('Seleccione'),
-
                                 Forms\Components\Select::make('PromotorCobradorID')
                                     ->label('Promotor/Cobrador')
                                     ->prefixIcon('heroicon-m-briefcase')
@@ -362,7 +350,7 @@ class ClienteResource extends Resource
                                     ->columnSpan(2),
                             ]),
 
-                        Forms\Components\Grid::make(3)
+                        Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('negocio.Antiguedad')
                                     ->label('Antigüedad (años)')
@@ -425,6 +413,12 @@ class ClienteResource extends Resource
                                         $subGiro = \App\Models\SubGiro::create($data);
                                         return $subGiro->SubGiroID;
                                     }),
+
+                                Forms\Components\TextInput::make('negocio.ObservacionGiro')
+                                    ->label('Detalle u Observación del Giro')
+                                    ->prefixIcon('heroicon-m-document-text')
+                                    ->maxLength(255)
+                                    ->placeholder('Ej: Sientos de motos, venta de abarrotes, etc.'),
                             ]),
 
                         Forms\Components\Repeater::make('negocio.telefonos')
@@ -636,6 +630,7 @@ class ClienteResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->persistFiltersInSession()
             ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('DNI')
@@ -845,8 +840,7 @@ class ClienteResource extends Resource
             return false;
         }
 
-        // Si hay cualquier día abierto, permitir editar
-        return \App\Models\AperturaCierreDia::where('EstadoDia', 'ABIERTO')->exists();
+        return true;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool

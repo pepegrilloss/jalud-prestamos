@@ -675,6 +675,7 @@ class CrearProposicionCreditoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->persistFiltersInSession()
             ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable(),

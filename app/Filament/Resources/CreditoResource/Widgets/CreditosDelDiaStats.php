@@ -13,12 +13,13 @@ class CreditosDelDiaStats extends BaseWidget
 
     public function mount(): void
     {
-        $this->fechaSeleccionada = request()->query('fechaSeleccionada', now()->toDateString());
+        $this->fechaSeleccionada = session()->get('creditos_fecha_filtro', request()->query('fechaSeleccionada', now()->toDateString()));
     }
 
     // Método que se llama cuando cambia la fecha desde el frontend
     public function updatedFechaSeleccionada(): void
     {
+        session()->put('creditos_fecha_filtro', $this->fechaSeleccionada);
         // Emitir un evento para que la tabla (página ListCreditos) también actualice su filtro
         $this->dispatch('updateFechaCreditos', fecha: $this->fechaSeleccionada);
     }

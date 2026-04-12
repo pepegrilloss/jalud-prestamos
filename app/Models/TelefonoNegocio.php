@@ -17,6 +17,7 @@ class TelefonoNegocio extends Model
         'TipoTelefono',
         'Observacion',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [

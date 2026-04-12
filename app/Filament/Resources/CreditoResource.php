@@ -108,6 +108,7 @@ class CreditoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->persistFiltersInSession()
             ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('proposicion.CodigoCredito')

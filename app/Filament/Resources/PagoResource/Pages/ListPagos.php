@@ -7,10 +7,13 @@ use App\Models\AperturaCierreDia;
 use App\Filament\Widgets\PagosStats;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListPagos extends ListRecords
 {
+    use ExposesTableToWidgets;
+
     protected static string $resource = PagoResource::class;
 
     public function getTitle(): string

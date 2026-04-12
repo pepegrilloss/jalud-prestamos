@@ -20,8 +20,11 @@ class Negocio extends Model
         'Antiguedad',
         'GiroID',
         'SubGiroID',
+        'ObservacionGiro',
         'Ubicacion',
+        'Calificacion',
         'Activo',
+        'SedeID',
     ];
 
     protected $casts = [
