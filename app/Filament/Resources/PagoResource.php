@@ -547,7 +547,12 @@ class PagoResource extends Resource
                             ->columnSpanFull()
                             ->native(false),
 
-                        Forms\Components\Grid::make(4)
+                        Forms\Components\Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'md' => 3,
+                            'lg' => 4,
+                        ])
                             ->schema([
                                 Forms\Components\Select::make('SedeID')
                                     ->label('Sede')

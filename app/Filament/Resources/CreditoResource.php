@@ -199,50 +199,99 @@ class CreditoResource extends Resource
             ])
             ->filters([
 
-                Tables\Filters\SelectFilter::make('SedeID')
-                    ->label('Sede')
-                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
-                    ->visible(fn() => auth()->user()->esAdmin()),
-                Tables\Filters\SelectFilter::make('TipoPagoID')
-                    ->label('Tipo de Pago')
-                    ->relationship('tipoPago', 'Nombre'),
-                Tables\Filters\SelectFilter::make('zona')
-                    ->label('Zona')
-                    ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
-                    ->query(function (Builder $query, array $data) {
-                        return $query->when(
-                            $data['value'] ?? null,
-                            fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('ZonaID', $data['value']))
-                        );
-                    })
-                    ->native(false),
-                Tables\Filters\SelectFilter::make('cliente')
-                    ->label('Cliente')
-                    ->options(function () {
-                        return \App\Models\Cliente::where('Activo', true)
-                            ->whereHas('proposiciones.credito')
-                            ->pluck('NombresApellidos', 'ClienteID')
-                            ->toArray();
-                    })
-                    ->query(function (Builder $query, array $data) {
-                        return $query->when(
-                            $data['value'] ?? null,
-                            fn(Builder $q) => $q->whereHas('proposicion.cliente', fn(Builder $subQ) => $subQ->where('ClienteID', $data['value']))
-                        );
-                    })
-                    ->searchable()
-                    ->native(false),
-                Tables\Filters\SelectFilter::make('tipoCredito')
-                    ->label('Tipo de Crédito')
-                    ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID')->toArray())
-                    ->query(function (Builder $query, array $data) {
-                        return $query->when(
-                            $data['value'] ?? null,
-                            fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('TipoCreditoID', $data['value']))
-                        );
-                    })
-                    ->native(false),
+                Tables\Filters\Filter::make('filtros_dinamicos')
+                    ->form([
+                        Forms\Components\Select::make('campos_activos')
+                            ->label('Seleccionar Filtros a Aplicar')
+                            ->placeholder('Haz clic para elegir filtros...')
+                            ->multiple()
+                            ->options([
+                                'sede' => 'Sede',
+                                'tipo_pago' => 'Tipo de Pago',
+                                'zona' => 'Zona',
+                                'cliente' => 'Cliente',
+                                'tipo_credito' => 'Tipo de Crédito',
+                            ])
+                            ->live()
+                            ->columnSpanFull()
+                            ->native(false),
+
+                        Forms\Components\Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'md' => 3,
+                            'lg' => 4,
+                        ])
+                            ->schema([
+                                Forms\Components\Select::make('SedeID')
+                                    ->label('Sede')
+                                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                                    ->native(false)
+                                    ->visible(fn(\Filament\Forms\Get $get) => auth()->user()->esAdmin() && in_array('sede', $get('campos_activos') ?? []))
+                                    ->live(),
+
+                                Forms\Components\Select::make('TipoPagoID')
+                                    ->label('Tipo de Pago')
+                                    ->options(\App\Models\TipoPago::where('Activo', true)->pluck('Nombre', 'TipoPagoID'))
+                                    ->native(false)
+                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('tipo_pago', $get('campos_activos') ?? []))
+                                    ->live(),
+
+                                Forms\Components\Select::make('zona')
+                                    ->label('Zona')
+                                    ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
+                                    ->native(false)
+                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('zona', $get('campos_activos') ?? []))
+                                    ->live(),
+
+                                Forms\Components\Select::make('cliente')
+                                    ->label('Cliente')
+                                    ->options(function () {
+                                        return \App\Models\Cliente::where('Activo', true)
+                                            ->whereHas('proposiciones.credito')
+                                            ->pluck('NombresApellidos', 'ClienteID')
+                                            ->toArray();
+                                    })
+                                    ->searchable()
+                                    ->native(false)
+                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('cliente', $get('campos_activos') ?? []))
+                                    ->live(),
+
+                                Forms\Components\Select::make('tipoCredito')
+                                    ->label('Tipo de Crédito')
+                                    ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID')->toArray())
+                                    ->native(false)
+                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('tipo_credito', $get('campos_activos') ?? []))
+                                    ->live(),
+                            ]),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $activos = $data['campos_activos'] ?? [];
+                        return $query
+                            ->when(
+                                in_array('sede', $activos) && !empty($data['SedeID']),
+                                fn(Builder $q) => $q->where('SedeID', $data['SedeID'])
+                            )
+                            ->when(
+                                in_array('tipo_pago', $activos) && !empty($data['TipoPagoID']),
+                                fn(Builder $q) => $q->where('TipoPagoID', $data['TipoPagoID'])
+                            )
+                            ->when(
+                                in_array('zona', $activos) && !empty($data['zona']),
+                                fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('ZonaID', $data['zona']))
+                            )
+                            ->when(
+                                in_array('cliente', $activos) && !empty($data['cliente']),
+                                fn(Builder $q) => $q->whereHas('proposicion.cliente', fn(Builder $subQ) => $subQ->where('ClienteID', $data['cliente']))
+                            )
+                            ->when(
+                                in_array('tipo_credito', $activos) && !empty($data['tipoCredito']),
+                                fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('TipoCreditoID', $data['tipoCredito']))
+                            );
+                    }),
             ])
+            ->filtersFormColumns(1)
+            ->filtersLayout(\Filament\Tables\Enums\FiltersLayout::AboveContent)
             ->modifyQueryUsing(function (Builder $query, \Livewire\Component $livewire) {
                 $query->with(['proposicion', 'tipoPago'])
                     // Excluir créditos de proposiciones refinanciadas

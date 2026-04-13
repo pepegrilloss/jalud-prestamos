@@ -46,9 +46,15 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                     ->sortable()
                     ->weight('medium')
                     ->icon('heroicon-m-identification')
-                    ->copyable()
-                    ->copyMessage('DNI copiado')
-                    ->iconColor('primary'),
+                    ->iconColor('primary')
+                    ->action(
+                        Tables\Actions\Action::make('verCreditos')
+                            ->modalHeading(fn ($record) => 'Créditos de ' . $record->NombresApellidos)
+                            ->modalWidth('7xl')
+                            ->modalContent(fn ($record) => view('filament.components.client-credits-evaluacion-table', ['cliente' => $record]))
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Cerrar')
+                    ),
 
                 Tables\Columns\TextColumn::make('NombresApellidos')
                     ->label('Apellidos y Nombres')
@@ -77,6 +83,70 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                     ->weight('medium'),
 
             ])
+            ->filters([
+                Tables\Filters\Filter::make('filtros_dinamicos')
+                    ->form([
+                        Forms\Components\Select::make('campos_activos')
+                            ->label('Seleccionar Filtros a Aplicar')
+                            ->placeholder('Haz clic para elegir filtros...')
+                            ->multiple()
+                            ->options([
+                                'cliente' => 'Cliente',
+                                'fecha' => 'Rango de Fechas (Registro)',
+                            ])
+                            ->live()
+                            ->columnSpanFull()
+                            ->native(false),
+
+                        Forms\Components\Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                        ])
+                            ->schema([
+                                Forms\Components\Select::make('cliente')
+                                    ->label('Cliente')
+                                    ->options(function () {
+                                        return \App\Models\Cliente::where('Activo', true)
+                                            ->pluck('NombresApellidos', 'ClienteID')
+                                            ->toArray();
+                                    })
+                                    ->searchable()
+                                    ->native(false)
+                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('cliente', $get('campos_activos') ?? []))
+                                    ->live(),
+
+                                Forms\Components\DatePicker::make('fecha_desde')
+                                    ->label('Desde')
+                                    ->native(false)
+                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('fecha', $get('campos_activos') ?? []))
+                                    ->live(),
+
+                                Forms\Components\DatePicker::make('fecha_hasta')
+                                    ->label('Hasta')
+                                    ->native(false)
+                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('fecha', $get('campos_activos') ?? []))
+                                    ->live(),
+                            ]),
+                    ])
+                    ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data): \Illuminate\Database\Eloquent\Builder {
+                        $activos = $data['campos_activos'] ?? [];
+                        return $query
+                            ->when(
+                                in_array('cliente', $activos) && !empty($data['cliente']),
+                                fn(\Illuminate\Database\Eloquent\Builder $q) => $q->where('ClienteID', $data['cliente'])
+                            )
+                            ->when(
+                                in_array('fecha', $activos) && !empty($data['fecha_desde']),
+                                fn(\Illuminate\Database\Eloquent\Builder $q) => $q->whereDate('FechaRegistro', '>=', $data['fecha_desde'])
+                            )
+                            ->when(
+                                in_array('fecha', $activos) && !empty($data['fecha_hasta']),
+                                fn(\Illuminate\Database\Eloquent\Builder $q) => $q->whereDate('FechaRegistro', '<=', $data['fecha_hasta'])
+                            );
+                    }),
+            ])
+            ->filtersFormColumns(1)
+            ->filtersLayout(\Filament\Tables\Enums\FiltersLayout::AboveContent)
 
             ->actions([
                 Tables\Actions\ActionGroup::make([

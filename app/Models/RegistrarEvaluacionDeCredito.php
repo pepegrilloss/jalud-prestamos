@@ -46,4 +46,9 @@ class RegistrarEvaluacionDeCredito extends Model
     {
         return $this->hasOne(Negocio::class, 'ClienteID', 'ClienteID');
     }
+
+    public function proposiciones(): HasMany
+    {
+        return $this->hasMany(ProposicionCredito::class, 'ClienteID', 'ClienteID');
+    }
 }
