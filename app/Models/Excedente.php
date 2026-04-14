@@ -27,6 +27,7 @@ class Excedente extends Model
         'ClienteOrigenID',
         'PagoOrigenID',
         'EstadoResolucion',
+        'Cuenta',
     ];
 
     protected $casts = [

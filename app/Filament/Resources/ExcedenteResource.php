@@ -15,7 +15,9 @@ use Filament\Forms\Get;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 
-class ExcedenteResource extends Resource
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
+
+class ExcedenteResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Excedente::class;
 
@@ -24,6 +26,18 @@ class ExcedenteResource extends Resource
     protected static ?string $modelLabel = 'Excedente';
     protected static ?string $pluralModelLabel = 'Registro de Excedentes';
     protected static ?int $navigationSort = 9;
+    
+    public static function getPermissionPrefixes(): array
+    {
+        return [
+            'view',
+            'view_any',
+            'create',
+            'update',
+            'delete',
+            'delete_any',
+        ];
+    }
 
     public static function form(Form $form): Form
     {
@@ -45,9 +59,17 @@ class ExcedenteResource extends Resource
                         Forms\Components\Select::make('ZonaID')
                             ->label('Zona')
                             ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
-                            ->required()
                             ->searchable()
-                            ->native(false),
+                            ->native(false)
+                            ->visible(fn(Get $get) => $get('TipoExcedente') === 'SOBRANTE_PROMOTOR')
+                            ->required(fn(Get $get) => $get('TipoExcedente') === 'SOBRANTE_PROMOTOR'),
+
+                        Forms\Components\TextInput::make('Cuenta')
+                            ->label('Cuenta / Destino')
+                            ->default('Caja Abierta')
+                            ->readonly()
+                            ->visible(fn(Get $get) => in_array($get('TipoExcedente'), ['YAPE_TRANSFERENCIA', 'SOBRANTE_CAJERO']))
+                            ->required(fn(Get $get) => in_array($get('TipoExcedente'), ['YAPE_TRANSFERENCIA', 'SOBRANTE_CAJERO'])),
 
                         Forms\Components\DatePicker::make('Fecha')
                             ->label('Fecha (del voucher o sobrante)')
@@ -119,7 +141,15 @@ class ExcedenteResource extends Resource
                 Tables\Columns\TextColumn::make('zona.Nombre')
                     ->label('Zona')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->placeholder('N/A')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('Cuenta')
+                    ->label('Cuenta')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('N/A')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('Fecha')
                     ->date('d/m/Y')
                     ->sortable(),
@@ -230,7 +260,12 @@ class ExcedenteResource extends Resource
                             ->schema([
                                 Infolists\Components\TextEntry::make('zona.Nombre')
                                     ->label('Zona / Ubicación')
-                                    ->icon('heroicon-m-map-pin'),
+                                    ->icon('heroicon-m-map-pin')
+                                    ->visible(fn($record) => $record->TipoExcedente === 'SOBRANTE_PROMOTOR'),
+                                Infolists\Components\TextEntry::make('Cuenta')
+                                    ->label('Cuenta / Destino')
+                                    ->icon('heroicon-m-building-library')
+                                    ->visible(fn($record) => $record->TipoExcedente !== 'SOBRANTE_PROMOTOR'),
                                 Infolists\Components\TextEntry::make('Fecha')
                                     ->label('Fecha del Suceso')
                                     ->date('d/m/Y')
@@ -267,7 +302,7 @@ class ExcedenteResource extends Resource
                     ->schema([
                         Infolists\Components\TextEntry::make('VoucherImagen')
                             ->label('')
-                            ->formatStateUsing(fn ($state) => $state ? '<div class="flex justify-center"><img src="' . asset('storage/' . $state) . '" style="max-height:500px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 2px solid #f3f4f6;" alt="Voucher"></div>' : '<p class="text-gray-400 italic">No se cargó imagen de evidencia</p>')
+                            ->formatStateUsing(fn($state) => $state ? '<div class="flex justify-center"><img src="' . asset('storage/' . $state) . '" style="max-height:500px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 2px solid #f3f4f6;" alt="Voucher"></div>' : '<p class="text-gray-400 italic">No se cargó imagen de evidencia</p>')
                             ->html()
                             ->columnSpanFull(),
                     ])

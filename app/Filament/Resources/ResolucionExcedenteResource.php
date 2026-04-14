@@ -19,7 +19,9 @@ use Filament\Notifications\Notification;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 
-class ResolucionExcedenteResource extends Resource
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
+
+class ResolucionExcedenteResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = SolicitudResolucionExcedente::class;
 
@@ -28,6 +30,18 @@ class ResolucionExcedenteResource extends Resource
     protected static ?string $modelLabel = 'Extorno o Devolución';
     protected static ?string $pluralModelLabel = 'Extornos y Devoluciones';
     protected static ?int $navigationSort = 10;
+    
+    public static function getPermissionPrefixes(): array
+    {
+        return [
+            'view',
+            'view_any',
+            'create',
+            'update',
+            'delete',
+            'delete_any',
+        ];
+    }
 
     public static function form(Form $form): Form
     {
