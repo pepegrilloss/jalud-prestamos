@@ -140,6 +140,7 @@ class GenerarCreditoResource extends Resource
                             ->label('Tasa de Interés')
                             ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
                             ->required()
+                            ->searchable()
                             ->live()
                             ->afterStateUpdated(function (Set $set, $state, Get $get) {
                                 if ($tasa = Tasa::find($state)) {
@@ -150,7 +151,13 @@ class GenerarCreditoResource extends Resource
                                 }
                             }),
 
-                        Forms\Components\TextInput::make('TasaInteres')->label('Tasa (%)')->disabled()->dehydrated(),
+                        Forms\Components\TextInput::make('TasaInteres')
+                            ->label('Tasa (%)')
+                            ->required()
+                            ->numeric()
+                            ->step(0.01)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
                         Forms\Components\TextInput::make('Plazo')->label('Plazo (días)')->required()->numeric(),
                         Forms\Components\TextInput::make('NumeroCuotas')->label('N° Cuotas')->required()->numeric()
                             ->live(onBlur: true)->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
@@ -196,6 +203,8 @@ class GenerarCreditoResource extends Resource
         if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
             $interes = $montoVal * ($tasaVal / 100);
             $total = $montoVal + $interes;
+            $set('MontoInteres', round($interes, 2));
+            $set('MontoTotalPagar', round($total, 2));
             $set('MontoCuota', round($total / $cuotasVal, 2));
         }
     }
@@ -293,8 +302,9 @@ class GenerarCreditoResource extends Resource
                                             ->label('Tasa %')
                                             ->numeric()
                                             ->step(0.01)
-                                            ->disabled()
-                                            ->dehydrated(),
+                                            ->required()
+                                            ->live(debounce: 300)
+                                            ->afterStateUpdated(fn(Set $set, Get $get) => static::recalcularTotales($set, $get)),
 
                                         Forms\Components\TextInput::make('Plazo')
                                             ->label('Plazo (días)')
@@ -309,11 +319,24 @@ class GenerarCreditoResource extends Resource
                                             ->afterStateUpdated(fn(Set $set, Get $get) => static::recalcularTotales($set, $get)),
                                     ]),
 
-                                Forms\Components\TextInput::make('MontoCuota')
-                                    ->label('Monto por cuota')
-                                    ->numeric()
-                                    ->step(0.01)
-                                    ->required(),
+                                Forms\Components\Grid::make(3)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('MontoInteres')
+                                            ->label('Total Interés')
+                                            ->numeric()
+                                            ->disabled()
+                                            ->dehydrated(),
+                                        Forms\Components\TextInput::make('MontoTotalPagar')
+                                            ->label('Total a Pagar')
+                                            ->numeric()
+                                            ->disabled()
+                                            ->dehydrated(),
+                                        Forms\Components\TextInput::make('MontoCuota')
+                                            ->label('Monto por cuota')
+                                            ->numeric()
+                                            ->step(0.01)
+                                            ->required(),
+                                    ]),
                             ]),
                     ])
                     ->fillForm(fn(ProposicionCredito $record) => [
@@ -322,15 +345,24 @@ class GenerarCreditoResource extends Resource
                         'TasaInteres' => $record->TasaInteres,
                         'Plazo' => $record->Plazo,
                         'NumeroCuotas' => $record->NumeroCuotas,
+                        'MontoInteres' => $record->MontoInteres,
+                        'MontoTotalPagar' => $record->MontoTotalPagar,
                         'MontoCuota' => $record->MontoCuota,
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
+                        $monto = (float) ($data['MontoTotal'] ?? $record->MontoTotal);
+                        $tasa = (float) ($data['TasaInteres'] ?? $record->TasaInteres);
+                        $interesCalculado = $monto * ($tasa / 100);
+                        $totalCalculado = $monto + $interesCalculado;
+
                         $record->update([
                             'MontoTotal' => $data['MontoTotal'] ?? $record->MontoTotal,
                             'TasaID' => $data['TasaID'] ?? $record->TasaID,
                             'TasaInteres' => $data['TasaInteres'] ?? $record->TasaInteres,
                             'Plazo' => $data['Plazo'] ?? $record->Plazo,
                             'NumeroCuotas' => $data['NumeroCuotas'] ?? $record->NumeroCuotas,
+                            'MontoInteres' => $data['MontoInteres'] ?? $interesCalculado,
+                            'MontoTotalPagar' => $data['MontoTotalPagar'] ?? $totalCalculado,
                             'MontoCuota' => $data['MontoCuota'] ?? $record->MontoCuota,
                         ]);
 
