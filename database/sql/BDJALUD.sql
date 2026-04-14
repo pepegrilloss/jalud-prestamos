@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.2
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: localhost:3306
--- Tiempo de generación: 08-04-2026 a las 22:36:42
--- Versión del servidor: 10.11.16-MariaDB
--- Versión de PHP: 8.4.19
+-- Tiempo de generación: 15-04-2026 a las 00:58:45
+-- Versión del servidor: 5.7.23-23
+-- Versión de PHP: 8.1.34
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,10 +18,8 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de datos: `jaludcom_jalud_prestamos`
+-- Base de datos: `jvcso1ub_jalud_prestamos`
 --
-CREATE DATABASE IF NOT EXISTS `jaludcom_jalud_prestamos` DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
-USE `jaludcom_jalud_prestamos`;
 
 -- --------------------------------------------------------
 
@@ -32,18 +30,18 @@ USE `jaludcom_jalud_prestamos`;
 CREATE TABLE `AnalisisEconomico` (
   `AnalisisEconomicoID` int(11) NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `CapitalManifestado` decimal(12,2) DEFAULT 0.00,
-  `CapitalEstimado` decimal(12,2) DEFAULT 0.00,
-  `VentaManifestadaMin` decimal(12,2) DEFAULT 0.00,
-  `VentaManifestadaMax` decimal(12,2) DEFAULT 0.00,
-  `VentaEstimada` decimal(12,2) DEFAULT 0.00,
-  `MontoMaxRecomendado` decimal(12,2) NOT NULL DEFAULT 0.00,
-  `FechaAnalisis` datetime NOT NULL DEFAULT current_timestamp(),
+  `CapitalManifestado` decimal(12,2) DEFAULT '0.00',
+  `CapitalEstimado` decimal(12,2) DEFAULT '0.00',
+  `VentaManifestadaMin` decimal(12,2) DEFAULT '0.00',
+  `VentaManifestadaMax` decimal(12,2) DEFAULT '0.00',
+  `VentaEstimada` decimal(12,2) DEFAULT '0.00',
+  `MontoMaxRecomendado` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `FechaAnalisis` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaCierre` datetime DEFAULT NULL,
-  `UsuarioAnalisis` varchar(100) DEFAULT NULL,
+  `UsuarioAnalisis` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `FechaModificacion` datetime DEFAULT NULL,
-  `UsuarioModificacion` varchar(100) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `UsuarioModificacion` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -58,13 +56,13 @@ CREATE TABLE `apertura_cierre_dia` (
   `Fecha` date NOT NULL,
   `FechaApertura` timestamp NULL DEFAULT NULL,
   `FechaCierre` timestamp NULL DEFAULT NULL,
-  `EstadoDia` enum('ABIERTO','CERRADO') NOT NULL DEFAULT 'CERRADO',
+  `EstadoDia` enum('ABIERTO','CERRADO') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'CERRADO',
   `UsuarioAperturaID` bigint(20) UNSIGNED DEFAULT NULL,
   `UsuarioCierreID` bigint(20) UNSIGNED DEFAULT NULL,
-  `Observaciones` longtext DEFAULT NULL,
+  `Observaciones` longtext COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `abierto_flag` int(11) GENERATED ALWAYS AS (case when `EstadoDia` = 'ABIERTO' then 1 else NULL end) STORED,
+  `abierto_flag` int(11) GENERATED ALWAYS AS ((case when (`EstadoDia` = 'ABIERTO') then 1 else NULL end)) STORED,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -79,10 +77,10 @@ CREATE TABLE `AprobacionExoneracion` (
   `SolicitudExoneracionID` int(11) NOT NULL,
   `NivelAprobacionID` int(11) NOT NULL,
   `UserAprobadorID` bigint(20) DEFAULT NULL,
-  `Estado` varchar(20) NOT NULL DEFAULT 'PENDIENTE' COMMENT 'PENDIENTE, APROBADO, RECHAZADO',
-  `Comentario` text DEFAULT NULL,
+  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE' COMMENT 'PENDIENTE, APROBADO, RECHAZADO',
+  `Comentario` text COLLATE utf8mb4_unicode_ci,
   `FechaAprobacion` datetime DEFAULT NULL,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -97,10 +95,10 @@ CREATE TABLE `AprobacionProposicion` (
   `ProposicionCreditoID` int(11) NOT NULL,
   `NivelAprobacionID` int(11) NOT NULL,
   `UserAprobadorID` bigint(20) DEFAULT NULL,
-  `Estado` varchar(20) NOT NULL DEFAULT 'PENDIENTE',
-  `Comentario` text DEFAULT NULL,
+  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE',
+  `Comentario` text COLLATE utf8mb4_unicode_ci,
   `FechaAprobacion` datetime DEFAULT NULL,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -111,8 +109,8 @@ CREATE TABLE `AprobacionProposicion` (
 --
 
 CREATE TABLE `cache` (
-  `key` varchar(255) NOT NULL,
-  `value` text NOT NULL,
+  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -123,8 +121,8 @@ CREATE TABLE `cache` (
 --
 
 CREATE TABLE `cache_locks` (
-  `key` varchar(255) NOT NULL,
-  `owner` varchar(255) NOT NULL,
+  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `owner` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `expiration` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -136,9 +134,9 @@ CREATE TABLE `cache_locks` (
 
 CREATE TABLE `Ciudad` (
   `CiudadID` int(11) NOT NULL,
-  `Nombre` varchar(100) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Nombre` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -151,24 +149,27 @@ CREATE TABLE `Ciudad` (
 
 CREATE TABLE `Cliente` (
   `ClienteID` int(11) NOT NULL,
-  `DNI` varchar(20) NOT NULL,
-  `NombresApellidos` varchar(200) NOT NULL,
-  `Sexo` char(1) NOT NULL,
+  `DNI` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `NombresApellidos` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ApellidoPaterno` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ApellidoMaterno` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Nombres` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Sexo` char(1) COLLATE utf8mb4_unicode_ci NOT NULL,
   `FechaNacimiento` date DEFAULT NULL,
-  `Estado` varchar(20) NOT NULL DEFAULT 'NO OBSERVADO',
-  `ConyugeDNI` varchar(20) DEFAULT NULL,
-  `ConyugeNombresApellidos` varchar(200) DEFAULT NULL,
-  `Domicilio` varchar(500) DEFAULT NULL,
+  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'NO OBSERVADO',
+  `ConyugeDNI` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ConyugeNombresApellidos` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Domicilio` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `TasaID` int(11) DEFAULT NULL,
   `TasaMoraID` int(11) DEFAULT NULL,
   `GaranteID` int(11) DEFAULT NULL,
-  `Observaciones` text DEFAULT NULL,
+  `Observaciones` text COLLATE utf8mb4_unicode_ci,
   `PromotorCobradorID` int(11) DEFAULT NULL,
-  `FechaRegistro` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaRegistro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
-  `UsuarioRegistro` varchar(100) DEFAULT NULL,
-  `UsuarioModificacion` varchar(100) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `UsuarioRegistro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `UsuarioModificacion` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `FechaCierre` date DEFAULT NULL COMMENT 'Fecha en que se cerró este registro',
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -182,19 +183,19 @@ CREATE TABLE `Cliente` (
 CREATE TABLE `Compra` (
   `CompraID` bigint(20) UNSIGNED NOT NULL,
   `TipoComprobanteID` bigint(20) UNSIGNED NOT NULL,
-  `Numero` varchar(20) NOT NULL,
-  `FechaEmision` timestamp NOT NULL DEFAULT current_timestamp(),
-  `NombreProveedor` varchar(150) NOT NULL,
-  `SubtotalBase` decimal(12,2) NOT NULL DEFAULT 0.00,
-  `MontoIGV` decimal(12,2) NOT NULL DEFAULT 0.00,
-  `ProductoServicio` varchar(255) DEFAULT NULL,
+  `Numero` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `FechaEmision` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `NombreProveedor` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `SubtotalBase` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `MontoIGV` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `ProductoServicio` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `Cantidad` decimal(10,2) DEFAULT NULL,
   `PrecioUnitario` decimal(12,2) DEFAULT NULL,
   `Total` decimal(12,2) NOT NULL,
-  `Observaciones` varchar(500) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` timestamp NULL DEFAULT current_timestamp(),
-  `FechaModificacion` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Observaciones` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `FechaModificacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -207,7 +208,7 @@ CREATE TABLE `Compra` (
 CREATE TABLE `CompraDetalle` (
   `CompraDetalleID` bigint(20) UNSIGNED NOT NULL,
   `CompraID` bigint(20) UNSIGNED NOT NULL,
-  `ProductoServicio` varchar(255) NOT NULL,
+  `ProductoServicio` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `Cantidad` decimal(10,2) NOT NULL,
   `PrecioUnitario` decimal(12,2) NOT NULL,
   `Subtotal` decimal(12,2) NOT NULL,
@@ -224,14 +225,14 @@ CREATE TABLE `Credito` (
   `CreditoID` int(11) NOT NULL,
   `ProposicionCreditoID` int(11) NOT NULL,
   `TipoPagoID` int(11) NOT NULL,
-  `ComentarioGeneracion` text DEFAULT NULL,
-  `FechaGeneracion` datetime NOT NULL DEFAULT current_timestamp(),
+  `ComentarioGeneracion` text COLLATE utf8mb4_unicode_ci,
+  `FechaGeneracion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaInicio` date DEFAULT NULL COMMENT 'Fecha de inicio del crédito',
   `FechaVencimiento` date DEFAULT NULL COMMENT 'Fecha de vencimiento del crédito (vencimiento de última cuota)',
   `UserGeneracionID` bigint(20) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `FechaCierre` date DEFAULT NULL COMMENT 'Fecha en que se cerró este registro',
-  `EstatusCreditoFinal` varchar(20) DEFAULT 'ACTIVO' COMMENT 'ACTIVO, SALDADO',
+  `EstatusCreditoFinal` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'ACTIVO' COMMENT 'ACTIVO, SALDADO',
   `FechaSaldamiento` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -248,13 +249,13 @@ CREATE TABLE `cuota` (
   `NumeroCuota` int(11) NOT NULL,
   `FechaVencimiento` date NOT NULL,
   `MontoCuota` decimal(12,2) NOT NULL,
-  `Estado` varchar(20) NOT NULL DEFAULT 'PENDIENTE',
-  `DiasAtraso` int(11) DEFAULT 0,
-  `MontoMora` decimal(12,2) DEFAULT 0.00,
+  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE',
+  `DiasAtraso` int(11) DEFAULT '0',
+  `MontoMora` decimal(12,2) DEFAULT '0.00',
   `FechaPago` datetime DEFAULT NULL,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `FechaCierre` date DEFAULT NULL COMMENT 'Fecha en que se cerró este registro',
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -268,17 +269,17 @@ CREATE TABLE `cuota` (
 CREATE TABLE `DocumentoCliente` (
   `DocumentoClienteID` int(11) NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `TipoDocumento` varchar(50) NOT NULL,
-  `RutaArchivo` varchar(500) NOT NULL,
-  `NombreOriginal` varchar(255) NOT NULL,
+  `TipoDocumento` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `RutaArchivo` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `NombreOriginal` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `TamanioArchivo` bigint(20) DEFAULT NULL,
-  `Extension` varchar(10) DEFAULT NULL,
-  `Observaciones` varchar(500) DEFAULT NULL,
-  `UsuarioRegistro` varchar(100) DEFAULT NULL,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
-  `UsuarioModificacion` varchar(100) DEFAULT NULL,
+  `Extension` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Observaciones` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `UsuarioRegistro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UsuarioModificacion` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `FechaModificacion` datetime DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -291,9 +292,9 @@ CREATE TABLE `DocumentoCliente` (
 CREATE TABLE `EvaluacionCredito` (
   `EvaluacionCreditoID` int(11) NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `Comentario` text NOT NULL,
-  `FechaRegistro` datetime NOT NULL DEFAULT current_timestamp(),
-  `UsuarioRegistro` varchar(100) DEFAULT NULL,
+  `Comentario` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `FechaRegistro` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UsuarioRegistro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `FechaCierre` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -306,12 +307,12 @@ CREATE TABLE `EvaluacionCredito` (
 
 CREATE TABLE `failed_jobs` (
   `id` bigint(20) NOT NULL,
-  `uuid` varchar(255) NOT NULL,
-  `connection` text NOT NULL,
-  `queue` text NOT NULL,
-  `payload` text NOT NULL,
-  `exception` text NOT NULL,
-  `failed_at` datetime NOT NULL DEFAULT current_timestamp()
+  `uuid` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `connection` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `queue` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `exception` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `failed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -323,17 +324,17 @@ CREATE TABLE `failed_jobs` (
 CREATE TABLE `Gasto` (
   `GastoID` bigint(20) UNSIGNED NOT NULL,
   `TipoComprobanteGastoID` bigint(20) UNSIGNED NOT NULL,
-  `Numero` varchar(20) NOT NULL,
-  `FechaEmision` timestamp NOT NULL DEFAULT current_timestamp(),
-  `NombreProveedor` varchar(150) NOT NULL,
+  `Numero` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `FechaEmision` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `NombreProveedor` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
   `MotivoID` bigint(20) UNSIGNED NOT NULL,
-  `MetodoGasto` varchar(50) NOT NULL,
-  `Descripcion` varchar(500) DEFAULT NULL,
+  `MetodoGasto` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Descripcion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `Total` decimal(12,2) NOT NULL,
-  `Observaciones` varchar(500) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` timestamp NULL DEFAULT current_timestamp(),
-  `FechaModificacion` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Observaciones` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `FechaModificacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -346,7 +347,7 @@ CREATE TABLE `Gasto` (
 CREATE TABLE `GastoDetalle` (
   `GastoDetalleID` bigint(20) UNSIGNED NOT NULL,
   `GastoID` bigint(20) UNSIGNED NOT NULL,
-  `Descripcion` varchar(500) NOT NULL,
+  `Descripcion` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `Monto` decimal(12,2) NOT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -359,10 +360,10 @@ CREATE TABLE `GastoDetalle` (
 
 CREATE TABLE `Giro` (
   `GiroID` int(11) NOT NULL,
-  `Codigo` varchar(10) NOT NULL,
-  `Descripcion` varchar(200) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Codigo` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Descripcion` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -378,11 +379,11 @@ CREATE TABLE `HistorialExoneracion` (
   `SolicitudExoneracionID` int(11) NOT NULL,
   `CreditoID` int(11) NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `TipoExoneracion` char(1) NOT NULL COMMENT 'P=Pronto Pago, I=Interés, M=Mora',
+  `TipoExoneracion` char(1) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'P=Pronto Pago, I=Interés, M=Mora',
   `MontoExonerado` decimal(12,2) NOT NULL,
-  `FechaExoneracion` datetime NOT NULL DEFAULT current_timestamp(),
-  `UsuarioAprobador` varchar(100) DEFAULT NULL,
-  `Comentario` text DEFAULT NULL,
+  `FechaExoneracion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UsuarioAprobador` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Comentario` text COLLATE utf8mb4_unicode_ci,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -394,8 +395,8 @@ CREATE TABLE `HistorialExoneracion` (
 
 CREATE TABLE `jobs` (
   `id` bigint(20) NOT NULL,
-  `queue` varchar(255) NOT NULL,
-  `payload` text NOT NULL,
+  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `attempts` tinyint(3) UNSIGNED NOT NULL,
   `reserved_at` int(11) DEFAULT NULL,
   `available_at` int(11) NOT NULL,
@@ -409,13 +410,13 @@ CREATE TABLE `jobs` (
 --
 
 CREATE TABLE `job_batches` (
-  `id` varchar(255) NOT NULL,
-  `name` varchar(255) NOT NULL,
+  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `total_jobs` int(11) NOT NULL,
   `pending_jobs` int(11) NOT NULL,
   `failed_jobs` int(11) NOT NULL,
-  `failed_job_ids` text NOT NULL,
-  `options` text DEFAULT NULL,
+  `failed_job_ids` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `options` text COLLATE utf8mb4_unicode_ci,
   `cancelled_at` int(11) DEFAULT NULL,
   `created_at` int(11) NOT NULL,
   `finished_at` int(11) DEFAULT NULL
@@ -430,18 +431,18 @@ CREATE TABLE `job_batches` (
 CREATE TABLE `logs` (
   `id` bigint(20) NOT NULL,
   `user_id` bigint(20) NOT NULL,
-  `accion` varchar(20) NOT NULL,
-  `modelo` varchar(150) NOT NULL,
+  `accion` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
+  `modelo` varchar(150) COLLATE utf8_unicode_ci NOT NULL,
   `modelo_id` bigint(20) DEFAULT NULL,
-  `old_values` text DEFAULT NULL,
-  `new_values` text DEFAULT NULL,
-  `ip_address` varchar(45) DEFAULT NULL,
-  `user_agent` varchar(255) DEFAULT NULL,
-  `machine_name` varchar(255) DEFAULT NULL,
-  `platform` varchar(50) DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `old_values` text COLLATE utf8_unicode_ci,
+  `new_values` text COLLATE utf8_unicode_ci,
+  `ip_address` varchar(45) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `user_agent` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `machine_name` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `platform` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -451,7 +452,7 @@ CREATE TABLE `logs` (
 
 CREATE TABLE `migrations` (
   `id` int(11) NOT NULL,
-  `migration` varchar(255) NOT NULL,
+  `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -463,7 +464,7 @@ CREATE TABLE `migrations` (
 
 CREATE TABLE `model_has_permissions` (
   `permission_id` bigint(20) NOT NULL,
-  `model_type` varchar(255) NOT NULL,
+  `model_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `model_id` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -475,7 +476,7 @@ CREATE TABLE `model_has_permissions` (
 
 CREATE TABLE `model_has_roles` (
   `role_id` bigint(20) NOT NULL,
-  `model_type` varchar(255) NOT NULL,
+  `model_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `model_id` bigint(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -492,9 +493,9 @@ CREATE TABLE `mora` (
   `SaldoPendiente` decimal(12,2) NOT NULL COMMENT 'Saldo sobre el que se calculó la mora',
   `PorcentajeMora` decimal(5,2) NOT NULL COMMENT 'Porcentaje de mora aplicado del cliente',
   `MontoMora` decimal(12,2) NOT NULL COMMENT 'Monto de mora calculado para este día',
-  `MoraAcumulada` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Mora total acumulada hasta esa fecha',
-  `created_at` timestamp NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `MoraAcumulada` decimal(12,2) NOT NULL DEFAULT '0.00' COMMENT 'Mora total acumulada hasta esa fecha',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Registro diario de mora automática por vencimiento';
 
@@ -506,10 +507,10 @@ CREATE TABLE `mora` (
 
 CREATE TABLE `Motivo` (
   `MotivoID` bigint(20) UNSIGNED NOT NULL,
-  `Nombre` varchar(100) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` timestamp NULL DEFAULT current_timestamp(),
-  `FechaModificacion` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Nombre` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `FechaModificacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -522,15 +523,16 @@ CREATE TABLE `Motivo` (
 CREATE TABLE `Negocio` (
   `NegocioID` int(11) NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `DireccionNegocio` varchar(500) NOT NULL,
+  `DireccionNegocio` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
   `CiudadID` int(11) DEFAULT NULL,
   `ZonaID` int(11) DEFAULT NULL,
   `Antiguedad` decimal(5,2) DEFAULT NULL,
   `GiroID` int(11) DEFAULT NULL,
   `SubGiroID` int(11) DEFAULT NULL,
-  `Ubicacion` varchar(20) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `ObservacionGiro` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Ubicacion` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -543,12 +545,12 @@ CREATE TABLE `Negocio` (
 
 CREATE TABLE `NivelAprobacion` (
   `NivelAprobacionID` int(11) NOT NULL,
-  `Nombre` varchar(50) NOT NULL,
+  `Nombre` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `MontoMinimo` decimal(12,2) NOT NULL,
   `MontoMaximo` decimal(12,2) NOT NULL,
   `Orden` int(11) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -565,20 +567,20 @@ CREATE TABLE `pago` (
   `CuotaID` int(11) DEFAULT NULL,
   `PromotorCobradorID` int(11) DEFAULT NULL,
   `MontoPagado` decimal(12,2) NOT NULL,
-  `FechaPago` datetime NOT NULL DEFAULT current_timestamp(),
-  `TipoPago` varchar(50) NOT NULL DEFAULT 'EFECTIVO' COMMENT 'Método de pago: EFECTIVO, YAPE_PLIN, TRANSFERENCIA_BANCARIA',
-  `TipoConcepto` char(1) DEFAULT 'C' COMMENT 'C=Cuota, I=Interés, M=Mora, P=Pronto Pago',
-  `EsMora` tinyint(1) NOT NULL DEFAULT 0,
-  `EsPagoAMayor` tinyint(1) NOT NULL DEFAULT 0,
-  `EsPagoForzado` tinyint(1) NOT NULL DEFAULT 0,
-  `EsPagoAutomatico` tinyint(1) NOT NULL DEFAULT 0,
-  `Comentario` varchar(500) DEFAULT NULL,
-  `UsuarioRegistro` varchar(100) DEFAULT NULL,
-  `FechaCreacion` datetime DEFAULT current_timestamp(),
+  `FechaPago` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `TipoPago` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'EFECTIVO' COMMENT 'Método de pago: EFECTIVO, YAPE_PLIN, TRANSFERENCIA_BANCARIA',
+  `TipoConcepto` char(1) COLLATE utf8mb4_unicode_ci DEFAULT 'C' COMMENT 'C=Cuota, I=Interés, M=Mora, P=Pronto Pago',
+  `EsMora` tinyint(1) NOT NULL DEFAULT '0',
+  `EsPagoAMayor` tinyint(1) NOT NULL DEFAULT '0',
+  `EsPagoForzado` tinyint(1) NOT NULL DEFAULT '0',
+  `EsPagoAutomatico` tinyint(1) NOT NULL DEFAULT '0',
+  `Comentario` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `UsuarioRegistro` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `FechaCreacion` datetime DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `FechaCierre` date DEFAULT NULL COMMENT 'Fecha en que se cerró este registro',
-  `EsPagoInicial` tinyint(1) NOT NULL DEFAULT 0,
+  `EsPagoInicial` tinyint(1) NOT NULL DEFAULT '0',
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -589,8 +591,8 @@ CREATE TABLE `pago` (
 --
 
 CREATE TABLE `password_reset_tokens` (
-  `email` varchar(255) NOT NULL,
-  `token` varchar(255) NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -602,8 +604,8 @@ CREATE TABLE `password_reset_tokens` (
 
 CREATE TABLE `permissions` (
   `id` bigint(20) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `guard_name` varchar(255) NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -616,12 +618,12 @@ CREATE TABLE `permissions` (
 
 CREATE TABLE `PromotorCobrador` (
   `PromotorCobradorID` int(11) NOT NULL,
-  `Codigo` varchar(20) NOT NULL,
-  `Descripcion` varchar(200) NOT NULL,
+  `Codigo` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Descripcion` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `CiudadID` int(11) NOT NULL,
   `ZonaID` int(11) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -634,9 +636,9 @@ CREATE TABLE `PromotorCobrador` (
 
 CREATE TABLE `ProposicionCredito` (
   `ProposicionCreditoID` int(11) NOT NULL,
-  `CodigoCredito` varchar(20) NOT NULL,
+  `CodigoCredito` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `ClienteID` int(11) NOT NULL,
-  `CodigoCliente` varchar(20) NOT NULL,
+  `CodigoCliente` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
   `TipoCreditoID` int(11) NOT NULL,
   `MontoTotal` decimal(12,2) NOT NULL,
   `TasaID` int(11) NOT NULL,
@@ -645,27 +647,27 @@ CREATE TABLE `ProposicionCredito` (
   `NumeroCuotas` int(11) NOT NULL,
   `MontoCuota` decimal(12,2) NOT NULL,
   `MontoInteres` decimal(12,2) NOT NULL,
-  `TasaMora` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `TasaMora` decimal(5,2) NOT NULL DEFAULT '0.00',
   `ZonaID` int(11) DEFAULT NULL,
-  `Observaciones` text DEFAULT NULL,
+  `Observaciones` text COLLATE utf8mb4_unicode_ci,
   `UserProponenteID` bigint(20) NOT NULL,
-  `FechaPropuesta` datetime NOT NULL DEFAULT current_timestamp(),
-  `Estado` varchar(20) NOT NULL DEFAULT 'PENDIENTE',
+  `FechaPropuesta` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE',
   `NivelAprobacionRequerido` int(11) DEFAULT NULL,
   `UserAprobadorID` bigint(20) DEFAULT NULL,
   `FechaAprobacion` datetime DEFAULT NULL,
-  `ComentarioAprobacion` varchar(500) DEFAULT NULL,
+  `ComentarioAprobacion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `FechaDesembolso` datetime DEFAULT NULL,
   `UserDesembolsoID` bigint(20) DEFAULT NULL,
   `FechaModificacion` datetime DEFAULT NULL,
   `UserModificacionID` bigint(20) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `FechaCierre` date DEFAULT NULL COMMENT 'Fecha en que se cerró este registro',
-  `EsRefinanciamiento` tinyint(1) NOT NULL DEFAULT 0,
-  `FueRefinanciada` tinyint(1) NOT NULL DEFAULT 0,
+  `EsRefinanciamiento` tinyint(1) NOT NULL DEFAULT '0',
+  `FueRefinanciada` tinyint(1) NOT NULL DEFAULT '0',
   `ProposicionCreditoAnteriorID` int(11) DEFAULT NULL,
-  `MontoTotalPagar` decimal(12,2) DEFAULT 0.00,
-  `SaldoPendiente` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `MontoTotalPagar` decimal(12,2) DEFAULT '0.00',
+  `SaldoPendiente` decimal(12,2) NOT NULL DEFAULT '0.00',
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -677,8 +679,8 @@ CREATE TABLE `ProposicionCredito` (
 
 CREATE TABLE `roles` (
   `id` bigint(20) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `guard_name` varchar(255) NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -702,10 +704,10 @@ CREATE TABLE `role_has_permissions` (
 
 CREATE TABLE `Sede` (
   `SedeID` int(11) NOT NULL,
-  `Nombre` varchar(100) NOT NULL,
-  `Codigo` varchar(10) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Nombre` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Codigo` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -716,11 +718,11 @@ CREATE TABLE `Sede` (
 --
 
 CREATE TABLE `sessions` (
-  `id` varchar(255) NOT NULL,
+  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `user_id` bigint(20) DEFAULT NULL,
-  `ip_address` varchar(45) DEFAULT NULL,
-  `user_agent` text DEFAULT NULL,
-  `payload` text NOT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `payload` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `last_activity` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -736,18 +738,18 @@ CREATE TABLE `SolicitudExoneracion` (
   `TipoExoneracionID` int(11) NOT NULL,
   `MontoDisponible` decimal(12,2) NOT NULL COMMENT 'Monto total disponible para exonerar',
   `MontoExonerado` decimal(12,2) NOT NULL COMMENT 'Monto a exonerar',
-  `Comentario` text NOT NULL,
-  `Estado` varchar(20) NOT NULL DEFAULT 'PENDIENTE' COMMENT 'PENDIENTE, APROBADO, RECHAZADO',
+  `Comentario` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE' COMMENT 'PENDIENTE, APROBADO, RECHAZADO',
   `UserSolicitanteID` bigint(20) NOT NULL,
-  `FechaSolicitud` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaSolicitud` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `NivelAprobacionRequerido` int(11) DEFAULT NULL,
   `UserAprobadorID` bigint(20) DEFAULT NULL,
   `FechaAprobacion` datetime DEFAULT NULL,
-  `ComentarioAprobacion` text DEFAULT NULL,
+  `ComentarioAprobacion` text COLLATE utf8mb4_unicode_ci,
   `PagoGeneradoID` int(11) DEFAULT NULL COMMENT 'ID del pago automático generado tras aprobación',
   `FechaModificacion` datetime DEFAULT NULL,
   `UserModificacionID` bigint(20) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -760,9 +762,9 @@ CREATE TABLE `SolicitudExoneracion` (
 CREATE TABLE `SubGiro` (
   `SubGiroID` int(11) NOT NULL,
   `GiroID` int(11) NOT NULL,
-  `Descripcion` varchar(200) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Descripcion` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -775,10 +777,10 @@ CREATE TABLE `SubGiro` (
 
 CREATE TABLE `Tasa` (
   `TasaID` int(11) NOT NULL,
-  `Nombre` varchar(50) NOT NULL,
+  `Nombre` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `Valor` decimal(5,2) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `Dias` int(11) NOT NULL,
   `Cuotas` int(11) NOT NULL,
@@ -793,11 +795,11 @@ CREATE TABLE `Tasa` (
 
 CREATE TABLE `TasaMora` (
   `TasaMoraID` int(11) NOT NULL,
-  `Nombre` varchar(100) NOT NULL,
+  `Nombre` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `Porcentaje` decimal(5,2) NOT NULL COMMENT 'Porcentaje de mora (ej: 0.5, 1.0, 2.5)',
-  `Descripcion` varchar(500) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Descripcion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -811,11 +813,11 @@ CREATE TABLE `TasaMora` (
 CREATE TABLE `TelefonoNegocio` (
   `TelefonoNegocioID` int(11) NOT NULL,
   `NegocioID` int(11) NOT NULL,
-  `Telefono` varchar(20) NOT NULL,
-  `TipoTelefono` varchar(20) DEFAULT 'PRINCIPAL',
-  `Observacion` varchar(200) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Telefono` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `TipoTelefono` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'PRINCIPAL',
+  `Observacion` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -827,10 +829,10 @@ CREATE TABLE `TelefonoNegocio` (
 
 CREATE TABLE `TipoComprobante` (
   `TipoComprobanteID` bigint(20) UNSIGNED NOT NULL,
-  `Nombre` varchar(100) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` timestamp NULL DEFAULT current_timestamp(),
-  `FechaModificacion` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Nombre` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `FechaModificacion` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -842,8 +844,8 @@ CREATE TABLE `TipoComprobante` (
 
 CREATE TABLE `TipoComprobanteGasto` (
   `TipoComprobanteGastoID` bigint(20) UNSIGNED NOT NULL,
-  `Nombre` varchar(50) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `Nombre` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `FechaCreacion` timestamp NULL DEFAULT NULL,
   `FechaModificacion` timestamp NULL DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
@@ -857,10 +859,10 @@ CREATE TABLE `TipoComprobanteGasto` (
 
 CREATE TABLE `TipoCredito` (
   `TipoCreditoID` int(11) NOT NULL,
-  `Codigo` varchar(10) NOT NULL,
-  `Descripcion` varchar(100) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime DEFAULT current_timestamp(),
+  `Codigo` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Descripcion` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -873,11 +875,11 @@ CREATE TABLE `TipoCredito` (
 
 CREATE TABLE `TipoExoneracion` (
   `TipoExoneracionID` int(11) NOT NULL,
-  `Codigo` char(1) NOT NULL COMMENT 'P=Pronto Pago, I=Interés, M=Mora',
-  `Nombre` varchar(50) NOT NULL,
-  `Descripcion` varchar(200) DEFAULT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Codigo` char(1) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'P=Pronto Pago, I=Interés, M=Mora',
+  `Nombre` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Descripcion` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -890,9 +892,9 @@ CREATE TABLE `TipoExoneracion` (
 
 CREATE TABLE `TipoPago` (
   `TipoPagoID` int(11) NOT NULL,
-  `Nombre` varchar(50) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Nombre` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -907,8 +909,8 @@ CREATE TABLE `UserNivelAprobacion` (
   `UserNivelAprobacionID` int(11) NOT NULL,
   `UserID` bigint(20) NOT NULL,
   `NivelAprobacionID` int(11) NOT NULL,
-  `FechaAsignacion` datetime NOT NULL DEFAULT current_timestamp(),
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaAsignacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -920,14 +922,14 @@ CREATE TABLE `UserNivelAprobacion` (
 
 CREATE TABLE `users` (
   `id` bigint(20) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `email` varchar(255) DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `email_verified_at` datetime DEFAULT NULL,
-  `password` varchar(255) NOT NULL,
-  `remember_token` varchar(100) DEFAULT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
-  `username` varchar(255) NOT NULL,
+  `username` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `PromotorCobradorID` bigint(20) UNSIGNED DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -941,9 +943,9 @@ CREATE TABLE `users` (
 CREATE TABLE `Zona` (
   `ZonaID` int(11) NOT NULL,
   `CiudadID` int(11) NOT NULL,
-  `Nombre` varchar(100) NOT NULL,
-  `Activo` tinyint(1) NOT NULL DEFAULT 1,
-  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `Nombre` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT '1',
+  `FechaCreacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `FechaModificacion` datetime DEFAULT NULL,
   `SedeID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

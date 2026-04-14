@@ -30,6 +30,7 @@ class Pago extends Model
         'FechaCierre',
         'Activo',
         'SedeID',
+        'SolicitudResolucionID',
     ];
 
     protected $casts = [
@@ -57,6 +58,11 @@ class Pago extends Model
     public function promotorCobrador()
     {
         return $this->belongsTo(PromotorCobrador::class, 'PromotorCobradorID', 'PromotorCobradorID');
+    }
+
+    public function solicitudResolucion()
+    {
+        return $this->belongsTo(SolicitudResolucionExcedente::class, 'SolicitudResolucionID', 'SolicitudID');
     }
 
     // Tipos de pago

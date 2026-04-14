@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\Credito;
 use App\Models\Cuota;
 use App\Models\Pago;
+use App\Models\Excedente;
 use App\Observers\AuditObserver;
 
 class AuditServiceProvider extends ServiceProvider
@@ -20,6 +21,7 @@ class AuditServiceProvider extends ServiceProvider
         Credito::observe(AuditObserver::class);
         Cuota::observe(AuditObserver::class);
         Pago::observe(AuditObserver::class);
+        Excedente::observe(AuditObserver::class);
     }
 
     public function register()
