@@ -14,7 +14,7 @@ class ViewCredito extends ViewRecord
 {
     protected static string $resource = CreditoResource::class;
 
-    public function getTitle(): string | \Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
         $url = static::getResource()::getUrl('index');
         return new \Illuminate\Support\HtmlString("
@@ -150,47 +150,47 @@ class ViewCredito extends ViewRecord
                             ->label('')
                             ->schema([
                                 Infolists\Components\Grid::make(5)
-                                ->schema([
-                                    Infolists\Components\TextEntry::make('MontoPagado')
-                                        ->label('Pagado')
-                                        ->money('PEN')
-                                        ->weight(\Filament\Support\Enums\FontWeight::Bold)
-                                        ->color('success')
-                                        ->size(\Filament\Infolists\Components\TextEntry\TextEntrySize::Large),
+                                    ->schema([
+                                        Infolists\Components\TextEntry::make('MontoPagado')
+                                            ->label('Pagado')
+                                            ->money('PEN')
+                                            ->weight(\Filament\Support\Enums\FontWeight::Bold)
+                                            ->color('success')
+                                            ->size(\Filament\Infolists\Components\TextEntry\TextEntrySize::Large),
 
-                                    Infolists\Components\TextEntry::make('FechaPago')
-                                        ->label('Realizado el')
-                                        ->dateTime('d/m/Y h:i A')
-                                        ->icon('heroicon-m-calendar'),
+                                        Infolists\Components\TextEntry::make('FechaPago')
+                                            ->label('Realizado el')
+                                            ->dateTime('d/m/Y h:i A')
+                                            ->icon('heroicon-m-calendar'),
 
-                                    Infolists\Components\TextEntry::make('tipo_metodo_calculado')
-                                        ->label('Método')
-                                        ->badge()
-                                        ->getStateUsing(function ($record) {
-                                            if (!empty($record->SolicitudResolucionID)) {
-                                                return 'Extorno / Resolución';
-                                            }
-                                            return $record->EsPagoAMayor ? 'Pago a Mayor' : 'Pago Normal';
-                                        })
-                                        ->color(function (string $state): string {
-                                            return match ($state) {
-                                                'Extorno / Resolución' => 'warning',
-                                                'Pago a Mayor' => 'info',
-                                                default => 'primary',
-                                            };
-                                        }),
+                                        Infolists\Components\TextEntry::make('tipo_metodo_calculado')
+                                            ->label('Método')
+                                            ->badge()
+                                            ->getStateUsing(function ($record) {
+                                                if (!empty($record->SolicitudResolucionID)) {
+                                                    return 'Extorno / Devolución';
+                                                }
+                                                return $record->EsPagoAMayor ? 'Pago a Mayor' : 'Pago Normal';
+                                            })
+                                            ->color(function (string $state): string {
+                                                return match ($state) {
+                                                    'Extorno / Devolución' => 'warning',
+                                                    'Pago a Mayor' => 'info',
+                                                    default => 'primary',
+                                                };
+                                            }),
 
-                                    Infolists\Components\TextEntry::make('EsMora')
-                                        ->label('Contiene Mora')
-                                        ->badge()
-                                        ->color(fn($state) => $state ? 'danger' : 'success')
-                                        ->formatStateUsing(fn($state) => $state ? 'Sí Contiene' : 'Libre de Mora')
-                                        ->icon(fn($state) => $state ? 'heroicon-m-exclamation-circle' : 'heroicon-m-check-circle'),
+                                        Infolists\Components\TextEntry::make('EsMora')
+                                            ->label('Contiene Mora')
+                                            ->badge()
+                                            ->color(fn($state) => $state ? 'danger' : 'success')
+                                            ->formatStateUsing(fn($state) => $state ? 'Sí Contiene' : 'Libre de Mora')
+                                            ->icon(fn($state) => $state ? 'heroicon-m-exclamation-circle' : 'heroicon-m-check-circle'),
 
-                                    Infolists\Components\TextEntry::make('UsuarioRegistro')
-                                        ->label('Recibido por')
-                                        ->icon('heroicon-m-user-circle'),
-                                ]),
+                                        Infolists\Components\TextEntry::make('UsuarioRegistro')
+                                            ->label('Recibido por')
+                                            ->icon('heroicon-m-user-circle'),
+                                    ]),
                                 Infolists\Components\TextEntry::make('Comentario')
                                     ->label('Nota Adicional')
                                     ->icon('heroicon-m-chat-bubble-bottom-center-text')
@@ -208,32 +208,32 @@ class ViewCredito extends ViewRecord
                             ->label('')
                             ->schema([
                                 Infolists\Components\Grid::make(5)
-                                ->schema([
-                                    Infolists\Components\TextEntry::make('FechaMora')
-                                        ->label('Fecha')
-                                        ->date('d/m/Y')
-                                        ->icon('heroicon-m-calendar-days'),
+                                    ->schema([
+                                        Infolists\Components\TextEntry::make('FechaMora')
+                                            ->label('Fecha')
+                                            ->date('d/m/Y')
+                                            ->icon('heroicon-m-calendar-days'),
 
-                                    Infolists\Components\TextEntry::make('SaldoPendiente')
-                                        ->label('Saldo Base')
-                                        ->money('PEN'),
+                                        Infolists\Components\TextEntry::make('SaldoPendiente')
+                                            ->label('Saldo Base')
+                                            ->money('PEN'),
 
-                                    Infolists\Components\TextEntry::make('PorcentajeMora')
-                                        ->label('Penalidad')
-                                        ->suffix('%'),
+                                        Infolists\Components\TextEntry::make('PorcentajeMora')
+                                            ->label('Penalidad')
+                                            ->suffix('%'),
 
-                                    Infolists\Components\TextEntry::make('MontoMora')
-                                        ->label('Mora Calculada')
-                                        ->money('PEN')
-                                        ->color('warning')
-                                        ->weight(\Filament\Support\Enums\FontWeight::SemiBold),
+                                        Infolists\Components\TextEntry::make('MontoMora')
+                                            ->label('Mora Calculada')
+                                            ->money('PEN')
+                                            ->color('warning')
+                                            ->weight(\Filament\Support\Enums\FontWeight::SemiBold),
 
-                                    Infolists\Components\TextEntry::make('MoraAcumulada')
-                                        ->label('Deuda Histórica Acumulada')
-                                        ->money('PEN')
-                                        ->color('danger')
-                                        ->weight(\Filament\Support\Enums\FontWeight::Bold),
-                                ])
+                                        Infolists\Components\TextEntry::make('MoraAcumulada')
+                                            ->label('Deuda Histórica Acumulada')
+                                            ->money('PEN')
+                                            ->color('danger')
+                                            ->weight(\Filament\Support\Enums\FontWeight::Bold),
+                                    ])
                             ])
                             ->contained(true)
                     ]),
