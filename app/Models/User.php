@@ -111,6 +111,30 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Override del método can() para forzar modo Solo Lectura si está en "Todas las Sedes"
+     */
+    public function can($abilities, $arguments = [])
+    {
+        if ($this->esAdmin() && !session('sede_activa')) {
+            $blockedPrefixes = ['create_', 'update_', 'delete_', 'restore_', 'forceDelete_'];
+            
+            $abilitiesList = is_array($abilities) ? $abilities : [$abilities];
+            
+            foreach ($abilitiesList as $ability) {
+                if (is_string($ability)) {
+                    foreach ($blockedPrefixes as $prefix) {
+                        if (str_starts_with($ability, $prefix)) {
+                            return false; 
+                        }
+                    }
+                }
+            }
+        }
+        
+        return parent::can($abilities, $arguments);
+    }
+
+    /**
      * Verifica si el usuario es super administrador (acceso a todas las sedes)
      */
     public function esAdmin(): bool

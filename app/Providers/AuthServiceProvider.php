@@ -15,6 +15,23 @@ class AuthServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Regla Global: Modo Solo Lectura para "Todas las Sedes"
+        Gate::before(function ($user, $ability) {
+            // Si es SuperAdmin pero está en "Todas las Sedes" (session sede_activa es null)
+            if ($user->esAdmin() && !session('sede_activa')) {
+                
+                // Prefijos de habilidades que modifican el sistema
+                $blockedPrefixes = ['create_', 'update_', 'delete_', 'restore_', 'forceDelete_'];
+                
+                // Si la habilidad empieza con alguno de los prefijos de modificación, bloqueamos.
+                foreach ($blockedPrefixes as $prefix) {
+                    if (str_starts_with($ability, $prefix)) {
+                        return false; 
+                    }
+                }
+            }
+        });
+
         Gate::authorize('authorizeResourcesByPolicy', static fn() => true);
     }
 }

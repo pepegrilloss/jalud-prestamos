@@ -15,6 +15,7 @@ class SolicitudResolucionExcedente extends Model
 
     protected $fillable = [
         'ExcedenteID',
+        'MontoAplicar',
         'ClienteOrigenID',
         'TipoResolucion',
         'ClienteDestinoID',

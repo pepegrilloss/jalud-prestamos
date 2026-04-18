@@ -299,7 +299,7 @@ class CreditoResource extends Resource
                         $q->where('FueRefinanciada', 0);
                     });
                 
-                if (property_exists($livewire, 'fechaFiltro') && $livewire->fechaFiltro) {
+                if (property_exists($livewire, 'fechaFiltro') && !empty($livewire->fechaFiltro)) {
                     $query->whereDate('FechaGeneracion', $livewire->fechaFiltro);
                 }
 

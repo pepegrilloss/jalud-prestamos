@@ -92,14 +92,70 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             })
                             ->required()
                             ->searchable()
-                            ->live(),
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                $excedenteID = $get('ExcedenteID');
+                                if ($excedenteID) {
+                                    $excedente = Excedente::find($excedenteID);
+                                    if ($excedente) {
+                                        $set('MontoAplicar', $excedente->Monto);
+                                    }
+                                } else {
+                                    $set('MontoAplicar', null);
+                                }
+                            }),
+
+                        Forms\Components\TextInput::make('MontoAplicar')
+                            ->label('Monto a Aplicar (S/)')
+                            ->required()
+                            ->numeric()
+                            ->minValue(0.01)
+                            ->prefix('S/')
+                            ->helperText(function (Get $get) {
+                                $excedenteID = $get('ExcedenteID');
+                                if ($excedenteID) {
+                                    $excedente = Excedente::find($excedenteID);
+                                    if ($excedente) {
+                                        return "Monto disponible del excedente: S/ " . number_format($excedente->Monto, 2);
+                                    }
+                                }
+                                return 'Seleccione un excedente primero.';
+                            })
+                            ->rules([
+                                fn (Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    $excedenteID = $get('ExcedenteID');
+                                    if ($excedenteID) {
+                                        $excedente = Excedente::find($excedenteID);
+                                        if ($excedente && $value > $excedente->Monto) {
+                                            $fail("El monto no puede exceder S/ " . number_format($excedente->Monto, 2) . " (disponible del excedente).");
+                                        }
+                                    }
+                                },
+                            ])
+                            ->live(debounce: 500),
 
                         Forms\Components\Select::make('ClienteDestinoID')
                             ->label('Cliente Destino')
-                            ->options(Cliente::where('Activo', 1)->pluck('NombresApellidos', 'ClienteID'))
+                            ->options(function (Get $get) {
+                                $origenID = $get('ClienteOrigenID');
+                                $tipo = $get('TipoResolucion');
+
+                                return Cliente::where('Activo', 1)
+                                    ->when($tipo === 'TRASLADO_DE_PAGO' && $origenID, function ($query) use ($origenID) {
+                                        return $query->where('ClienteID', '!=', $origenID);
+                                    })
+                                    ->pluck('NombresApellidos', 'ClienteID');
+                            })
                             ->required(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO', 'APLICACION_NUEVO_CREDITO']))
                             ->searchable()
                             ->live()
+                            ->rules([
+                                fn (Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $value == $get('ClienteOrigenID')) {
+                                        $fail('El cliente destino no puede ser el mismo que el origen en un traslado de pago.');
+                                    }
+                                },
+                            ])
                             ->visible(fn(Get $get) => $get('TipoResolucion') !== null),
 
                         Forms\Components\Select::make('CreditoDestinoID')
@@ -151,8 +207,8 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                         'APLICACION_NUEVO_CREDITO' => 'Saldo Nuevo Crédito',
                                         default => $state,
                                     }),
-                                Infolists\Components\TextEntry::make('excedente.Monto')
-                                    ->label('Monto involucrado')
+                                Infolists\Components\TextEntry::make('MontoAplicar')
+                                    ->label('Monto Aplicado')
                                     ->money('PEN')
                                     ->weight('bold')
                                     ->size('lg')
@@ -251,8 +307,8 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                 Tables\Columns\TextColumn::make('TipoResolucion')
                     ->label('Tipo de Solicitud')
                     ->badge(),
-                Tables\Columns\TextColumn::make('excedente.Monto')
-                    ->label('Monto')
+                Tables\Columns\TextColumn::make('MontoAplicar')
+                    ->label('Monto Aplicado')
                     ->money('PEN')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('clienteOrigen.NombresApellidos')

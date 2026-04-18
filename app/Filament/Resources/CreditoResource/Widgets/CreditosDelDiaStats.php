@@ -13,26 +13,32 @@ class CreditosDelDiaStats extends BaseWidget
 
     public function mount(): void
     {
-        $this->fechaSeleccionada = session()->get('creditos_fecha_filtro', request()->query('fechaSeleccionada', now()->toDateString()));
+        $defaultDate = now()->toDateString();
+        $hasDataToday = \App\Models\Credito::whereDate('FechaGeneracion', $defaultDate)->exists();
+        
+        $this->fechaSeleccionada = session()->get('creditos_fecha_filtro_v2', request()->query('fechaSeleccionada', $hasDataToday ? $defaultDate : null));
     }
 
     // Método que se llama cuando cambia la fecha desde el frontend
     public function updatedFechaSeleccionada(): void
     {
-        session()->put('creditos_fecha_filtro', $this->fechaSeleccionada);
+        session()->put('creditos_fecha_filtro_v2', $this->fechaSeleccionada);
         // Emitir un evento para que la tabla (página ListCreditos) también actualice su filtro
         $this->dispatch('updateFechaCreditos', fecha: $this->fechaSeleccionada);
     }
 
     protected function getStats(): array
     {
-        $fecha = $this->fechaSeleccionada ?? now()->toDateString();
+        $fecha = !empty($this->fechaSeleccionada) ? $this->fechaSeleccionada : null;
 
         $query = \App\Models\Credito::with('proposicion')
             ->whereHas('proposicion', function ($q) {
                 $q->where('FueRefinanciada', 0);
-            })
-            ->whereDate('FechaGeneracion', $fecha);
+            });
+
+        if ($fecha) {
+            $query->whereDate('FechaGeneracion', $fecha);
+        }
 
         $totalMonto = (clone $query)->get()->sum(function($credito) {
             return $credito->proposicion?->MontoTotal ?? 0;
@@ -40,13 +46,13 @@ class CreditosDelDiaStats extends BaseWidget
 
         $cantidad = (clone $query)->count();
 
-        $fechaFormateada = Carbon::parse($fecha)->format('d/m/Y');
-        $esHoy = Carbon::parse($fecha)->isToday();
-        $labelDia = $esHoy ? 'Hoy' : $fechaFormateada;
+        $fechaFormateada = $fecha ? Carbon::parse($fecha)->format('d/m/Y') : '';
+        $esHoy = $fecha ? Carbon::parse($fecha)->isToday() : false;
+        $labelDia = $fecha ? ($esHoy ? 'Hoy' : $fechaFormateada) : 'Totales';
 
         return [
             Stat::make("Créditos Generados {$labelDia}", 'S/ ' . number_format($totalMonto, 2))
-                ->description('Día: ' . $fechaFormateada . ' 📅')
+                ->description($fecha ? 'Día: ' . $fechaFormateada . ' 📅' : 'Histórico Completo 📅')
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('success')
                 ->extraAttributes([
@@ -59,7 +65,7 @@ class CreditosDelDiaStats extends BaseWidget
                 ]),
 
             Stat::make("Cantidad de {$labelDia}", $cantidad . ' créditos')
-                ->description($esHoy ? 'Generados el día de hoy' : "Generados el {$fechaFormateada}")
+                ->description($fecha ? ($esHoy ? 'Generados el día de hoy' : "Generados el {$fechaFormateada}") : 'Todos los registros')
                 ->descriptionIcon('heroicon-m-document-check')
                 ->color('primary'),
         ];

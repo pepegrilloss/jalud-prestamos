@@ -18,18 +18,31 @@ class ResolucionExcedenteService
             $solicitud->UserAprobadorID = $aprobador->id;
             $solicitud->save();
 
-            // Marcar el excedente como resuelto y vincular al cliente origen
+            // Obtener el excedente y el monto a aplicar
             $excedente = $solicitud->excedente;
-            $excedente->EstadoResolucion = 'RESUELTO';
+            $montoAplicar = $solicitud->MontoAplicar ?? $excedente->Monto;
             
             // Propagar el Cliente Origen identificado en la solicitud al excedente
             if ($solicitud->ClienteOrigenID) {
                 $excedente->ClienteOrigenID = $solicitud->ClienteOrigenID;
             }
+
+            // Restar el monto aplicado del excedente
+            $nuevoMonto = $excedente->Monto - $montoAplicar;
+
+            if ($nuevoMonto <= 0) {
+                // Se consumió todo el excedente
+                $excedente->Monto = 0;
+                $excedente->EstadoResolucion = 'RESUELTO';
+            } else {
+                // Queda saldo disponible para futuras resoluciones
+                $excedente->Monto = $nuevoMonto;
+                // Sigue PENDIENTE para que se pueda asignar el resto
+            }
             
             $excedente->save();
 
-            // Calcular operaciones finacieras según el tipo
+            // Calcular operaciones financieras según el tipo
             if (in_array($solicitud->TipoResolucion, ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'APLICACION_NUEVO_CREDITO'])) {
                 // Registrar el pago al nuevo credito
                 $tipoPago = 'EFECTIVO';
@@ -46,13 +59,13 @@ class ResolucionExcedenteService
                 Pago::create([
                     'CreditoID' => $solicitud->CreditoDestinoID,
                     'CuotaID' => $cuota ? $cuota->CuotaID : null,
-                    'MontoPagado' => $excedente->Monto,
+                    'MontoPagado' => $montoAplicar,
                     'FechaPago' => Carbon::now(),
                     'TipoPago' => $tipoPago,
                     'TipoConcepto' => 'C',
                     'EsMora' => false,
                     'EsPagoAutomatico' => true,
-                    'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}. Tipo: {$solicitud->TipoResolucion}",
+                    'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}. Tipo: {$solicitud->TipoResolucion}. Monto aplicado: S/ " . number_format($montoAplicar, 2),
                     'UsuarioRegistro' => $aprobador->name,
                     'Activo' => true,
                     'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,

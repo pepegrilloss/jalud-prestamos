@@ -17,7 +17,10 @@ class ListCreditos extends ListRecords
     public function mount(): void
     {
         parent::mount();
-        $this->fechaFiltro = session()->get('creditos_fecha_filtro', request()->query('fechaSeleccionada', now()->toDateString()));
+        $defaultDate = now()->toDateString();
+        $hasDataToday = \App\Models\Credito::whereDate('FechaGeneracion', $defaultDate)->exists();
+        
+        $this->fechaFiltro = session()->get('creditos_fecha_filtro_v2', request()->query('fechaSeleccionada', $hasDataToday ? $defaultDate : null));
     }
 
     #[\Livewire\Attributes\On('updateFechaCreditos')]
