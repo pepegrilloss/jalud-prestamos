@@ -51,6 +51,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                     ->schema([
                         Forms\Components\Select::make('TipoResolucion')
                             ->label('Tipo de Solicitud')
+                            ->prefixIcon('heroicon-m-arrows-right-left')
                             ->options([
                                 'TRASLADO_DE_PAGO' => 'Traslado de Pago (Error a Cliente A)',
                                 'ASIGNACION_POR_RECLAMO' => 'Regularización de Pago por Reclamo (Identificación de Pago)',
@@ -66,6 +67,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
 
                         Forms\Components\Select::make('ClienteOrigenID')
                             ->label('Seleccionar Cliente A (Origen)')
+                            ->prefixIcon('heroicon-m-user-minus')
                             ->options(Cliente::where('Activo', 1)->pluck('NombresApellidos', 'ClienteID'))
                             ->searchable()
                             ->live()
@@ -75,6 +77,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                         // Para el TRASLADO DE PAGO, buscar Excedentes enlazados a Cliente A
                         Forms\Components\Select::make('ExcedenteID')
                             ->label('Excedente (El Sobrante/Dinero a mover)')
+                            ->prefixIcon('heroicon-m-banknotes')
                             ->options(function (Get $get) {
                                 $tipo = $get('TipoResolucion');
                                 $query = Excedente::where('EstadoResolucion', 'PENDIENTE')->where('Activo', 1);
@@ -107,6 +110,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
 
                         Forms\Components\TextInput::make('MontoAplicar')
                             ->label('Monto a Aplicar (S/)')
+                            ->prefixIcon('heroicon-m-currency-dollar')
                             ->required()
                             ->numeric()
                             ->minValue(0.01)
@@ -136,6 +140,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
 
                         Forms\Components\Select::make('ClienteDestinoID')
                             ->label('Cliente Destino')
+                            ->prefixIcon('heroicon-m-user-plus')
                             ->options(function (Get $get) {
                                 $origenID = $get('ClienteOrigenID');
                                 $tipo = $get('TipoResolucion');
@@ -160,6 +165,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
 
                         Forms\Components\Select::make('CreditoDestinoID')
                             ->label('Crédito Destino')
+                            ->prefixIcon('heroicon-m-document-text')
                             ->options(function (Get $get) {
                                 if (!$get('ClienteDestinoID'))
                                     return [];

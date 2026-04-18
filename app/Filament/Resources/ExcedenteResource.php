@@ -47,6 +47,7 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                     ->schema([
                         Forms\Components\Select::make('TipoExcedente')
                             ->label('Tipo de Excedente')
+                            ->prefixIcon('heroicon-m-tag')
                             ->options([
                                 'YAPE_TRANSFERENCIA' => 'Yape / Transferencia',
                                 'SOBRANTE_PROMOTOR' => 'Sobrante de Promotor',
@@ -58,6 +59,7 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
 
                         Forms\Components\Select::make('ZonaID')
                             ->label('Zona')
+                            ->prefixIcon('heroicon-m-map')
                             ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
                             ->searchable()
                             ->native(false)
@@ -66,6 +68,7 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
 
                         Forms\Components\TextInput::make('Cuenta')
                             ->label('Cuenta / Destino')
+                            ->prefixIcon('heroicon-m-building-library')
                             ->default('Caja Abierta')
                             ->readonly()
                             ->visible(fn(Get $get) => in_array($get('TipoExcedente'), ['YAPE_TRANSFERENCIA', 'SOBRANTE_CAJERO']))
@@ -73,6 +76,7 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
 
                         Forms\Components\DatePicker::make('Fecha')
                             ->label('Fecha (del voucher o sobrante)')
+                            ->prefixIcon('heroicon-m-calendar-days')
                             ->required()
                             ->default(now())
                             ->native(false)
@@ -80,11 +84,13 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
 
                         Forms\Components\TimePicker::make('Hora')
                             ->label('Hora (del voucher o sobrante)')
+                            ->prefixIcon('heroicon-m-clock')
                             ->required()
                             ->default(now()),
 
                         Forms\Components\TextInput::make('NroOperacion')
                             ->label('Nro. de Operación')
+                            ->prefixIcon('heroicon-m-hashtag')
                             ->visible(fn(Get $get) => $get('TipoExcedente') === 'YAPE_TRANSFERENCIA')
                             ->maxLength(50),
 
