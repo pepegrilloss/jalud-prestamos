@@ -163,11 +163,22 @@ class ViewCredito extends ViewRecord
                                         ->dateTime('d/m/Y h:i A')
                                         ->icon('heroicon-m-calendar'),
 
-                                    Infolists\Components\TextEntry::make('EsPagoAMayor')
+                                    Infolists\Components\TextEntry::make('tipo_metodo_calculado')
                                         ->label('Método')
                                         ->badge()
-                                        ->color(fn($state) => $state ? 'info' : 'primary')
-                                        ->formatStateUsing(fn($state) => $state ? 'Pago a Mayor' : 'Pago Normal'),
+                                        ->getStateUsing(function ($record) {
+                                            if (!empty($record->SolicitudResolucionID)) {
+                                                return 'Extorno / Resolución';
+                                            }
+                                            return $record->EsPagoAMayor ? 'Pago a Mayor' : 'Pago Normal';
+                                        })
+                                        ->color(function (string $state): string {
+                                            return match ($state) {
+                                                'Extorno / Resolución' => 'warning',
+                                                'Pago a Mayor' => 'info',
+                                                default => 'primary',
+                                            };
+                                        }),
 
                                     Infolists\Components\TextEntry::make('EsMora')
                                         ->label('Contiene Mora')
