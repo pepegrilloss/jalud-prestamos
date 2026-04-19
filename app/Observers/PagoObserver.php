@@ -42,9 +42,13 @@ class PagoObserver
         if ($credito && $credito->proposicion) {
             $proposicion = $credito->proposicion;
             
-            // Calcular total de pagos activos
+            // Calcular total de pagos activos (excluyendo los trasladados)
             $totalPagos = $credito->pagos()
                 ->where('Activo', true)
+                ->where(function ($q) {
+                    $q->whereNull('EstadoTraslado')
+                      ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+                })
                 ->sum('MontoPagado');
             
             // Calcular saldo pendiente: Monto Total a Pagar - Total de Pagos

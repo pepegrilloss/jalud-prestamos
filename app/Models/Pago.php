@@ -31,6 +31,8 @@ class Pago extends Model
         'Activo',
         'SedeID',
         'SolicitudResolucionID',
+        'PagoOrigenID',
+        'EstadoTraslado',
     ];
 
     protected $casts = [
@@ -63,6 +65,11 @@ class Pago extends Model
     public function solicitudResolucion()
     {
         return $this->belongsTo(SolicitudResolucionExcedente::class, 'SolicitudResolucionID', 'SolicitudID');
+    }
+
+    public function pagoOrigen()
+    {
+        return $this->belongsTo(Pago::class, 'PagoOrigenID', 'PagoID');
     }
 
     // Tipos de pago

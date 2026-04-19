@@ -155,25 +155,34 @@ class ViewCredito extends ViewRecord
                                             ->label('Pagado')
                                             ->money('PEN')
                                             ->weight(\Filament\Support\Enums\FontWeight::Bold)
-                                            ->color('success')
+                                            ->color(fn($record) => $record?->EstadoTraslado === 'TRASLADADO' ? 'gray' : 'success')
                                             ->size(\Filament\Infolists\Components\TextEntry\TextEntrySize::Large),
 
                                         Infolists\Components\TextEntry::make('FechaPago')
                                             ->label('Realizado el')
                                             ->dateTime('d/m/Y h:i A')
-                                            ->icon('heroicon-m-calendar'),
+                                            ->icon(fn($record) => $record?->EstadoTraslado === 'TRASLADADO' ? 'heroicon-m-arrow-right-circle' : 'heroicon-m-calendar'),
 
                                         Infolists\Components\TextEntry::make('tipo_metodo_calculado')
                                             ->label('Método')
                                             ->badge()
+                                            ->default('Pago Normal')
                                             ->getStateUsing(function ($record) {
-                                                if (!empty($record->SolicitudResolucionID)) {
+                                                if ($record?->EstadoTraslado === 'TRASLADADO') {
+                                                    return 'Trasladado a otro Cliente';
+                                                }
+                                                if (!empty($record?->PagoOrigenID)) {
+                                                    return 'Recibido por Traslado';
+                                                }
+                                                if (!empty($record?->SolicitudResolucionID)) {
                                                     return 'Extorno / Devolución';
                                                 }
-                                                return $record->EsPagoAMayor ? 'Pago a Mayor' : 'Pago Normal';
+                                                return $record?->EsPagoAMayor ? 'Pago a Mayor' : 'Pago Normal';
                                             })
                                             ->color(function (string $state): string {
                                                 return match ($state) {
+                                                    'Trasladado a otro Cliente' => 'gray',
+                                                    'Recibido por Traslado' => 'success',
                                                     'Extorno / Devolución' => 'warning',
                                                     'Pago a Mayor' => 'info',
                                                     default => 'primary',

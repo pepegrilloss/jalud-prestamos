@@ -7,6 +7,7 @@ use App\Models\SolicitudResolucionExcedente;
 use App\Models\Excedente;
 use App\Models\Cliente;
 use App\Models\Credito;
+use App\Models\Pago;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -63,6 +64,9 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->afterStateUpdated(function (Set $set) {
                                 $set('ClienteOrigenID', null);
                                 $set('ExcedenteID', null);
+                                $set('CreditoOrigenID', null);
+                                $set('PagoOrigenID', null);
+                                $set('MontoAplicar', null);
                             }),
 
                         Forms\Components\Select::make('ClienteOrigenID')
@@ -71,18 +75,115 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->options(Cliente::where('Activo', 1)->pluck('NombresApellidos', 'ClienteID'))
                             ->searchable()
                             ->live()
-                            ->afterStateUpdated(fn(Set $set) => $set('ExcedenteID', null))
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('ExcedenteID', null);
+                                $set('CreditoOrigenID', null);
+                                $set('PagoOrigenID', null);
+                                $set('MontoAplicar', null);
+                            })
                             ->visible(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'DEVOLUCION_EFECTIVO', 'APLICACION_NUEVO_CREDITO'])),
 
-                        // Para el TRASLADO DE PAGO, buscar Excedentes enlazados a Cliente A
+                        // ========== FLUJO TRASLADO DE PAGO ==========
+                        // Seleccionar crédito del Cliente A
+                        Forms\Components\Select::make('CreditoOrigenID')
+                            ->label('Crédito del Cliente Origen')
+                            ->prefixIcon('heroicon-m-document-text')
+                            ->options(function (Get $get) {
+                                $clienteID = $get('ClienteOrigenID');
+                                if (!$clienteID) return [];
+                                return Credito::whereHas('proposicion', function ($q) use ($clienteID) {
+                                    $q->where('ClienteID', $clienteID)->where('Activo', 1);
+                                })->where('Activo', 1)->with('proposicion')->get()->mapWithKeys(function ($cr) {
+                                    return [$cr->CreditoID => "{$cr->proposicion->CodigoCredito} - Saldo: S/ " . number_format($cr->proposicion->SaldoPendiente, 2)];
+                                });
+                            })
+                            ->required(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO')
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(fn(Set $set) => $set('PagoOrigenID', null))
+                            ->visible(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $get('ClienteOrigenID')),
+
+                        // Seleccionar pago del crédito del Cliente A
+                        Forms\Components\Select::make('PagoOrigenID')
+                            ->label('Pago a Trasladar')
+                            ->prefixIcon('heroicon-m-banknotes')
+                            ->options(function (Get $get) {
+                                $creditoID = $get('CreditoOrigenID');
+                                if (!$creditoID) return [];
+                                return Pago::where('CreditoID', $creditoID)
+                                    ->where('Activo', 1)
+                                    ->where(function ($q) {
+                                        $q->whereNull('EstadoTraslado')
+                                          ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+                                    })
+                                    ->orderBy('FechaPago', 'desc')
+                                    ->get()
+                                    ->mapWithKeys(function ($pago) {
+                                        $fecha = \Carbon\Carbon::parse($pago->FechaPago)->format('d/m/Y');
+                                        $cuotaInfo = $pago->cuota ? " - Cuota #{$pago->cuota->NumeroCuota}" : "";
+                                        return [$pago->PagoID => "S/ " . number_format($pago->MontoPagado, 2) . " - {$fecha} - {$pago->TipoPago}{$cuotaInfo}"];
+                                    });
+                            })
+                            ->required(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO')
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                $pagoID = $get('PagoOrigenID');
+                                if ($pagoID) {
+                                    $pago = Pago::find($pagoID);
+                                    if ($pago) {
+                                        $set('MontoAplicar', $pago->MontoPagado);
+                                    }
+                                } else {
+                                    $set('MontoAplicar', null);
+                                }
+                            })
+                            ->helperText('Seleccione el pago que se trasladará al cliente destino.')
+                            ->visible(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $get('CreditoOrigenID')),
+
+                        // Monto del pago seleccionado (solo informativo para traslado)
+                        Forms\Components\TextInput::make('MontoAplicar')
+                            ->label(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' ? 'Monto del Pago a Trasladar (S/)' : 'Monto a Aplicar (S/)')
+                            ->prefixIcon('heroicon-m-currency-dollar')
+                            ->required()
+                            ->numeric()
+                            ->minValue(0.01)
+                            ->prefix('S/')
+                            ->readOnly(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO')
+                            ->helperText(function (Get $get) {
+                                if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO') {
+                                    return 'El monto se toma automáticamente del pago seleccionado.';
+                                }
+                                $excedenteID = $get('ExcedenteID');
+                                if ($excedenteID) {
+                                    $excedente = Excedente::find($excedenteID);
+                                    if ($excedente) {
+                                        return "Monto disponible del excedente: S/ " . number_format($excedente->Monto, 2);
+                                    }
+                                }
+                                return 'Seleccione un excedente primero.';
+                            })
+                            ->rules([
+                                fn (Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO') return; // No validar contra excedente
+                                    $excedenteID = $get('ExcedenteID');
+                                    if ($excedenteID) {
+                                        $excedente = Excedente::find($excedenteID);
+                                        if ($excedente && $value > $excedente->Monto) {
+                                            $fail("El monto no puede exceder S/ " . number_format($excedente->Monto, 2) . " (disponible del excedente).");
+                                        }
+                                    }
+                                },
+                            ])
+                            ->live(debounce: 500)
+                            ->visible(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' ? $get('PagoOrigenID') !== null : true),
+
+                        // ========== FLUJO EXCEDENTE (otros tipos) ==========
                         Forms\Components\Select::make('ExcedenteID')
                             ->label('Excedente (El Sobrante/Dinero a mover)')
                             ->prefixIcon('heroicon-m-banknotes')
                             ->options(function (Get $get) {
-                                $tipo = $get('TipoResolucion');
                                 $query = Excedente::where('EstadoResolucion', 'PENDIENTE')->where('Activo', 1);
-
-                                // Mostrar todos los excedentes pendientes
                                 $results = $query->get();
                                 if ($results->isEmpty()) return [];
                                 return $results->mapWithKeys(function ($ex) {
@@ -91,9 +192,8 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     $op = $ex->NroOperacion ? " - Op: {$ex->NroOperacion}" : "";
                                     return [$ex->ExcedenteID => "S/ {$ex->Monto} - {$tipoLabel}{$op} - {$fecha}"];
                                 });
-                                return [];
                             })
-                            ->required()
+                            ->required(fn(Get $get) => $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
                             ->searchable()
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set) {
@@ -106,38 +206,10 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 } else {
                                     $set('MontoAplicar', null);
                                 }
-                            }),
-
-                        Forms\Components\TextInput::make('MontoAplicar')
-                            ->label('Monto a Aplicar (S/)')
-                            ->prefixIcon('heroicon-m-currency-dollar')
-                            ->required()
-                            ->numeric()
-                            ->minValue(0.01)
-                            ->prefix('S/')
-                            ->helperText(function (Get $get) {
-                                $excedenteID = $get('ExcedenteID');
-                                if ($excedenteID) {
-                                    $excedente = Excedente::find($excedenteID);
-                                    if ($excedente) {
-                                        return "Monto disponible del excedente: S/ " . number_format($excedente->Monto, 2);
-                                    }
-                                }
-                                return 'Seleccione un excedente primero.';
                             })
-                            ->rules([
-                                fn (Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
-                                    $excedenteID = $get('ExcedenteID');
-                                    if ($excedenteID) {
-                                        $excedente = Excedente::find($excedenteID);
-                                        if ($excedente && $value > $excedente->Monto) {
-                                            $fail("El monto no puede exceder S/ " . number_format($excedente->Monto, 2) . " (disponible del excedente).");
-                                        }
-                                    }
-                                },
-                            ])
-                            ->live(debounce: 500),
+                            ->visible(fn(Get $get) => $get('TipoResolucion') !== null && $get('TipoResolucion') !== 'TRASLADO_DE_PAGO'),
 
+                        // ========== CAMPOS COMUNES ==========
                         Forms\Components\Select::make('ClienteDestinoID')
                             ->label('Cliente Destino')
                             ->prefixIcon('heroicon-m-user-plus')
@@ -260,7 +332,14 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 Infolists\Components\TextEntry::make('excedente.NroOperacion')
                                     ->label('Voucher / Operación')
                                     ->icon('heroicon-m-hashtag')
-                                    ->placeholder('N/A'),
+                                    ->placeholder('N/A')
+                                    ->visible(fn($record) => $record->TipoResolucion !== 'TRASLADO_DE_PAGO'),
+                                Infolists\Components\TextEntry::make('pagoOrigen.MontoPagado')
+                                    ->label('Pago Original')
+                                    ->icon('heroicon-m-banknotes')
+                                    ->money('PEN')
+                                    ->helperText(fn($record) => $record->pagoOrigen ? "{$record->pagoOrigen->TipoPago} - " . \Carbon\Carbon::parse($record->pagoOrigen->FechaPago)->format('d/m/Y') : '')
+                                    ->visible(fn($record) => $record->TipoResolucion === 'TRASLADO_DE_PAGO' && $record->pagoOrigen),
                                 Infolists\Components\TextEntry::make('creditoDestino.proposicion.CodigoCredito')
                                     ->label('Crédito Aplicado')
                                     ->badge()

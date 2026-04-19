@@ -26,6 +26,8 @@ class SolicitudResolucionExcedente extends Model
         'UserSolicitanteID',
         'UserAprobadorID',
         'SedeID',
+        'PagoOrigenID',
+        'CreditoOrigenID',
     ];
 
     public function excedente()
@@ -56,5 +58,15 @@ class SolicitudResolucionExcedente extends Model
     public function aprobador()
     {
         return $this->belongsTo(User::class, 'UserAprobadorID');
+    }
+
+    public function pagoOrigen()
+    {
+        return $this->belongsTo(Pago::class, 'PagoOrigenID', 'PagoID');
+    }
+
+    public function creditoOrigen()
+    {
+        return $this->belongsTo(Credito::class, 'CreditoOrigenID', 'CreditoID');
     }
 }
