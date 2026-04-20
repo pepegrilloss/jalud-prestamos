@@ -109,15 +109,11 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                         Forms\Components\FileUpload::make('VoucherImagen')
                             ->label('Imagen del Voucher')
                             ->image()
-                            ->imageResizeMode('cover')
-                            ->imageCropAspectRatio(null)
-                            ->imageResizeTargetWidth('800')
-                            ->imageResizeTargetHeight('800')
                             ->directory('excedentes/vouchers')
                             ->disk('public')
                             ->maxSize(5120)
                             ->acceptedFileTypes(['image/*'])
-                            ->helperText('Formato: JPG, PNG. Se comprimirá automáticamente.')
+                            ->helperText('Formato: JPG, PNG.')
                             ->columnSpanFull()
                             ->visible(fn(Get $get) => $get('TipoExcedente') === 'YAPE_TRANSFERENCIA'),
                     ])->columns(2),
