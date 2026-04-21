@@ -1,0 +1,135 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\AprobacionResolucionResource\Pages;
+use App\Models\SolicitudResolucionExcedente;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Notifications\Notification;
+use Filament\Infolists\Infolist;
+use Illuminate\Database\Eloquent\Builder;
+
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
+
+class AprobacionResolucionResource extends Resource implements HasShieldPermissions
+{
+    protected static ?string $model = SolicitudResolucionExcedente::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-check-badge';
+    protected static ?string $navigationGroup = 'Gestión de Pagos';
+    protected static ?string $modelLabel = 'Aprobación';
+    protected static ?string $pluralModelLabel = 'Aprobación de Extornos y Devoluciones';
+    protected static ?int $navigationSort = 11;
+    protected static ?string $slug = 'aprobacion-extornos-devoluciones';
+    
+    public static function getPermissionPrefixes(): array
+    {
+        return [
+            'view',
+            'view_any',
+            'update',
+        ];
+    }
+
+    public static function form(Form $form): Form
+    {
+        return $form->schema([]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('Estado', 'PENDIENTE');
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        // Reutilizamos el infolist del recurso original para no repetir código
+        return \App\Filament\Resources\ResolucionExcedenteResource::infolist($infolist);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->recordUrl(null)
+            ->columns([
+                Tables\Columns\TextColumn::make('SolicitudID')->sortable(),
+                Tables\Columns\TextColumn::make('TipoResolucion')
+                    ->label('Tipo de Solicitud')
+                    ->badge(),
+                Tables\Columns\TextColumn::make('MontoAplicar')
+                    ->label('Monto Aplicado')
+                    ->money('PEN')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('clienteOrigen.NombresApellidos')
+                    ->label('Origen')
+                    ->searchable()
+                    ->default('Sin identificar'),
+                Tables\Columns\TextColumn::make('clienteDestino.NombresApellidos')
+                    ->label('Destino')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('Estado')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'PENDIENTE' => 'warning',
+                        'APROBADA' => 'success',
+                        'RECHAZADA' => 'danger',
+                        default => 'primary',
+                    }),
+                Tables\Columns\TextColumn::make('solicitante.name')
+                    ->label('Solicitante'),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Fecha')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+            ])
+             ->filters([
+                // Filtro eliminado
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make()
+                    ->label('Ver'),
+
+                Tables\Actions\Action::make('Aprobar')
+                    ->color('success')
+                    ->icon('heroicon-o-check-circle')
+                    ->requiresConfirmation()
+                    ->modalHeading('Aprobar Extorno/Resolución')
+                    ->modalDescription('¿Está seguro de aprobar esta solicitud? Se reflejarán los cambios financieros correspondientes de forma automática y el excedente se marcará como resuelto.')
+                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
+                    ->action(function ($record) {
+                        app(\App\Services\ResolucionExcedenteService::class)->aprobar($record, auth()->user());
+
+                        Notification::make()
+                            ->title('Solicitud Aprobada y Ejecutada')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('Rechazar')
+                    ->color('danger')
+                    ->icon('heroicon-o-x-circle')
+                    ->requiresConfirmation()
+                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
+                    ->action(function ($record) {
+                        $record->update(['Estado' => 'RECHAZADA', 'UserAprobadorID' => auth()->id()]);
+                        Notification::make()
+                            ->title('Solicitud Rechazada')
+                            ->success()
+                            ->send();
+                    }),
+            ])
+            ->bulkActions([
+            ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListAprobacionResoluciones::route('/'),
+            'view' => Pages\ViewAprobacionResolucion::route('/{record}'),
+        ];
+    }
+}

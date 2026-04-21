@@ -28,8 +28,8 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
 
     protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
     protected static ?string $navigationGroup = 'Gestión de Pagos';
-    protected static ?string $modelLabel = 'Extorno o Devolución';
-    protected static ?string $pluralModelLabel = 'Extornos y Devoluciones';
+    protected static ?string $modelLabel = 'Registro de Extorno/Devolución';
+    protected static ?string $pluralModelLabel = 'Registro de Extornos y Devoluciones';
     protected static ?int $navigationSort = 10;
     
     public static function getPermissionPrefixes(): array
@@ -141,6 +141,37 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->helperText('Seleccione el pago que se trasladará al cliente destino.')
                             ->visible(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $get('CreditoOrigenID')),
 
+                        // ========== FLUJO EXCEDENTE (otros tipos) ==========
+                        Forms\Components\Select::make('ExcedenteID')
+                            ->label('Excedente (El Sobrante/Dinero a mover)')
+                            ->prefixIcon('heroicon-m-banknotes')
+                            ->options(function (Get $get) {
+                                $query = Excedente::where('EstadoResolucion', 'PENDIENTE')->where('Activo', 1);
+                                $results = $query->get();
+                                if ($results->isEmpty()) return [];
+                                return $results->mapWithKeys(function ($ex) {
+                                    $fecha = \Carbon\Carbon::parse($ex->Fecha)->format('d/m/Y');
+                                    $tipoLabel = str_replace('_', ' ', $ex->TipoExcedente);
+                                    $op = $ex->NroOperacion ? " - Op: {$ex->NroOperacion}" : "";
+                                    return [$ex->ExcedenteID => "S/ {$ex->Monto} - {$tipoLabel}{$op} - {$fecha}"];
+                                });
+                            })
+                            ->required(fn(Get $get) => $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                $excedenteID = $get('ExcedenteID');
+                                if ($excedenteID) {
+                                    $excedente = Excedente::find($excedenteID);
+                                    if ($excedente) {
+                                        $set('MontoAplicar', $excedente->Monto);
+                                    }
+                                } else {
+                                    $set('MontoAplicar', null);
+                                }
+                            })
+                            ->visible(fn(Get $get) => $get('TipoResolucion') !== null && $get('TipoResolucion') !== 'TRASLADO_DE_PAGO'),
+
                         // Monto del pago seleccionado (solo informativo para traslado)
                         Forms\Components\TextInput::make('MontoAplicar')
                             ->label(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' ? 'Monto del Pago a Trasladar (S/)' : 'Monto a Aplicar (S/)')
@@ -177,37 +208,6 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ])
                             ->live(debounce: 500)
                             ->visible(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' ? $get('PagoOrigenID') !== null : true),
-
-                        // ========== FLUJO EXCEDENTE (otros tipos) ==========
-                        Forms\Components\Select::make('ExcedenteID')
-                            ->label('Excedente (El Sobrante/Dinero a mover)')
-                            ->prefixIcon('heroicon-m-banknotes')
-                            ->options(function (Get $get) {
-                                $query = Excedente::where('EstadoResolucion', 'PENDIENTE')->where('Activo', 1);
-                                $results = $query->get();
-                                if ($results->isEmpty()) return [];
-                                return $results->mapWithKeys(function ($ex) {
-                                    $fecha = \Carbon\Carbon::parse($ex->Fecha)->format('d/m/Y');
-                                    $tipoLabel = str_replace('_', ' ', $ex->TipoExcedente);
-                                    $op = $ex->NroOperacion ? " - Op: {$ex->NroOperacion}" : "";
-                                    return [$ex->ExcedenteID => "S/ {$ex->Monto} - {$tipoLabel}{$op} - {$fecha}"];
-                                });
-                            })
-                            ->required(fn(Get $get) => $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
-                            ->searchable()
-                            ->live()
-                            ->afterStateUpdated(function (Get $get, Set $set) {
-                                $excedenteID = $get('ExcedenteID');
-                                if ($excedenteID) {
-                                    $excedente = Excedente::find($excedenteID);
-                                    if ($excedente) {
-                                        $set('MontoAplicar', $excedente->Monto);
-                                    }
-                                } else {
-                                    $set('MontoAplicar', null);
-                                }
-                            })
-                            ->visible(fn(Get $get) => $get('TipoResolucion') !== null && $get('TipoResolucion') !== 'TRASLADO_DE_PAGO'),
 
                         // ========== CAMPOS COMUNES ==========
                         Forms\Components\Select::make('ClienteDestinoID')
@@ -424,43 +424,13 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                         'PENDIENTE' => 'Pendientes',
                         'APROBADA' => 'Aprobadas',
                         'RECHAZADA' => 'Rechazadas',
-                    ])
-                    ->default('PENDIENTE'),
+                    ]),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('Ver'),
                 Tables\Actions\EditAction::make()
                     ->visible(fn($record) => $record->Estado === 'PENDIENTE'),
-
-                Tables\Actions\Action::make('Aprobar')
-                    ->color('success')
-                    ->icon('heroicon-o-check-circle')
-                    ->requiresConfirmation()
-                    ->modalHeading('Aprobar Extorno/Resolución')
-                    ->modalDescription('¿Está seguro de aprobar esta solicitud? Se reflejarán los cambios financieros correspondientes de forma automática y el excedente se marcará como resuelto.')
-                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
-                    ->action(function ($record) {
-                        app(\App\Services\ResolucionExcedenteService::class)->aprobar($record, auth()->user());
-
-                        Notification::make()
-                            ->title('Solicitud Aprobada y Ejecutada')
-                            ->success()
-                            ->send();
-                    }),
-
-                Tables\Actions\Action::make('Rechazar')
-                    ->color('danger')
-                    ->icon('heroicon-o-x-circle')
-                    ->requiresConfirmation()
-                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
-                    ->action(function ($record) {
-                        $record->update(['Estado' => 'RECHAZADA', 'UserAprobadorID' => auth()->id()]);
-                        Notification::make()
-                            ->title('Solicitud Rechazada')
-                            ->success()
-                            ->send();
-                    }),
             ])
             ->bulkActions([
             ]);
