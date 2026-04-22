@@ -139,6 +139,11 @@ class ReporteCreditosVencidosResource extends Resource
             ->paginationPageOptions([10, 25, 50]);
     }
 
+    
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('view_any_reporte::creditos::vencidos');
+    }
     public static function getRelations(): array
     {
         return [];

@@ -39,16 +39,9 @@ class SolicitudExoneracionResource extends Resource
         return true;
     }
 
-    public static function canViewAny(): bool
+        public static function canViewAny(): bool
     {
-        if (!parent::canViewAny()) { return false; }
-
-        $user = auth()->user();
-        // Denegar acceso a promotores/cobradores
-        if ($user && $user->PromotorCobradorID) {
-            return false;
-        }
-        return true;
+        return auth()->user()?->can('view_any_solicitud::exoneracion') ?? false;
     }
 
     public static function form(Form $form): Form

@@ -55,7 +55,7 @@ class TipoExoneracionPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('{{ DeleteAny }}');
+        return $user->can('delete_any_tipo::exoneracion');
     }
 
     /**
@@ -63,7 +63,7 @@ class TipoExoneracionPolicy
      */
     public function forceDelete(User $user, TipoExoneracion $tipoExoneracion): bool
     {
-        return $user->can('{{ ForceDelete }}');
+        return $user->can('force_delete_tipo::exoneracion');
     }
 
     /**
@@ -71,7 +71,7 @@ class TipoExoneracionPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('{{ ForceDeleteAny }}');
+        return $user->can('force_delete_any_tipo::exoneracion');
     }
 
     /**
@@ -79,7 +79,7 @@ class TipoExoneracionPolicy
      */
     public function restore(User $user, TipoExoneracion $tipoExoneracion): bool
     {
-        return $user->can('{{ Restore }}');
+        return $user->can('restore_tipo::exoneracion');
     }
 
     /**
@@ -87,7 +87,7 @@ class TipoExoneracionPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('{{ RestoreAny }}');
+        return $user->can('restore_any_tipo::exoneracion');
     }
 
     /**
@@ -95,7 +95,7 @@ class TipoExoneracionPolicy
      */
     public function replicate(User $user, TipoExoneracion $tipoExoneracion): bool
     {
-        return $user->can('{{ Replicate }}');
+        return $user->can('replicate_tipo::exoneracion');
     }
 
     /**
@@ -103,6 +103,7 @@ class TipoExoneracionPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('{{ Reorder }}');
+        return $user->can('reorder_tipo::exoneracion');
     }
 }
+

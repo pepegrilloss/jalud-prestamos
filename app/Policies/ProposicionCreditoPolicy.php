@@ -15,7 +15,7 @@ class ProposicionCreditoPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_reporte::cuentas::canceladas');
+        return $user->can('view_any_proposicion::credito');
     }
 
     /**
@@ -23,7 +23,7 @@ class ProposicionCreditoPolicy
      */
     public function view(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('view_reporte::cuentas::canceladas');
+        return $user->can('view_proposicion::credito');
     }
 
     /**
@@ -31,7 +31,7 @@ class ProposicionCreditoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_reporte::cuentas::canceladas');
+        return $user->can('create_proposicion::credito');
     }
 
     /**
@@ -39,7 +39,7 @@ class ProposicionCreditoPolicy
      */
     public function update(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('update_reporte::cuentas::canceladas');
+        return $user->can('update_proposicion::credito');
     }
 
     /**
@@ -47,7 +47,7 @@ class ProposicionCreditoPolicy
      */
     public function delete(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('delete_reporte::cuentas::canceladas');
+        return $user->can('delete_proposicion::credito');
     }
 
     /**
@@ -55,7 +55,7 @@ class ProposicionCreditoPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('{{ DeleteAny }}');
+        return $user->can('delete_any_proposicion::credito');
     }
 
     /**
@@ -63,7 +63,7 @@ class ProposicionCreditoPolicy
      */
     public function forceDelete(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('{{ ForceDelete }}');
+        return $user->can('force_delete_proposicion::credito');
     }
 
     /**
@@ -71,7 +71,7 @@ class ProposicionCreditoPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('{{ ForceDeleteAny }}');
+        return $user->can('force_delete_any_proposicion::credito');
     }
 
     /**
@@ -79,7 +79,7 @@ class ProposicionCreditoPolicy
      */
     public function restore(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('{{ Restore }}');
+        return $user->can('restore_proposicion::credito');
     }
 
     /**
@@ -87,7 +87,7 @@ class ProposicionCreditoPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('{{ RestoreAny }}');
+        return $user->can('restore_any_proposicion::credito');
     }
 
     /**
@@ -95,7 +95,7 @@ class ProposicionCreditoPolicy
      */
     public function replicate(User $user, ProposicionCredito $proposicionCredito): bool
     {
-        return $user->can('{{ Replicate }}');
+        return $user->can('replicate_proposicion::credito');
     }
 
     /**
@@ -103,6 +103,7 @@ class ProposicionCreditoPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('{{ Reorder }}');
+        return $user->can('reorder_proposicion::credito');
     }
 }
+

@@ -373,7 +373,7 @@ class ClienteResource extends Resource
                                     ->searchable()
                                     ->native(false)
                                     ->live()
-                                    ->createOptionForm([
+                                    /* ->createOptionForm([
                                         Forms\Components\TextInput::make('Codigo')
                                             ->label('Código')
                                             ->required()
@@ -387,7 +387,7 @@ class ClienteResource extends Resource
                                     ->createOptionUsing(function (array $data) {
                                         $giro = \App\Models\Giro::create($data);
                                         return $giro->GiroID;
-                                    })
+                                    }) */
                                     ->afterStateUpdated(fn(Set $set) => $set('negocio.SubGiroID', null)),
 
                                 Forms\Components\Select::make('negocio.SubGiroID')
@@ -401,8 +401,8 @@ class ClienteResource extends Resource
                                     )
                                     ->searchable()
                                     ->native(false)
-                                    ->disabled(fn(Get $get) => !$get('negocio.GiroID'))
-                                    ->createOptionForm([
+                                    ->disabled(fn(Get $get) => !$get('negocio.GiroID')),
+                                    /* ->createOptionForm([
                                         Forms\Components\TextInput::make('Descripcion')
                                             ->label('Descripción del Sub Giro')
                                             ->required()
@@ -412,7 +412,7 @@ class ClienteResource extends Resource
                                         $data['GiroID'] = $get('negocio.GiroID');
                                         $subGiro = \App\Models\SubGiro::create($data);
                                         return $subGiro->SubGiroID;
-                                    }),
+                                    }) */
 
                                 Forms\Components\TextInput::make('negocio.ObservacionGiro')
                                     ->label('Detalle u Observación del Giro')

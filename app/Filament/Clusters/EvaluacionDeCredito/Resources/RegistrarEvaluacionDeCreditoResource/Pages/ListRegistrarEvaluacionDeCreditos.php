@@ -23,6 +23,7 @@ class ListRegistrarEvaluacionDeCreditos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            RegistrarEvaluacionDeCreditoResource::getVerDetalleCreditoAction(),
         ];
     }
 }

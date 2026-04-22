@@ -106,3 +106,4 @@ class AprobacionProposicionPolicy
         return $user->can('reorder_aprobacion::proposicion');
     }
 }
+

@@ -15,7 +15,7 @@ class CreditoPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_solicitud::exoneracion');
+        return $user->can('view_any_credito');
     }
 
     /**
@@ -23,7 +23,7 @@ class CreditoPolicy
      */
     public function view(User $user, Credito $credito): bool
     {
-        return $user->can('view_solicitud::exoneracion');
+        return $user->can('view_credito');
     }
 
     /**
@@ -31,7 +31,7 @@ class CreditoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_solicitud::exoneracion');
+        return $user->can('create_credito');
     }
 
     /**
@@ -39,7 +39,7 @@ class CreditoPolicy
      */
     public function update(User $user, Credito $credito): bool
     {
-        return $user->can('update_solicitud::exoneracion');
+        return $user->can('update_credito');
     }
 
     /**
@@ -47,7 +47,7 @@ class CreditoPolicy
      */
     public function delete(User $user, Credito $credito): bool
     {
-        return $user->can('delete_solicitud::exoneracion');
+        return $user->can('delete_credito');
     }
 
     /**
@@ -55,7 +55,7 @@ class CreditoPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('{{ DeleteAny }}');
+        return $user->can('delete_any_credito');
     }
 
     /**
@@ -63,7 +63,7 @@ class CreditoPolicy
      */
     public function forceDelete(User $user, Credito $credito): bool
     {
-        return $user->can('{{ ForceDelete }}');
+        return $user->can('force_delete_credito');
     }
 
     /**
@@ -71,7 +71,7 @@ class CreditoPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('{{ ForceDeleteAny }}');
+        return $user->can('force_delete_any_credito');
     }
 
     /**
@@ -79,7 +79,7 @@ class CreditoPolicy
      */
     public function restore(User $user, Credito $credito): bool
     {
-        return $user->can('{{ Restore }}');
+        return $user->can('restore_credito');
     }
 
     /**
@@ -87,7 +87,7 @@ class CreditoPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('{{ RestoreAny }}');
+        return $user->can('restore_any_credito');
     }
 
     /**
@@ -95,7 +95,7 @@ class CreditoPolicy
      */
     public function replicate(User $user, Credito $credito): bool
     {
-        return $user->can('{{ Replicate }}');
+        return $user->can('replicate_credito');
     }
 
     /**
@@ -103,6 +103,7 @@ class CreditoPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('{{ Reorder }}');
+        return $user->can('reorder_credito');
     }
 }
+

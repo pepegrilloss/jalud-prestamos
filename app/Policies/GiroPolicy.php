@@ -55,7 +55,7 @@ class GiroPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('{{ DeleteAny }}');
+        return $user->can('delete_any_giro');
     }
 
     /**
@@ -63,7 +63,7 @@ class GiroPolicy
      */
     public function forceDelete(User $user, Giro $giro): bool
     {
-        return $user->can('{{ ForceDelete }}');
+        return $user->can('force_delete_giro');
     }
 
     /**
@@ -71,7 +71,7 @@ class GiroPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('{{ ForceDeleteAny }}');
+        return $user->can('force_delete_any_giro');
     }
 
     /**
@@ -79,7 +79,7 @@ class GiroPolicy
      */
     public function restore(User $user, Giro $giro): bool
     {
-        return $user->can('{{ Restore }}');
+        return $user->can('restore_giro');
     }
 
     /**
@@ -87,7 +87,7 @@ class GiroPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('{{ RestoreAny }}');
+        return $user->can('restore_any_giro');
     }
 
     /**
@@ -95,7 +95,7 @@ class GiroPolicy
      */
     public function replicate(User $user, Giro $giro): bool
     {
-        return $user->can('{{ Replicate }}');
+        return $user->can('replicate_giro');
     }
 
     /**
@@ -103,6 +103,7 @@ class GiroPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('{{ Reorder }}');
+        return $user->can('reorder_giro');
     }
 }
+

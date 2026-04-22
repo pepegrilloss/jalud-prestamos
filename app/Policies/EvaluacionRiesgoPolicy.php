@@ -106,3 +106,4 @@ class EvaluacionRiesgoPolicy
         return $user->can('reorder_evaluacion::riesgo');
     }
 }
+

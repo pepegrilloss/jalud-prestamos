@@ -14,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
+use App\Filament\Resources\CreditoResource;
 
 class RegistrarEvaluacionDeCreditoResource extends Resource
 {
@@ -396,5 +397,17 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
             'index' => Pages\ListRegistrarEvaluacionDeCreditos::route('/'),
             'evaluaciones' => Pages\GestionarEvaluaciones::route('/{record}/evaluaciones'),
         ];
+    }
+
+    public static function getVerDetalleCreditoAction(): \Filament\Actions\Action
+    {
+        return \Filament\Actions\Action::make('verDetalleCredito')
+            ->label('Ver Detalle de Crédito')
+            ->modalHeading('Detalle del Crédito')
+            ->modalWidth('7xl')
+            ->infolist(\App\Filament\Resources\CreditoResource::getInfolistSchema())
+            ->record(fn (array $arguments) => \App\Models\Credito::find($arguments['credito'] ?? null))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Cerrar');
     }
 }

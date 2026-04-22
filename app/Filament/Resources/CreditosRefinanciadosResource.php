@@ -206,6 +206,11 @@ class CreditosRefinanciadosResource extends Resource
             ->paginationPageOptions([10, 25, 50]);
     }
 
+    
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('view_any_creditos::refinanciados');
+    }
     public static function getRelations(): array
     {
         return [];

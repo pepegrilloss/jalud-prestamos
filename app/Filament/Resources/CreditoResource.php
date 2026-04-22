@@ -13,6 +13,8 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Illuminate\Database\Eloquent\Builder;
 
 use App\Models\Sede;
@@ -38,6 +40,11 @@ class CreditoResource extends Resource
         return 'Crédito: ' . ($record->proposicion?->CodigoCredito ?? '#' . $record->CreditoID) . ' (' . ($record->proposicion?->cliente?->NombresApellidos ?? 'Sin cliente') . ')';
     }
 
+    
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_credito') ?? false;
+    }
     public static function form(Form $form): Form
     {
         return $form
@@ -404,5 +411,170 @@ class CreditoResource extends Resource
             }
         }
         return true;
+    }
+
+    public static function getInfolistSchema(): array
+    {
+        return [
+            Infolists\Components\Section::make('Información Principal del Crédito')
+                ->description('Detalles generales sobre el cliente y los montos del crédito.')
+                ->icon('heroicon-m-information-circle')
+                ->schema([
+                    Infolists\Components\Grid::make(4)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('proposicion.CodigoCredito')
+                                ->label('Código de Crédito')
+                                ->icon('heroicon-m-hashtag')
+                                ->badge()
+                                ->color('primary')
+                                ->columnSpan(1),
+
+                            Infolists\Components\TextEntry::make('proposicion.cliente.NombresApellidos')
+                                ->label('Cliente')
+                                ->icon('heroicon-m-user')
+                                ->weight(\Filament\Support\Enums\FontWeight::SemiBold)
+                                ->columnSpan(2),
+
+                            Infolists\Components\TextEntry::make('proposicion.cliente.DNI')
+                                ->label('DNI')
+                                ->icon('heroicon-m-identification')
+                                ->columnSpan(1),
+                        ]),
+
+                    Infolists\Components\Grid::make(4)
+                        ->schema([
+                            Infolists\Components\TextEntry::make('proposicion.zona.Nombre')
+                                ->label('Zona')
+                                ->icon('heroicon-m-map-pin'),
+
+                            Infolists\Components\TextEntry::make('proposicion.TasaInteres')
+                                ->label('Tasa de Interés')
+                                ->icon('heroicon-m-receipt-percent')
+                                ->suffix('%'),
+
+                            Infolists\Components\TextEntry::make('proposicion.Plazo')
+                                ->label('Plazo')
+                                ->icon('heroicon-m-calendar-days')
+                                ->suffix(' días'),
+
+                            Infolists\Components\TextEntry::make('proposicion.NumeroCuotas')
+                                ->label('Total Cuotas')
+                                ->icon('heroicon-m-numbered-list'),
+                        ])->extraAttributes(['class' => 'mt-4']),
+
+                    Infolists\Components\Fieldset::make('Despliegue Financiero')
+                        ->schema([
+                            Infolists\Components\TextEntry::make('proposicion.MontoTotal')
+                                ->label('Capital Solicitado')
+                                ->money('PEN')
+                                ->size(\Filament\Infolists\Components\TextEntry\TextEntrySize::Large)
+                                ->weight(\Filament\Support\Enums\FontWeight::Bold),
+
+                            Infolists\Components\TextEntry::make('proposicion.MontoInteres')
+                                ->label('Interés Generado')
+                                ->money('PEN')
+                                ->color('warning'),
+
+                            Infolists\Components\TextEntry::make('proposicion.MontoTotalPagar')
+                                ->label('Monto Final a Pagar')
+                                ->money('PEN')
+                                ->size(\Filament\Infolists\Components\TextEntry\TextEntrySize::Large)
+                                ->weight(\Filament\Support\Enums\FontWeight::Bold)
+                                ->color('success'),
+
+                            Infolists\Components\TextEntry::make('proposicion.MontoCuota')
+                                ->label('Monto por Cuota')
+                                ->money('PEN')
+                                ->color('info')
+                                ->badge(),
+
+                            Infolists\Components\TextEntry::make('SaldoActual')
+                                ->label('Saldo Actual')
+                                ->money('PEN')
+                                ->getStateUsing(fn ($record) => \App\Models\ProposicionCredito::calcularSaldoPendiente($record->ProposicionCreditoID))
+                                ->color('danger')
+                                ->weight(\Filament\Support\Enums\FontWeight::Bold),
+
+                            Infolists\Components\TextEntry::make('PagosRealizados')
+                                ->label('N° Pagos')
+                                ->getStateUsing(fn ($record) => $record->pagos()->where('Activo', 1)->count())
+                                ->icon('heroicon-m-check-circle')
+                                ->badge()
+                                ->color('success'),
+                        ])->columns(6)
+                ]),
+
+            Infolists\Components\Section::make('Datos de Aprobación y Generación')
+                ->icon('heroicon-m-check-badge')
+                ->collapsed()
+                ->schema([
+                    Infolists\Components\TextEntry::make('FechaGeneracion')
+                        ->label('Fecha de Generación')
+                        ->icon('heroicon-m-clock')
+                        ->dateTime('d/m/Y H:i A'),
+
+                    Infolists\Components\TextEntry::make('tipoPago.Nombre')
+                        ->label('Tipo de Desembolso')
+                        ->badge()
+                        ->icon('heroicon-m-banknotes'),
+
+                    Infolists\Components\TextEntry::make('proposicion.TasaMora')
+                        ->label('Infracción de Mora')
+                        ->icon('heroicon-m-exclamation-triangle')
+                        ->color('danger')
+                        ->suffix('% Diario'),
+
+                    Infolists\Components\TextEntry::make('ComentarioGeneracion')
+                        ->label('Comentarios Administrativos')
+                        ->columnSpanFull(),
+                ])->columns(3),
+
+            Infolists\Components\Section::make('Registro de Pagos e Historial')
+                ->icon('heroicon-m-clipboard-document-list')
+                ->schema([
+                    Infolists\Components\ViewEntry::make('pagos_table')
+                        ->label('')
+                        ->view('components.pagos-table')
+                        ->columnSpanFull(),
+                ]),
+
+            Infolists\Components\Section::make('Moras Acumuladas')
+                ->icon('heroicon-m-clock')
+                ->collapsed()
+                ->schema([
+                    Infolists\Components\RepeatableEntry::make('moras')
+                        ->label('')
+                        ->schema([
+                            Infolists\Components\Grid::make(5)
+                                ->schema([
+                                    Infolists\Components\TextEntry::make('FechaMora')
+                                        ->label('Fecha')
+                                        ->date('d/m/Y')
+                                        ->icon('heroicon-m-calendar-days'),
+
+                                    Infolists\Components\TextEntry::make('SaldoPendiente')
+                                        ->label('Saldo Base')
+                                        ->money('PEN'),
+
+                                    Infolists\Components\TextEntry::make('PorcentajeMora')
+                                        ->label('Penalidad')
+                                        ->suffix('%'),
+
+                                    Infolists\Components\TextEntry::make('MontoMora')
+                                        ->label('Mora Calculada')
+                                        ->money('PEN')
+                                        ->color('warning')
+                                        ->weight(\Filament\Support\Enums\FontWeight::SemiBold),
+
+                                    Infolists\Components\TextEntry::make('MoraAcumulada')
+                                        ->label('Deuda Histórica Acumulada')
+                                        ->money('PEN')
+                                        ->color('danger')
+                                        ->weight(\Filament\Support\Enums\FontWeight::Bold),
+                                ])
+                        ])
+                        ->contained(true)
+                ]),
+        ];
     }
 }
