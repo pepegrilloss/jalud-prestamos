@@ -138,6 +138,7 @@ class CreateSolicitudExoneracion extends Page implements HasForms
         $solicitud->NivelAprobacionRequerido = 3; // Solo Gerencia puede aprobar
         $solicitud->FechaSolicitud = $fechaSolicitud;
         $solicitud->FechaModificacion = $fechaSolicitud;
+        $solicitud->Activo = 1;
 
         $solicitud->save();
 
