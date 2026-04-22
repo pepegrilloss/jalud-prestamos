@@ -40,7 +40,7 @@ class CreditoResource extends Resource
         return 'Crédito: ' . ($record->proposicion?->CodigoCredito ?? '#' . $record->CreditoID) . ' (' . ($record->proposicion?->cliente?->NombresApellidos ?? 'Sin cliente') . ')';
     }
 
-    
+
     public static function canViewAny(): bool
     {
         return auth()->user()?->can('view_any_credito') ?? false;
@@ -305,7 +305,7 @@ class CreditoResource extends Resource
                     ->whereHas('proposicion', function (Builder $q) {
                         $q->where('FueRefinanciada', 0);
                     });
-                
+
                 if (property_exists($livewire, 'fechaFiltro') && !empty($livewire->fechaFiltro)) {
                     $query->whereDate('FechaGeneracion', $livewire->fechaFiltro);
                 }
@@ -355,7 +355,9 @@ class CreditoResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) { return false; }
+        if (!parent::canCreate()) {
+            return false;
+        }
 
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
@@ -371,7 +373,9 @@ class CreditoResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!parent::canEdit($record)) { return false; }
+        if (!parent::canEdit($record)) {
+            return false;
+        }
 
         // Si tiene FechaCierre, no se puede editar
         if ($record->FechaCierre !== null) {
@@ -393,7 +397,9 @@ class CreditoResource extends Resource
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!parent::canDelete($record)) { return false; }
+        if (!parent::canDelete($record)) {
+            return false;
+        }
 
         // Si tiene FechaCierre, no se puede eliminar
         if ($record->FechaCierre !== null) {
@@ -491,13 +497,13 @@ class CreditoResource extends Resource
                             Infolists\Components\TextEntry::make('SaldoActual')
                                 ->label('Saldo Actual')
                                 ->money('PEN')
-                                ->getStateUsing(fn ($record) => \App\Models\ProposicionCredito::calcularSaldoPendiente($record->ProposicionCreditoID))
+                                ->getStateUsing(fn($record) => \App\Models\ProposicionCredito::calcularSaldoPendiente($record->ProposicionCreditoID))
                                 ->color('danger')
                                 ->weight(\Filament\Support\Enums\FontWeight::Bold),
 
                             Infolists\Components\TextEntry::make('PagosRealizados')
                                 ->label('N° Pagos')
-                                ->getStateUsing(fn ($record) => $record->pagos()->where('Activo', 1)->count())
+                                ->getStateUsing(fn($record) => $record->pagos()->where('Activo', 1)->count())
                                 ->icon('heroicon-m-check-circle')
                                 ->badge()
                                 ->color('success'),

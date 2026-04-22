@@ -47,7 +47,6 @@
                     <tr class="bg-gray-50 dark:bg-white/5 font-semibold text-gray-950 dark:text-white uppercase tracking-wider text-[11px]">
                         <th class="px-3 py-2 border-r dark:border-white/10">Cuota</th>
                         <th class="px-3 py-2 border-r dark:border-white/10 text-right">Monto</th>
-
                         <th class="px-3 py-2 border-r dark:border-white/10">Fecha y Hora</th>
                         <th class="px-3 py-2 border-r dark:border-white/10">Forma de Pago</th>
                         <th class="px-3 py-2 border-r dark:border-white/10 text-center">Mora</th>
@@ -67,7 +66,7 @@
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                             <td class="px-3 py-1.5 border-r dark:border-white/10 font-medium text-gray-900 dark:text-white text-center">
-                                {{ str_pad($cuotaNum, 2, '0', STR_PAD_LEFT) }}
+                                {{ str_pad($numFila, 2, '0', STR_PAD_LEFT) }}
                             </td>
 
                             <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono text-success-600 dark:text-success-400">
