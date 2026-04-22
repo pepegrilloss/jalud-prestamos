@@ -17,7 +17,7 @@
         </thead>
         <tbody>
             @forelse($cliente->proposiciones()->where('Estado', 'APROBADO')->where('FueRefinanciada', 0)->has('credito')->with(['tipoCredito', 'credito'])->get() as $proposicion)
-                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                <tr class="border-b dark:border-gray-700">
                     <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
                         {{ $proposicion->CodigoCredito }}
                     </td>
