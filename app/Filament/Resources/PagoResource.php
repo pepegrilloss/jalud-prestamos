@@ -102,7 +102,8 @@ class PagoResource extends Resource
                                     $q->where('FueRefinanciada', 0)
                                         ->where('Activo', true)
                                         ->whereHas('credito', function ($sq) {
-                                            $sq->where('Activo', 1);
+                                            $sq->where('Activo', 1)
+                                               ->where('EstatusCreditoFinal', '!=', 'SALDADO');
                                         });
 
                                     if ($zonaID) {
@@ -147,7 +148,8 @@ class PagoResource extends Resource
                                     $cliente = \App\Models\Cliente::with([
                                         'proposiciones' => function ($q) use ($zonaID) {
                                             $q->whereHas('credito', function ($sq) {
-                                                $sq->where('Activo', 1);
+                                                $sq->where('Activo', 1)
+                                                   ->where('EstatusCreditoFinal', '!=', 'SALDADO');
                                             })
                                                 ->where('FueRefinanciada', 0)
                                                 ->where('Activo', true)

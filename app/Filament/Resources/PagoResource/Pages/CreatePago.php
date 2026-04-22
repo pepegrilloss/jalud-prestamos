@@ -255,20 +255,29 @@ class CreatePago extends CreateRecord
         if (!isset($data['CreditoID']) || empty($data['CreditoID'])) {
             $clienteID = $data['ClienteID'] ?? null;
             if ($clienteID) {
-                $creditoQuery = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
+                $creditos = \App\Models\Credito::with('proposicion')->whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
                     $q->where('ClienteID', $clienteID)
                         ->where('FueRefinanciada', 0);
                     if ($zonaID) {
                         $q->where('ZonaID', $zonaID);
                     }
-                })->where('Activo', 1);
+                })->where('Activo', 1)->where('EstatusCreditoFinal', '!=', 'SALDADO')->get();
 
-                $creditoUnico = $creditoQuery->first();
+                // Filtrar solo créditos con saldo > 0
+                $creditosConSaldo = $creditos->filter(function ($credito) {
+                    if ($credito->proposicion) {
+                        $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
+                        return $saldo > 0;
+                    }
+                    return false;
+                });
 
-                if ($creditoUnico) {
-                    $data['CreditoID'] = $creditoUnico->CreditoID;
+                if ($creditosConSaldo->count() == 1) {
+                    $data['CreditoID'] = $creditosConSaldo->first()->CreditoID;
+                } else if ($creditosConSaldo->count() > 1) {
+                    throw new \Exception('El cliente tiene múltiples créditos activos con saldo. Seleccione uno explícitamente.');
                 } else {
-                    throw new \Exception('No se encontró un crédito activo para este cliente en su zona.');
+                    throw new \Exception('No se encontró un crédito activo con saldo pendiente para este cliente.');
                 }
             } else {
                 throw new \Exception('El cliente es obligatorio.');
