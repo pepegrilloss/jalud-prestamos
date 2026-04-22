@@ -3,30 +3,25 @@
     $pagosDisplay = [];
     
     if ($record) {
-        $montoInicial = (float) ($record->proposicion?->MontoTotalPagar ?? 0);
+        $montoTotalPagar = (float) ($record->proposicion?->MontoTotalPagar ?? 0);
         
-        // Obtenemos los pagos ordenados del más antiguo al más reciente para calcular el saldo progresivo
         $pagosBase = $record->pagos()
             ->where('Activo', true)
             ->orderBy('FechaPago', 'asc')
             ->get();
-            
-        $saldoCorriendo = $montoInicial;
+        
         $tempPagos = [];
+        $saldoAcumulado = $montoTotalPagar;
         
         foreach ($pagosBase as $pago) {
-            $fila = [
+            $tempPagos[] = [
                 'pago' => $pago,
-                'saldo_anterior' => $saldoCorriendo,
-                'monto' => $pago->MontoPagado,
+                'saldo_antes' => $saldoAcumulado,
+                'saldo_despues' => max(0, $saldoAcumulado - $pago->MontoPagado),
             ];
-            
-            // Restamos el pago del saldo para la siguiente fila
-            $saldoCorriendo -= $pago->MontoPagado;
-            $tempPagos[] = $fila;
+            $saldoAcumulado -= $pago->MontoPagado;
         }
         
-        // Ahora invertimos para mostrar del más actual al más antiguo
         $pagosDisplay = array_reverse($tempPagos);
         $totalPagos = count($pagosDisplay);
     }
@@ -59,18 +54,17 @@
                     @foreach($pagosDisplay as $index => $item)
                         @php 
                             $pago = $item['pago'];
-                            // El número de la fila es total - index actual
                             $numFila = $totalPagos - $index;
-                            // La cuota viene del modelo
-                            $cuotaNum = $pago->cuota?->NumeroCuota ?? '-';
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                             <td class="px-3 py-1.5 border-r dark:border-white/10 font-medium text-gray-900 dark:text-white text-center">
-                                {{ str_pad($numFila, 2, '0', STR_PAD_LEFT) }}
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400 font-bold text-xs">
+                                    {{ str_pad($numFila, 2, '0', STR_PAD_LEFT) }}
+                                </span>
                             </td>
 
                             <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono text-success-600 dark:text-success-400">
-                                {{ number_format($item['monto'], 2) }}
+                                {{ number_format($pago->MontoPagado, 2) }}
                             </td>
                             <td class="px-3 py-1.5 border-r dark:border-white/10 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                                 {{ $pago->FechaPago ? $pago->FechaPago->format('d/m/Y H:i') : '-' }}
@@ -92,7 +86,7 @@
                                 @endif
                             </td>
                             <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono text-gray-950 dark:text-gray-200 font-bold">
-                                {{ number_format($item['saldo_anterior'], 2) }}
+                                {{ number_format($item['saldo_despues'], 2) }}
                             </td>
                             <td class="px-3 py-1.5 border-r dark:border-white/10 text-gray-600 dark:text-gray-400 truncate max-w-[150px]" title="{{ $pago->UsuarioRegistro }}">
                                 {{ $pago->UsuarioRegistro ?? '-' }}
