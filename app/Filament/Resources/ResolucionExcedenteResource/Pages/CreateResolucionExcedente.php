@@ -13,11 +13,6 @@ class CreateResolucionExcedente extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['UserSolicitanteID'] = auth()->id();
-        
-        if (auth()->check() && !empty(auth()->user()->SedeID)) {
-            $data['SedeID'] = auth()->user()->SedeID;
-        }
-
         return $data;
     }
 }
