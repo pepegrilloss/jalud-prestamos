@@ -1474,6 +1474,28 @@ ALTER TABLE `zona`
   ADD KEY `FK_Zona_Sede` (`SedeID`);
 
 --
+-- Estructura de tabla para la tabla `calendario_no_moroso`
+--
+CREATE TABLE `calendario_no_moroso` (
+  `CalendarioNoMorosoID` int(11) NOT NULL,
+  `Fecha` date NOT NULL,
+  `Descripcion` varchar(255) DEFAULT NULL,
+  `Activo` tinyint(1) NOT NULL DEFAULT 1,
+  `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
+  `FechaModificacion` datetime DEFAULT NULL,
+  `SedeID` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Calendario de fechas donde NO se calcula mora';
+
+--
+-- Indices de la tabla `calendario_no_moroso`
+--
+ALTER TABLE `calendario_no_moroso`
+  ADD PRIMARY KEY (`CalendarioNoMorosoID`),
+  ADD UNIQUE KEY `UQ_CalendarioNoMoroso_Sede_Fecha` (`SedeID`,`Fecha`),
+  ADD KEY `IDX_Fecha` (`Fecha`),
+  ADD KEY `FK_CalendarioNoMoroso_Sede` (`SedeID`);
+
+--
 -- AUTO_INCREMENT de las tablas volcadas
 --
 
@@ -1746,6 +1768,12 @@ ALTER TABLE `users`
 --
 ALTER TABLE `zona`
   MODIFY `ZonaID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `calendario_no_moroso`
+--
+ALTER TABLE `calendario_no_moroso`
+  MODIFY `CalendarioNoMorosoID` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Restricciones para tablas volcadas
@@ -2041,6 +2069,12 @@ ALTER TABLE `users`
 ALTER TABLE `zona`
   ADD CONSTRAINT `FK_Zona_Ciudad` FOREIGN KEY (`CiudadID`) REFERENCES `ciudad` (`CiudadID`),
   ADD CONSTRAINT `FK_Zona_Sede` FOREIGN KEY (`SedeID`) REFERENCES `sede` (`SedeID`);
+
+--
+-- Filtros para la tabla `calendario_no_moroso`
+--
+ALTER TABLE `calendario_no_moroso`
+  ADD CONSTRAINT `FK_CalendarioNoMoroso_Sede` FOREIGN KEY (`SedeID`) REFERENCES `sede` (`SedeID`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

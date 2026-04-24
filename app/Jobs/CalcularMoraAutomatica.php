@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Credito;
 use App\Models\Mora;
+use App\Models\CalendarioNoMoroso;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,37 +27,20 @@ class CalcularMoraAutomatica implements ShouldQueue
     {
         $fecha = $this->fecha ? \Carbon\Carbon::parse($this->fecha) : today();
         \Log::info('[JOB] CalcularMoraAutomatica: Iniciando cálculo de moras', ['fecha' => $fecha->toDateString()]);
-        
-        // Validar si es domingo o feriado - NO calcular mora en esos días
-        if ($fecha->dayOfWeek == 0) { // 0 = Domingo
-            \Log::info('[JOB] No se calcula mora - Día es DOMINGO', ['fecha' => $fecha->toDateString()]);
-            return;
-        }
 
-        // Obtener días feriados de Perú
-        $feriadosData = [];
-        try {
-            $anno = $fecha->year;
-            $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
-            $feriados = json_decode($response, true);
-            if ($feriados) {
-                foreach ($feriados as $feriado) {
-                    $feriadosData[$feriado['date']] = $feriado['localName'];
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('[JOB] No se pudieron obtener feriados de la API', ['error' => $e->getMessage()]);
-        }
+        // Validar contra el Calendario No Moroso - NO calcular mora si la fecha está registrada
+        $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $fecha->toDateString())
+            ->where('Activo', true)
+            ->first();
 
-        // Validar si es feriado
-        if (isset($feriadosData[$fecha->format('Y-m-d')])) {
-            \Log::info('[JOB] No se calcula mora - Día es FERIADO', [
+        if ($fechaNoMorosa) {
+            \Log::info('[JOB] No se calcula mora - Fecha está en Calendario No Moroso', [
                 'fecha' => $fecha->toDateString(),
-                'feriado' => $feriadosData[$fecha->format('Y-m-d')]
+                'descripcion' => $fechaNoMorosa->Descripcion,
             ]);
             return;
         }
-        
+
         try {
             // Obtener todos los créditos que:
             // 1. Han vencido (FechaVencimiento <= hoy)

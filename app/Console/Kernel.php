@@ -4,7 +4,6 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use App\Jobs\CalcularMoraAutomatica;
 
 class Kernel extends ConsoleKernel
 {
@@ -13,16 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Calcular mora automáticamente diariamente a las 00:01 AM
-        $schedule->job(new CalcularMoraAutomatica())
-            ->dailyAt('00:01')
-            ->name('calcular-mora-automatica')
-            ->onOneServer();
-
-        // Opcionalmente: también ejecutar cada hora para mayor precisión si es necesario
-        // $schedule->job(new CalcularMoraAutomatica())
-        //     ->hourly()
-        //     ->name('calcular-mora-automatica-hourly');
+        // Sin cron programado - la mora se calcula al abrir el día
     }
 
     /**
