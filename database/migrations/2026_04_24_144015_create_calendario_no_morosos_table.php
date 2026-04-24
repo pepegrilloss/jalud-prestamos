@@ -18,7 +18,8 @@ return new class extends Migration
             $table->boolean('Activo')->default(true);
             $table->datetime('FechaCreacion')->default(now());
             $table->datetime('FechaModificacion')->nullable();
-            $table->foreignId('SedeID')->nullable()->constrained('sedes', 'SedeID');
+            $table->integer('SedeID')->nullable();
+            $table->foreign('SedeID')->references('SedeID')->on('sede');
             $table->unique(['SedeID', 'Fecha'], 'UQ_CalendarioNoMoroso_Sede_Fecha');
             $table->index('Fecha', 'IDX_Fecha');
         });
