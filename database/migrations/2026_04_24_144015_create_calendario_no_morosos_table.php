@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::dropIfExists('calendario_no_morosos');
+
         Schema::create('calendario_no_morosos', function (Blueprint $table) {
             $table->id('CalendarioNoMorosoID');
             $table->date('Fecha')->notNullable();
@@ -19,7 +21,7 @@ return new class extends Migration
             $table->datetime('FechaCreacion')->default(now());
             $table->datetime('FechaModificacion')->nullable();
             $table->integer('SedeID')->nullable();
-            $table->foreign('SedeID')->references('SedeID')->on('sede');
+            $table->foreign('SedeID')->references('SedeID')->on('Sede');
             $table->unique(['SedeID', 'Fecha'], 'UQ_CalendarioNoMoroso_Sede_Fecha');
             $table->index('Fecha', 'IDX_Fecha');
         });
