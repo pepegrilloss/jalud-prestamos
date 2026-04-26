@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class CalendarioNoMoroso extends Model
 {
+    use BelongsToSede;
+
     protected $primaryKey = 'CalendarioNoMorosoID';
     protected $table = 'calendario_no_morosos';
     public $timestamps = false;
