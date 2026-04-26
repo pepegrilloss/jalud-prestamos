@@ -30,6 +30,7 @@ class CalendarioNoMorosoResource extends Resource
                 Forms\Components\DatePicker::make('Fecha')
                     ->required()
                     ->native(false)
+                    ->minDate(today())
                     ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
                         $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
                         return $rule->where('SedeID', $sedeId);
