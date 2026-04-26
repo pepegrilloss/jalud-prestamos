@@ -37,6 +37,7 @@ class CalendarioNoMorosoResource extends Resource
 
                 Forms\Components\TextInput::make('Descripcion')
                     ->label('Descripción')
+                    ->required()
                     ->maxLength(255)
                     ->placeholder('Ej: Domingo de trabajo, Feriado laborable...'),
 
@@ -88,12 +89,7 @@ class CalendarioNoMorosoResource extends Resource
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn() => AperturaCierreDia::estaAbierto()),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => AperturaCierreDia::estaAbierto()),
-                ]),
-            ])
+            ->bulkActions([])
             ->recordUrl(null)
             ->paginationPageOptions([10, 25, 50])
             ->defaultSort('Fecha', 'desc');
