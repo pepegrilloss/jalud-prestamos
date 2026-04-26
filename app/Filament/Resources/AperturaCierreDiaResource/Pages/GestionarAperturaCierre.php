@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AperturaCierreDiaResource\Pages;
 
 use App\Filament\Resources\AperturaCierreDiaResource;
 use App\Models\AperturaCierreDia;
+use App\Models\CalendarioNoMoroso;
 use App\Services\AperturaCierreDiaLogger;
 use App\Events\DiaAbierto;
 use Filament\Actions;
@@ -22,6 +23,23 @@ class GestionarAperturaCierre extends ManageRecords
             Actions\CreateAction::make()
                 ->using(function (array $data): Model {
                     $logger = new AperturaCierreDiaLogger();
+
+                    // Validar contra Calendario No Moroso
+                    $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                    $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $data['Fecha'])
+                        ->where('SedeID', $sedeId)
+                        ->where('Activo', true)
+                        ->first();
+
+                    if ($fechaNoMorosa) {
+                        \Filament\Notifications\Notification::make()
+                            ->warning()
+                            ->title('Fecha bloqueada')
+                            ->body("No se puede registrar esta fecha: {$fechaNoMorosa->Descripcion}")
+                            ->persistent()
+                            ->send();
+                        $this->halt();
+                    }
                     
                     try {
                         $logger->info('[APERTURA_CIERRE] Creando nuevo registro', [

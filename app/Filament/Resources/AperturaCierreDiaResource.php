@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Models\AperturaCierreDia;
+use App\Models\CalendarioNoMoroso;
 use App\Services\AperturaCierreDiaLogger;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -49,7 +50,22 @@ class AperturaCierreDiaResource extends Resource
                     ->unique(AperturaCierreDia::class, 'Fecha', ignoreRecord: true, modifyRuleUsing: function ($rule) {
                         $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
                         return $rule->where('SedeID', $sedeId);
-                    }),
+                    })
+                    ->rules([
+                        function () {
+                            return function ($attribute, $value, $fail) {
+                                $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                                $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $value)
+                                    ->where('SedeID', $sedeId)
+                                    ->where('Activo', true)
+                                    ->first();
+
+                                if ($fechaNoMorosa) {
+                                    $fail("No se puede registrar esta fecha: {$fechaNoMorosa->Descripcion}");
+                                }
+                            };
+                        },
+                    ]),
 
                 Forms\Components\Select::make('EstadoDia')
                     ->options([
@@ -219,6 +235,22 @@ class AperturaCierreDiaResource extends Resource
                     ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'CERRADO' && auth()->user()->can('abrir_dia_apertura'))
                     ->action(function (AperturaCierreDia $record) {
                         $logger = new AperturaCierreDiaLogger();
+
+                        // Validar contra Calendario No Moroso
+                        $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $record->Fecha->toDateString())
+                            ->where('SedeID', $record->SedeID)
+                            ->where('Activo', true)
+                            ->first();
+
+                        if ($fechaNoMorosa) {
+                            \Filament\Notifications\Notification::make()
+                                ->warning()
+                                ->title('Fecha bloqueada')
+                                ->body("No se puede abrir la fecha: {$fechaNoMorosa->Descripcion}")
+                                ->persistent()
+                                ->send();
+                            return;
+                        }
 
                         try {
                             $logger->info('[APERTURA_CIERRE] Iniciando acción abrirFecha', [
