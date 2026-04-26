@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\AperturaCierreDia;
+use App\Models\CalendarioNoMoroso;
 use App\Events\DiaAbierto;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -25,6 +26,46 @@ class AperturaCierreDiaObserver
                 'Usuario' => auth()->user()?->name ?? 'desconocido'
             ]);
             throw new \Exception('No se puede crear períodos de apertura/cierre con fechas futuras. Solo se permite la fecha de hoy o anteriores.');
+        }
+
+        // Validar contra Calendario No Moroso si se intenta crear como ABIERTO
+        if ($model->EstadoDia === 'ABIERTO') {
+            $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $model->Fecha->toDateString())
+                ->where('SedeID', $model->SedeID)
+                ->where('Activo', true)
+                ->first();
+
+            if ($fechaNoMorosa) {
+                Log::warning('Intento de abrir día en fecha no morosa', [
+                    'Fecha' => $model->Fecha,
+                    'Descripcion' => $fechaNoMorosa->Descripcion,
+                    'SedeID' => $model->SedeID,
+                ]);
+                throw new \Exception("No se puede abrir la fecha: {$fechaNoMorosa->Descripcion}");
+            }
+        }
+    }
+
+    /**
+     * Valida antes de actualizar un registro
+     */
+    public function updating(AperturaCierreDia $model): void
+    {
+        // Si se está cambiando a ABIERTO, validar contra Calendario No Moroso
+        if ($model->isDirty('EstadoDia') && $model->EstadoDia === 'ABIERTO') {
+            $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $model->Fecha->toDateString())
+                ->where('SedeID', $model->SedeID)
+                ->where('Activo', true)
+                ->first();
+
+            if ($fechaNoMorosa) {
+                Log::warning('Intento de abrir día en fecha no morosa (update)', [
+                    'Fecha' => $model->Fecha,
+                    'Descripcion' => $fechaNoMorosa->Descripcion,
+                    'SedeID' => $model->SedeID,
+                ]);
+                throw new \Exception("No se puede abrir la fecha: {$fechaNoMorosa->Descripcion}");
+            }
         }
     }
 
