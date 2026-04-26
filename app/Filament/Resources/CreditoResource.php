@@ -507,7 +507,27 @@ class CreditoResource extends Resource
                                 ->icon('heroicon-m-check-circle')
                                 ->badge()
                                 ->color('success'),
-                        ])->columns(6)
+
+                            Infolists\Components\TextEntry::make('FechaVencimiento')
+                                ->label('Fecha de Vencimiento')
+                                ->date('d/m/Y')
+                                ->icon('heroicon-m-calendar')
+                                ->color(fn($record) => $record->FechaVencimiento?->isPast() ? 'danger' : 'success'),
+
+                            Infolists\Components\TextEntry::make('DiasVencimiento')
+                                ->label('Días Vencido')
+                                ->getStateUsing(function ($record) {
+                                    if (!$record->FechaVencimiento || !$record->FechaVencimiento->isPast()) {
+                                        return null;
+                                    }
+                                    $dias = $record->FechaVencimiento->diffInDays(today());
+                                    return $dias . ' día' . ($dias !== 1 ? 's' : '');
+                                })
+                                ->icon('heroicon-m-exclamation-circle')
+                                ->color('danger')
+                                ->visible(fn($record) => $record->FechaVencimiento?->isPast() ?? false)
+                                ->badge(),
+                        ])->columns(4)
                 ]),
 
             Infolists\Components\Section::make('Datos de Aprobación y Generación')
