@@ -107,5 +107,8 @@ Route::get('/libreta-pagos/{credito}/html', [App\Http\Controllers\LibretaPagosCo
 Route::get('/ticket/{credito}', [App\Http\Controllers\TicketDescargarController::class, 'descargar'])
     ->name('ticket.descargar');
 
+Route::get('/pdf/reporte-diario', [App\Http\Controllers\ReporteDiarioController::class, 'descargar'])
+    ->name('reporte-diario.pdf');
+
 Route::get('/descargar-pagos/{credito}', [App\Http\Controllers\DescargarPagosController::class, 'descargar'])
     ->name('descargar-pagos.pdf');
