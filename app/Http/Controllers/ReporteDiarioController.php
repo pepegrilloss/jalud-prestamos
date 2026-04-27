@@ -112,6 +112,12 @@ class ReporteDiarioController extends Controller
 
         $pdf = Pdf::loadView('reportes.reporte-diario', $data);
         $pdf->setPaper('a4', 'portrait');
+        $pdf->setOptions([
+            'margin-top'    => 20,
+            'margin-bottom' => 20,
+            'margin-left'   => 20,
+            'margin-right'  => 20,
+        ]);
 
         return $pdf->stream('Reporte_Diario_' . $fechaCarbon->format('d-m-Y') . '.pdf');
     }

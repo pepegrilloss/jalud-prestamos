@@ -9,10 +9,6 @@
             margin: 0;
             padding: 0;
         }
-        @page {
-            size: A4 portrait;
-            margin: 15mm 15mm 15mm 15mm;
-        }
         body {
             font-family: 'Courier New', Courier, monospace;
             font-size: 9.5px;
@@ -20,6 +16,7 @@
             line-height: 1.35;
             width: 100%;
             box-sizing: border-box;
+            padding: 15px 20px;
         }
 
         /* ── Header ── */
