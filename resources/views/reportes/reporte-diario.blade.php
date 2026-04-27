@@ -5,18 +5,16 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Reporte General del Día {{ $fecha->format('d/m/Y') }}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
+        @page {
+            margin: 10mm 8mm 10mm 8mm;
         }
         body {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 9.5px;
+            font-size: 8.5px;
             color: #000;
             line-height: 1.35;
-            width: 100%;
-            box-sizing: border-box;
-            padding: 15px 20px;
+            margin: 0;
+            padding: 0;
         }
 
         /* ── Header ── */
@@ -40,7 +38,7 @@
         }
         .header-right {
             text-align: right;
-            font-size: 10px;
+            font-size: 8.5px;
         }
 
         /* ── Título ── */
@@ -69,35 +67,31 @@
         /* ── Tabla de datos ── */
         .datos-table {
             width: 100%;
-            max-width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
-            font-size: 7.5px;
+            font-size: 8px;
         }
         .datos-table th {
             border: none;
-            padding: 2px 2px;
+            padding: 3px 2px;
             text-align: left;
             font-weight: bold;
-            font-size: 7.5px;
+            font-size: 8px;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
         }
         .datos-table td {
             border: none;
-            padding: 1px 2px;
-            font-size: 7.5px;
+            padding: 2px 2px;
+            font-size: 8px;
             vertical-align: top;
-        }
-        .datos-table td.col-cliente {
-            white-space: normal;
-            word-break: break-all;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .datos-table .monto {
             text-align: right;
-            padding-right: 10px;
-        }
-        .linea-separadora {
-            border: none;
-            border-top: 1px solid #000;
-            margin: 2px 0;
+            padding-right: 5px;
         }
         .linea-separadora-doble {
             border: none;
@@ -108,7 +102,7 @@
         /* ── Totales ── */
         .total-row {
             font-weight: bold;
-            font-size: 10px;
+            font-size: 9px;
         }
         .total-row td {
             padding-top: 5px;
@@ -163,11 +157,9 @@
     <div class="seccion-titulo">
         &nbsp;AMORTIZACIONES
     </div>
-    <div class="seccion-subrayado">
+    <div class="seccion-subrayado" style="margin-bottom: 8px;">
         &nbsp;=================
     </div>
-
-    <hr class="linea-separadora">
 
     <table class="datos-table">
         <thead>
@@ -175,20 +167,15 @@
                 <th style="width: 18%;">OPERACION</th>
                 <th style="width: 10%;">CREDITO</th>
                 <th style="width: 54%;">CLIENTE</th>
-                <th style="width: 18%; text-align: right;">MONTO</th>
+                <th style="width: 18%; text-align: right; padding-right: 5px;">MONTO</th>
             </tr>
         </thead>
-    </table>
-
-    <hr class="linea-separadora">
-
-    <table class="datos-table">
         <tbody>
             @forelse($pagos as $pago)
                 <tr>
                     <td>{{ $pago->CodigoCredito ?? '' }}</td>
                     <td>{{ $pago->TipoCreditoCodigo ?? '001' }}</td>
-                    <td class="col-cliente">{{ mb_strtoupper($pago->NombresApellidos ?? '') }}</td>
+                    <td>{{ mb_strtoupper($pago->NombresApellidos ?? '') }}</td>
                     <td class="monto">{{ number_format($pago->MontoPagado, 2) }}</td>
                 </tr>
             @empty
@@ -198,22 +185,18 @@
                     </td>
                 </tr>
             @endforelse
-        </tbody>
-    </table>
-
-    {{-- Total amortizaciones --}}
-    @if($pagos->count() > 0)
-        <table class="datos-table">
-            <tbody>
+            
+            {{-- Total amortizaciones --}}
+            @if($pagos->count() > 0)
                 <tr class="total-row">
                     <td></td>
                     <td></td>
-                    <td style="text-align: right; font-weight: bold;">TOTAL AMORTIZACIONES:</td>
+                    <td style="text-align: right; font-weight: bold; padding-right: 10px;">TOTAL AMORTIZACIONES:</td>
                     <td class="monto" style="font-weight: bold;">{{ number_format($totalAmortizaciones, 2) }}</td>
                 </tr>
-            </tbody>
-        </table>
-    @endif
+            @endif
+        </tbody>
+    </table>
 
     {{-- ╔═══════════════════════════════════════════╗ --}}
     {{-- ║           CREDITOS EMITIDOS               ║ --}}
@@ -223,34 +206,27 @@
     <div class="seccion-titulo">
         &nbsp;CREDITOS EMITIDOS
     </div>
-    <div class="seccion-subrayado">
+    <div class="seccion-subrayado" style="margin-bottom: 8px;">
         &nbsp;=================
     </div>
-
-    <hr class="linea-separadora">
 
     <table class="datos-table">
         <thead>
             <tr>
                 <th style="width: 15%;">OPERACION</th>
                 <th style="width: 8%;">CREDITO</th>
-                <th style="width: 42%;">CLIENTE</th>
-                <th style="width: 12%; text-align: right;">CAPITAL</th>
-                <th style="width: 12%; text-align: right;">INTERES</th>
-                <th style="width: 11%; text-align: right;">TOTAL</th>
+                <th style="width: 44%;">CLIENTE</th>
+                <th style="width: 11%; text-align: right;">CAPITAL</th>
+                <th style="width: 11%; text-align: right;">INTERES</th>
+                <th style="width: 11%; text-align: right; padding-right: 5px;">TOTAL</th>
             </tr>
         </thead>
-    </table>
-
-    <hr class="linea-separadora">
-
-    <table class="datos-table">
         <tbody>
             @forelse($creditos as $credito)
                 <tr>
                     <td>{{ $credito->CodigoCredito ?? '' }}</td>
                     <td>{{ $credito->TipoCreditoCodigo ?? '001' }}</td>
-                    <td class="col-cliente">{{ mb_strtoupper($credito->NombresApellidos ?? '') }}</td>
+                    <td>{{ mb_strtoupper($credito->NombresApellidos ?? '') }}</td>
                     <td class="monto">{{ number_format($credito->MontoTotal, 2) }}</td>
                     <td class="monto">{{ number_format($credito->MontoInteres, 2) }}</td>
                     <td class="monto">{{ number_format($credito->MontoTotalPagar ?? ($credito->MontoTotal + $credito->MontoInteres), 2) }}</td>
@@ -262,24 +238,20 @@
                     </td>
                 </tr>
             @endforelse
-        </tbody>
-    </table>
 
-    {{-- Total créditos emitidos --}}
-    @if($creditos->count() > 0)
-        <table class="datos-table">
-            <tbody>
+            {{-- Total créditos emitidos --}}
+            @if($creditos->count() > 0)
                 <tr class="total-row">
                     <td></td>
                     <td></td>
-                    <td style="text-align: right; font-weight: bold;">TOTAL CREDITOS EMITIDOS:</td>
+                    <td style="text-align: right; font-weight: bold; padding-right: 10px;">TOTAL CREDITOS EMITIDOS:</td>
                     <td class="monto" style="font-weight: bold;">{{ number_format($totalCreditosEmitidos, 2) }}</td>
                     <td class="monto" style="font-weight: bold;">{{ number_format($creditos->sum('MontoInteres'), 2) }}</td>
                     <td class="monto" style="font-weight: bold;">{{ number_format($creditos->sum(function($c) { return $c->MontoTotalPagar ?? ($c->MontoTotal + $c->MontoInteres); }), 2) }}</td>
                 </tr>
-            </tbody>
-        </table>
-    @endif
+            @endif
+        </tbody>
+    </table>
 
     {{-- ╔═══════════════════════════════════════════╗ --}}
     {{-- ║               RESUMEN                     ║ --}}

@@ -89,6 +89,17 @@ class AdminPanelProvider extends PanelProvider
             ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
             ->pages([
             ])
+            ->navigationItems([
+                \Filament\Navigation\NavigationItem::make('Balance Diario')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->group('Reportes')
+                    ->sort(1)
+                    ->url('#balance-diario'),
+            ])
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
+            )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
                 ClienteProposicionStats::class,

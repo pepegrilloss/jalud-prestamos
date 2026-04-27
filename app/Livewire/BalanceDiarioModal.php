@@ -16,11 +16,7 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
     use InteractsWithForms;
     use InteractsWithActions;
 
-    /**
-     * Escucha el evento del sidebar para abrir el modal
-     */
-    protected $listeners = ['abrirBalanceDiario' => 'abrirModal'];
-
+    #[Livewire\Attributes\On('abrirBalanceDiario')]
     public function abrirModal(): void
     {
         $this->mountAction('generarReporte');
