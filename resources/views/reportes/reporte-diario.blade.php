@@ -11,13 +11,15 @@
         }
         @page {
             size: A4 portrait;
-            margin: 20mm 18mm 15mm 18mm;
+            margin: 15mm 15mm 15mm 15mm;
         }
         body {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 10px;
+            font-size: 9.5px;
             color: #000;
-            line-height: 1.4;
+            line-height: 1.35;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         /* ── Header ── */
@@ -70,21 +72,25 @@
         /* ── Tabla de datos ── */
         .datos-table {
             width: 100%;
+            max-width: 100%;
             border-collapse: collapse;
-            font-size: 9.5px;
+            font-size: 9px;
+            table-layout: fixed;
         }
         .datos-table th {
             border: none;
-            padding: 2px 4px;
+            padding: 2px 3px;
             text-align: left;
             font-weight: bold;
-            font-size: 9.5px;
+            font-size: 9px;
         }
         .datos-table td {
             border: none;
-            padding: 1px 4px;
-            font-size: 9.5px;
+            padding: 1px 3px;
+            font-size: 9px;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .datos-table .monto {
             text-align: right;
@@ -171,7 +177,7 @@
                 <th style="width: 22%;">OPERACION</th>
                 <th style="width: 10%;">CREDITO</th>
                 <th style="width: 50%;">CLIENTE</th>
-                <th style="width: 18%; text-align: right; padding-right: 10px;">MONTO</th>
+                <th style="width: 18%; text-align: right; padding-right: 6px;">MONTO</th>
             </tr>
         </thead>
     </table>
@@ -231,9 +237,9 @@
                 <th style="width: 18%;">OPERACION</th>
                 <th style="width: 8%;">CREDITO</th>
                 <th style="width: 36%;">CLIENTE</th>
-                <th style="width: 13%; text-align: right; padding-right: 5px;">CAPITAL</th>
-                <th style="width: 13%; text-align: right; padding-right: 5px;">INTERES</th>
-                <th style="width: 12%; text-align: right; padding-right: 10px;">TOTAL</th>
+                <th style="width: 13%; text-align: right; padding-right: 3px;">CAPITAL</th>
+                <th style="width: 13%; text-align: right; padding-right: 3px;">INTERES</th>
+                <th style="width: 12%; text-align: right; padding-right: 6px;">TOTAL</th>
             </tr>
         </thead>
     </table>
