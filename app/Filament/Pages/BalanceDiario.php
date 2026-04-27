@@ -13,7 +13,7 @@ class BalanceDiario extends Page
     protected static ?string $navigationLabel = 'Balance Diario';
     protected static ?string $navigationGroup = 'Reportes';
     protected static ?int $navigationSort = 1;
-    protected static ?string $title = 'Balance Diario';
+    protected static ?string $title = '';
     protected static string $view = 'filament.pages.balance-diario';
 
     /**
@@ -43,6 +43,7 @@ class BalanceDiario extends Page
             ])
             ->modalSubmitActionLabel('Aceptar')
             ->modalCancelActionLabel('Salir')
+            ->cancelParentActions()
             ->action(function (array $data) {
                 $fecha = $data['fecha'];
 
@@ -66,24 +67,19 @@ class BalanceDiario extends Page
 
                 $url = route('reporte-diario.pdf', $params);
 
-                // Abrir PDF en nueva pestaña usando JS
+                // Abrir PDF en nueva pestaña y regresar al dashboard
                 $this->js("window.open('{$url}', '_blank')");
+                $this->redirect('/admin');
             })
             ->modalWidth('md')
             ->closeModalByClickingAway(false);
     }
 
     /**
-     * Registrar la acción del header para poder reabrir el modal
+     * Cuando el modal se cierra con "Salir", regresar al dashboard
      */
-    protected function getHeaderActions(): array
+    public function mountedActionCallCancelled(): void
     {
-        return [
-            Action::make('abrirReporte')
-                ->label('Generar Reporte')
-                ->icon('heroicon-o-document-chart-bar')
-                ->color('primary')
-                ->action(fn () => $this->mountAction('generarReporte')),
-        ];
+        $this->redirect('/admin');
     }
 }
