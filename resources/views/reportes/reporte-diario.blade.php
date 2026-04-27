@@ -71,28 +71,24 @@
             width: 100%;
             max-width: 100%;
             border-collapse: collapse;
-            font-size: 9px;
-            table-layout: fixed;
+            font-size: 7.5px;
         }
         .datos-table th {
             border: none;
-            padding: 2px 3px;
+            padding: 2px 2px;
             text-align: left;
             font-weight: bold;
-            font-size: 9px;
+            font-size: 7.5px;
         }
         .datos-table td {
             border: none;
-            padding: 1px 3px;
-            font-size: 8.5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            padding: 1px 2px;
+            font-size: 7.5px;
+            vertical-align: top;
         }
         .datos-table td.col-cliente {
             white-space: normal;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            word-break: break-all;
         }
         .datos-table .monto {
             text-align: right;
@@ -176,10 +172,10 @@
     <table class="datos-table">
         <thead>
             <tr>
-                <th style="width: 22%;">OPERACION</th>
+                <th style="width: 18%;">OPERACION</th>
                 <th style="width: 10%;">CREDITO</th>
-                <th style="width: 50%;">CLIENTE</th>
-                <th style="width: 18%; text-align: right; padding-right: 6px;">MONTO</th>
+                <th style="width: 54%;">CLIENTE</th>
+                <th style="width: 18%; text-align: right;">MONTO</th>
             </tr>
         </thead>
     </table>
@@ -190,10 +186,10 @@
         <tbody>
             @forelse($pagos as $pago)
                 <tr>
-                    <td style="width: 22%;">{{ $pago->CodigoCredito ?? '' }}</td>
-                    <td style="width: 10%;">{{ $pago->TipoCreditoCodigo ?? '001' }}</td>
-                    <td style="width: 50%;" class="col-cliente">{{ mb_strtoupper($pago->NombresApellidos ?? '') }}</td>
-                    <td class="monto" style="width: 18%;">{{ number_format($pago->MontoPagado, 2) }}</td>
+                    <td>{{ $pago->CodigoCredito ?? '' }}</td>
+                    <td>{{ $pago->TipoCreditoCodigo ?? '001' }}</td>
+                    <td class="col-cliente">{{ mb_strtoupper($pago->NombresApellidos ?? '') }}</td>
+                    <td class="monto">{{ number_format($pago->MontoPagado, 2) }}</td>
                 </tr>
             @empty
                 <tr>
@@ -210,10 +206,10 @@
         <table class="datos-table">
             <tbody>
                 <tr class="total-row">
-                    <td style="width: 22%;"></td>
-                    <td style="width: 10%;"></td>
-                    <td style="width: 50%; text-align: right; font-weight: bold;">TOTAL AMORTIZACIONES:</td>
-                    <td class="monto" style="width: 18%; font-weight: bold;">{{ number_format($totalAmortizaciones, 2) }}</td>
+                    <td></td>
+                    <td></td>
+                    <td style="text-align: right; font-weight: bold;">TOTAL AMORTIZACIONES:</td>
+                    <td class="monto" style="font-weight: bold;">{{ number_format($totalAmortizaciones, 2) }}</td>
                 </tr>
             </tbody>
         </table>
@@ -236,12 +232,12 @@
     <table class="datos-table">
         <thead>
             <tr>
-                <th style="width: 18%;">OPERACION</th>
+                <th style="width: 15%;">OPERACION</th>
                 <th style="width: 8%;">CREDITO</th>
-                <th style="width: 36%;">CLIENTE</th>
-                <th style="width: 13%; text-align: right; padding-right: 3px;">CAPITAL</th>
-                <th style="width: 13%; text-align: right; padding-right: 3px;">INTERES</th>
-                <th style="width: 12%; text-align: right; padding-right: 6px;">TOTAL</th>
+                <th style="width: 42%;">CLIENTE</th>
+                <th style="width: 12%; text-align: right;">CAPITAL</th>
+                <th style="width: 12%; text-align: right;">INTERES</th>
+                <th style="width: 11%; text-align: right;">TOTAL</th>
             </tr>
         </thead>
     </table>
@@ -252,12 +248,12 @@
         <tbody>
             @forelse($creditos as $credito)
                 <tr>
-                    <td style="width: 18%;">{{ $credito->CodigoCredito ?? '' }}</td>
-                    <td style="width: 8%;">{{ $credito->TipoCreditoCodigo ?? '001' }}</td>
-                    <td style="width: 36%;" class="col-cliente">{{ mb_strtoupper($credito->NombresApellidos ?? '') }}</td>
-                    <td class="monto" style="width: 13%;">{{ number_format($credito->MontoTotal, 2) }}</td>
-                    <td class="monto" style="width: 13%;">{{ number_format($credito->MontoInteres, 2) }}</td>
-                    <td class="monto" style="width: 12%;">{{ number_format($credito->MontoTotalPagar ?? ($credito->MontoTotal + $credito->MontoInteres), 2) }}</td>
+                    <td>{{ $credito->CodigoCredito ?? '' }}</td>
+                    <td>{{ $credito->TipoCreditoCodigo ?? '001' }}</td>
+                    <td class="col-cliente">{{ mb_strtoupper($credito->NombresApellidos ?? '') }}</td>
+                    <td class="monto">{{ number_format($credito->MontoTotal, 2) }}</td>
+                    <td class="monto">{{ number_format($credito->MontoInteres, 2) }}</td>
+                    <td class="monto">{{ number_format($credito->MontoTotalPagar ?? ($credito->MontoTotal + $credito->MontoInteres), 2) }}</td>
                 </tr>
             @empty
                 <tr>
@@ -274,12 +270,12 @@
         <table class="datos-table">
             <tbody>
                 <tr class="total-row">
-                    <td style="width: 18%;"></td>
-                    <td style="width: 8%;"></td>
-                    <td style="width: 36%; text-align: right; font-weight: bold;">TOTAL CREDITOS EMITIDOS:</td>
-                    <td class="monto" style="width: 13%; font-weight: bold;">{{ number_format($totalCreditosEmitidos, 2) }}</td>
-                    <td class="monto" style="width: 13%; font-weight: bold;">{{ number_format($creditos->sum('MontoInteres'), 2) }}</td>
-                    <td class="monto" style="width: 12%; font-weight: bold;">{{ number_format($creditos->sum(function($c) { return $c->MontoTotalPagar ?? ($c->MontoTotal + $c->MontoInteres); }), 2) }}</td>
+                    <td></td>
+                    <td></td>
+                    <td style="text-align: right; font-weight: bold;">TOTAL CREDITOS EMITIDOS:</td>
+                    <td class="monto" style="font-weight: bold;">{{ number_format($totalCreditosEmitidos, 2) }}</td>
+                    <td class="monto" style="font-weight: bold;">{{ number_format($creditos->sum('MontoInteres'), 2) }}</td>
+                    <td class="monto" style="font-weight: bold;">{{ number_format($creditos->sum(function($c) { return $c->MontoTotalPagar ?? ($c->MontoTotal + $c->MontoInteres); }), 2) }}</td>
                 </tr>
             </tbody>
         </table>
