@@ -52,15 +52,15 @@ class ReporteDiarioController extends Controller
         }
 
         $pagos = $pagosQuery
-            ->join('credito', 'pago.CreditoID', '=', 'credito.CreditoID')
-            ->join('proposicioncredito', 'credito.ProposicionCreditoID', '=', 'proposicioncredito.ProposicionCreditoID')
-            ->join('cliente', 'proposicioncredito.ClienteID', '=', 'cliente.ClienteID')
-            ->join('tipocredito', 'proposicioncredito.TipoCreditoID', '=', 'tipocredito.TipoCreditoID')
+            ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
             ->select(
                 'pago.PagoID',
-                'proposicioncredito.CodigoCredito',
-                'tipocredito.Codigo as TipoCreditoCodigo',
-                'cliente.NombresApellidos',
+                'ProposicionCredito.CodigoCredito',
+                'TipoCredito.Codigo as TipoCreditoCodigo',
+                'Cliente.NombresApellidos',
                 'pago.MontoPagado'
             )
             ->orderBy('pago.PagoID', 'asc')
@@ -71,28 +71,28 @@ class ReporteDiarioController extends Controller
         // ─── CREDITOS EMITIDOS ───
         // Créditos generados en la fecha del día cerrado
         $creditosQuery = Credito::withoutGlobalScopes()
-            ->where('credito.Activo', true)
-            ->whereDate('credito.FechaGeneracion', $fecha);
+            ->where('Credito.Activo', true)
+            ->whereDate('Credito.FechaGeneracion', $fecha);
 
         if ($sedeId) {
-            $creditosQuery->where('credito.SedeID', $sedeId);
+            $creditosQuery->where('Credito.SedeID', $sedeId);
         }
 
         $creditos = $creditosQuery
-            ->join('proposicioncredito', 'credito.ProposicionCreditoID', '=', 'proposicioncredito.ProposicionCreditoID')
-            ->join('cliente', 'proposicioncredito.ClienteID', '=', 'cliente.ClienteID')
-            ->join('tipocredito', 'proposicioncredito.TipoCreditoID', '=', 'tipocredito.TipoCreditoID')
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
             ->select(
-                'proposicioncredito.CodigoCredito',
-                'tipocredito.Codigo as TipoCreditoCodigo',
-                'cliente.NombresApellidos',
-                'proposicioncredito.MontoTotal',
-                'proposicioncredito.MontoInteres',
-                'proposicioncredito.MontoTotalPagar',
-                'proposicioncredito.NumeroCuotas',
-                'proposicioncredito.MontoCuota'
+                'ProposicionCredito.CodigoCredito',
+                'TipoCredito.Codigo as TipoCreditoCodigo',
+                'Cliente.NombresApellidos',
+                'ProposicionCredito.MontoTotal',
+                'ProposicionCredito.MontoInteres',
+                'ProposicionCredito.MontoTotalPagar',
+                'ProposicionCredito.NumeroCuotas',
+                'ProposicionCredito.MontoCuota'
             )
-            ->orderBy('credito.CreditoID', 'asc')
+            ->orderBy('Credito.CreditoID', 'asc')
             ->get();
 
         $totalCreditosEmitidos = $creditos->sum('MontoTotal');
