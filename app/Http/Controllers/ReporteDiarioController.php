@@ -23,6 +23,7 @@ class ReporteDiarioController extends Controller
     {
         $fecha = $request->get('fecha');
         $aperturaCierreDiaId = $request->get('id');
+        $sedeIdParam = $request->get('sede');
 
         if (!$fecha) {
             abort(404, 'Fecha no proporcionada');
@@ -37,7 +38,11 @@ class ReporteDiarioController extends Controller
                 ->find($aperturaCierreDiaId);
         }
 
-        $sedeId = $aperturaCierre?->SedeID;
+        // Resolver SedeID: del registro, del parámetro, o del usuario autenticado
+        $sedeId = $aperturaCierre?->SedeID
+            ?? $sedeIdParam
+            ?? (auth()->check() ? (auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID) : null);
+
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'CHICLAYO';
 

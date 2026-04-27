@@ -323,18 +323,6 @@ class AperturaCierreDiaResource extends Resource
                                 ->send();
                         }
                     }),
-
-                // REPORTE DIARIO - Descargar PDF del cierre de caja
-                Tables\Actions\Action::make('reporteDiario')
-                    ->label('Reporte')
-                    ->icon('heroicon-o-document-text')
-                    ->color('warning')
-                    ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'CERRADO')
-                    ->url(fn(AperturaCierreDia $record) => route('reporte-diario.pdf', [
-                        'fecha' => $record->Fecha->format('Y-m-d'),
-                        'id'    => $record->AperturaCierreDiaID,
-                    ]))
-                    ->openUrlInNewTab(),
             ])
             ->defaultSort('Fecha', 'desc');
     }
