@@ -84,10 +84,15 @@
         .datos-table td {
             border: none;
             padding: 1px 3px;
-            font-size: 9px;
+            font-size: 8.5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+        .datos-table td.col-cliente {
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         .datos-table .monto {
             text-align: right;
@@ -185,9 +190,9 @@
         <tbody>
             @forelse($pagos as $pago)
                 <tr>
-                    <td style="width: 22%;">&nbsp;&nbsp;{{ str_pad($pago->CodigoCredito ?? '', 15, ' ', STR_PAD_RIGHT) }}</td>
-                    <td style="width: 10%;">{{ str_pad($pago->TipoCreditoCodigo ?? '001', 3, '0', STR_PAD_LEFT) }}</td>
-                    <td style="width: 50%;">{{ mb_strtoupper($pago->NombresApellidos ?? '') }}</td>
+                    <td style="width: 22%;">{{ $pago->CodigoCredito ?? '' }}</td>
+                    <td style="width: 10%;">{{ $pago->TipoCreditoCodigo ?? '001' }}</td>
+                    <td style="width: 50%;" class="col-cliente">{{ mb_strtoupper($pago->NombresApellidos ?? '') }}</td>
                     <td class="monto" style="width: 18%;">{{ number_format($pago->MontoPagado, 2) }}</td>
                 </tr>
             @empty
@@ -247,9 +252,9 @@
         <tbody>
             @forelse($creditos as $credito)
                 <tr>
-                    <td style="width: 18%;">&nbsp;&nbsp;{{ str_pad($credito->CodigoCredito ?? '', 15, ' ', STR_PAD_RIGHT) }}</td>
-                    <td style="width: 8%;">{{ str_pad($credito->TipoCreditoCodigo ?? '001', 3, '0', STR_PAD_LEFT) }}</td>
-                    <td style="width: 36%;">{{ mb_strtoupper($credito->NombresApellidos ?? '') }}</td>
+                    <td style="width: 18%;">{{ $credito->CodigoCredito ?? '' }}</td>
+                    <td style="width: 8%;">{{ $credito->TipoCreditoCodigo ?? '001' }}</td>
+                    <td style="width: 36%;" class="col-cliente">{{ mb_strtoupper($credito->NombresApellidos ?? '') }}</td>
                     <td class="monto" style="width: 13%;">{{ number_format($credito->MontoTotal, 2) }}</td>
                     <td class="monto" style="width: 13%;">{{ number_format($credito->MontoInteres, 2) }}</td>
                     <td class="monto" style="width: 12%;">{{ number_format($credito->MontoTotalPagar ?? ($credito->MontoTotal + $credito->MontoInteres), 2) }}</td>
