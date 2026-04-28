@@ -31,7 +31,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
     protected static ?string $modelLabel = 'Registro de Extorno/Devolución';
     protected static ?string $pluralModelLabel = 'Registro de Extornos y Devoluciones';
     protected static ?int $navigationSort = 10;
-    
+
     public static function getPermissionPrefixes(): array
     {
         return [
@@ -60,6 +60,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 'APLICACION_NUEVO_CREDITO' => 'Aplicar como saldo a Nuevo Crédito'
                             ])
                             ->required()
+                            ->native(false)
                             ->live()
                             ->afterStateUpdated(function (Set $set) {
                                 $set('ClienteOrigenID', null);
@@ -90,7 +91,8 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->prefixIcon('heroicon-m-document-text')
                             ->options(function (Get $get) {
                                 $clienteID = $get('ClienteOrigenID');
-                                if (!$clienteID) return [];
+                                if (!$clienteID)
+                                    return [];
                                 return Credito::whereHas('proposicion', function ($q) use ($clienteID) {
                                     $q->where('ClienteID', $clienteID)->where('Activo', 1);
                                 })->where('Activo', 1)->with('proposicion')->get()->mapWithKeys(function ($cr) {
@@ -109,20 +111,29 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->prefixIcon('heroicon-m-banknotes')
                             ->options(function (Get $get) {
                                 $creditoID = $get('CreditoOrigenID');
-                                if (!$creditoID) return [];
-                                return Pago::where('CreditoID', $creditoID)
+                                if (!$creditoID)
+                                    return [];
+                                    
+                                $pagos = Pago::where('CreditoID', $creditoID)
                                     ->where('Activo', 1)
-                                    ->where(function ($q) {
-                                        $q->whereNull('EstadoTraslado')
-                                          ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
-                                    })
-                                    ->orderBy('FechaPago', 'desc')
-                                    ->get()
-                                    ->mapWithKeys(function ($pago) {
+                                    ->orderBy('FechaPago', 'asc')
+                                    ->orderBy('PagoID', 'asc')
+                                    ->get();
+                                    
+                                $opciones = [];
+                                $correlativo = 1;
+                                
+                                foreach ($pagos as $pago) {
+                                    // Solo mostrar en las opciones los que no han sido trasladados
+                                    if ($pago->EstadoTraslado !== 'TRASLADADO') {
                                         $fecha = \Carbon\Carbon::parse($pago->FechaPago)->format('d/m/Y');
-                                        $cuotaInfo = $pago->cuota ? " - Cuota #{$pago->cuota->NumeroCuota}" : "";
-                                        return [$pago->PagoID => "S/ " . number_format($pago->MontoPagado, 2) . " - {$fecha} - {$pago->TipoPago}{$cuotaInfo}"];
-                                    });
+                                        $opciones[$pago->PagoID] = "Pago #{$correlativo} - S/ " . number_format($pago->MontoPagado, 2) . " - {$fecha} - {$pago->TipoPago}";
+                                    }
+                                    $correlativo++;
+                                }
+                                
+                                // Devolver invertido para ver los más recientes primero
+                                return array_reverse($opciones, true);
                             })
                             ->required(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO')
                             ->searchable()
@@ -142,13 +153,34 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->visible(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $get('CreditoOrigenID')),
 
                         // ========== FLUJO EXCEDENTE (otros tipos) ==========
+                        Forms\Components\DatePicker::make('FiltroFechaExcedente')
+                            ->label('Fecha del Excedente (Filtro)')
+                            ->prefixIcon('heroicon-m-calendar-days')
+                            ->required(fn(Get $get) => $get('TipoResolucion') !== null && $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
+                            ->visible(fn(Get $get) => $get('TipoResolucion') !== null && $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
+                            ->live()
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->dehydrated(false)
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('ExcedenteID', null);
+                                $set('MontoAplicar', null);
+                            }),
+
                         Forms\Components\Select::make('ExcedenteID')
                             ->label('Excedente (El Sobrante/Dinero a mover)')
                             ->prefixIcon('heroicon-m-banknotes')
                             ->options(function (Get $get) {
-                                $query = Excedente::where('EstadoResolucion', 'PENDIENTE')->where('Activo', 1);
+                                $fechaFiltro = $get('FiltroFechaExcedente');
+                                if (!$fechaFiltro) return []; // Si no hay fecha, retorna vacío
+
+                                $query = Excedente::where('EstadoResolucion', 'PENDIENTE')
+                                    ->where('Activo', 1)
+                                    ->whereDate('Fecha', $fechaFiltro);
+                                    
                                 $results = $query->get();
-                                if ($results->isEmpty()) return [];
+                                if ($results->isEmpty())
+                                    return [];
                                 return $results->mapWithKeys(function ($ex) {
                                     $fecha = \Carbon\Carbon::parse($ex->Fecha)->format('d/m/Y');
                                     $tipoLabel = str_replace('_', ' ', $ex->TipoExcedente);
@@ -157,6 +189,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 });
                             })
                             ->required(fn(Get $get) => $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
+                            ->disabled(fn(Get $get) => !$get('FiltroFechaExcedente'))
                             ->searchable()
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set) {
@@ -195,8 +228,9 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 return 'Seleccione un excedente primero.';
                             })
                             ->rules([
-                                fn (Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
-                                    if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO') return; // No validar contra excedente
+                                fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO')
+                                        return; // No validar contra excedente
                                     $excedenteID = $get('ExcedenteID');
                                     if ($excedenteID) {
                                         $excedente = Excedente::find($excedenteID);
@@ -227,7 +261,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->searchable()
                             ->live()
                             ->rules([
-                                fn (Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
                                     if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $value == $get('ClienteOrigenID')) {
                                         $fail('El cliente destino no puede ser el mismo que el origen en un traslado de pago.');
                                     }
@@ -399,7 +433,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                 Tables\Columns\TextColumn::make('clienteOrigen.NombresApellidos')
                     ->label('Origen')
                     ->searchable()
-                    ->default('Sin identificar'),
+                    ->default('Excedente'),
                 Tables\Columns\TextColumn::make('clienteDestino.NombresApellidos')
                     ->label('Destino')
                     ->searchable(),
@@ -434,6 +468,33 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
             ])
             ->bulkActions([
             ]);
+    }
+
+    public static function canCreate(): bool
+    {
+        if (!parent::canCreate()) { return false; }
+
+        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
+            if (request()->routeIs('*create') || request()->isMethod('post')) {
+                \Filament\Notifications\Notification::make()
+                    ->title('❌ Día Cerrado')
+                    ->body('El día de operaciones está cerrado. No se pueden realizar operaciones.')
+                    ->danger()
+                    ->send();
+            }
+            return false;
+        }
+        return true;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return parent::canEdit($record) && \App\Models\AperturaCierreDia::estaAbierto() && $record->FechaCierre === null;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return parent::canDelete($record) && \App\Models\AperturaCierreDia::estaAbierto() && $record->FechaCierre === null;
     }
 
     public static function getPages(): array

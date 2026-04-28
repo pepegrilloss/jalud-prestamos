@@ -28,6 +28,7 @@ class SolicitudResolucionExcedente extends Model
         'SedeID',
         'PagoOrigenID',
         'CreditoOrigenID',
+        'FechaCierre',
     ];
 
     public function excedente()

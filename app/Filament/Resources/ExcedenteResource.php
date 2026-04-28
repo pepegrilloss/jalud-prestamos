@@ -78,7 +78,7 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                             ->label('Fecha (del voucher o sobrante)')
                             ->prefixIcon('heroicon-m-calendar-days')
                             ->required()
-                            ->default(now())
+                            ->default(fn() => \App\Services\DateFieldResolver::getFechaAbierta() ?? now())
                             ->native(false)
                             ->displayFormat('d/m/Y'),
 
@@ -86,7 +86,7 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                             ->label('Hora (del voucher o sobrante)')
                             ->prefixIcon('heroicon-m-clock')
                             ->required()
-                            ->default(now()),
+                            ->default(fn() => \App\Services\DateFieldResolver::getFechaAbierta() ? \App\Services\DateFieldResolver::getFechaAbierta()->copy()->setTime(now()->hour, now()->minute, now()->second) : now()),
 
                         Forms\Components\TextInput::make('NroOperacion')
                             ->label('Nro. de Operación')
@@ -318,6 +318,33 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
         return [
             //
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        if (!parent::canCreate()) { return false; }
+
+        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
+            if (request()->routeIs('*create') || request()->isMethod('post')) {
+                \Filament\Notifications\Notification::make()
+                    ->title('❌ Día Cerrado')
+                    ->body('El día de operaciones está cerrado. No se pueden realizar operaciones.')
+                    ->danger()
+                    ->send();
+            }
+            return false;
+        }
+        return true;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return parent::canEdit($record) && \App\Models\AperturaCierreDia::estaAbierto() && $record->FechaCierre === null;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return parent::canDelete($record) && \App\Models\AperturaCierreDia::estaAbierto() && $record->FechaCierre === null;
     }
 
     public static function getPages(): array

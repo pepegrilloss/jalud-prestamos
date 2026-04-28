@@ -24,7 +24,7 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
     protected static ?string $pluralModelLabel = 'Aprobación de Extornos y Devoluciones';
     protected static ?int $navigationSort = 11;
     protected static ?string $slug = 'aprobacion-extornos-devoluciones';
-    
+
     public static function getPermissionPrefixes(): array
     {
         return [
@@ -66,7 +66,7 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                 Tables\Columns\TextColumn::make('clienteOrigen.NombresApellidos')
                     ->label('Origen')
                     ->searchable()
-                    ->default('Sin identificar'),
+                    ->default('Excedente'),
                 Tables\Columns\TextColumn::make('clienteDestino.NombresApellidos')
                     ->label('Destino')
                     ->searchable(),
@@ -85,7 +85,7 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
-             ->filters([
+            ->filters([
                 // Filtro eliminado
             ])
             ->actions([
@@ -98,7 +98,7 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar Extorno/Resolución')
                     ->modalDescription('¿Está seguro de aprobar esta solicitud? Se reflejarán los cambios financieros correspondientes de forma automática y el excedente se marcará como resuelto.')
-                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
+                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && $record->FechaCierre === null && \App\Models\AperturaCierreDia::estaAbierto() && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
                     ->action(function ($record) {
                         app(\App\Services\ResolucionExcedenteService::class)->aprobar($record, auth()->user());
 
@@ -112,7 +112,7 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
                     ->requiresConfirmation()
-                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
+                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && $record->FechaCierre === null && \App\Models\AperturaCierreDia::estaAbierto() && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
                     ->action(function ($record) {
                         $record->update(['Estado' => 'RECHAZADA', 'UserAprobadorID' => auth()->id()]);
                         Notification::make()
@@ -123,6 +123,26 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
             ])
             ->bulkActions([
             ]);
+    }
+
+    public static function canCreate(): bool
+    {
+        if (!parent::canCreate()) { return false; }
+
+        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
+            return false;
+        }
+        return true;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return parent::canEdit($record) && \App\Models\AperturaCierreDia::estaAbierto() && $record->FechaCierre === null;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return parent::canDelete($record) && \App\Models\AperturaCierreDia::estaAbierto() && $record->FechaCierre === null;
     }
 
     public static function getPages(): array

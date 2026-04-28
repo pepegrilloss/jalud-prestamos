@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Observers\AperturaCierreDiaObserver;
 use App\Traits\BelongsToSede;
+use App\Models\Excedente;
+use App\Models\SolicitudResolucionExcedente;
 
 class AperturaCierreDia extends Model
 {
@@ -139,11 +141,22 @@ class AperturaCierreDia extends Model
                 ->update(['FechaCierre' => $fechaCarbon]);
             \Illuminate\Support\Facades\Log::info("Análisis económicos cerrados en {$fecha}: {$analisisActualizados}");
 
-            // Cerrar evaluaciones SIN CERRAR creadas ese día (usa FechaRegistro)
             $evaluacionesActualizadas = EvaluacionCredito::whereNull('FechaCierre')
                 ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
             \Illuminate\Support\Facades\Log::info("Evaluaciones de crédito cerradas en {$fecha}: {$evaluacionesActualizadas}");
+
+            // Cerrar excedentes SIN CERRAR registrados ese día (usa Fecha)
+            $excedentesActualizados = Excedente::whereNull('FechaCierre')
+                ->whereDate('Fecha', $fecha)
+                ->update(['FechaCierre' => $fechaCarbon]);
+            \Illuminate\Support\Facades\Log::info("Excedentes cerrados en {$fecha}: {$excedentesActualizados}");
+
+            // Cerrar solicitudes resolucion SIN CERRAR creadas ese día (usa created_at)
+            $solicitudesActualizadas = SolicitudResolucionExcedente::whereNull('FechaCierre')
+                ->whereDate('created_at', $fecha)
+                ->update(['FechaCierre' => $fechaCarbon]);
+            \Illuminate\Support\Facades\Log::info("Solicitudes de resolución de excedentes cerradas en {$fecha}: {$solicitudesActualizadas}");
 
             \Illuminate\Support\Facades\Log::info("Día cerrado exitosamente: {$fecha}");
 
@@ -217,11 +230,22 @@ class AperturaCierreDia extends Model
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Análisis económicos actualizados: {$analisisActualizados}\n", FILE_APPEND);
 
-            // Reabrir evaluaciones de crédito creadas ese día (usa FechaRegistro)
             $evaluacionesActualizadas = EvaluacionCredito::whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Evaluaciones actualizadas: {$evaluacionesActualizadas}\n", FILE_APPEND);
+
+            // Reabrir excedentes registrados ese día (usa Fecha)
+            $excedentesActualizados = Excedente::whereDate('FechaCierre', $fecha)
+                ->whereDate('Fecha', $fecha)
+                ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Excedentes actualizados: {$excedentesActualizados}\n", FILE_APPEND);
+
+            // Reabrir solicitudes resolucion creadas ese día (usa created_at)
+            $solicitudesActualizadas = SolicitudResolucionExcedente::whereDate('FechaCierre', $fecha)
+                ->whereDate('created_at', $fecha)
+                ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Solicitudes de resolución actualizadas: {$solicitudesActualizadas}\n", FILE_APPEND);
 
             file_put_contents($logFile, "\n========== REABRIRDIA COMPLETADO ==========\n", FILE_APPEND);
 

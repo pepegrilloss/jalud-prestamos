@@ -335,6 +335,10 @@ class ProposicionCredito extends Model
 
         // Calcular total pagado desde la tabla pago (no desde cuota)
         $totalPagado = \App\Models\Pago::where('Activo', 1)
+            ->where(function ($q) {
+                $q->whereNull('EstadoTraslado')
+                  ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+            })
             ->whereHas('cuota', function ($query) use ($credito) {
                 $query->where('CreditoID', $credito->CreditoID);
             })

@@ -14,12 +14,16 @@
         $saldoAcumulado = $montoTotalPagar;
         
         foreach ($pagosBase as $pago) {
+            $esTrasladado = $pago->EstadoTraslado === 'TRASLADADO';
+            $montoReal = $esTrasladado ? 0 : $pago->MontoPagado;
+
             $tempPagos[] = [
                 'pago' => $pago,
                 'saldo_antes' => $saldoAcumulado,
-                'saldo_despues' => max(0, $saldoAcumulado - $pago->MontoPagado),
+                'saldo_despues' => max(0, $saldoAcumulado - $montoReal),
+                'es_trasladado' => $esTrasladado,
             ];
-            $saldoAcumulado -= $pago->MontoPagado;
+            $saldoAcumulado -= $montoReal;
         }
         
         $pagosDisplay = array_reverse($tempPagos);
@@ -55,21 +59,24 @@
                         @php 
                             $pago = $item['pago'];
                             $numFila = $totalPagos - $index;
+                            $esTrasladado = $item['es_trasladado'];
+                            $rowClass = $esTrasladado ? 'bg-danger-50 dark:bg-danger-900/20 hover:bg-danger-100 dark:hover:bg-danger-900/30 transition-colors' : 'hover:bg-gray-50 dark:hover:bg-white/5 transition-colors';
+                            $textClass = $esTrasladado ? 'text-danger-600 dark:text-danger-400' : 'text-gray-600 dark:text-gray-400';
                         @endphp
-                        <tr class="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                            <td class="px-3 py-1.5 border-r dark:border-white/10 font-medium text-gray-900 dark:text-white text-center">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400 font-bold text-xs">
+                        <tr class="{{ $rowClass }}">
+                            <td class="px-3 py-1.5 border-r dark:border-white/10 font-medium text-center">
+                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full {{ $esTrasladado ? 'bg-danger-100 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400' : 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400' }} font-bold text-xs">
                                     {{ str_pad($numFila, 2, '0', STR_PAD_LEFT) }}
                                 </span>
                             </td>
 
-                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono text-success-600 dark:text-success-400">
-                                {{ number_format($pago->MontoPagado, 2) }}
+                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono {{ $esTrasladado ? 'text-danger-600 dark:text-danger-400 font-bold' : 'text-success-600 dark:text-success-400' }}">
+                                {{ $esTrasladado ? '-' : '' }}{{ number_format($pago->MontoPagado, 2) }}
                             </td>
-                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                            <td class="px-3 py-1.5 border-r dark:border-white/10 {{ $textClass }} whitespace-nowrap">
                                 {{ $pago->FechaPago ? $pago->FechaPago->format('d/m/Y H:i') : '-' }}
                             </td>
-                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-gray-600 dark:text-gray-400">
+                            <td class="px-3 py-1.5 border-r dark:border-white/10 {{ $textClass }}">
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ match($pago->TipoPago) {
                                     'YAPE' => 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
                                     'TRANSFERENCIA' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -82,16 +89,16 @@
                                 @if($pago->EsMora)
                                     <span class="text-danger-600 dark:text-danger-400 font-bold">Mora</span>
                                 @else
-                                    <span class="text-gray-400 dark:text-gray-600">Libre</span>
+                                    <span class="{{ $esTrasladado ? 'text-danger-500' : 'text-gray-400 dark:text-gray-600' }}">Libre</span>
                                 @endif
                             </td>
-                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono text-gray-950 dark:text-gray-200 font-bold">
+                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono font-bold {{ $esTrasladado ? 'text-danger-600 dark:text-danger-400' : 'text-gray-950 dark:text-gray-200' }}">
                                 {{ number_format($item['saldo_despues'], 2) }}
                             </td>
-                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-gray-600 dark:text-gray-400 truncate max-w-[150px]" title="{{ $pago->UsuarioRegistro }}">
+                            <td class="px-3 py-1.5 border-r dark:border-white/10 truncate max-w-[150px] {{ $textClass }}" title="{{ $pago->UsuarioRegistro }}">
                                 {{ $pago->UsuarioRegistro ?? '-' }}
                             </td>
-                            <td class="px-3 py-1.5 text-gray-500 dark:text-gray-500 italic text-[12px] truncate max-w-[200px]" title="{{ $pago->Comentario }}">
+                            <td class="px-3 py-1.5 italic text-[12px] truncate max-w-[200px] {{ $esTrasladado ? 'text-danger-600 dark:text-danger-400 font-bold' : 'text-gray-500 dark:text-gray-500' }}" title="{{ $pago->Comentario }}">
                                 {{ $pago->Comentario ?? 'Conforme' }}
                             </td>
                         </tr>

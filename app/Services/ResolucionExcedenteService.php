@@ -36,7 +36,8 @@ class ResolucionExcedenteService
     {
         // Obtener el pago original del Cliente A
         $pagoOriginal = Pago::find($solicitud->PagoOrigenID);
-        if (!$pagoOriginal) return;
+        if (!$pagoOriginal)
+            return;
 
         $montoAplicar = $solicitud->MontoAplicar ?? $pagoOriginal->MontoPagado;
 
@@ -46,22 +47,30 @@ class ResolucionExcedenteService
 
         // 1. Marcar el pago original como TRASLADADO
         $pagoOriginal->EstadoTraslado = 'TRASLADADO';
-        $pagoOriginal->Comentario = ($pagoOriginal->Comentario ? $pagoOriginal->Comentario . ' | ' : '') 
+        $pagoOriginal->Comentario = ($pagoOriginal->Comentario ? $pagoOriginal->Comentario . ' | ' : '')
             . "TRASLADADO a {$clienteDestinoNombre} - Solicitud #{$solicitud->SolicitudID}";
         $pagoOriginal->save(); // PagoObserver recalcula SaldoPendiente del crédito origen
+        
+        // RECALCULAR ESTADO DE LA CUOTA ORIGEN
+        if ($pagoOriginal->CuotaID) {
+            $this->recalcularEstadoCuota($pagoOriginal->CuotaID);
+        }
 
         // 2. Crear nuevo pago en crédito destino
         $cuota = Cuota::where('CreditoID', $solicitud->CreditoDestinoID)
-                    ->where('Activo', 1)
-                    ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
-                    ->orderBy('NumeroCuota', 'asc')
-                    ->first();
+            ->where('Activo', 1)
+            ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
+            ->orderBy('NumeroCuota', 'asc')
+            ->first();
 
-        Pago::create([
+        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+        $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now();
+
+        $nuevoPago = Pago::create([
             'CreditoID' => $solicitud->CreditoDestinoID,
             'CuotaID' => $cuota ? $cuota->CuotaID : null,
             'MontoPagado' => $montoAplicar,
-            'FechaPago' => Carbon::now(),
+            'FechaPago' => $fechaPago,
             'TipoPago' => $pagoOriginal->TipoPago,
             'TipoConcepto' => 'C',
             'EsMora' => false,
@@ -72,7 +81,12 @@ class ResolucionExcedenteService
             'Activo' => true,
             'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,
             'SolicitudResolucionID' => $solicitud->SolicitudID,
-        ]); // PagoObserver recalcula SaldoPendiente del crédito destino
+        ]);
+        
+        if ($nuevoPago->CuotaID) {
+            $this->recalcularEstadoCuota($nuevoPago->CuotaID);
+        }
+        $this->verificarCreditoCancelado($nuevoPago->CreditoID);
     }
 
     /**
@@ -82,7 +96,8 @@ class ResolucionExcedenteService
     private function procesarExcedente(SolicitudResolucionExcedente $solicitud, $aprobador): void
     {
         $excedente = $solicitud->excedente;
-        if (!$excedente) return;
+        if (!$excedente)
+            return;
 
         $montoAplicar = $solicitud->MontoAplicar ?? $excedente->Monto;
 
@@ -100,27 +115,30 @@ class ResolucionExcedenteService
         } else {
             $excedente->Monto = $nuevoMonto;
         }
-        
+
         $excedente->save();
 
         // Registrar pago en crédito destino
         if (in_array($solicitud->TipoResolucion, ['ASIGNACION_POR_RECLAMO', 'APLICACION_NUEVO_CREDITO'])) {
             $tipoPago = 'EFECTIVO';
             if ($excedente->TipoExcedente === 'YAPE_TRANSFERENCIA') {
-                $tipoPago = 'TRANSFERENCIA'; 
+                $tipoPago = 'TRANSFERENCIA';
             }
 
             $cuota = Cuota::where('CreditoID', $solicitud->CreditoDestinoID)
-                        ->where('Activo', 1)
-                        ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
-                        ->orderBy('NumeroCuota', 'asc')
-                        ->first();
+                ->where('Activo', 1)
+                ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
+                ->orderBy('NumeroCuota', 'asc')
+                ->first();
 
-            Pago::create([
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now();
+
+            $nuevoPago = Pago::create([
                 'CreditoID' => $solicitud->CreditoDestinoID,
                 'CuotaID' => $cuota ? $cuota->CuotaID : null,
                 'MontoPagado' => $montoAplicar,
-                'FechaPago' => Carbon::now(),
+                'FechaPago' => $fechaPago,
                 'TipoPago' => $tipoPago,
                 'TipoConcepto' => 'C',
                 'EsMora' => false,
@@ -131,6 +149,59 @@ class ResolucionExcedenteService
                 'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,
                 'SolicitudResolucionID' => $solicitud->SolicitudID,
             ]);
+            
+            if ($nuevoPago->CuotaID) {
+                $this->recalcularEstadoCuota($nuevoPago->CuotaID);
+            }
+            $this->verificarCreditoCancelado($nuevoPago->CreditoID);
+        }
+    }
+    
+    private function recalcularEstadoCuota($cuotaID): void
+    {
+        $cuota = Cuota::find($cuotaID);
+        if (!$cuota) return;
+
+        $totalPagadoEnCuota = Pago::where('CuotaID', $cuota->CuotaID)
+            ->where('Activo', 1)
+            ->where(function ($q) {
+                $q->whereNull('EstadoTraslado')
+                  ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+            })
+            ->sum('MontoPagado');
+
+        $nuevoEstado = $cuota->Estado;
+        if ($totalPagadoEnCuota >= $cuota->MontoCuota) {
+            $nuevoEstado = 'PAGADA';
+        } elseif (now()->isAfter($cuota->FechaVencimiento) && $totalPagadoEnCuota < $cuota->MontoCuota) {
+            $nuevoEstado = 'MORA';
+        } else {
+            $nuevoEstado = 'PENDIENTE';
+        }
+
+        $cuota->update(['Estado' => $nuevoEstado]);
+    }
+    
+    private function verificarCreditoCancelado($creditoID): void
+    {
+        $credito = \App\Models\Credito::find($creditoID);
+        if (!$credito) return;
+        
+        $montoCuotasTotal = $credito->cuotas()->where('Activo', 1)->sum('MontoCuota');
+        $totalPagado = Pago::where('Activo', 1)
+            ->where(function ($q) {
+                $q->whereNull('EstadoTraslado')->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+            })
+            ->whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
+            ->sum('MontoPagado');
+            
+        if ($totalPagado >= $montoCuotasTotal) {
+            $credito->update(['Estado' => 'CANCELADO']);
+        } else {
+            // Revertir a NORMAL si estaba CANCELADO pero ya no lo está
+            if ($credito->Estado === 'CANCELADO') {
+                $credito->update(['Estado' => 'NORMAL']);
+            }
         }
     }
 }
