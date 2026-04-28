@@ -42,12 +42,18 @@ class CalcularMoraAutomatica implements ShouldQueue
         }
 
         try {
+            // Precargar todas las fechas no morosas para optimizar el rendimiento (evita miles de consultas)
+            $fechasNoMorosas = CalendarioNoMoroso::where('Activo', true)
+                ->get()
+                ->map(fn($item) => \Carbon\Carbon::parse($item->Fecha)->toDateString())
+                ->toArray();
+
             // Obtener todos los créditos que:
-            // 1. Han vencido (FechaVencimiento <= hoy)
+            // 1. Han vencido (FechaVencimiento <= fecha_actual)
             // 2. Tienen saldo pendiente
             // 3. Están activos
             $creditosVencidos = Credito::where('Activo', 1)
-                ->whereDate('FechaVencimiento', '<=', now())
+                ->whereDate('FechaVencimiento', '<=', $fecha)
                 ->with(['proposicion.cliente.tasaMora', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
                 ->get();
 
@@ -58,6 +64,22 @@ class CalcularMoraAutomatica implements ShouldQueue
             foreach ($creditosVencidos as $credito) {
                 \Log::debug('[JOB] Procesando crédito: ' . $credito->CreditoID);
                 
+                // --- LÓGICA DE VENCIMIENTO EFECTIVO ---
+                $vencimientoEfectivo = \Carbon\Carbon::parse($credito->FechaVencimiento);
+                
+                // Desplazar el vencimiento al siguiente día hábil si cae en un día no laborable (domingos, feriados, etc.)
+                while (in_array($vencimientoEfectivo->toDateString(), $fechasNoMorosas)) {
+                    $vencimientoEfectivo->addDay();
+                }
+
+                // El cliente tiene todo el día del "Vencimiento Efectivo" para pagar. 
+                // Por lo tanto, SOLO se cobra mora si la fecha de apertura ($fecha) es ESTRICTAMENTE MAYOR al Vencimiento Efectivo.
+                if ($fecha->toDateString() <= $vencimientoEfectivo->toDateString()) {
+                    \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': En periodo de gracia. Vencimiento efectivo: ' . $vencimientoEfectivo->toDateString());
+                    continue; // Aún no corresponde cobrar mora
+                }
+                // ---------------------------------------
+
                 // Verificar si ya existe mora registrada para la fecha especificada
                 $moraHoy = Mora::where('CreditoID', $credito->CreditoID)
                     ->whereDate('FechaMora', $fecha->toDateString())
