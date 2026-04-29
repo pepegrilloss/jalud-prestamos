@@ -349,7 +349,8 @@ class CreditoResource extends Resource
     public static function getWidgets(): array
     {
         return [
-            \App\Filament\Resources\CreditoResource\Widgets\CreditosDelDiaStats::class,
+            \App\Filament\Widgets\CreditoGeneradoTotalWidget::class,
+            \App\Filament\Widgets\CreditoGeneradoCantidadWidget::class,
         ];
     }
 

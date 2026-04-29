@@ -55,7 +55,7 @@ class TipoComprobanteGastoPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_tipo::comprobante::gasto');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class TipoComprobanteGastoPolicy
      */
     public function forceDelete(User $user, TipoComprobanteGasto $tipoComprobanteGasto): bool
     {
-        return $user->can('force_delete_tipo::comprobante::gasto');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class TipoComprobanteGastoPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_tipo::comprobante::gasto');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class TipoComprobanteGastoPolicy
      */
     public function restore(User $user, TipoComprobanteGasto $tipoComprobanteGasto): bool
     {
-        return $user->can('restore_tipo::comprobante::gasto');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class TipoComprobanteGastoPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_tipo::comprobante::gasto');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class TipoComprobanteGastoPolicy
      */
     public function replicate(User $user, TipoComprobanteGasto $tipoComprobanteGasto): bool
     {
-        return $user->can('replicate_tipo::comprobante::gasto');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class TipoComprobanteGastoPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_tipo::comprobante::gasto');
+        return $user->can('{{ Reorder }}');
     }
 }
-

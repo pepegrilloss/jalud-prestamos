@@ -1,4 +1,3 @@
-@if(!App\Models\AperturaCierreDia::estaAbierto())
 <div class="mb-6 rounded-lg border-l-4 border-red-600 bg-red-50 p-5 shadow-md dark:bg-red-950 dark:border-red-500">
     <div class="flex items-start gap-4">
         <svg class="h-6 w-6 flex-shrink-0 text-red-600 dark:text-red-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -14,4 +13,3 @@
         </div>
     </div>
 </div>
-@endif

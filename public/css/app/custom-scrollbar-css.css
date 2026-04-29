@@ -1,0 +1,38 @@
+/* Estilos personalizados para la barra de desplazamiento (Scrollbar) */
+
+/* Soporte para Firefox */
+html,
+body,
+.fi-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(164, 203, 59, 0.5) transparent;
+}
+
+/* Ancho general de la barra (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+/* Fondo de la barra (track) */
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* El control deslizante (thumb) */
+::-webkit-scrollbar-thumb {
+    background: rgba(164, 203, 59, 0.5);
+    /* Verde corporativo con transparencia */
+    border-radius: 10px;
+}
+
+/* El control deslizante al pasar el mouse */
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(164, 203, 59, 0.9);
+    /* Verde corporativo más sólido */
+}
+
+/* Ocultar flechas de arriba/abajo en la barra (opcional pero más moderno) */
+::-webkit-scrollbar-button {
+    display: none;
+}

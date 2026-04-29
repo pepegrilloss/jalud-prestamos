@@ -356,4 +356,13 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
             'view' => Pages\ViewExcedente::route('/{record}'),
         ];
     }
+    public static function getWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\ExcedenteYapeStatsWidget::class,
+            \App\Filament\Widgets\ExcedentePromotorStatsWidget::class,
+            \App\Filament\Widgets\ExcedenteOficinaStatsWidget::class,
+            \App\Filament\Widgets\ExcedenteTotalStatsWidget::class,
+        ];
+    }
 }

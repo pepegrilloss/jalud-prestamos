@@ -53,7 +53,6 @@ return [
     ],
 
     'custom_permissions' => [
-        'page_Themes',
         'ver_todas_las_sedes',
         'abrir_dia_apertura',
         'cerrar_dia_apertura',

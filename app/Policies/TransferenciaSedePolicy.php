@@ -55,7 +55,7 @@ class TransferenciaSedePolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_transferencia::sede');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class TransferenciaSedePolicy
      */
     public function forceDelete(User $user, TransferenciaSede $transferenciaSede): bool
     {
-        return $user->can('force_delete_transferencia::sede');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class TransferenciaSedePolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_transferencia::sede');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class TransferenciaSedePolicy
      */
     public function restore(User $user, TransferenciaSede $transferenciaSede): bool
     {
-        return $user->can('restore_transferencia::sede');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class TransferenciaSedePolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_transferencia::sede');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class TransferenciaSedePolicy
      */
     public function replicate(User $user, TransferenciaSede $transferenciaSede): bool
     {
-        return $user->can('replicate_transferencia::sede');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class TransferenciaSedePolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_transferencia::sede');
+        return $user->can('{{ Reorder }}');
     }
 }
-

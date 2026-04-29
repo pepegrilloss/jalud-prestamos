@@ -23,7 +23,19 @@ class ListExcedentes extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            ExcedenteResource\Widgets\ExcedentesStats::class,
+            \App\Filament\Widgets\ExcedenteYapeStatsWidget::class,
+            \App\Filament\Widgets\ExcedentePromotorStatsWidget::class,
+            \App\Filament\Widgets\ExcedenteOficinaStatsWidget::class,
+            \App\Filament\Widgets\ExcedenteTotalStatsWidget::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int | string | array
+    {
+        return [
+            'default' => 1,
+            'md' => 4,
+            'lg' => 4,
         ];
     }
 }

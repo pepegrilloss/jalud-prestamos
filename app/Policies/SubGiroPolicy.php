@@ -55,7 +55,7 @@ class SubGiroPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_sub::giro');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class SubGiroPolicy
      */
     public function forceDelete(User $user, SubGiro $subGiro): bool
     {
-        return $user->can('force_delete_sub::giro');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class SubGiroPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_sub::giro');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class SubGiroPolicy
      */
     public function restore(User $user, SubGiro $subGiro): bool
     {
-        return $user->can('restore_sub::giro');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class SubGiroPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_sub::giro');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class SubGiroPolicy
      */
     public function replicate(User $user, SubGiro $subGiro): bool
     {
-        return $user->can('replicate_sub::giro');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class SubGiroPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_sub::giro');
+        return $user->can('{{ Reorder }}');
     }
 }
-

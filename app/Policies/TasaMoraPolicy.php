@@ -55,7 +55,7 @@ class TasaMoraPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_tasa::mora');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class TasaMoraPolicy
      */
     public function forceDelete(User $user, TasaMora $tasaMora): bool
     {
-        return $user->can('force_delete_tasa::mora');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class TasaMoraPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_tasa::mora');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class TasaMoraPolicy
      */
     public function restore(User $user, TasaMora $tasaMora): bool
     {
-        return $user->can('restore_tasa::mora');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class TasaMoraPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_tasa::mora');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class TasaMoraPolicy
      */
     public function replicate(User $user, TasaMora $tasaMora): bool
     {
-        return $user->can('replicate_tasa::mora');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class TasaMoraPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_tasa::mora');
+        return $user->can('{{ Reorder }}');
     }
 }
-

@@ -1,3 +1,4 @@
+<x-filament-widgets::widget class="fi-account-widget">
 @php
     $user = filament()->auth()->user();
     $sedeNombre = 'No asignada';
@@ -16,9 +17,7 @@
         }
     }
 @endphp
-
-<x-filament-widgets::widget class="fi-account-widget">
-    <x-filament::section>
+<x-filament::section>
         <div class="flex items-center gap-x-3">
             <x-filament-panels::avatar.user size="lg" :user="$user" />
 

@@ -63,7 +63,7 @@ class SolicitudResolucionExcedentePolicy
      */
     public function forceDelete(User $user, SolicitudResolucionExcedente $solicitudResolucionExcedente): bool
     {
-        return $user->can('force_delete_resolucion::excedente');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class SolicitudResolucionExcedentePolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_resolucion::excedente');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class SolicitudResolucionExcedentePolicy
      */
     public function restore(User $user, SolicitudResolucionExcedente $solicitudResolucionExcedente): bool
     {
-        return $user->can('restore_resolucion::excedente');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class SolicitudResolucionExcedentePolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_resolucion::excedente');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class SolicitudResolucionExcedentePolicy
      */
     public function replicate(User $user, SolicitudResolucionExcedente $solicitudResolucionExcedente): bool
     {
-        return $user->can('replicate_resolucion::excedente');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class SolicitudResolucionExcedentePolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_resolucion::excedente');
+        return $user->can('{{ Reorder }}');
     }
 }
-

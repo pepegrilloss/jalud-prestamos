@@ -781,4 +781,12 @@ class PagoResource extends Resource
         }
         return true;
     }
+    public static function getWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\PagosCantidadStatsWidget::class,
+            \App\Filament\Widgets\PagosMontoStatsWidget::class,
+            \App\Filament\Widgets\PagosMontoMesStatsWidget::class,
+        ];
+    }
 }

@@ -63,7 +63,7 @@ class ExcedentePolicy
      */
     public function forceDelete(User $user, Excedente $excedente): bool
     {
-        return $user->can('force_delete_excedente');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class ExcedentePolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_excedente');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class ExcedentePolicy
      */
     public function restore(User $user, Excedente $excedente): bool
     {
-        return $user->can('restore_excedente');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class ExcedentePolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_excedente');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class ExcedentePolicy
      */
     public function replicate(User $user, Excedente $excedente): bool
     {
-        return $user->can('replicate_excedente');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class ExcedentePolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_excedente');
+        return $user->can('{{ Reorder }}');
     }
 }
-

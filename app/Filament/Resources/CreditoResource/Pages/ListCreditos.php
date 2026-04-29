@@ -41,9 +41,20 @@ class ListCreditos extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            \App\Filament\Resources\CreditoResource\Widgets\CreditosDelDiaStats::class,
+            \App\Filament\Widgets\CreditoGeneradoTotalWidget::class,
+            \App\Filament\Widgets\CreditoGeneradoCantidadWidget::class,
         ];
     }
+
+    public function getHeaderWidgetsColumns(): int | string | array
+    {
+        return [
+            'default' => 1,
+            'md' => 2,
+            'lg' => 2,
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [];

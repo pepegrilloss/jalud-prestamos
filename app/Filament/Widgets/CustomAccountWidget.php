@@ -9,7 +9,7 @@ class CustomAccountWidget extends BaseAccountWidget
 {
     use HasWidgetShield;
 
-    protected int|string|array $columnSpan = 2;
+    protected int|string|array $columnSpan = 'full';
 
     protected static string $view = 'filament.widgets.custom-account-widget';
 }

@@ -55,7 +55,7 @@ class MotivoPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_motivo');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class MotivoPolicy
      */
     public function forceDelete(User $user, Motivo $motivo): bool
     {
-        return $user->can('force_delete_motivo');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class MotivoPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_motivo');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class MotivoPolicy
      */
     public function restore(User $user, Motivo $motivo): bool
     {
-        return $user->can('restore_motivo');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class MotivoPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_motivo');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class MotivoPolicy
      */
     public function replicate(User $user, Motivo $motivo): bool
     {
-        return $user->can('replicate_motivo');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class MotivoPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_motivo');
+        return $user->can('{{ Reorder }}');
     }
 }
-

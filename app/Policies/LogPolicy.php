@@ -55,7 +55,7 @@ class LogPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_log');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class LogPolicy
      */
     public function forceDelete(User $user, Log $log): bool
     {
-        return $user->can('force_delete_log');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class LogPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_log');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class LogPolicy
      */
     public function restore(User $user, Log $log): bool
     {
-        return $user->can('restore_log');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class LogPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_log');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class LogPolicy
      */
     public function replicate(User $user, Log $log): bool
     {
-        return $user->can('replicate_log');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class LogPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_log');
+        return $user->can('{{ Reorder }}');
     }
 }
-

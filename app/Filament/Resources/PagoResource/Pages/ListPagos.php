@@ -4,7 +4,6 @@ namespace App\Filament\Resources\PagoResource\Pages;
 
 use App\Filament\Resources\PagoResource;
 use App\Models\AperturaCierreDia;
-use App\Filament\Widgets\PagosStats;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
@@ -40,7 +39,18 @@ class ListPagos extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            PagosStats::class,
+            \App\Filament\Widgets\PagosCantidadStatsWidget::class,
+            \App\Filament\Widgets\PagosMontoStatsWidget::class,
+            \App\Filament\Widgets\PagosMontoMesStatsWidget::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int | string | array
+    {
+        return [
+            'default' => 1,
+            'md' => 3,
+            'lg' => 3,
         ];
     }
     

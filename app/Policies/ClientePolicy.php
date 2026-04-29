@@ -55,7 +55,7 @@ class ClientePolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_cliente');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class ClientePolicy
      */
     public function forceDelete(User $user, Cliente $cliente): bool
     {
-        return $user->can('force_delete_cliente');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class ClientePolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_cliente');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class ClientePolicy
      */
     public function restore(User $user, Cliente $cliente): bool
     {
-        return $user->can('restore_cliente');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class ClientePolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_cliente');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class ClientePolicy
      */
     public function replicate(User $user, Cliente $cliente): bool
     {
-        return $user->can('replicate_cliente');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class ClientePolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_cliente');
+        return $user->can('{{ Reorder }}');
     }
 }
-

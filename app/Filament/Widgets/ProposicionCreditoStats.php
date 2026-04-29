@@ -1,9 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\GenerarCreditoResource\Widgets;
+namespace App\Filament\Widgets;
 
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
-
 use App\Models\ProposicionCredito;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -11,6 +10,11 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 class ProposicionCreditoStats extends BaseWidget
 {
     use HasWidgetShield;
+
+    public static function canView(): bool
+    {
+        return auth()->user()->can('widget_' . class_basename(static::class));
+    }
 
     protected function getStats(): array
     {

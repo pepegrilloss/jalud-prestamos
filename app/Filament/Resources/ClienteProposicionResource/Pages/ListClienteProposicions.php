@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\ClienteProposicionResource\Pages;
 
 use App\Filament\Resources\ClienteProposicionResource;
-use App\Filament\Resources\ClienteProposicionResource\Widgets\ClienteProposicionStats;
+
 use App\Models\ProposicionCredito;
 use App\Models\AperturaCierreDia;
 use Filament\Resources\Pages\ListRecords;
@@ -115,7 +115,18 @@ class ListClienteProposicions extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            ClienteProposicionStats::class,
+            \App\Filament\Widgets\DashboardMisClientesActivosWidget::class,
+            \App\Filament\Widgets\DashboardMisPrestamosActivosWidget::class,
+            \App\Filament\Widgets\DashboardMiTotalPrestadoWidget::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int | string | array
+    {
+        return [
+            'default' => 1,
+            'md' => 3,
+            'lg' => 3,
         ];
     }
 }

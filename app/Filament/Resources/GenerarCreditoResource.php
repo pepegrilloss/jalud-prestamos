@@ -602,7 +602,8 @@ class GenerarCreditoResource extends Resource
     public static function getWidgets(): array
     {
         return [
-            Widgets\CreditosPorGenerarStats::class,
+            \App\Filament\Widgets\GenerarCreditosTotalWidget::class,
+            \App\Filament\Widgets\GenerarCreditosCantidadWidget::class,
         ];
     }
 

@@ -11,6 +11,11 @@ class DiaCerradoBanner extends Widget
 {
     use HasWidgetShield;
 
+    public static function canView(): bool
+    {
+        return !\App\Models\AperturaCierreDia::estaAbierto() && parent::canView();
+    }
+
     protected static string $view = 'filament.widgets.dia-cerrado-banner';
 
     protected static bool $isLazy = false;

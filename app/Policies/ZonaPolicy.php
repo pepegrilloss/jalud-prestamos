@@ -55,7 +55,7 @@ class ZonaPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_zona');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class ZonaPolicy
      */
     public function forceDelete(User $user, Zona $zona): bool
     {
-        return $user->can('force_delete_zona');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class ZonaPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_zona');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class ZonaPolicy
      */
     public function restore(User $user, Zona $zona): bool
     {
-        return $user->can('restore_zona');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class ZonaPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_zona');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class ZonaPolicy
      */
     public function replicate(User $user, Zona $zona): bool
     {
-        return $user->can('replicate_zona');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class ZonaPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_zona');
+        return $user->can('{{ Reorder }}');
     }
 }
-
