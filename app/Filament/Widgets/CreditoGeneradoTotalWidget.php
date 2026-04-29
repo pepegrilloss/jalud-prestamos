@@ -5,11 +5,15 @@ namespace App\Filament\Widgets;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Filament\Widgets\Concerns\InteractsWithPageTable;
 use App\Models\Credito;
 
 class CreditoGeneradoTotalWidget extends BaseWidget
 {
     use HasWidgetShield;
+    use InteractsWithPageTable;
+
+    public ?string $fechaFiltro = null;
 
     protected int | string | array $columnSpan = 1;
 
@@ -18,21 +22,52 @@ class CreditoGeneradoTotalWidget extends BaseWidget
         return auth()->user()->can('widget_' . class_basename(static::class));
     }
 
+    protected function getTablePage(): string
+    {
+        return \App\Filament\Resources\CreditoResource\Pages\ListCreditos::class;
+    }
+
+    public function mount(): void
+    {
+        $this->fechaFiltro = $this->tableFilters['fechaFiltro'] ?? null;
+    }
+
     protected function getStats(): array
     {
-        $totalMonto = Credito::whereHas('proposicion', function ($q) {
+        $page = $this->getPageTable();
+        $fecha = property_exists($page, 'fechaFiltro') ? $page->fechaFiltro : null;
+
+        $query = Credito::whereHas('proposicion', function ($q) {
                 $q->where('FueRefinanciada', 0);
-            })
-            ->get()
+            });
+        
+        if ($fecha) {
+            $query->whereDate('FechaGeneracion', $fecha);
+        }
+
+        $totalMonto = $query->get()
             ->sum(function($credito) {
                 return $credito->proposicion?->MontoTotal ?? 0;
             });
 
+        $description = $fecha 
+            ? 'Filtrado: ' . \Carbon\Carbon::parse($fecha)->format('d/m/Y') 
+            : 'Histórico Completo 📅';
+
         return [
             Stat::make('Créditos Generados Totales', 'S/ ' . number_format($totalMonto, 2))
-                ->description('Histórico Completo 📅')
+                ->description($description)
                 ->descriptionIcon('heroicon-m-calendar-days')
-                ->color('success'),
+                ->color($fecha ? 'warning' : 'success')
+                ->extraAttributes([
+                    'class' => 'cursor-pointer hover:bg-gray-50 transition',
+                    'wire:click' => 'abrirFiltroFecha',
+                ]),
         ];
+    }
+
+    public function abrirFiltroFecha()
+    {
+        $this->dispatch('abrirModalFiltroFecha');
     }
 }
