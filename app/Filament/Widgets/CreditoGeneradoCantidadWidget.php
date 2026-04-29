@@ -26,6 +26,12 @@ class CreditoGeneradoCantidadWidget extends BaseWidget
         $this->dispatch('updateFechaCreditos', fecha: $value);
     }
 
+    #[\Livewire\Attributes\On('updateFechaCreditos')]
+    public function syncFechaFiltro($fecha)
+    {
+        $this->fechaFiltro = $fecha;
+    }
+
     public static function canView(): bool
     {
         return auth()->user()->can('widget_' . class_basename(static::class));
