@@ -7,18 +7,9 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\Credito;
 
-use Filament\Widgets\Concerns\InteractsWithPageTable;
-
 class CreditoGeneradoCantidadWidget extends BaseWidget
 {
     use HasWidgetShield;
-    use InteractsWithPageTable;
-
-    public array $tableColumnSearches = [];
-    public array $tableFilters = [];
-    public $tableSortColumn = null;
-    public $tableSortDirection = null;
-    public $tableSearch = '';
 
     protected int | string | array $columnSpan = 1;
 
@@ -27,17 +18,18 @@ class CreditoGeneradoCantidadWidget extends BaseWidget
         return auth()->user()->can('widget_' . class_basename(static::class));
     }
 
-    protected function getTablePage(): string
-    {
-        return \App\Filament\Resources\CreditoResource\Pages\ListCreditos::class;
-    }
-
     protected function getStats(): array
     {
         $fecha = session('creditos_fecha_filtro_v2');
 
-        $query = $this->getPageTableQuery();
+        $query = Credito::whereHas('proposicion', function ($q) {
+                $q->where('FueRefinanciada', 0);
+            });
         
+        if ($fecha) {
+            $query->whereDate('FechaGeneracion', $fecha);
+        }
+
         $cantidad = $query->count();
 
         $description = $fecha 
