@@ -56,6 +56,7 @@ return [
         'ver_todas_las_sedes',
         'abrir_dia_apertura',
         'cerrar_dia_apertura',
+        'balance_diario',
     ],
 
     'generator' => [

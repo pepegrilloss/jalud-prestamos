@@ -19,6 +19,10 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
     #[Livewire\Attributes\On('abrirBalanceDiario')]
     public function abrirModal(): void
     {
+        if (! auth()->user()?->can('balance_diario')) {
+            return;
+        }
+
         $this->mountAction('generarReporte');
     }
 
