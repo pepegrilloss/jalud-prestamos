@@ -3,7 +3,8 @@
 namespace App\Filament\Resources\GenerarCreditoResource\Pages;
 
 use App\Filament\Resources\GenerarCreditoResource;
-use App\Filament\Resources\GenerarCreditoResource\Widgets\CreditosPorGenerarStats;
+use App\Filament\Widgets\GenerarCreditoTotalPorGenerarStats;
+use App\Filament\Widgets\GenerarCreditoCantidadCreditosStats;
 use App\Models\AperturaCierreDia;
 use Filament\Resources\Pages\ListRecords;
 
@@ -28,7 +29,8 @@ class ListGenerarCreditos extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            CreditosPorGenerarStats::class,
+            GenerarCreditoTotalPorGenerarStats::class,
+            GenerarCreditoCantidadCreditosStats::class,
         ];
     }
 }

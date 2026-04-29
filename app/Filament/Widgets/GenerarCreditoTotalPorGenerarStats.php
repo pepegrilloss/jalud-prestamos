@@ -1,14 +1,16 @@
 <?php
 
-namespace App\Filament\Resources\GenerarCreditoResource\Widgets;
+namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\ProposicionCredito;
-use Illuminate\Database\Eloquent\Builder;
 
-class CreditosPorGenerarStats extends BaseWidget
+class GenerarCreditoTotalPorGenerarStats extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected function getStats(): array
     {
         $query = ProposicionCredito::where('Estado', 'APROBADO')
@@ -20,9 +22,10 @@ class CreditosPorGenerarStats extends BaseWidget
             $query->where('SedeID', $user->SedeID);
         }
 
-        $totalMonto = (clone $query)->get()->sum(function ($record) {
+        $totalMonto = $query->get()->sum(function ($record) {
             return (float) ($record->MontoTotal ?? 0) + ((float) ($record->MontoTotal ?? 0) * ((float) ($record->TasaInteres ?? 0) / 100));
         });
+
         $cantidad = (clone $query)->count();
 
         return [
@@ -31,16 +34,6 @@ class CreditosPorGenerarStats extends BaseWidget
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success')
                 ->extraAttributes(['class' => 'font-bold text-2xl']),
-
-            Stat::make('Cantidad de Créditos', $cantidad)
-                ->description('Listos para formalizar')
-                ->descriptionIcon('heroicon-m-document-check')
-                ->color('primary'),
         ];
-    }
-
-    protected function getColumns(): int
-    {
-        return 2;
     }
 }

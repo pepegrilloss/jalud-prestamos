@@ -55,7 +55,7 @@ class AperturaCierreDiaPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('delete_any_apertura::cierre::dia');
+        return $user->can('{{ DeleteAny }}');
     }
 
     /**
@@ -63,7 +63,7 @@ class AperturaCierreDiaPolicy
      */
     public function forceDelete(User $user, AperturaCierreDia $aperturaCierreDia): bool
     {
-        return $user->can('force_delete_apertura::cierre::dia');
+        return $user->can('{{ ForceDelete }}');
     }
 
     /**
@@ -71,7 +71,7 @@ class AperturaCierreDiaPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('force_delete_any_apertura::cierre::dia');
+        return $user->can('{{ ForceDeleteAny }}');
     }
 
     /**
@@ -79,7 +79,7 @@ class AperturaCierreDiaPolicy
      */
     public function restore(User $user, AperturaCierreDia $aperturaCierreDia): bool
     {
-        return $user->can('restore_apertura::cierre::dia');
+        return $user->can('{{ Restore }}');
     }
 
     /**
@@ -87,7 +87,7 @@ class AperturaCierreDiaPolicy
      */
     public function restoreAny(User $user): bool
     {
-        return $user->can('restore_any_apertura::cierre::dia');
+        return $user->can('{{ RestoreAny }}');
     }
 
     /**
@@ -95,7 +95,7 @@ class AperturaCierreDiaPolicy
      */
     public function replicate(User $user, AperturaCierreDia $aperturaCierreDia): bool
     {
-        return $user->can('replicate_apertura::cierre::dia');
+        return $user->can('{{ Replicate }}');
     }
 
     /**
@@ -103,7 +103,6 @@ class AperturaCierreDiaPolicy
      */
     public function reorder(User $user): bool
     {
-        return $user->can('reorder_apertura::cierre::dia');
+        return $user->can('{{ Reorder }}');
     }
 }
-
