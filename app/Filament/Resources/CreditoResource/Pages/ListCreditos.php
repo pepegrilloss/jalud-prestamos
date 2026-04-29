@@ -28,7 +28,7 @@ class ListCreditos extends ListRecords
     public function updateFechaFiltro($fecha)
     {
         $this->fechaFiltro = $fecha;
-        $this->dispatch('refreshTable');
+        $this->resetTable();
     }
 
     public function getTitle(): string

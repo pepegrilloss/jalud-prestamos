@@ -20,6 +20,12 @@ class CreditoGeneradoCantidadWidget extends BaseWidget
         $this->fechaFiltro = session('creditos_fecha_filtro_v2');
     }
 
+    public function updatedFechaFiltro($value)
+    {
+        session()->put('creditos_fecha_filtro_v2', $value);
+        $this->dispatch('updateFechaCreditos', fecha: $value);
+    }
+
     public static function canView(): bool
     {
         return auth()->user()->can('widget_' . class_basename(static::class));
