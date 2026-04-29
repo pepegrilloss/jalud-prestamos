@@ -6,7 +6,6 @@ use App\Filament\Resources\CreditoResource;
 use App\Models\AperturaCierreDia;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Forms\Components\DatePicker;
 
 class ListCreditos extends ListRecords
 {
@@ -30,12 +29,6 @@ class ListCreditos extends ListRecords
     {
         $this->fechaFiltro = $fecha;
         $this->dispatch('refreshTable');
-    }
-
-    #[\Livewire\Attributes\On('abrirModalFiltroFecha')]
-    public function abrirModalFiltro()
-    {
-        $this->mountAction('filtrar_fecha');
     }
 
     public function getTitle(): string
@@ -66,37 +59,6 @@ class ListCreditos extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\Action::make('filtrar_fecha')
-                ->label('Filtrar por Fecha')
-                ->icon('heroicon-m-calendar-days')
-                ->color('info')
-                ->modalHeading('Seleccionar Fecha para Filtrar')
-                ->modalWidth('sm')
-                ->form([
-                    DatePicker::make('fecha')
-                        ->label('Fecha de Generación')
-                        ->default($this->fechaFiltro)
-                        ->required()
-                        ->native(false)
-                        ->displayFormat('d/m/Y'),
-                ])
-                ->action(function (array $data) {
-                    $this->fechaFiltro = $data['fecha'];
-                    session()->put('creditos_fecha_filtro_v2', $data['fecha']);
-                    $this->dispatch('refreshTable');
-                }),
-            
-            Actions\Action::make('limpiar_filtro')
-                ->label('Limpiar Filtro')
-                ->icon('heroicon-m-x-mark')
-                ->color('danger')
-                ->action(function () {
-                    $this->fechaFiltro = null;
-                    session()->forget('creditos_fecha_filtro_v2');
-                    $this->dispatch('refreshTable');
-                })
-                ->visible(fn() => !empty($this->fechaFiltro)),
-        ];
+        return [];
     }
 }
