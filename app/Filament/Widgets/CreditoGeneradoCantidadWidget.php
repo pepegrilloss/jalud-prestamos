@@ -39,24 +39,21 @@ class CreditoGeneradoCantidadWidget extends BaseWidget
 
         $cantidad = $query->count();
 
+        $inputId = 'datePickerCantidad';
+
         $description = $fecha 
-            ? 'En la fecha seleccionada' 
-            : 'Todos los registros';
+            ? 'En la fecha seleccionada <input type="date" id="'.$inputId.'" wire:model.live="fechaFiltro" class="sr-only">' 
+            : 'Todos los registros <input type="date" id="'.$inputId.'" wire:model.live="fechaFiltro" class="sr-only">';
 
         return [
             Stat::make('Cantidad de Totales', $cantidad . ' créditos')
-                ->description($description)
+                ->description(new \Illuminate\Support\HtmlString($description))
                 ->descriptionIcon('heroicon-m-document-check')
                 ->color($fecha ? 'warning' : 'primary')
                 ->extraAttributes([
-                    'class' => 'cursor-pointer hover:bg-gray-50 transition',
-                    'wire:click' => 'abrirFiltroFecha',
+                    'class' => 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition',
+                    'onclick' => 'setTimeout(() => { document.getElementById(\''.$inputId.'\').showPicker(); }, 50)',
                 ]),
         ];
-    }
-
-    public function abrirFiltroFecha()
-    {
-        $this->dispatch('abrirModalFiltroFecha');
     }
 }
