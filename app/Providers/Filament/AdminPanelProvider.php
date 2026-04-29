@@ -94,7 +94,8 @@ class AdminPanelProvider extends PanelProvider
                     ->icon('heroicon-o-document-chart-bar')
                     ->group('Reportes')
                     ->sort(1)
-                    ->url('#balance-diario'),
+                    ->url('#balance-diario')
+                    ->visible(fn () => auth()->user()?->can('ver_balance_diario') ?? false),
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
