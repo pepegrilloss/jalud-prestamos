@@ -7,7 +7,6 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\ProposicionCredito;
 
-<<<<<<<< HEAD:app/Filament/Widgets/GenerarCreditosTotalWidget.php
 class GenerarCreditosTotalWidget extends BaseWidget
 {
     use HasWidgetShield;
@@ -19,12 +18,6 @@ class GenerarCreditosTotalWidget extends BaseWidget
         return auth()->user()->can('widget_' . class_basename(static::class));
     }
 
-========
-class GenerarCreditoTotalPorGenerarStats extends BaseWidget
-{
-    use HasWidgetShield;
-
->>>>>>>> opencode/calm-garden:app/Filament/Widgets/GenerarCreditoTotalPorGenerarStats.php
     protected function getStats(): array
     {
         $query = ProposicionCredito::where('Estado', 'APROBADO')
@@ -36,14 +29,10 @@ class GenerarCreditoTotalPorGenerarStats extends BaseWidget
             $query->where('SedeID', $user->SedeID);
         }
 
-        $totalMonto = $query->get()->sum(function ($record) {
+        $totalMonto = (clone $query)->get()->sum(function ($record) {
             return (float) ($record->MontoTotal ?? 0) + ((float) ($record->MontoTotal ?? 0) * ((float) ($record->TasaInteres ?? 0) / 100));
         });
-<<<<<<<< HEAD:app/Filament/Widgets/GenerarCreditosTotalWidget.php
         
-========
-
->>>>>>>> opencode/calm-garden:app/Filament/Widgets/GenerarCreditoTotalPorGenerarStats.php
         $cantidad = (clone $query)->count();
 
         return [

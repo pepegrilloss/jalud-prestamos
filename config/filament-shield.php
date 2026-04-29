@@ -56,7 +56,6 @@ return [
         'ver_todas_las_sedes',
         'abrir_dia_apertura',
         'cerrar_dia_apertura',
-        'ver_balance_diario',
     ],
 
     'generator' => [
@@ -87,7 +86,7 @@ return [
 
     'discovery' => [
         'discover_all_resources' => false,
-        'discover_all_widgets' => true,
+        'discover_all_widgets' => false,
         'discover_all_pages' => false,
     ],
 

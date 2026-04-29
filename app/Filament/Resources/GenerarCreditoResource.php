@@ -602,13 +602,8 @@ class GenerarCreditoResource extends Resource
     public static function getWidgets(): array
     {
         return [
-<<<<<<< HEAD
             \App\Filament\Widgets\GenerarCreditosTotalWidget::class,
             \App\Filament\Widgets\GenerarCreditosCantidadWidget::class,
-=======
-            \App\Filament\Widgets\GenerarCreditoTotalPorGenerarStats::class,
-            \App\Filament\Widgets\GenerarCreditoCantidadCreditosStats::class,
->>>>>>> opencode/calm-garden
         ];
     }
 
