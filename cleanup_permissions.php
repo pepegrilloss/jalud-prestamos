@@ -1,52 +1,58 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
-$app = require_once __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->bootstrap();
+
+// Script para limpiar permisos personalizados innecesarios
+// Ejecutar con: php artisan tinker < cleanup_permissions.php
 
 use Spatie\Permission\Models\Permission;
 
-$keepNames = [
-    'ver_todas_las_sedes',
-    'abrir_dia_apertura',
-    'cerrar_dia_apertura',
+// Permisos personalizados a CONSERVAR
+$mantener = [
+    'Abrir Dia Apertura',
+    'Cerrar Dia Apertura',
+    'Ver Todas Las Sedes',
 ];
 
-// Prefijos estandar que queremos mantener
-$standardPrefixes = [
-    'view_', 'view_any_', 'create_', 'update_', 'delete_', 'restore_', 'force_delete_',
-    'page_', 'widget_'
+// Permisos personalizados a ELIMINAR (los que se ven en la imagen)
+$eliminar = [
+    'Create Crear::proposicion::credito',
+    'Delete Crear::proposicion::credito',
+    'Update Crear::proposicion::credito',
+    'View Any Crear::proposicion::credito',
+    'View Crear::proposicion::credito',
+    'Widget Apertura Cierre Dia Widget',
+    'Widget Cliente Proposicion Stats',
+    'Widget Cobranza Stats',
+    'Widget Exoneraciones Pendientes Widget',
+    'Widget Exoneraciones Stats Widget',
+    'Widget Pagos Stats',
+    'Widget Proposiciones Stats',
 ];
 
-$permissions = Permission::all();
-$deleted = [];
+echo "=== Limpieza de Permisos Personalizados ===" . PHP_EOL;
 
-foreach ($permissions as $permission) {
-    $name = $permission->name;
-    
-    // Si esta en la lista de los que queremos mantener expresamente, lo saltamos
-    if (in_array($name, $keepNames)) {
-        continue;
+$deleted = 0;
+foreach ($eliminar as $permiso) {
+    $p = Permission::where('name', $permiso)->first();
+    if ($p) {
+        // Desvincular de roles antes de eliminar
+        $p->roles()->detach();
+        $p->delete();
+        echo "✅ Eliminado: {$permiso}" . PHP_EOL;
+        $deleted++;
+    } else {
+        echo "⚠️  No encontrado: {$permiso}" . PHP_EOL;
     }
-    
-    // Si empieza con un prefijo estandar de Shield, lo saltamos (son recursos, paginas o widgets legitimos)
-    $isStandard = false;
-    foreach ($standardPrefixes as $prefix) {
-        if (str_starts_with($name, $prefix)) {
-            $isStandard = true;
-            break;
-        }
-    }
-    
-    if ($isStandard) {
-        continue;
-    }
-    
-    // Si llegamos aqui, es un permiso "basura" o personalizado que ya no queremos
-    $deleted[] = $name;
-    $permission->delete();
 }
 
-echo "Permisos eliminados:\n";
-print_r($deleted);
-echo "\nLimpieza completada.\n";
+echo PHP_EOL . "Total eliminados: {$deleted}" . PHP_EOL;
+
+// Verificar que los 3 que queremos mantener existan
+echo PHP_EOL . "=== Permisos Personalizados Restantes ===" . PHP_EOL;
+foreach ($mantener as $permiso) {
+    $exists = Permission::where('name', $permiso)->exists();
+    echo ($exists ? '✅' : '❌') . " {$permiso}" . PHP_EOL;
+}
+
+// Limpiar cache de permisos
+app()->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+echo PHP_EOL . "✅ Cache de permisos limpiado." . PHP_EOL;
