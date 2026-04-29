@@ -34,17 +34,10 @@ class CreditoGeneradoTotalWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $page = $this->getPageTable();
-        $fecha = property_exists($page, 'fechaFiltro') ? $page->fechaFiltro : null;
+        $fecha = session('creditos_fecha_filtro_v2');
 
-        $query = Credito::whereHas('proposicion', function ($q) {
-                $q->where('FueRefinanciada', 0);
-            });
+        $query = $this->getPageTableQuery();
         
-        if ($fecha) {
-            $query->whereDate('FechaGeneracion', $fecha);
-        }
-
         $totalMonto = $query->get()
             ->sum(function($credito) {
                 return $credito->proposicion?->MontoTotal ?? 0;
