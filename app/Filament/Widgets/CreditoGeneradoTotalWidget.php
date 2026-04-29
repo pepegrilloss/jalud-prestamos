@@ -43,24 +43,21 @@ class CreditoGeneradoTotalWidget extends BaseWidget
                 return $credito->proposicion?->MontoTotal ?? 0;
             });
 
+        $inputId = 'datePickerTotal';
+
         $description = $fecha 
-            ? 'Filtrado: ' . \Carbon\Carbon::parse($fecha)->format('d/m/Y') 
-            : 'Histórico Completo 📅';
+            ? 'Filtrado: ' . \Carbon\Carbon::parse($fecha)->format('d/m/Y') . ' <input type="date" id="'.$inputId.'" wire:model.live="fechaFiltro" class="sr-only">'
+            : 'Histórico Completo 📅 <input type="date" id="'.$inputId.'" wire:model.live="fechaFiltro" class="sr-only">';
 
         return [
             Stat::make('Créditos Generados Totales', 'S/ ' . number_format($totalMonto, 2))
-                ->description($description)
+                ->description(new \Illuminate\Support\HtmlString($description))
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color($fecha ? 'warning' : 'success')
                 ->extraAttributes([
-                    'class' => 'cursor-pointer hover:bg-gray-50 transition',
-                    'wire:click' => 'abrirFiltroFecha',
+                    'class' => 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition',
+                    'onclick' => 'setTimeout(() => { document.getElementById(\''.$inputId.'\').showPicker(); }, 50)',
                 ]),
         ];
-    }
-
-    public function abrirFiltroFecha()
-    {
-        $this->dispatch('abrirModalFiltroFecha');
     }
 }
