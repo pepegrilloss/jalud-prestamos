@@ -14,6 +14,12 @@ class CreditoGeneradoCantidadWidget extends BaseWidget
     use HasWidgetShield;
     use InteractsWithPageTable;
 
+    public array $tableColumnSearches = [];
+    public array $tableFilters = [];
+    public $tableSortColumn = null;
+    public $tableSortDirection = null;
+    public $tableSearch = '';
+
     protected int | string | array $columnSpan = 1;
 
     public static function canView(): bool
