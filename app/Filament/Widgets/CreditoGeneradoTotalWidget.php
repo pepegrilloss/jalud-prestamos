@@ -13,8 +13,6 @@ class CreditoGeneradoTotalWidget extends BaseWidget
     use HasWidgetShield;
     use InteractsWithPageTable;
 
-    public ?string $fechaFiltro = null;
-
     protected int | string | array $columnSpan = 1;
 
     public static function canView(): bool
@@ -25,11 +23,6 @@ class CreditoGeneradoTotalWidget extends BaseWidget
     protected function getTablePage(): string
     {
         return \App\Filament\Resources\CreditoResource\Pages\ListCreditos::class;
-    }
-
-    public function mount(): void
-    {
-        $this->fechaFiltro = $this->tableFilters['fechaFiltro'] ?? null;
     }
 
     protected function getStats(): array
