@@ -11,7 +11,20 @@ class CreditoGeneradoTotalWidget extends BaseWidget
 {
     use HasWidgetShield;
 
+    public ?string $fechaFiltro = null;
+
     protected int | string | array $columnSpan = 1;
+
+    public function mount(): void
+    {
+        $this->fechaFiltro = session('creditos_fecha_filtro_v2');
+    }
+
+    public function updatedFechaFiltro($value)
+    {
+        session()->put('creditos_fecha_filtro_v2', $value);
+        $this->dispatch('updateFechaCreditos', fecha: $value);
+    }
 
     public static function canView(): bool
     {
@@ -21,7 +34,7 @@ class CreditoGeneradoTotalWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $fecha = session('creditos_fecha_filtro_v2');
+        $fecha = $this->fechaFiltro;
 
         $query = Credito::whereHas('proposicion', function ($q) {
                 $q->where('FueRefinanciada', 0);
@@ -36,24 +49,21 @@ class CreditoGeneradoTotalWidget extends BaseWidget
                 return $credito->proposicion?->MontoTotal ?? 0;
             });
 
-        $description = $fecha 
-            ? 'Filtrado: ' . \Carbon\Carbon::parse($fecha)->format('d/m/Y') 
-            : 'Histórico Completo 📅';
+        // Generamos un input nativo de fecha, que se ve como un texto/pequeño calendario
+        $htmlInput = '
+            <div class="flex items-center gap-1 mt-1 z-50 relative">
+                <span class="text-sm font-medium">Filtrar: </span>
+                <input type="date" wire:model.live="fechaFiltro" 
+                    class="text-sm border-gray-300 rounded-md py-1 px-2 text-gray-700 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 cursor-pointer"
+                    style="max-width: 140px;">
+                ' . ($fecha ? '<button type="button" wire:click="$set(\'fechaFiltro\', null)" class="text-xs text-red-500 hover:text-red-700 ml-1" title="Limpiar filtro">✖</button>' : '') . '
+            </div>
+        ';
 
         return [
             Stat::make('Créditos Generados Totales', 'S/ ' . number_format($totalMonto, 2))
-                ->description($description)
-                ->descriptionIcon('heroicon-m-calendar-days')
-                ->color($fecha ? 'warning' : 'success')
-                ->extraAttributes([
-                    'class' => 'cursor-pointer hover:bg-gray-50 transition',
-                    'wire:click' => 'abrirFiltroFecha',
-                ]),
+                ->description(new \Illuminate\Support\HtmlString($htmlInput))
+                ->color($fecha ? 'warning' : 'success'),
         ];
-    }
-
-    public function abrirFiltroFecha()
-    {
-        $this->dispatch('abrirModalFiltroFecha');
     }
 }
