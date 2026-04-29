@@ -91,7 +91,7 @@ class ResolucionExcedenteService
 
     /**
      * Procesar flujo de excedente: resta monto del excedente,
-     * crea pago en crédito destino si aplica.
+     * aplica al pago existente de la misma fecha o crea pago nuevo en crédito destino si aplica.
      */
     private function procesarExcedente(SolicitudResolucionExcedente $solicitud, $aprobador): void
     {
@@ -118,43 +118,111 @@ class ResolucionExcedenteService
 
         $excedente->save();
 
-        // Registrar pago en crédito destino
-        if (in_array($solicitud->TipoResolucion, ['ASIGNACION_POR_RECLAMO', 'APLICACION_NUEVO_CREDITO'])) {
-            $tipoPago = 'EFECTIVO';
-            if ($excedente->TipoExcedente === 'YAPE_TRANSFERENCIA') {
-                $tipoPago = 'TRANSFERENCIA';
+        // Para ASIGNACION_POR_RECLAMO y DEVOLUCION_EFECTIVO:
+        // Buscar pago existente en la misma fecha del excedente y aplicar el monto al pago original.
+        if (in_array($solicitud->TipoResolucion, ['ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO'])) {
+            $fechaExcedente = $excedente->Fecha;
+
+            // Buscar un pago existente en la misma fecha del excedente
+            $pagoExistente = null;
+            if ($solicitud->CreditoDestinoID) {
+                // Buscar en el crédito destino específico
+                $pagoExistente = Pago::where('CreditoID', $solicitud->CreditoDestinoID)
+                    ->where('Activo', 1)
+                    ->where(function ($q) {
+                        $q->whereNull('EstadoTraslado')
+                          ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+                    })
+                    ->whereDate('FechaPago', $fechaExcedente)
+                    ->orderBy('PagoID', 'asc')
+                    ->first();
+            } elseif ($solicitud->ClienteDestinoID) {
+                // Para DEVOLUCION_EFECTIVO: buscar en todos los créditos activos del cliente destino
+                $creditosIDs = \App\Models\Credito::whereHas('proposicion', function ($q) use ($solicitud) {
+                    $q->where('ClienteID', $solicitud->ClienteDestinoID)->where('Activo', 1);
+                })->where('Activo', 1)->pluck('CreditoID');
+
+                if ($creditosIDs->isNotEmpty()) {
+                    $pagoExistente = Pago::whereIn('CreditoID', $creditosIDs)
+                        ->where('Activo', 1)
+                        ->where(function ($q) {
+                            $q->whereNull('EstadoTraslado')
+                              ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+                        })
+                        ->whereDate('FechaPago', $fechaExcedente)
+                        ->orderBy('PagoID', 'asc')
+                        ->first();
+                }
             }
 
-            $cuota = Cuota::where('CreditoID', $solicitud->CreditoDestinoID)
-                ->where('Activo', 1)
-                ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
-                ->orderBy('NumeroCuota', 'asc')
-                ->first();
+            if ($pagoExistente) {
+                // Aplicar el excedente al pago existente de la misma fecha
+                $montoOriginal = $pagoExistente->MontoPagado;
+                $pagoExistente->MontoPagado = $montoOriginal + $montoAplicar;
+                $pagoExistente->Comentario = ($pagoExistente->Comentario ? $pagoExistente->Comentario . ' | ' : '')
+                    . "Excedente aplicado: +S/ " . number_format($montoAplicar, 2)
+                    . " (Resolución #{$solicitud->SolicitudID}). Pago original: S/ " . number_format($montoOriginal, 2)
+                    . ", nuevo total: S/ " . number_format($montoOriginal + $montoAplicar, 2);
+                $pagoExistente->save();
 
-            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-            $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now();
-
-            $nuevoPago = Pago::create([
-                'CreditoID' => $solicitud->CreditoDestinoID,
-                'CuotaID' => $cuota ? $cuota->CuotaID : null,
-                'MontoPagado' => $montoAplicar,
-                'FechaPago' => $fechaPago,
-                'TipoPago' => $tipoPago,
-                'TipoConcepto' => 'C',
-                'EsMora' => false,
-                'EsPagoAutomatico' => true,
-                'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}. Tipo: {$solicitud->TipoResolucion}. Monto aplicado: S/ " . number_format($montoAplicar, 2),
-                'UsuarioRegistro' => $aprobador->name,
-                'Activo' => true,
-                'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,
-                'SolicitudResolucionID' => $solicitud->SolicitudID,
-            ]);
-            
-            if ($nuevoPago->CuotaID) {
-                $this->recalcularEstadoCuota($nuevoPago->CuotaID);
+                // Recalcular estado de la cuota afectada
+                if ($pagoExistente->CuotaID) {
+                    $this->recalcularEstadoCuota($pagoExistente->CuotaID);
+                }
+                $this->verificarCreditoCancelado($pagoExistente->CreditoID);
+            } else {
+                // No se encontró pago en esa fecha: crear pago nuevo (fallback)
+                $this->crearPagoNuevoDesdeExcedente($solicitud, $excedente, $montoAplicar, $aprobador);
             }
-            $this->verificarCreditoCancelado($nuevoPago->CreditoID);
+        } elseif ($solicitud->TipoResolucion === 'APLICACION_NUEVO_CREDITO') {
+            // Para APLICACION_NUEVO_CREDITO siempre crear pago nuevo
+            $this->crearPagoNuevoDesdeExcedente($solicitud, $excedente, $montoAplicar, $aprobador);
         }
+    }
+
+    /**
+     * Crea un nuevo pago en el crédito destino a partir de un excedente.
+     */
+    private function crearPagoNuevoDesdeExcedente(
+        SolicitudResolucionExcedente $solicitud,
+        $excedente,
+        float $montoAplicar,
+        $aprobador
+    ): void {
+        $tipoPago = 'EFECTIVO';
+        if ($excedente->TipoExcedente === 'YAPE_TRANSFERENCIA') {
+            $tipoPago = 'TRANSFERENCIA';
+        }
+
+        $cuota = Cuota::where('CreditoID', $solicitud->CreditoDestinoID)
+            ->where('Activo', 1)
+            ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
+            ->orderBy('NumeroCuota', 'asc')
+            ->first();
+
+        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+        $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now();
+
+        $nuevoPago = Pago::create([
+            'CreditoID' => $solicitud->CreditoDestinoID,
+            'CuotaID' => $cuota ? $cuota->CuotaID : null,
+            'MontoPagado' => $montoAplicar,
+            'FechaPago' => $fechaPago,
+            'TipoPago' => $tipoPago,
+            'TipoConcepto' => 'C',
+            'EsMora' => false,
+            'EsPagoAutomatico' => true,
+            'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}. Tipo: {$solicitud->TipoResolucion}. Monto aplicado: S/ " . number_format($montoAplicar, 2),
+            'UsuarioRegistro' => $aprobador->name,
+            'Activo' => true,
+            'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,
+            'SolicitudResolucionID' => $solicitud->SolicitudID,
+        ]);
+
+        if ($nuevoPago->CuotaID) {
+            $this->recalcularEstadoCuota($nuevoPago->CuotaID);
+        }
+        $this->verificarCreditoCancelado($nuevoPago->CreditoID);
     }
     
     private function recalcularEstadoCuota($cuotaID): void
