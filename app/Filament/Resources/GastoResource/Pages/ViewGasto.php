@@ -28,7 +28,7 @@ class ViewGasto extends ViewRecord
 
                 Components\Section::make('Datos del Gasto')
                     ->schema([
-                        Components\TextEntry::make('NombreProveedor')
+                        Components\TextEntry::make('proveedor.Nombre')
                             ->label('Proveedor'),
                         Components\TextEntry::make('motivo.Nombre')
                             ->label('Motivo'),

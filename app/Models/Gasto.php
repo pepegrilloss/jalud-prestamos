@@ -20,7 +20,7 @@ class Gasto extends Model
         'TipoComprobanteGastoID',
         'Numero',
         'FechaEmision',
-        'NombreProveedor',
+        'ProveedorID',
         'MotivoID',
         'MetodoGasto',
         'Total',
@@ -45,6 +45,11 @@ class Gasto extends Model
     public function motivo(): BelongsTo
     {
         return $this->belongsTo(Motivo::class, 'MotivoID', 'MotivoID');
+    }
+
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'ProveedorID', 'ProveedorID');
     }
 
     public function detalles(): HasMany

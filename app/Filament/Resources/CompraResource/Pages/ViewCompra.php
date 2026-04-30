@@ -28,7 +28,7 @@ class ViewCompra extends ViewRecord
 
                 Components\Section::make('Proveedor')
                     ->schema([
-                        Components\TextEntry::make('NombreProveedor')
+                        Components\TextEntry::make('proveedor.Nombre')
                             ->label('Nombre del Proveedor'),
                     ]),
 

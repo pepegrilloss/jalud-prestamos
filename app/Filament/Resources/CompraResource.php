@@ -54,10 +54,10 @@ class CompraResource extends Resource
 
                 Forms\Components\Section::make('Proveedor')
                     ->schema([
-                        Forms\Components\Select::make('NombreProveedor')
+                        Forms\Components\Select::make('ProveedorID')
                             ->prefixIcon('heroicon-m-building-storefront')
                             ->label('Proveedor')
-                            ->options(Proveedor::where('Activo', true)->pluck('Nombre', 'Nombre'))
+                            ->options(Proveedor::where('Activo', true)->pluck('Nombre', 'ProveedorID'))
                             ->required()
                             ->searchable()
                             ->createOptionForm([
@@ -82,8 +82,8 @@ class CompraResource extends Resource
                                     ->maxLength(20),
                             ])
                             ->createOptionUsing(function (array $data): string {
-                                Proveedor::create($data);
-                                return $data['Nombre'];
+                                $proveedor = Proveedor::create($data);
+                                return $proveedor->ProveedorID;
                             }),
                     ]),
 
@@ -190,7 +190,7 @@ class CompraResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn($query) => $query->activos()->with('detalles'))
+            ->modifyQueryUsing(fn($query) => $query->activos()->with('tipoComprobante', 'proveedor', 'detalles'))
             ->columns([
                 Tables\Columns\TextColumn::make('FechaEmision')
                     ->label('Fecha Emisión')
@@ -204,7 +204,7 @@ class CompraResource extends Resource
                     ->label('Serie / Número')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('NombreProveedor')
+                Tables\Columns\TextColumn::make('proveedor.Nombre')
                     ->label('Proveedor')
                     ->searchable()
                     ->sortable(),

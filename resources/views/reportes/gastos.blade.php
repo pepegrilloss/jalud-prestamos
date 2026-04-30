@@ -139,7 +139,7 @@
                                     {{ $gasto->FechaEmision->format('d/m/Y') }}</td>
                                 <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->tipoComprobanteGasto->Nombre }}</td>
                                 <td class="centro" rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->Numero }}</td>
-                                <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->NombreProveedor }}</td>
+                                 <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->proveedor?->Nombre }}</td>
                                 <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->motivo->Nombre }}</td>
                                 <td class="centro" rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->MetodoGasto }}</td>
                             @endif
@@ -153,7 +153,7 @@
                         <td class="centro">{{ $gasto->FechaEmision->format('d/m/Y') }}</td>
                         <td>{{ $gasto->tipoComprobanteGasto->Nombre }}</td>
                         <td class="centro">{{ $gasto->Numero }}</td>
-                        <td>{{ $gasto->NombreProveedor }}</td>
+                        <td>{{ $gasto->proveedor?->Nombre }}</td>
                         <td>{{ $gasto->motivo->Nombre }}</td>
                         <td class="centro">{{ $gasto->MetodoGasto }}</td>
                         <td>{{ $gasto->Descripcion ?? '-' }}</td>

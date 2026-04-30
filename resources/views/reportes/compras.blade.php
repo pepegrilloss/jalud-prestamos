@@ -144,7 +144,7 @@
                                     {{ $compra->FechaEmision->format('d/m/Y') }}</td>
                                 <td rowspan="{{ $compra->detalles->count() }}">{{ $compra->tipoComprobante->Nombre }}</td>
                                 <td class="centro" rowspan="{{ $compra->detalles->count() }}">{{ $compra->Numero }}</td>
-                                <td rowspan="{{ $compra->detalles->count() }}">{{ $compra->NombreProveedor }}</td>
+                                 <td rowspan="{{ $compra->detalles->count() }}">{{ $compra->proveedor?->Nombre }}</td>
                             @endif
                             <td>{{ $detalle->ProductoServicio }}</td>
                             <td class="numero">{{ number_format($detalle->Cantidad, 2) }}</td>
@@ -158,7 +158,7 @@
                         <td class="centro">{{ $compra->FechaEmision->format('d/m/Y') }}</td>
                         <td>{{ $compra->tipoComprobante->Nombre }}</td>
                         <td class="centro">{{ $compra->Numero }}</td>
-                        <td>{{ $compra->NombreProveedor }}</td>
+                         <td>{{ $compra->proveedor?->Nombre }}</td>
                         <td>{{ $compra->ProductoServicio ?? '-' }}</td>
                         <td class="numero">{{ $compra->Cantidad ? number_format($compra->Cantidad, 2) : '-' }}</td>
                         <td class="numero">

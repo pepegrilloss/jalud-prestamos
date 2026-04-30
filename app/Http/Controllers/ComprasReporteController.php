@@ -21,7 +21,7 @@ class ComprasReporteController extends Controller
 
         $query = Compra::query()
             ->activos()
-            ->with('tipoComprobante', 'detalles')
+            ->with('tipoComprobante', 'proveedor', 'detalles')
             ->orderBy('FechaEmision', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {
@@ -112,7 +112,7 @@ class ComprasReporteController extends Controller
                 $sheet->setCellValue('A' . $row, $compra->FechaEmision->format('d/m/Y'));
                 $sheet->setCellValue('B' . $row, $compra->tipoComprobante->Nombre);
                 $sheet->setCellValue('C' . $row, $compra->Numero);
-                $sheet->setCellValue('D' . $row, $compra->NombreProveedor);
+                $sheet->setCellValue('D' . $row, $compra->proveedor?->Nombre);
                 $sheet->setCellValue('E' . $row, $compra->ProductoServicio ?? '');
                 $sheet->setCellValue('F' . $row, $compra->Cantidad ?? '');
                 $sheet->setCellValue('G' . $row, $compra->PrecioUnitario ?? '');
@@ -131,7 +131,7 @@ class ComprasReporteController extends Controller
                         $sheet->setCellValue('A' . $row, $compra->FechaEmision->format('d/m/Y'));
                         $sheet->setCellValue('B' . $row, $compra->tipoComprobante->Nombre);
                         $sheet->setCellValue('C' . $row, $compra->Numero);
-                        $sheet->setCellValue('D' . $row, $compra->NombreProveedor);
+                        $sheet->setCellValue('D' . $row, $compra->proveedor?->Nombre);
                         $isFirst = false;
                     }
 
@@ -190,7 +190,7 @@ class ComprasReporteController extends Controller
 
         $query = Compra::query()
             ->activos()
-            ->with('tipoComprobante', 'detalles')
+            ->with('tipoComprobante', 'proveedor', 'detalles')
             ->orderBy('FechaEmision', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {

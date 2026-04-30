@@ -21,7 +21,7 @@ class GastoReporteController extends Controller
 
         $query = Gasto::query()
             ->activos()
-            ->with('tipoComprobanteGasto', 'motivo', 'detalles')
+            ->with('tipoComprobanteGasto', 'motivo', 'proveedor', 'detalles')
             ->orderBy('FechaEmision', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {
@@ -112,7 +112,7 @@ class GastoReporteController extends Controller
                 $sheet->setCellValue('A' . $row, $gasto->FechaEmision->format('d/m/Y'));
                 $sheet->setCellValue('B' . $row, $gasto->tipoComprobanteGasto->Nombre);
                 $sheet->setCellValue('C' . $row, $gasto->Numero);
-                $sheet->setCellValue('D' . $row, $gasto->NombreProveedor);
+                $sheet->setCellValue('D' . $row, $gasto->proveedor?->Nombre);
                 $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
                 $sheet->setCellValue('F' . $row, $gasto->MetodoGasto);
                 $sheet->setCellValue('G' . $row, $gasto->Descripcion ?? '');
@@ -130,7 +130,7 @@ class GastoReporteController extends Controller
                         $sheet->setCellValue('A' . $row, $gasto->FechaEmision->format('d/m/Y'));
                         $sheet->setCellValue('B' . $row, $gasto->tipoComprobanteGasto->Nombre);
                         $sheet->setCellValue('C' . $row, $gasto->Numero);
-                        $sheet->setCellValue('D' . $row, $gasto->NombreProveedor);
+                        $sheet->setCellValue('D' . $row, $gasto->proveedor?->Nombre);
                         $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
                         $sheet->setCellValue('F' . $row, $gasto->MetodoGasto);
                         $sheet->setCellValue('I' . $row, $gasto->Observaciones);
@@ -188,7 +188,7 @@ class GastoReporteController extends Controller
 
         $query = Gasto::query()
             ->activos()
-            ->with('tipoComprobanteGasto', 'motivo', 'detalles')
+            ->with('tipoComprobanteGasto', 'motivo', 'proveedor', 'detalles')
             ->orderBy('FechaEmision', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {

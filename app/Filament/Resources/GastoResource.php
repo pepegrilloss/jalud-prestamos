@@ -54,10 +54,10 @@ class GastoResource extends Resource
 
                 Forms\Components\Section::make('Datos del Gasto')
                     ->schema([
-                        Forms\Components\Select::make('NombreProveedor')
+                        Forms\Components\Select::make('ProveedorID')
                             ->prefixIcon('heroicon-m-building-storefront')
                             ->label('Proveedor')
-                            ->options(Proveedor::where('Activo', true)->pluck('Nombre', 'Nombre'))
+                            ->options(Proveedor::where('Activo', true)->pluck('Nombre', 'ProveedorID'))
                             ->required()
                             ->searchable()
                             ->createOptionForm([
@@ -82,8 +82,8 @@ class GastoResource extends Resource
                                     ->maxLength(20),
                             ])
                             ->createOptionUsing(function (array $data): string {
-                                Proveedor::create($data);
-                                return $data['Nombre'];
+                                $proveedor = Proveedor::create($data);
+                                return $proveedor->ProveedorID;
                             }),
                         Forms\Components\Select::make('MotivoID')
                             ->prefixIcon('heroicon-m-tag')
@@ -105,6 +105,7 @@ class GastoResource extends Resource
                         Forms\Components\Repeater::make('detalles')
                             ->label('Líneas de Gasto')
                             ->relationship()
+                            ->live()
                             ->schema([
                                 Forms\Components\TextInput::make('Descripcion')
                                     ->prefixIcon('heroicon-m-bars-3-bottom-left')
@@ -119,7 +120,7 @@ class GastoResource extends Resource
                                     ->required()
                                     ->step(0.01)
                                     ->prefix('S/. ')
-                                    ->live(onBlur: true),
+                                    ->live(),
                             ])
                             ->columns(3)
                             ->defaultItems(1)
@@ -152,7 +153,7 @@ class GastoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn($query) => $query->activos()->with('detalles'))
+            ->modifyQueryUsing(fn($query) => $query->activos()->with('proveedor', 'detalles'))
             ->columns([
                 Tables\Columns\TextColumn::make('FechaEmision')
                     ->label('Fecha Emisión')
@@ -166,7 +167,7 @@ class GastoResource extends Resource
                     ->label('Número')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('NombreProveedor')
+                Tables\Columns\TextColumn::make('proveedor.Nombre')
                     ->label('Proveedor')
                     ->searchable()
                     ->sortable(),

@@ -20,7 +20,7 @@ class Compra extends Model
         'TipoComprobanteID',
         'Numero',
         'FechaEmision',
-        'NombreProveedor',
+        'ProveedorID',
         'SubtotalBase',
         'MontoIGV',
         'Total',
@@ -42,6 +42,11 @@ class Compra extends Model
     public function tipoComprobante(): BelongsTo
     {
         return $this->belongsTo(TipoComprobante::class, 'TipoComprobanteID', 'TipoComprobanteID');
+    }
+
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'ProveedorID', 'ProveedorID');
     }
 
     public function detalles(): HasMany
