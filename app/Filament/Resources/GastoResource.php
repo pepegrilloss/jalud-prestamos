@@ -105,7 +105,7 @@ class GastoResource extends Resource
                         Forms\Components\Repeater::make('detalles')
                             ->label('Líneas de Gasto')
                             ->relationship()
-                            ->live()
+                            ->live(debounce: 500)
                             ->schema([
                                 Forms\Components\TextInput::make('Descripcion')
                                     ->prefixIcon('heroicon-m-bars-3-bottom-left')
@@ -120,7 +120,7 @@ class GastoResource extends Resource
                                     ->required()
                                     ->step(0.01)
                                     ->prefix('S/. ')
-                                    ->live(),
+                                    ->live(debounce: 500),
                             ])
                             ->columns(3)
                             ->defaultItems(1)

@@ -92,7 +92,7 @@ class CompraResource extends Resource
                         Forms\Components\Repeater::make('detalles')
                             ->label('Productos / Servicios')
                             ->relationship()
-                            ->live()
+                            ->live(debounce: 500)
                             ->schema([
                                 Forms\Components\TextInput::make('ProductoServicio')
                                     ->prefixIcon('heroicon-m-shopping-bag')
@@ -107,20 +107,19 @@ class CompraResource extends Resource
                                     ->required()
                                     ->step(0.01)
                                     ->default(1)
-                                    ->live(),
+                                    ->live(debounce: 500),
                                 Forms\Components\TextInput::make('PrecioUnitario')
                                     ->label('Precio Unit.')
                                     ->numeric()
                                     ->required()
                                     ->step(0.01)
                                     ->prefix('S/. ')
-                                    ->live(),
+                                    ->live(debounce: 500),
                                 Forms\Components\TextInput::make('Subtotal')
                                     ->label('Sub Total')
                                     ->numeric()
                                     ->prefix('S/. ')
-                                    ->default(0)
-                                    ->readOnly(),
+                                    ->default(0),
                             ])
                             ->columns(5)
                             ->defaultItems(1)
@@ -137,14 +136,13 @@ class CompraResource extends Resource
                                     ->label('Subtotal Base')
                                     ->numeric()
                                     ->prefix('S/. ')
-                                    ->step(0.01)
-                                    ->readOnly(),
+                                    ->step(0.01),
                                 Forms\Components\TextInput::make('MontoIGV')
                                     ->label('IGV')
                                     ->numeric()
                                     ->prefix('S/. ')
                                     ->step(0.01)
-                                    ->live()
+                                    ->live(debounce: 500)
                                     ->afterStateUpdated(function (Get $get, Set $set) {
                                         $subtotalBase = floatval($get('SubtotalBase') ?? 0);
                                         $igv = floatval($get('MontoIGV') ?? 0);
@@ -154,8 +152,7 @@ class CompraResource extends Resource
                                     ->label('Total')
                                     ->numeric()
                                     ->prefix('S/. ')
-                                    ->step(0.01)
-                                    ->readOnly(),
+                                    ->step(0.01),
                             ]),
                     ]),
 
