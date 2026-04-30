@@ -12,28 +12,31 @@ class CreateCompra extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['Activo'] = true;
-        $data['Total'] = 0;
-        return \App\Services\DateFieldResolver::injectFechaAbierta($data, $this->getModel());
-    }
 
-    protected function afterCreate(): void
-    {
-        $record = $this->record;
-        $subtotalBase = $record->detalles()->sum('Subtotal');
-        $aplicaIgv = false;
-        $comprobante = $record->tipoComprobante;
-        if ($comprobante && in_array($comprobante->Nombre, ['FACTURA ELECTRÓNICA', 'BOLETA DE VENTA ELECTRÓNICA', 'SERVICIOS PÚBLICOS'])) {
-            $aplicaIgv = true;
+        // Calcular subtotal de cada detalle
+        if (isset($data['detalles'])) {
+            foreach ($data['detalles'] as &$detalle) {
+                $cantidad = floatval($detalle['Cantidad'] ?? 0);
+                $precio = floatval($detalle['PrecioUnitario'] ?? 0);
+                $detalle['Subtotal'] = round($cantidad * $precio, 2);
+            }
         }
 
-        $igv = $aplicaIgv ? $subtotalBase * 0.18 : 0;
-        $totalFinal = $subtotalBase + $igv;
+        $subtotalBase = collect($data['detalles'] ?? [])->sum(fn($item) => floatval($item['Subtotal'] ?? 0));
 
-        $record->update([
-            'SubtotalBase' => $subtotalBase,
-            'MontoIGV' => $igv,
-            'Total' => $totalFinal
-        ]);
+        if (empty($data['SubtotalBase']) || floatval($data['SubtotalBase']) == 0) {
+            $data['SubtotalBase'] = $subtotalBase;
+        }
+
+        if (empty($data['MontoIGV']) || floatval($data['MontoIGV']) == 0) {
+            $data['MontoIGV'] = round($subtotalBase * 0.18, 2);
+        }
+
+        if (empty($data['Total']) || floatval($data['Total']) == 0) {
+            $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
+        }
+
+        return \App\Services\DateFieldResolver::injectFechaAbierta($data, $this->getModel());
     }
 
     protected function getRedirectUrl(): string

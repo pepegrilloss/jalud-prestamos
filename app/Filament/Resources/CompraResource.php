@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\CompraResource\Pages;
 use App\Models\Compra;
 use App\Models\TipoComprobante;
+use App\Models\Proveedor;
 use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -37,8 +38,7 @@ class CompraResource extends Resource
                             ->label('Tipo de Comprobante')
                             ->options(TipoComprobante::where('Activo', true)->pluck('Nombre', 'TipoComprobanteID'))
                             ->required()
-                            ->searchable()
-                            ->live(),
+                            ->searchable(),
                         Forms\Components\TextInput::make('Numero')
                             ->prefixIcon('heroicon-m-hashtag')
                             ->label('Serie / Número')
@@ -54,11 +54,37 @@ class CompraResource extends Resource
 
                 Forms\Components\Section::make('Proveedor')
                     ->schema([
-                        Forms\Components\TextInput::make('NombreProveedor')
+                        Forms\Components\Select::make('NombreProveedor')
                             ->prefixIcon('heroicon-m-building-storefront')
-                            ->label('Nombre del Proveedor')
+                            ->label('Proveedor')
+                            ->options(Proveedor::where('Activo', true)->pluck('Nombre', 'Nombre'))
                             ->required()
-                            ->maxLength(150),
+                            ->searchable()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('Codigo')
+                                    ->label('Código')
+                                    ->required()
+                                    ->maxLength(20),
+                                Forms\Components\TextInput::make('Nombre')
+                                    ->label('Nombre / Razón Social')
+                                    ->required()
+                                    ->maxLength(400),
+                                Forms\Components\TextInput::make('RUC')
+                                    ->label('RUC')
+                                    ->required()
+                                    ->maxLength(20),
+                                Forms\Components\TextInput::make('Direccion')
+                                    ->label('Dirección')
+                                    ->required()
+                                    ->maxLength(400),
+                                Forms\Components\TextInput::make('Telefono')
+                                    ->label('Teléfono')
+                                    ->maxLength(20),
+                            ])
+                            ->createOptionUsing(function (array $data): string {
+                                Proveedor::create($data);
+                                return $data['Nombre'];
+                            }),
                     ]),
 
                 Forms\Components\Section::make('Detalle de Compra')
@@ -66,6 +92,7 @@ class CompraResource extends Resource
                         Forms\Components\Repeater::make('detalles')
                             ->label('Productos / Servicios')
                             ->relationship()
+                            ->live()
                             ->schema([
                                 Forms\Components\TextInput::make('ProductoServicio')
                                     ->prefixIcon('heroicon-m-shopping-bag')
@@ -75,80 +102,61 @@ class CompraResource extends Resource
                                     ->columnSpan(2),
                                 Forms\Components\TextInput::make('Cantidad')
                                     ->prefixIcon('heroicon-m-scale')
-                                    ->label('Cantidad')
+                                    ->label('Cant.')
                                     ->numeric()
                                     ->required()
                                     ->step(0.01)
                                     ->default(1)
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(function (Get $get, Set $set) {
-                                        $cantidad = floatval($get('Cantidad') ?? 0);
-                                        $precio = floatval($get('PrecioUnitario') ?? 0);
-                                        $set('Subtotal', number_format($cantidad * $precio, 2, '.', ''));
-                                    }),
+                                    ->live(),
                                 Forms\Components\TextInput::make('PrecioUnitario')
-                                    ->label('Precio Unitario')
+                                    ->label('Precio Unit.')
                                     ->numeric()
                                     ->required()
                                     ->step(0.01)
                                     ->prefix('S/. ')
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(function (Get $get, Set $set) {
-                                        $cantidad = floatval($get('Cantidad') ?? 0);
-                                        $precio = floatval($get('PrecioUnitario') ?? 0);
-                                        $set('Subtotal', number_format($cantidad * $precio, 2, '.', ''));
-                                    }),
+                                    ->live(),
                                 Forms\Components\TextInput::make('Subtotal')
-                                    ->label('Subtotal')
+                                    ->label('Sub Total')
                                     ->numeric()
                                     ->prefix('S/. ')
-                                    ->readOnly()
-                                    ->default(0),
+                                    ->default(0)
+                                    ->readOnly(),
                             ])
-                            ->columns(4)
+                            ->columns(5)
                             ->defaultItems(1)
                             ->addActionLabel('Agregar producto')
                             ->reorderable(false)
                             ->required()
                             ->minItems(1)
-                            ->columnSpanFull(),
+                            ->columnSpanFull()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
 
-                        Forms\Components\Placeholder::make('TotalesDisplay')
-                            ->label('Desglose de Totales')
-                            ->content(function (Get $get): \Illuminate\Support\HtmlString {
-                                $detalles = $get('detalles') ?? [];
-                                $subtotalBase = collect($detalles)->sum(fn($item) => floatval($item['Subtotal'] ?? 0));
-
-                                $tipoComprobanteId = $get('TipoComprobanteID');
-                                $aplicaIgv = false;
-
-                                if ($tipoComprobanteId) {
-                                    $comprobante = \App\Models\TipoComprobante::find($tipoComprobanteId);
-                                    if ($comprobante && in_array($comprobante->Nombre, ['FACTURA ELECTRÓNICA', 'BOLETA DE VENTA ELECTRÓNICA', 'SERVICIOS PÚBLICOS'])) {
-                                        $aplicaIgv = true;
-                                    }
-                                }
-
-                                $igv = $aplicaIgv ? $subtotalBase * 0.18 : 0;
-                                $totalFinal = $subtotalBase + $igv;
-
-                                return new \Illuminate\Support\HtmlString("
-                                    <div class='flex flex-col gap-1 text-sm'>
-                                        <div class='flex justify-between w-48'>
-                                            <span class='text-gray-500'>Subtotal Base:</span>
-                                            <span class='font-medium'>S/. " . number_format($subtotalBase, 2) . "</span>
-                                        </div>
-                                        <div class='flex justify-between w-48'>
-                                            <span class='text-gray-500'>IGV (18%):</span>
-                                            <span class='font-medium'>S/. " . number_format($igv, 2) . "</span>
-                                        </div>
-                                        <div class='flex justify-between w-48 pt-2 mt-2 border-t border-gray-200 dark:border-gray-700'>
-                                            <span class='font-bold'>TOTAL:</span>
-                                            <span class='text-xl font-bold text-primary-600'>S/. " . number_format($totalFinal, 2) . "</span>
-                                        </div>
-                                    </div>
-                                ");
-                            })
+                        Forms\Components\Grid::make(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('SubtotalBase')
+                                    ->label('Subtotal Base')
+                                    ->numeric()
+                                    ->prefix('S/. ')
+                                    ->step(0.01)
+                                    ->readOnly(),
+                                Forms\Components\TextInput::make('MontoIGV')
+                                    ->label('IGV')
+                                    ->numeric()
+                                    ->prefix('S/. ')
+                                    ->step(0.01)
+                                    ->live()
+                                    ->afterStateUpdated(function (Get $get, Set $set) {
+                                        $subtotalBase = floatval($get('SubtotalBase') ?? 0);
+                                        $igv = floatval($get('MontoIGV') ?? 0);
+                                        $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
+                                    }),
+                                Forms\Components\TextInput::make('Total')
+                                    ->label('Total')
+                                    ->numeric()
+                                    ->prefix('S/. ')
+                                    ->step(0.01)
+                                    ->readOnly(),
+                            ]),
                     ]),
 
                 Forms\Components\Section::make('Observaciones')
@@ -159,6 +167,24 @@ class CompraResource extends Resource
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    public static function calcularTotales(Get $get, Set $set): void
+    {
+        $detalles = $get('detalles') ?? [];
+
+        foreach ($detalles as $key => $detalle) {
+            $cantidad = floatval($detalle['Cantidad'] ?? 0);
+            $precio = floatval($detalle['PrecioUnitario'] ?? 0);
+            $set("detalles.{$key}.Subtotal", number_format($cantidad * $precio, 2, '.', ''));
+        }
+
+        $subtotalBase = collect($detalles)->sum(fn($item) => floatval($item['Cantidad'] ?? 0) * floatval($item['PrecioUnitario'] ?? 0));
+        $set('SubtotalBase', number_format($subtotalBase, 2, '.', ''));
+
+        $igv = $subtotalBase * 0.18;
+        $set('MontoIGV', number_format($igv, 2, '.', ''));
+        $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
     }
 
     public static function table(Table $table): Table

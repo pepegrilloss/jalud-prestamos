@@ -6,6 +6,7 @@ use App\Filament\Resources\GastoResource\Pages;
 use App\Models\Gasto;
 use App\Models\TipoComprobanteGasto;
 use App\Models\Motivo;
+use App\Models\Proveedor;
 use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -53,11 +54,37 @@ class GastoResource extends Resource
 
                 Forms\Components\Section::make('Datos del Gasto')
                     ->schema([
-                        Forms\Components\TextInput::make('NombreProveedor')
+                        Forms\Components\Select::make('NombreProveedor')
                             ->prefixIcon('heroicon-m-building-storefront')
                             ->label('Proveedor')
+                            ->options(Proveedor::where('Activo', true)->pluck('Nombre', 'Nombre'))
                             ->required()
-                            ->maxLength(150),
+                            ->searchable()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('Codigo')
+                                    ->label('Código')
+                                    ->required()
+                                    ->maxLength(20),
+                                Forms\Components\TextInput::make('Nombre')
+                                    ->label('Nombre / Razón Social')
+                                    ->required()
+                                    ->maxLength(400),
+                                Forms\Components\TextInput::make('RUC')
+                                    ->label('RUC')
+                                    ->required()
+                                    ->maxLength(20),
+                                Forms\Components\TextInput::make('Direccion')
+                                    ->label('Dirección')
+                                    ->required()
+                                    ->maxLength(400),
+                                Forms\Components\TextInput::make('Telefono')
+                                    ->label('Teléfono')
+                                    ->maxLength(20),
+                            ])
+                            ->createOptionUsing(function (array $data): string {
+                                Proveedor::create($data);
+                                return $data['Nombre'];
+                            }),
                         Forms\Components\Select::make('MotivoID')
                             ->prefixIcon('heroicon-m-tag')
                             ->label('Motivo')
