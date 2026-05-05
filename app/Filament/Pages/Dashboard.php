@@ -10,7 +10,6 @@ class Dashboard extends BaseDashboard
     {
         return [
             \App\Filament\Widgets\CustomAccountWidget::class,
-            \App\Filament\Widgets\DiaCerradoBanner::class,
             \App\Filament\Widgets\DashboardMisClientesActivosWidget::class,
             \App\Filament\Widgets\DashboardMisPrestamosActivosWidget::class,
             \App\Filament\Widgets\DashboardMiTotalPrestadoWidget::class,

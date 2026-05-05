@@ -176,6 +176,9 @@ class CreditoResource extends Resource
                             return 'gray';
 
                         if ($record->FechaVencimiento < today()) {
+                            if (($record->proposicion?->SaldoPendiente ?? 0) <= 0) {
+                                return 'success';
+                            }
                             return 'danger'; // Vencido (fecha pasada) = Rojo
                         }
 
@@ -498,7 +501,7 @@ class CreditoResource extends Resource
                             Infolists\Components\TextEntry::make('SaldoActual')
                                 ->label('Saldo Actual')
                                 ->money('PEN')
-                                ->getStateUsing(fn($record) => \App\Models\ProposicionCredito::calcularSaldoPendiente($record->ProposicionCreditoID))
+                                ->getStateUsing(fn($record) => $record->proposicion?->SaldoPendiente ?? 0)
                                 ->color('danger')
                                 ->weight(\Filament\Support\Enums\FontWeight::Bold),
 
@@ -513,7 +516,12 @@ class CreditoResource extends Resource
                                 ->label('Fecha de Vencimiento')
                                 ->date('d/m/Y')
                                 ->icon('heroicon-m-calendar')
-                                ->color(fn($record) => $record->FechaVencimiento?->isPast() ? 'danger' : 'success'),
+                                ->color(function ($record) {
+                                    if (!$record->FechaVencimiento?->isPast()) {
+                                        return 'success';
+                                    }
+                                    return ($record->proposicion?->SaldoPendiente ?? 0) > 0 ? 'danger' : 'success';
+                                }),
 
                             Infolists\Components\TextEntry::make('DiasVencimiento')
                                 ->label('Días Vencido')
@@ -521,12 +529,15 @@ class CreditoResource extends Resource
                                     if (!$record->FechaVencimiento || !$record->FechaVencimiento->isPast()) {
                                         return null;
                                     }
+                                    if (($record->proposicion?->SaldoPendiente ?? 0) <= 0) {
+                                        return null;
+                                    }
                                     $dias = $record->FechaVencimiento->diffInDays(today());
                                     return $dias . ' día' . ($dias !== 1 ? 's' : '');
                                 })
                                 ->icon('heroicon-m-exclamation-circle')
                                 ->color('danger')
-                                ->visible(fn($record) => $record->FechaVencimiento?->isPast() ?? false)
+                                ->visible(fn($record) => ($record->FechaVencimiento?->isPast() ?? false) && ($record->proposicion?->SaldoPendiente ?? 0) > 0)
                                 ->badge(),
                         ])->columns(4)
                 ]),
