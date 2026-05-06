@@ -58,6 +58,7 @@ class LibretaPagosController extends Controller
 
         $calendario = [];
         foreach ($period as $date) {
+            $date = \Carbon\Carbon::instance($date);
             $fechaStr = $date->format('Y-m-d');
             $estadoCuota = $cuotasEstados[$fechaStr] ?? null;
             
