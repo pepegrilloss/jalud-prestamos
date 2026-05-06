@@ -63,4 +63,9 @@ class Excedente extends Model
     {
         return $this->belongsTo(User::class, 'UsuarioModificacion', 'id');
     }
+
+    public function resoluciones()
+    {
+        return $this->hasMany(SolicitudResolucionExcedente::class, 'ExcedenteID', 'ExcedenteID');
+    }
 }

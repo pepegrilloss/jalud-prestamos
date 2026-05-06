@@ -229,73 +229,112 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                     ->description('Información técnica del dinero sobrante o voucher identificado.')
                     ->icon('heroicon-o-banknotes')
                     ->schema([
-                        Infolists\Components\Grid::make(3)
+                        Infolists\Components\Grid::make(4)
                             ->schema([
-                                Infolists\Components\TextEntry::make('TipoExcedente')
-                                    ->label('Tipo de Excedente')
-                                    ->badge()
-                                    ->icon('heroicon-m-tag')
-                                    ->formatStateUsing(fn(string $state): string => match ($state) {
-                                        'YAPE_TRANSFERENCIA' => 'Yape/Transferencia',
-                                        'SOBRANTE_PROMOTOR' => 'Sobrante Promotor',
-                                        'SOBRANTE_CAJERO' => 'Registro en Oficina',
-                                        default => $state,
-                                    }),
+                                // --- FILA 1: ESTADO Y DINERO ---
+                                Infolists\Components\TextEntry::make('MontoOriginal')
+                                    ->label('Monto Original')
+                                    ->getStateUsing(fn($record) => (float)$record->Monto + (float)$record->resoluciones()->where('Estado', 'APROBADA')->sum('MontoAplicar'))
+                                    ->money('PEN')
+                                    ->icon('heroicon-m-banknotes')
+                                    ->weight('bold')
+                                    ->color('gray'),
+
                                 Infolists\Components\TextEntry::make('Monto')
-                                    ->label('Monto Registrado')
+                                    ->label('Saldo Restante')
                                     ->money('PEN')
                                     ->weight('bold')
                                     ->size('lg')
                                     ->icon('heroicon-m-currency-dollar')
-                                    ->color('primary'),
+                                    ->color(fn($state) => $state > 0 ? 'success' : 'gray'),
+
                                 Infolists\Components\TextEntry::make('EstadoResolucion')
-                                    ->label('Estado Actual')
+                                    ->label('Estado')
                                     ->badge()
                                     ->color(fn(string $state): string => match ($state) {
                                         'PENDIENTE' => 'warning',
                                         'RESUELTO' => 'success',
                                         default => 'gray',
                                     }),
-                            ]),
 
-                        Infolists\Components\Grid::make(3)
-                            ->schema([
-                                Infolists\Components\TextEntry::make('zona.Nombre')
-                                    ->label('Zona / Ubicación')
-                                    ->icon('heroicon-m-map-pin')
-                                    ->visible(fn($record) => $record->TipoExcedente === 'SOBRANTE_PROMOTOR'),
-                                Infolists\Components\TextEntry::make('Cuenta')
-                                    ->label('Cuenta / Destino')
-                                    ->icon('heroicon-m-building-library')
-                                    ->visible(fn($record) => $record->TipoExcedente !== 'SOBRANTE_PROMOTOR'),
+                                Infolists\Components\TextEntry::make('TipoExcedente')
+                                    ->label('Tipo')
+                                    ->badge()
+                                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                                        'YAPE_TRANSFERENCIA' => 'Yape/Transferencia',
+                                        'SOBRANTE_PROMOTOR' => 'Sobrante Promotor',
+                                        'SOBRANTE_CAJERO' => 'Registro Oficina',
+                                        default => $state,
+                                    }),
+
+                                // --- FILA 2: TIEMPO Y LUGAR ---
                                 Infolists\Components\TextEntry::make('Fecha')
-                                    ->label('Fecha del Suceso')
+                                    ->label('Fecha')
                                     ->date('d/m/Y')
                                     ->icon('heroicon-m-calendar'),
+
                                 Infolists\Components\TextEntry::make('Hora')
-                                    ->label('Hora Registrada')
+                                    ->label('Hora')
                                     ->time('H:i')
                                     ->icon('heroicon-m-clock'),
-                            ]),
 
-                        Infolists\Components\Grid::make(2)
-                            ->schema([
+                                Infolists\Components\TextEntry::make('zona.Nombre')
+                                    ->label('Zona / Sede')
+                                    ->placeholder('N/A')
+                                    ->icon('heroicon-m-map-pin'),
+
+                                Infolists\Components\TextEntry::make('Cuenta')
+                                    ->label('Cuenta Destino')
+                                    ->placeholder('N/A')
+                                    ->icon('heroicon-m-building-library'),
+
+                                // --- FILA 3: IDENTIFICACIÓN ---
                                 Infolists\Components\TextEntry::make('NroOperacion')
-                                    ->label('Número de Operación')
+                                    ->label('Nro. Operación')
+                                    ->columnSpan(2)
                                     ->placeholder('N/A')
                                     ->icon('heroicon-m-hashtag'),
-                                Infolists\Components\TextEntry::make('ClienteOrigenID')
-                                    ->label('Cliente Identificado (Origen)')
-                                    ->getStateUsing(fn($record) => $record->clienteOrigen?->NombresApellidos ?? 'No identificado aún')
-                                    ->icon('heroicon-m-user')
-                                    ->color(fn($record) => $record->ClienteOrigenID ? 'info' : 'gray'),
-                            ]),
 
-                        Infolists\Components\TextEntry::make('Observaciones')
-                            ->label('Comentarios / Observaciones')
-                            ->columnSpanFull()
-                            ->icon('heroicon-m-chat-bubble-bottom-center-text')
-                            ->placeholder('Sin observaciones registradas'),
+                                // --- FILA 4: NOTAS ---
+                                Infolists\Components\TextEntry::make('Observaciones')
+                                    ->label('Comentarios / Observaciones')
+                                    ->columnSpanFull()
+                                    ->icon('heroicon-m-chat-bubble-bottom-center-text')
+                                    ->placeholder('Sin observaciones registradas'),
+                            ]),
+                    ]),
+
+                Infolists\Components\Section::make('Historial de Aplicaciones / Resoluciones')
+                    ->description('Trazabilidad de cómo se ha utilizado este excedente.')
+                    ->icon('heroicon-o-clock')
+                    ->collapsed(fn($record) => $record->resoluciones()->count() === 0)
+                    ->schema([
+                        Infolists\Components\RepeatableEntry::make('resoluciones')
+                            ->label('')
+                            ->schema([
+                                Infolists\Components\Grid::make(4)
+                                    ->schema([
+                                        Infolists\Components\TextEntry::make('created_at')
+                                            ->label('Fecha Aplicación')
+                                            ->dateTime('d/m/Y H:i')
+                                            ->icon('heroicon-m-clock'),
+                                        Infolists\Components\TextEntry::make('clienteDestino.NombresApellidos')
+                                            ->label('Cliente Beneficiario')
+                                            ->placeholder('N/A')
+                                            ->weight('bold')
+                                            ->icon('heroicon-m-user'),
+                                        Infolists\Components\TextEntry::make('TipoResolucion')
+                                            ->label('Tipo de Acción')
+                                            ->badge()
+                                            ->color('info'),
+                                        Infolists\Components\TextEntry::make('MontoAplicar')
+                                            ->label('Monto Usado')
+                                            ->money('PEN')
+                                            ->color('danger')
+                                            ->weight('bold')
+                                            ->icon('heroicon-m-minus-circle'),
+                                    ])
+                            ])
                     ]),
 
                 Infolists\Components\Section::make('Evidencia Digital')

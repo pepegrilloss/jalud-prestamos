@@ -6,6 +6,7 @@
         $montoTotalPagar = (float) ($record->proposicion?->MontoTotalPagar ?? 0);
         
         $pagosBase = $record->pagos()
+            ->with(['solicitudResolucion.excedente'])
             ->where('Activo', true)
             ->orderBy('FechaPago', 'asc')
             ->get();
@@ -98,8 +99,17 @@
                             <td class="px-3 py-1.5 border-r dark:border-white/10 truncate max-w-[150px] {{ $textClass }}" title="{{ $pago->UsuarioRegistro }}">
                                 {{ $pago->UsuarioRegistro ?? '-' }}
                             </td>
-                            <td class="px-3 py-1.5 italic text-[12px] truncate max-w-[200px] {{ $esTrasladado ? 'text-danger-600 dark:text-danger-400 font-bold' : 'text-gray-500 dark:text-gray-500' }}" title="{{ $pago->Comentario }}">
-                                {{ $pago->Comentario ?? 'Conforme' }}
+                            <td class="px-3 py-2 italic text-[11px] {{ $esTrasladado ? 'text-danger-600 dark:text-danger-400 font-bold' : 'text-gray-500 dark:text-gray-500' }}">
+                                @php 
+                                    $obs = $pago->Comentario ?? 'Conforme';
+                                    if ($pago->solicitudResolucion && !str_contains($obs, 'Fecha')) {
+                                        $fechaExc = $pago->solicitudResolucion->excedente?->Fecha;
+                                        if ($fechaExc) {
+                                            $obs .= "\nFecha excedente: " . \Carbon\Carbon::parse($fechaExc)->format('d/m/Y');
+                                        }
+                                    }
+                                @endphp
+                                {!! nl2br(e($obs)) !!}
                             </td>
                         </tr>
                     @endforeach

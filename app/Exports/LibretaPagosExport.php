@@ -121,36 +121,71 @@ class LibretaPagosExport
         $sheet->setCellValue('K10', 'JALUD SOCIEDAD ANONIMA CERRADA');
         $sheet->getStyle('K8:K10')->getFont()->setColor(new Color('FF0000'))->setSize(9);
 
-        // --- GENERACIÓN DE TABLAS CON CUOTAS REALES ---
+        // --- GENERACIÓN DEL CALENDARIO CRONOLÓGICO ---
+        $fechaInicio = $credito->FechaInicio ? Carbon::parse($credito->FechaInicio) : Carbon::parse($credito->FechaGeneracion);
+        $fechaVencimiento = $credito->FechaVencimiento ? Carbon::parse($credito->FechaVencimiento) : now();
+        
+        // Extender si hay pagos tardíos
+        $ultimoPago = $credito->pagos->max('FechaPago');
+        $fechaFin = $fechaVencimiento->copy();
+        if ($ultimoPago && Carbon::parse($ultimoPago)->gt($fechaFin)) {
+            $fechaFin = Carbon::parse($ultimoPago);
+        }
+
+        // Obtener estados de cuotas (para feriados)
+        $cuotasEstados = $credito->cuotas->mapWithKeys(function($c) {
+            return [Carbon::parse($c->FechaVencimiento)->format('Y-m-d') => $c->Estado];
+        });
+
+        $calendario = [];
+        $curr = $fechaInicio->copy()->startOfDay();
+        while ($curr->lte($fechaFin->startOfDay())) {
+            $fechaStr = $curr->format('Y-m-d');
+            $estadoCuota = $cuotasEstados[$fechaStr] ?? null;
+            
+            $calendario[$fechaStr] = [
+                'fecha' => $curr->copy(),
+                'efectivo' => 0,
+                'otros' => 0,
+                'total_dia' => 0,
+                'es_domingo' => $curr->isSunday(),
+                'es_feriado' => ($estadoCuota === 'FERIADO'),
+            ];
+            $curr->addDay();
+        }
+
+        // Agrupar pagos por fecha
+        foreach ($credito->pagos as $pago) {
+            $fechaPagoStr = Carbon::parse($pago->FechaPago)->format('Y-m-d');
+            
+            if (!isset($calendario[$fechaPagoStr])) {
+                $dateObj = Carbon::parse($pago->FechaPago);
+                $calendario[$fechaPagoStr] = [
+                    'fecha' => $dateObj,
+                    'efectivo' => 0,
+                    'otros' => 0,
+                    'total_dia' => 0,
+                    'es_domingo' => $dateObj->isSunday(),
+                    'es_feriado' => false,
+                ];
+            }
+
+            if (empty($pago->TipoPago) || strtoupper($pago->TipoPago) === 'EFECTIVO') {
+                $calendario[$fechaPagoStr]['efectivo'] += $pago->MontoPagado;
+            } else {
+                $calendario[$fechaPagoStr]['otros'] += $pago->MontoPagado;
+            }
+            $calendario[$fechaPagoStr]['total_dia'] += $pago->MontoPagado;
+        }
+
+        ksort($calendario);
+        $calendario = array_values($calendario);
+
         $dias = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
         $indiceFila = 0;
+        $saldoAcumulativo = $montoTotal + $totalInteres;
 
-        // Calcular total pagado en TODO el crédito
-        $totalPagadoEnCredito = 0;
-        foreach ($credito->pagos as $pago) {
-            $totalPagadoEnCredito += $pago->MontoPagado;
-        }
-
-        // Obtener pagos agrupados por cuota
-        $pagosData = [];
-        foreach ($credito->pagos as $pago) {
-            if (!isset($pagosData[$pago->CuotaID])) {
-                $pagosData[$pago->CuotaID] = [];
-            }
-            $pagosData[$pago->CuotaID][] = $pago;
-        }
-
-        // Filtrar la Cuota 0 si NO tiene pagos asociados
-        $cuotas = $cuotas->filter(function ($cuota) use ($pagosData) {
-            if ($cuota->NumeroCuota == 0) {
-                return isset($pagosData[$cuota->CuotaID]) && count($pagosData[$cuota->CuotaID]) > 0;
-            }
-            return true;
-        })->values();
-
-        $saldoAcumulativo = $montoTotal + $totalInteres; // Comienza con el monto total
-
-        foreach ($cuotas as $cuota) {
+        foreach ($calendario as $dia) {
             $i = $indiceFila;
 
             // Lógica de bloques: 20 a la izquierda, 28 al medio, resto a la derecha
@@ -168,7 +203,7 @@ class LibretaPagosExport
                 $headerRow = 11;
             }
 
-            // Dibujar encabezados de tabla si es el inicio del bloque
+            // Dibujar encabezados si corresponde
             if ($i == 0 || $i == 20 || $i == 48) {
                 $sheet->setCellValue($colOffset . $headerRow, 'FECHA');
                 $sheet->getStyle($colOffset . $headerRow)->applyFromArray($styleHeaderTable);
@@ -204,61 +239,34 @@ class LibretaPagosExport
                 }
             }
 
-            // Formato de fecha con día de la semana
-            $fechaCuota = Carbon::parse($cuota->FechaVencimiento);
-            $nombreDia = $dias[$fechaCuota->dayOfWeek];
+            // Formato de fecha
+            $fechaObj = $dia['fecha'];
+            $nombreDia = $dias[$fechaObj->dayOfWeek];
+            $esDomingo = $dia['es_domingo'];
+            $esFeriado = $dia['es_feriado'];
 
-            // Determinar si es domingo o feriado o pago inicial y construir el formato
-            $esDomingo = $cuota->Estado === 'DOMINGO';
-            $esFeriado = $cuota->Estado === 'FERIADO';
-            $esPagoInicialFila = $cuota->NumeroCuota == 0;
+            $fechaFormato = $fechaObj->format('d/m/Y') . ' - ' . $nombreDia;
+            if ($esFeriado) { $fechaFormato .= ' - FERIADO'; }
 
-            if ($esPagoInicialFila) {
-                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - PAGO INICIAL';
-            } elseif ($esDomingo) {
-                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia;
-            } elseif ($esFeriado) {
-                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia . ' - FERIADO';
-            } else {
-                $fechaFormato = $fechaCuota->format('d/m/Y') . ' - ' . $nombreDia;
-            }
-
-            // Datos y bordes verdes
             $sheet->setCellValue($colOffset . $currentRow, $fechaFormato);
             $sheet->getStyle($colOffset . $currentRow)->applyFromArray($styleBordeVerde);
             $sheet->getStyle($colOffset . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-            // Si es domingo o feriado, marcar en rojo
             if ($esDomingo || $esFeriado) {
                 $sheet->getStyle($colOffset . $currentRow)->getFont()->setColor(new Color('FF0000'));
             }
 
-            // Calcular efectivo (sumar pagos de tipo EFECTIVO)
-            $montoEfectivo = 0;
-            $montoOtros = 0;
-
-            if (isset($pagosData[$cuota->CuotaID])) {
-                foreach ($pagosData[$cuota->CuotaID] as $pago) {
-                    if (empty($pago->TipoPago) || strtoupper($pago->TipoPago) === 'EFECTIVO') {
-                        $montoEfectivo += $pago->MontoPagado;
-                    } else {
-                        $montoOtros += $pago->MontoPagado;
-                    }
-                }
-            }
-
-            // Restar los pagos de esta cuota del saldo acumulativo
+            $montoEfectivo = $dia['efectivo'];
+            $montoOtros = $dia['otros'];
             $saldoAcumulativo -= ($montoEfectivo + $montoOtros);
-            $saldoTotalCredito = max(0, $saldoAcumulativo); // No permitir negativos
+            $saldoTotalCredito = max(0, $saldoAcumulativo);
 
             if ($i < 20) {
-                // BLOQUE 1 - Columnas combinadas
                 $efectivoCol1 = $this->nextCol($colOffset, 1);
                 $efectivoCol2 = $this->nextCol($colOffset, 2);
                 $sheet->mergeCells($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow);
                 if ($montoEfectivo > 0) {
                     $sheet->setCellValue($efectivoCol1 . $currentRow, number_format($montoEfectivo, 2));
-                    $sheet->getStyle($efectivoCol1 . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
                 $sheet->getStyle($efectivoCol1 . $currentRow . ':' . $efectivoCol2 . $currentRow)->applyFromArray($styleBordeVerde);
 
@@ -267,35 +275,32 @@ class LibretaPagosExport
                 $sheet->mergeCells($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow);
                 if ($montoOtros > 0) {
                     $sheet->setCellValue($yapeCol1 . $currentRow, number_format($montoOtros, 2));
-                    $sheet->getStyle($yapeCol1 . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
                 $sheet->getStyle($yapeCol1 . $currentRow . ':' . $yapeCol2 . $currentRow)->applyFromArray($styleBordeVerde);
 
                 $saldoCol = $this->nextCol($colOffset, 5);
                 $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoTotalCredito, 2));
-                $sheet->getStyle($saldoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
             } else {
-                // BLOQUES 2 y 3 - Columnas simples
                 $efectivoCol = $this->nextCol($colOffset, 1);
                 if ($montoEfectivo > 0) {
                     $sheet->setCellValue($efectivoCol . $currentRow, number_format($montoEfectivo, 2));
-                    $sheet->getStyle($efectivoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
                 $sheet->getStyle($efectivoCol . $currentRow)->applyFromArray($styleBordeVerde);
 
                 $yapeCol = $this->nextCol($colOffset, 2);
                 if ($montoOtros > 0) {
                     $sheet->setCellValue($yapeCol . $currentRow, number_format($montoOtros, 2));
-                    $sheet->getStyle($yapeCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 }
                 $sheet->getStyle($yapeCol . $currentRow)->applyFromArray($styleBordeVerde);
 
                 $saldoCol = $this->nextCol($colOffset, 3);
                 $sheet->setCellValue($saldoCol . $currentRow, number_format($saldoTotalCredito, 2));
-                $sheet->getStyle($saldoCol . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 $sheet->getStyle($saldoCol . $currentRow)->applyFromArray($styleBordeVerde);
             }
+
+            $indiceFila++;
+        }
 
             $indiceFila++;
         }

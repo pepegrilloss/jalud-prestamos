@@ -76,7 +76,7 @@ class ResolucionExcedenteService
             'EsMora' => false,
             'EsPagoAutomatico' => true,
             'PagoOrigenID' => $pagoOriginal->PagoID,
-            'Comentario' => "Recibido por traslado de {$clienteOrigenNombre} - Solicitud #{$solicitud->SolicitudID}. Monto: S/ " . number_format($montoAplicar, 2),
+            'Comentario' => "Recibido por traslado de {$clienteOrigenNombre}\nSolicitud #{$solicitud->SolicitudID}.\nMonto: S/ " . number_format($montoAplicar, 2),
             'UsuarioRegistro' => $aprobador->name,
             'Activo' => true,
             'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,
@@ -159,9 +159,9 @@ class ResolucionExcedenteService
                 // Aplicar el excedente al pago existente de la misma fecha
                 $montoOriginal = $pagoExistente->MontoPagado;
                 $pagoExistente->MontoPagado = $montoOriginal + $montoAplicar;
-                $pagoExistente->Comentario = ($pagoExistente->Comentario ? $pagoExistente->Comentario . ' | ' : '')
+                $pagoExistente->Comentario = ($pagoExistente->Comentario ? $pagoExistente->Comentario . " |\n" : '')
                     . "Excedente aplicado: +S/ " . number_format($montoAplicar, 2)
-                    . " (Resolución #{$solicitud->SolicitudID}). Pago original: S/ " . number_format($montoOriginal, 2)
+                    . " (Resolución #{$solicitud->SolicitudID}).\nPago original: S/ " . number_format($montoOriginal, 2)
                     . ", nuevo total: S/ " . number_format($montoOriginal + $montoAplicar, 2);
                 $pagoExistente->save();
 
@@ -212,7 +212,7 @@ class ResolucionExcedenteService
             'TipoConcepto' => 'C',
             'EsMora' => false,
             'EsPagoAutomatico' => true,
-            'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}. Tipo: {$solicitud->TipoResolucion}. Monto aplicado: S/ " . number_format($montoAplicar, 2),
+            'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}.\nTipo: {$solicitud->TipoResolucion}.\nMonto aplicado: S/ " . number_format($montoAplicar, 2),
             'UsuarioRegistro' => $aprobador->name,
             'Activo' => true,
             'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,
