@@ -17,11 +17,22 @@ class ManageTransferenciaSedes extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Nueva Transferencia')
-                ->visible(fn () => auth()->user()->SedeID && stripos(auth()->user()->sede->Nombre, 'Gerencia') !== false)
+                ->label('Nueva Remesa / Transferencia')
                 ->using(function (array $data, FondoSedeService $service): \Illuminate\Database\Eloquent\Model {
                     try {
                         $sedeOrigenId = auth()->user()->SedeID;
+                        
+                        // Si estamos en el panel de gerencia, forzar origen como Gerencia
+                        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                            $sedeGerencia = \App\Models\Sede::where('Nombre', 'like', '%Gerencia%')->first();
+                            if ($sedeGerencia) {
+                                $sedeOrigenId = $sedeGerencia->SedeID;
+                            }
+                        } else {
+                            if (auth()->user()->esAdmin() && session('sede_activa')) {
+                                $sedeOrigenId = session('sede_activa');
+                            }
+                        }
                         
                         if (!$sedeOrigenId) {
                             throw ValidationException::withMessages([
@@ -34,14 +45,15 @@ class ManageTransferenciaSedes extends ManageRecords
                             $data['SedeDestinoID'],
                             $data['Monto'],
                             auth()->id(),
-                            $data['Observacion']
+                            $data['Observacion'],
+                            $data['CuentaOrigen'] ?? 'CAJA_ABIERTA',
+                            $data['CuentaDestino'] ?? 'CAJA_ABIERTA'
                         );
                     } catch (\Exception $e) {
-                        // Re-throw to show validation message in the form
                         throw $e;
                     }
                 })
-                ->successNotificationTitle('Transferencia enviada con éxito')
+                ->successNotificationTitle('Remesa enviada con éxito')
         ];
     }
 }

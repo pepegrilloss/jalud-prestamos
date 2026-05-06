@@ -17,6 +17,8 @@ class Dashboard extends BaseDashboard
             \App\Filament\Widgets\DashboardPagosCerradosHoyWidget::class,
             \App\Filament\Widgets\DashboardProposicionesHoyWidget::class,
             \App\Filament\Widgets\DashboardCreditosVencenHoyWidget::class,
+            \App\Filament\Widgets\CajaAbiertaWidget::class,
+            \App\Filament\Widgets\CajaChicaWidget::class,
         ];
     }
 

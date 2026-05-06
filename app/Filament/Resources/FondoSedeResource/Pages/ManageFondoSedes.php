@@ -13,8 +13,7 @@ class ManageFondoSedes extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
-                ->visible(fn () => auth()->user()->SedeID && stripos(auth()->user()->sede->Nombre, 'Gerencia') !== false),
+            // Las acciones ahora están directamente en la tabla (FondoSedeResource)
         ];
     }
 }

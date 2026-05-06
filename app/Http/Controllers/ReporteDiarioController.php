@@ -7,6 +7,11 @@ use App\Models\AperturaCierreDia;
 use App\Models\Pago;
 use App\Models\Credito;
 use App\Models\Sede;
+use App\Models\Gasto;
+use App\Models\TransferenciaSede;
+use App\Models\SolicitudExoneracion;
+use App\Models\Excedente;
+use App\Models\FondoSede;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
@@ -15,9 +20,15 @@ class ReporteDiarioController extends Controller
     /**
      * Genera el reporte general del día (cierre de caja) en PDF.
      *
-     * Incluye:
-     *   - AMORTIZACIONES: todos los pagos activos registrados en esa fecha
-     *   - CREDITOS EMITIDOS: todos los créditos generados en esa fecha
+     * Estructura según requerimiento del cliente:
+     *   1. CAJA CHICA - Gastos (Total de gastos diarios)
+     *   2. INGRESO DE REMESAS - Transferencias recibidas
+     *   3. SALIDA DE REMESAS - Transferencias enviadas
+     *   4. CAJA ABIERTA:
+     *      - Exoneración (Moras Intereses)
+     *      - Extornos / Devoluciones
+     *      - Amortizaciones (Pagos en orden)
+     *   5. CREDITOS EMITIDOS
      */
     public function descargar(Request $request)
     {
@@ -46,8 +57,110 @@ class ReporteDiarioController extends Controller
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'CHICLAYO';
 
-        // ─── AMORTIZACIONES ───
-        // Pagos activos cuya FechaPago cae en la fecha del día cerrado
+        // Obtener saldo de Caja Abierta y Caja Chica
+        $fondo = $sedeId ? FondoSede::where('SedeID', $sedeId)->first() : null;
+        $saldoCajaAbierta = $fondo ? $fondo->Saldo : 0;
+        $saldoCajaChica = $fondo ? $fondo->SaldoCajaChica : 0;
+
+        // ─── 1. CAJA CHICA: GASTOS DEL DÍA ───
+        $gastosQuery = Gasto::withoutGlobalScopes()
+            ->where('Activo', true)
+            ->whereDate('FechaEmision', $fecha);
+
+        if ($sedeId) {
+            $gastosQuery->where('SedeID', $sedeId);
+        }
+
+        $gastos = $gastosQuery
+            ->with(['proveedor', 'motivo', 'detalles'])
+            ->orderBy('GastoID', 'asc')
+            ->get();
+
+        $totalGastos = $gastos->sum('Total');
+
+        // ─── 1B. CAJA CHICA: COMPRAS DEL DÍA ───
+        $comprasQuery = \App\Models\Compra::withoutGlobalScopes()
+            ->where('Activo', true)
+            ->whereDate('FechaEmision', $fecha);
+
+        if ($sedeId) {
+            $comprasQuery->where('SedeID', $sedeId);
+        }
+
+        $compras = $comprasQuery
+            ->with(['proveedor', 'detalles'])
+            ->orderBy('CompraID', 'asc')
+            ->get();
+
+        $totalCompras = $compras->sum('Total');
+
+        // ─── 2. INGRESO DE REMESAS (transferencias recibidas y aceptadas) ───
+        $ingresosRemesasQuery = TransferenciaSede::withoutGlobalScopes()
+            ->where('Estado', 'ACEPTADO')
+            ->whereDate('FechaRespuesta', $fecha);
+
+        if ($sedeId) {
+            $ingresosRemesasQuery->where('SedeDestinoID', $sedeId);
+        }
+
+        $ingresosRemesas = $ingresosRemesasQuery
+            ->with(['sedeOrigen', 'sedeDestino', 'usuarioOrigen'])
+            ->orderBy('TransferenciaID', 'asc')
+            ->get();
+
+        $totalIngresosRemesas = $ingresosRemesas->sum('Monto');
+
+        // ─── 3. SALIDA DE REMESAS (transferencias enviadas y aceptadas) ───
+        $salidasRemesasQuery = TransferenciaSede::withoutGlobalScopes()
+            ->where('Estado', 'ACEPTADO')
+            ->whereDate('FechaRespuesta', $fecha);
+
+        if ($sedeId) {
+            $salidasRemesasQuery->where('SedeOrigenID', $sedeId);
+        }
+
+        $salidasRemesas = $salidasRemesasQuery
+            ->with(['sedeOrigen', 'sedeDestino', 'usuarioOrigen'])
+            ->orderBy('TransferenciaID', 'asc')
+            ->get();
+
+        $totalSalidasRemesas = $salidasRemesas->sum('Monto');
+
+        // ─── 4a. CAJA ABIERTA - EXONERACIONES (Moras e Intereses) ───
+        $exoneracionesQuery = SolicitudExoneracion::withoutGlobalScopes()
+            ->where('Estado', 'APROBADO')
+            ->where('Activo', true)
+            ->whereDate('FechaAprobacion', $fecha);
+
+        if ($sedeId) {
+            $exoneracionesQuery->where('SedeID', $sedeId);
+        }
+
+        $exoneraciones = $exoneracionesQuery
+            ->with(['credito.proposicion.cliente', 'tipoExoneracion'])
+            ->orderBy('SolicitudExoneracionID', 'asc')
+            ->get();
+
+        $totalExoneraciones = $exoneraciones->sum('MontoExonerado');
+
+        // ─── 4b. CAJA ABIERTA - EXTORNOS / DEVOLUCIONES (Excedentes resueltos) ───
+        $extornosQuery = Excedente::withoutGlobalScopes()
+            ->where('Activo', true)
+            ->where('EstadoResolucion', 'RESUELTO')
+            ->whereDate('Fecha', $fecha);
+
+        if ($sedeId) {
+            $extornosQuery->where('SedeID', $sedeId);
+        }
+
+        $extornos = $extornosQuery
+            ->with(['clienteOrigen', 'zona'])
+            ->orderBy('ExcedenteID', 'asc')
+            ->get();
+
+        $totalExtornos = $extornos->sum('Monto');
+
+        // ─── 4c. CAJA ABIERTA - AMORTIZACIONES (Pagos) ───
         $pagosQuery = Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)
             ->whereDate('pago.FechaPago', $fecha);
@@ -73,8 +186,7 @@ class ReporteDiarioController extends Controller
 
         $totalAmortizaciones = $pagos->sum('MontoPagado');
 
-        // ─── CREDITOS EMITIDOS ───
-        // Créditos generados en la fecha del día cerrado
+        // ─── 5. CREDITOS EMITIDOS ───
         $creditosQuery = Credito::withoutGlobalScopes()
             ->where('Credito.Activo', true)
             ->whereDate('Credito.FechaGeneracion', $fecha);
@@ -102,17 +214,40 @@ class ReporteDiarioController extends Controller
 
         $totalCreditosEmitidos = $creditos->sum('MontoTotal');
 
-        // Calcular paginación (aprox. 40 líneas por página)
+        // Calcular datos
         $ahora = Carbon::now();
 
         $data = [
-            'fecha'                => $fechaCarbon,
-            'sedeNombre'           => strtoupper($sedeNombre),
-            'emision'              => $ahora,
-            'pagos'                => $pagos,
-            'totalAmortizaciones'  => $totalAmortizaciones,
-            'creditos'             => $creditos,
-            'totalCreditosEmitidos'=> $totalCreditosEmitidos,
+            'fecha'                 => $fechaCarbon,
+            'sedeNombre'            => strtoupper($sedeNombre),
+            'emision'               => $ahora,
+            // Saldos
+            'saldoCajaAbierta'      => $saldoCajaAbierta,
+            'saldoCajaChica'        => $saldoCajaChica,
+            // 1. Caja Chica - Gastos
+            'gastos'                => $gastos,
+            'totalGastos'           => $totalGastos,
+            // 1B. Caja Chica - Compras
+            'compras'               => $compras,
+            'totalCompras'          => $totalCompras,
+            // 2. Ingreso de Remesas
+            'ingresosRemesas'       => $ingresosRemesas,
+            'totalIngresosRemesas'  => $totalIngresosRemesas,
+            // 3. Salida de Remesas
+            'salidasRemesas'        => $salidasRemesas,
+            'totalSalidasRemesas'   => $totalSalidasRemesas,
+            // 4a. Exoneraciones
+            'exoneraciones'         => $exoneraciones,
+            'totalExoneraciones'    => $totalExoneraciones,
+            // 4b. Extornos
+            'extornos'              => $extornos,
+            'totalExtornos'         => $totalExtornos,
+            // 4c. Amortizaciones
+            'pagos'                 => $pagos,
+            'totalAmortizaciones'   => $totalAmortizaciones,
+            // 5. Créditos Emitidos
+            'creditos'              => $creditos,
+            'totalCreditosEmitidos' => $totalCreditosEmitidos,
         ];
 
         $pdf = Pdf::loadView('reportes.reporte-diario', $data);

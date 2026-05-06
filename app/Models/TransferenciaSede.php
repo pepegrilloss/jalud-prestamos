@@ -15,6 +15,8 @@ class TransferenciaSede extends Model
     protected $fillable = [
         'SedeOrigenID',
         'SedeDestinoID',
+        'CuentaOrigen',
+        'CuentaDestino',
         'UsuarioOrigenID',
         'UsuarioRespondeID',
         'Monto',

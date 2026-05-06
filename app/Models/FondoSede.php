@@ -15,6 +15,7 @@ class FondoSede extends Model
     protected $fillable = [
         'SedeID',
         'Saldo',
+        'SaldoCajaChica',
     ];
 
     public function sede()

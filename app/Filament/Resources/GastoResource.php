@@ -38,7 +38,18 @@ class GastoResource extends Resource
                             ->label('Tipo de Comprobante')
                             ->options(TipoComprobanteGasto::where('Activo', true)->pluck('Nombre', 'TipoComprobanteGastoID'))
                             ->required()
-                            ->searchable(),
+                            ->searchable()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('Nombre')
+                                    ->label('Nombre del Comprobante')
+                                    ->required()
+                                    ->maxLength(100),
+                            ])
+                            ->createOptionUsing(function (array $data): string {
+                                $data['Activo'] = true;
+                                $comprobante = TipoComprobanteGasto::create($data);
+                                return $comprobante->TipoComprobanteGastoID;
+                            }),
                         Forms\Components\TextInput::make('Numero')
                             ->prefixIcon('heroicon-m-hashtag')
                             ->label('Número')
@@ -47,9 +58,7 @@ class GastoResource extends Resource
                         Forms\Components\DatePicker::make('FechaEmision')
                             ->prefixIcon('heroicon-m-calendar-days')
                             ->label('Fecha Emisión')
-                            ->required()
-                            ->minDate(now()->startOfMonth())
-                            ->maxDate(now()->endOfMonth()),
+                            ->required(),
                     ])->columns(3),
 
                 Forms\Components\Section::make('Datos del Gasto')

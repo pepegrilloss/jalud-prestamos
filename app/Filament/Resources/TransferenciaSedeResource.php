@@ -14,7 +14,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
-use App\Traits\BelongsToSede; // To filter by current Sede if necessary
 
 class TransferenciaSedeResource extends Resource
 {
@@ -24,9 +23,24 @@ class TransferenciaSedeResource extends Resource
 
     protected static ?string $navigationGroup = 'Tesorería';
 
-    protected static ?string $modelLabel = 'Transferencia a Sede';
+    protected static ?string $modelLabel = 'Remesa / Transferencia';
+    protected static ?string $pluralModelLabel = 'Remesas y Transferencias';
 
-    protected static ?string $pluralModelLabel = 'Transferencias entre Sedes';
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+        return parent::shouldRegisterNavigation();
+    }
+
+    public static function canAccess(): bool
+    {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+        return parent::canAccess();
+    }
 
     public static function form(Form $form): Form
     {
@@ -35,13 +49,43 @@ class TransferenciaSedeResource extends Resource
                 Forms\Components\Select::make('SedeDestinoID')
                     ->label('Sede Destino')
                     ->options(function () {
-                        // All sedes except the user's current Sede
                         $userSedeId = auth()->user()->SedeID;
+                        
+                        // Si estamos en el panel de gerencia, el origen es la sede de Gerencia
+                        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                            $sedeGerencia = Sede::where('Nombre', 'like', '%Gerencia%')->first();
+                            if ($sedeGerencia) {
+                                $userSedeId = $sedeGerencia->SedeID;
+                            }
+                        } else {
+                            if (auth()->user()->esAdmin() && session('sede_activa')) {
+                                $userSedeId = session('sede_activa');
+                            }
+                        }
+
                         return Sede::where('SedeID', '!=', $userSedeId)
                             ->where('Activo', true)
                             ->pluck('Nombre', 'SedeID');
                     })
                     ->required(),
+                Forms\Components\Select::make('CuentaOrigen')
+                    ->label('Cuenta Origen')
+                    ->options([
+                        'CAJA_ABIERTA' => 'Caja Abierta',
+                        'CAJA_CHICA' => 'Caja Chica',
+                    ])
+                    ->default('CAJA_ABIERTA')
+                    ->required()
+                    ->native(false),
+                Forms\Components\Select::make('CuentaDestino')
+                    ->label('Cuenta Destino')
+                    ->options([
+                        'CAJA_ABIERTA' => 'Caja Abierta',
+                        'CAJA_CHICA' => 'Caja Chica',
+                    ])
+                    ->default('CAJA_ABIERTA')
+                    ->required()
+                    ->native(false),
                 Forms\Components\TextInput::make('Monto')
                     ->required()
                     ->numeric()
@@ -58,10 +102,13 @@ class TransferenciaSedeResource extends Resource
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) {
-                // Filter transfers matching their Sede (either Origin or Dest)
-                
-                // Otherwise only see transfers matching their Sede (either Origin or Dest)
+                if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                    return $query;
+                }
                 $sedeId = auth()->user()->SedeID;
+                if (auth()->user()->esAdmin() && session('sede_activa')) {
+                    $sedeId = session('sede_activa');
+                }
                 if ($sedeId) {
                     $query->where(function($q) use ($sedeId) {
                         $q->where('SedeOrigenID', $sedeId)
@@ -77,9 +124,27 @@ class TransferenciaSedeResource extends Resource
                 Tables\Columns\TextColumn::make('sedeOrigen.Nombre')
                     ->label('Origen')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('CuentaOrigen')
+                    ->label('Cta. Origen')
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'CAJA_ABIERTA' => 'Caja Abierta',
+                        'CAJA_CHICA' => 'Caja Chica',
+                        default => $state,
+                    })
+                    ->badge()
+                    ->color(fn (string $state) => $state === 'CAJA_CHICA' ? 'info' : 'primary'),
                 Tables\Columns\TextColumn::make('sedeDestino.Nombre')
                     ->label('Destino')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('CuentaDestino')
+                    ->label('Cta. Destino')
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'CAJA_ABIERTA' => 'Caja Abierta',
+                        'CAJA_CHICA' => 'Caja Chica',
+                        default => $state,
+                    })
+                    ->badge()
+                    ->color(fn (string $state) => $state === 'CAJA_CHICA' ? 'info' : 'primary'),
                 Tables\Columns\TextColumn::make('Monto')
                     ->money('PEN')
                     ->sortable()
@@ -113,9 +178,19 @@ class TransferenciaSedeResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->visible(function (TransferenciaSede $record) {
-                        // Visible only if pending and user belongs to dest Sede
                         if ($record->Estado !== 'PENDIENTE') return false;
-                        return auth()->user()->SedeID === $record->SedeDestinoID;
+                        
+                        // En panel gerencia, verificar si destino es Gerencia
+                        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                            $sedeGerencia = Sede::where('Nombre', 'like', '%Gerencia%')->first();
+                            return $sedeGerencia && $record->SedeDestinoID == $sedeGerencia->SedeID;
+                        }
+                        
+                        $sedeId = auth()->user()->SedeID;
+                        if (auth()->user()->esAdmin() && session('sede_activa')) {
+                            $sedeId = session('sede_activa');
+                        }
+                        return $sedeId === $record->SedeDestinoID;
                     })
                     ->action(function (TransferenciaSede $record, FondoSedeService $service) {
                         try {
@@ -138,9 +213,19 @@ class TransferenciaSedeResource extends Resource
                     ->color('danger')
                     ->requiresConfirmation()
                     ->visible(function (TransferenciaSede $record) {
-                        // Visible only if pending and user belongs to dest Sede
                         if ($record->Estado !== 'PENDIENTE') return false;
-                        return auth()->user()->SedeID === $record->SedeDestinoID;
+
+                        // En panel gerencia, verificar si destino es Gerencia
+                        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                            $sedeGerencia = Sede::where('Nombre', 'like', '%Gerencia%')->first();
+                            return $sedeGerencia && $record->SedeDestinoID == $sedeGerencia->SedeID;
+                        }
+
+                        $sedeId = auth()->user()->SedeID;
+                        if (auth()->user()->esAdmin() && session('sede_activa')) {
+                            $sedeId = session('sede_activa');
+                        }
+                        return $sedeId === $record->SedeDestinoID;
                     })
                     ->action(function (TransferenciaSede $record, FondoSedeService $service) {
                         try {
@@ -159,7 +244,8 @@ class TransferenciaSedeResource extends Resource
                         }
                     }),
             ])
-            ->bulkActions([]);
+            ->bulkActions([])
+            ->defaultSort('TransferenciaID', 'desc');
     }
 
     public static function getPages(): array

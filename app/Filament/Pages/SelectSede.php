@@ -23,7 +23,9 @@ class SelectSede extends Page
         $user = auth()->user();
 
         if ($user->esAdmin()) {
-            return Sede::where('Activo', true)->orderBy('Nombre')->get();
+            return Sede::where('Activo', true)
+                ->orderBy('Nombre')
+                ->get();
         }
 
         // Si no es admin pero tiene una sede asignada (por si acaso el middleware no la auto-seteo)
@@ -42,6 +44,15 @@ class SelectSede extends Page
         }
 
         session(['sede_activa' => $sedeId]);
+        
+        // Verificar si la sede seleccionada es "Gerencia General"
+        if ($sedeId) {
+            $sede = Sede::find($sedeId);
+            if ($sede && str_contains(strtolower($sede->Nombre), 'gerencia')) {
+                $this->redirect('/gerencia');
+                return;
+            }
+        }
         
         $this->redirect('/admin');
     }

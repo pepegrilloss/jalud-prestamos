@@ -396,8 +396,39 @@ class GenerarCreditoResource extends Resource
                             ->columns(1)
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
-                        // Crear el crédito
-                        // Usar la fecha abierta en lugar de now() (con hora actual)
+                        // ── VALIDAR SALDO EN CAJA ABIERTA ──
+                        $montoDesembolso = $record->MontoTotal;
+                        $user = auth()->user();
+                        $sedeId = $user->SedeID;
+                        if ($user->esAdmin() && session('sede_activa')) {
+                            $sedeId = session('sede_activa');
+                        }
+
+                        if (!$sedeId) {
+                            Notification::make()
+                                ->danger()
+                                ->title('No se puede generar crédito')
+                                ->body('No tienes una sede asignada. Selecciona una sede activa.')
+                                ->persistent()
+                                ->send();
+                            return;
+                        }
+
+                        $fondoService = app(\App\Services\FondoSedeService::class);
+
+                        try {
+                            $fondoService->verificarSaldo($sedeId, $montoDesembolso);
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Saldo insuficiente en Caja Abierta')
+                                ->body($e->getMessage())
+                                ->persistent()
+                                ->send();
+                            return;
+                        }
+
+                        // ── CREAR EL CRÉDITO ──
                         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                         $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
                         
@@ -409,6 +440,21 @@ class GenerarCreditoResource extends Resource
                             'UserGeneracionID' => auth()->id(),
                             'Activo' => true,
                         ]);
+
+                        // ── DESCONTAR DE CAJA ABIERTA ──
+                        try {
+                            $fondoService->registrarEgresoColocacion(
+                                $sedeId,
+                                $montoDesembolso,
+                                $credito->CreditoID,
+                                auth()->id()
+                            );
+                        } catch (\Exception $e) {
+                            \Log::error('FondoSede: Error al registrar egreso colocación', [
+                                'CreditoID' => $credito->CreditoID,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
 
                         // Calcular fechas usando la misma lógica de cuotas
                         // (omitiendo domingos y feriados)

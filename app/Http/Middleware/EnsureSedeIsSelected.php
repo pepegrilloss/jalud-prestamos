@@ -29,6 +29,7 @@ class EnsureSedeIsSelected
             'admin/login',
             'admin/logout',
             'admin/select-sede',
+            'gerencia',
             'livewire/message/select-sede', // Permitir las llamadas de livewire para esta página
         ];
 
@@ -38,8 +39,16 @@ class EnsureSedeIsSelected
             }
         }
 
-        // Si ya tiene una sede seleccionada en la sesión, continuar
+        // Si ya tiene una sede seleccionada en la sesión, revisar si es Gerencia
         if (session()->exists('sede_activa')) {
+            $sedeId = session('sede_activa');
+            if ($sedeId) {
+                $sede = \App\Models\Sede::find($sedeId);
+                // Si la sede activa es Gerencia, no puede entrar a /admin tipeando la URL
+                if ($sede && str_contains(strtolower($sede->Nombre), 'gerencia')) {
+                    return redirect('/admin/select-sede');
+                }
+            }
             return $next($request);
         }
 

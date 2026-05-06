@@ -6,6 +6,7 @@ use App\Filament\Resources\CreditoResource;
 use App\Models\Credito;
 use App\Models\ProposicionCredito;
 use App\Models\TipoPago;
+use App\Services\FondoSedeService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Actions;
@@ -170,6 +171,26 @@ class CreateCredito extends CreateRecord
 
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
     {
+        $montoDesembolso = $this->proposicion->MontoTotal;
+
+        // Resolver sede correctamente (admin usa sede_activa de sesión)
+        $user = auth()->user();
+        $sedeId = $user->SedeID;
+        if ($user->esAdmin() && session('sede_activa')) {
+            $sedeId = session('sede_activa');
+        }
+
+        $fondoService = app(FondoSedeService::class);
+
+        // SIEMPRE validar saldo - si no hay sede, bloquear
+        if (!$sedeId) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'Sede' => 'No se puede generar crédito: no tienes una sede asignada. Selecciona una sede activa.'
+            ]);
+        }
+
+        $fondoService->verificarSaldo($sedeId, $montoDesembolso);
+
         // Obtener la fecha abierta para la generación del crédito (con hora actual)
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
         $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
@@ -183,6 +204,13 @@ class CreateCredito extends CreateRecord
             'UserGeneracionID' => auth()->id(),
             'Activo' => true,
         ]);
+
+        $fondoService->registrarEgresoColocacion(
+            $sedeId,
+            $montoDesembolso,
+            $credito->CreditoID,
+            auth()->id()
+        );
 
         return $credito;
     }

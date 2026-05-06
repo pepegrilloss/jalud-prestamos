@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PagoResource\Pages;
 
 use App\Filament\Resources\PagoResource;
 use App\Models\ProposicionCredito;
+use App\Services\FondoSedeService;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
@@ -550,6 +551,22 @@ class CreatePago extends CreateRecord
                             'ClienteID' => $credito->proposicion->ClienteID,
                             'FechaSaldamiento' => $fechaSaldamiento,
                             'UsuarioID' => auth()->id()
+                        ]);
+                    }
+                }
+
+                if ($pagoOriginal->SedeID && $pagoOriginal->MontoPagado > 0) {
+                    try {
+                        app(FondoSedeService::class)->registrarIngresoRecaudo(
+                            $pagoOriginal->SedeID,
+                            $pagoOriginal->MontoPagado,
+                            $pagoOriginal->PagoID,
+                            auth()->id()
+                        );
+                    } catch (\Exception $e) {
+                        \Log::warning('FondoSede: No se pudo registrar ingreso por recaudo', [
+                            'PagoID' => $pagoOriginal->PagoID,
+                            'error' => $e->getMessage()
                         ]);
                     }
                 }
