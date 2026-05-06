@@ -10,4 +10,10 @@ class CreateExcedente extends CreateRecord
 {
     protected static string $resource = ExcedenteResource::class;
     // La asignación de SedeID se maneja automáticamente en la base a través de App\Traits\BelongsToSede
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['UsuarioRegistro'] = auth()->id();
+        return \App\Services\DateFieldResolver::injectFechaAbierta($data, $this->getModel());
+    }
 }

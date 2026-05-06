@@ -25,6 +25,12 @@ class EditExcedente extends EditRecord
         ");
     }
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['UsuarioModificacion'] = auth()->id();
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         return [

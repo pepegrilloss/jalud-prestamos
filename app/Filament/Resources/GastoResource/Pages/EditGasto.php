@@ -10,6 +10,12 @@ class EditGasto extends EditRecord
 {
     protected static string $resource = GastoResource::class;
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['UsuarioModificacion'] = auth()->id();
+        return $data;
+    }
+
     protected function afterSave(): void
     {
         // Recalcular total desde los detalles guardados

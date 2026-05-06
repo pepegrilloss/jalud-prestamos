@@ -29,6 +29,8 @@ class Excedente extends Model
         'EstadoResolucion',
         'Cuenta',
         'FechaCierre',
+        'UsuarioRegistro',
+        'UsuarioModificacion',
     ];
 
     protected $casts = [
@@ -50,5 +52,15 @@ class Excedente extends Model
     public function pagoOrigen()
     {
         return $this->belongsTo(Pago::class, 'PagoOrigenID', 'PagoID');
+    }
+
+    public function usuarioRegistro()
+    {
+        return $this->belongsTo(User::class, 'UsuarioRegistro', 'id');
+    }
+
+    public function usuarioModificacion()
+    {
+        return $this->belongsTo(User::class, 'UsuarioModificacion', 'id');
     }
 }

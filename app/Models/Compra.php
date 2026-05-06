@@ -27,6 +27,8 @@ class Compra extends Model
         'Observaciones',
         'Activo',
         'SedeID',
+        'UsuarioRegistro',
+        'UsuarioModificacion',
     ];
 
     protected $casts = [
@@ -57,5 +59,15 @@ class Compra extends Model
     public function scopeActivos($query)
     {
         return $query->where('Activo', true);
+    }
+
+    public function usuarioRegistro(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'UsuarioRegistro', 'id');
+    }
+
+    public function usuarioModificacion(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'UsuarioModificacion', 'id');
     }
 }

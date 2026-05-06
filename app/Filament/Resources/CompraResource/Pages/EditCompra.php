@@ -35,6 +35,7 @@ class EditCompra extends EditRecord
             $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
         }
 
+        $data['UsuarioModificacion'] = auth()->id();
         return $data;
     }
 
