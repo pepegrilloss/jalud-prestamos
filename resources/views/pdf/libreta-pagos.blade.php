@@ -213,7 +213,7 @@
                 <span class="etiqueta-verde">FE:</span>
                 {{ \Carbon\Carbon::parse($credito->FechaGeneracion)->format('d/m/Y') }}<br>
                 <span class="etiqueta-verde">FV:</span>
-                {{ $cuotas->last() ? \Carbon\Carbon::parse($cuotas->last()->FechaVencimiento)->format('d/m/Y') : '--' }}
+                {{ count($calendario) > 0 ? end($calendario)['fecha']->format('d/m/Y') : '--' }}
             </div>
             <div class="zona-box">{{ $zona }}</div>
 
