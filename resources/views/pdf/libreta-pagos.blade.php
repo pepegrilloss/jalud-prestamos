@@ -249,83 +249,61 @@
                 $saldoFicticio = ($proposicion->MontoTotal + $proposicion->MontoInteres);
                 $filasConfig = [13, 18, 18];
                 $offsetGeneral = 0;
+                $coleccionCalendario = collect($calendario);
             @endphp
- @foreach ($filasConfig as $index => $maxFilas)
-                    <div class="columna-tabla col-{{ $index + 1 }}">
+
+            @foreach ($filasConfig as $index => $maxFilas)
+                <div class="columna-tabla col-{{ $index + 1 }}">
                     <table class="tabla-datos">
                         <thead>
                             <tr>
-
-                         <th style="width: 12%">FECHA</th>
+                                <th style="width: 12%">FECHA</th>
                                 <th style="width: 25%">EFECTIVO</th>
                                 <th style="width: 40%">YAPE - TRANSFERENCIA</th>
                                 <th style="width: 23%">SALDO</th>
-    </tr>
+                            </tr>
                         </thead>
-                    <tbody>
-                        @php 
-                            $items = $cuotas->slice($offsetGeneral, $maxFilas);
-                            $contador = 0;
-                            $offsetGeneral += $maxFilas;
-                        @endphp
-
-                        @foreach($items as $cuota)
+                        <tbody>
                             @php 
-                                $pago = 0;
-                                $pagoEfectivo = 0;
-                                $pagoOtros = 0;
-                                $esPagoInicialFila = $cuota->NumeroCuota == 0;
-                                $fechaMostrar = \Carbon\Carbon::parse($cuota->FechaVencimiento);
-
-                                // Buscar si hay pagos para esta cuota
-                                if (isset($credito->pagos)) {
-                                    foreach ($credito->pagos as $p) {
-                                        if ($p->CuotaID == $cuota->CuotaID) {
-                                            $pago += $p->MontoPagado;
-                                            if (empty($p->TipoPago) || strtoupper($p->TipoPago) === 'EFECTIVO') {
-                                                $pagoEfectivo += $p->MontoPagado;
-                                            } else {
-                                                $pagoOtros += $p->MontoPagado;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                $saldoFicticio -= $pago;
-
-                                $esDomingo = $cuota->Estado === 'DOMINGO';
-                                $esFeriado = $cuota->Estado === 'FERIADO';
-                                $debeResaltar = $esDomingo || $esFeriado;
-
-                                $contador++;
+                                $items = $coleccionCalendario->slice($offsetGeneral, $maxFilas);
+                                $contador = 0;
+                                $offsetGeneral += $maxFilas;
                             @endphp
-                            <tr class="{{ $debeResaltar ? 'marcado-rojo' : '' }}">
-                                <td>
-                                    @if($esPagoInicialFila)
-                                        {{ $fechaMostrar->format('d/m/Y') }}<br>
-                                        <span style="font-size: 5pt; color: #666;">PAGO INICIAL</span>
-                                    @else
-                                        {{ $fechaMostrar->format('d/m/Y') }}
-                                    @endif
-                                </td>
-                                <td>{{ $pagoEfectivo > 0 ? number_format($pagoEfectivo, 1) : '' }}</td>
-                                <td>{{ $pagoOtros > 0 ? number_format($pagoOtros, 1) : '' }}</td>
-                                <td>{{ $pago > 0 ? number_format(max(0, $saldoFicticio), 2) : '' }}</td>
-                            </tr>
-                        @endforeach
 
-                        @for ($r = $contador; $r < $maxFilas; $r++)
-                            <tr>
-                                <td>&nbsp;</td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                        @endfor
-                    </tbody>
-                        </table>
-                    </div>
-@endforeach
+                            @foreach($items as $dia)
+                                @php 
+                                    $pagoEfectivo = $dia['efectivo'];
+                                    $pagoOtros = $dia['otros'];
+                                    $totalDia = $dia['total_dia'];
+                                    $fechaMostrar = $dia['fecha'];
+
+                                    $saldoFicticio -= $totalDia;
+
+                                    $debeResaltar = $dia['es_domingo'] || $dia['es_feriado'];
+                                    $contador++;
+                                @endphp
+                                <tr class="{{ $debeResaltar ? 'marcado-rojo' : '' }}">
+                                    <td>
+                                        {{ $fechaMostrar->format('d/m/Y') }}
+                                    </td>
+                                    <td>{{ $pagoEfectivo > 0 ? number_format($pagoEfectivo, 1) : '' }}</td>
+                                    <td>{{ $pagoOtros > 0 ? number_format($pagoOtros, 1) : '' }}</td>
+                                    <td>{{ $totalDia > 0 ? number_format(max(0, $saldoFicticio), 2) : '' }}</td>
+                                </tr>
+                            @endforeach
+
+                            @for ($r = $contador; $r < $maxFilas; $r++)
+                                <tr>
+                                    <td>&nbsp;</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            @endfor
+                        </tbody>
+                    </table>
+                </div>
+            @endforeach
         </div>
     </div>
 

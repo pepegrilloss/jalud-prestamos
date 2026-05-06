@@ -26,37 +26,87 @@ class LibretaPagosController extends Controller
 
     public function descargarPdf($creditoId)
     {
-        $credito = Credito::with(['proposicion.cliente', 'proposicion.tasa', 'cuotas', 'pagos'])
+        $credito = Credito::with(['proposicion.cliente', 'proposicion.tipoCredito', 'proposicion.tasa', 'proposicion.zona', 'pagos', 'cuotas'])
             ->findOrFail($creditoId);
 
         $proposicion = $credito->proposicion;
         $cliente = $proposicion->cliente;
         $zona = $proposicion->zona->Nombre ?? 'N/A';
-        $cuotas = $credito->cuotas()->orderBy('FechaVencimiento')->get();
 
-        $pagosData = [];
-        foreach ($credito->pagos as $pago) {
-            $pagosData[$pago->CuotaID] = ($pagosData[$pago->CuotaID] ?? 0) + $pago->MontoPagado;
+        // Fechas de inicio y fin desde la tabla Credito
+        $fechaInicio = $credito->FechaInicio ? \Carbon\Carbon::parse($credito->FechaInicio) : \Carbon\Carbon::parse($credito->FechaGeneracion);
+        $fechaVencimiento = $credito->FechaVencimiento ? \Carbon\Carbon::parse($credito->FechaVencimiento) : now();
+        
+        // Si hay pagos posteriores a la fecha de vencimiento, extendemos el calendario
+        $ultimoPago = $credito->pagos->max('FechaPago');
+        $fechaFin = $fechaVencimiento;
+        if ($ultimoPago && \Carbon\Carbon::parse($ultimoPago)->gt($fechaFin)) {
+            $fechaFin = \Carbon\Carbon::parse($ultimoPago);
         }
 
-        // Filtrar la Cuota 0 si NO tiene pagos asociados
-        $cuotas = $cuotas->filter(function ($cuota) use ($pagosData) {
-            if ($cuota->NumeroCuota == 0) {
-                return isset($pagosData[$cuota->CuotaID]) && $pagosData[$cuota->CuotaID] > 0;
+        // Obtener estados de cuotas (para detectar feriados marcados previamente)
+        $cuotasEstados = $credito->cuotas->mapWithKeys(function($c) {
+            $fecha = \Carbon\Carbon::parse($c->FechaVencimiento)->format('Y-m-d');
+            return [$fecha => $c->Estado];
+        });
+
+        $period = new \DatePeriod(
+            $fechaInicio->startOfDay(),
+            new \DateInterval('P1D'),
+            $fechaFin->startOfDay()->addDay()
+        );
+
+        $calendario = [];
+        foreach ($period as $date) {
+            $fechaStr = $date->format('Y-m-d');
+            $estadoCuota = $cuotasEstados[$fechaStr] ?? null;
+            
+            $calendario[$fechaStr] = [
+                'fecha' => $date,
+                'efectivo' => 0,
+                'otros' => 0,
+                'total_dia' => 0,
+                'es_domingo' => $date->isSunday(),
+                'es_feriado' => ($estadoCuota === 'FERIADO'),
+            ];
+        }
+
+        // Agrupar pagos por fecha exacta (sin importar la cuota asignada)
+        foreach ($credito->pagos as $pago) {
+            $fechaPagoStr = \Carbon\Carbon::parse($pago->FechaPago)->format('Y-m-d');
+            
+            if (!isset($calendario[$fechaPagoStr])) {
+                // Caso borde: Pago fuera del rango esperado, lo agregamos
+                $dateObj = \Carbon\Carbon::parse($pago->FechaPago);
+                $calendario[$fechaPagoStr] = [
+                    'fecha' => $dateObj,
+                    'efectivo' => 0,
+                    'otros' => 0,
+                    'total_dia' => 0,
+                    'es_domingo' => $dateObj->isSunday(),
+                    'es_feriado' => false,
+                ];
             }
-            return true;
-        })->values();
+
+            if (empty($pago->TipoPago) || strtoupper($pago->TipoPago) === 'EFECTIVO') {
+                $calendario[$fechaPagoStr]['efectivo'] += $pago->MontoPagado;
+            } else {
+                $calendario[$fechaPagoStr]['otros'] += $pago->MontoPagado;
+            }
+            $calendario[$fechaPagoStr]['total_dia'] += $pago->MontoPagado;
+        }
+
+        // Ordenar por fecha y convertir a lista
+        ksort($calendario);
+        $calendario = array_values($calendario);
 
         $nombreDescarga = 'Libreta_' . str_replace(' ', '_', $cliente->NombresApellidos) . '.pdf';
 
         try {
-            // Tamaño personalizado en puntos (1mm = 2.83465pt)
-            // 300mm = 850.39pt | 140mm = 396.85pt
-            $pdf = Pdf::loadView('pdf.libreta-pagos', compact('credito', 'proposicion', 'cliente', 'zona', 'cuotas', 'pagosData'))
+            $pdf = Pdf::loadView('pdf.libreta-pagos', compact('credito', 'proposicion', 'cliente', 'zona', 'calendario'))
                 ->setPaper([0, 0, 850.39, 396.85], 'portrait');
 
             return $pdf->stream($nombreDescarga);
-
         } catch (\Exception $e) {
             return "Error al generar PDF: " . $e->getMessage();
         }
