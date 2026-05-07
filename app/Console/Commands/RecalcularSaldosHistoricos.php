@@ -36,49 +36,69 @@ class RecalcularSaldosHistoricos extends Command
             $chiclayo->update(['Saldo' => 0, 'SaldoCajaChica' => 0]);
         }
 
-        // 1. Limpiar movimientos y transferencias viejas
-        MovimientoFondo::truncate();
-        TransferenciaSede::truncate();
-        $this->line("Movimientos y Transferencias antiguas limpiadas.");
-
-        // 1.5 Regularizar pagos antiguos: asegurar que todos los extornos históricos sean "Cuenta a Mayor"
+        // 1. Regularizar pagos antiguos: asegurar que todos los extornos históricos sean "Cuenta a Mayor"
         Pago::whereNotNull('SolicitudResolucionID')->update(['EsPagoAMayor' => true]);
-        $this->line("Data regularizada: Los extornos pasados fueron marcados como Cuenta a Mayor.");
+        $this->line("Pagos de extornos regularizados a Cuenta a Mayor.");
 
-        // 2. Setear Gerencia con capital base
-        $gerencia = FondoSede::updateOrCreate(
-            ['SedeID' => $gerenciaSedeId],
-            [
-                'Saldo' => 0, // Inicia en 0 por solicitud del cliente
-                'SaldoCajaChica' => 0
-            ]
-        );
-        $this->line("Gerencia (ID {$gerenciaSedeId}) seteada con capital inicial de operaciones.");
+        // 2. Inyectar o corregir la transferencia inicial de 200,000 hacia Trujillo
+        // Buscamos si ya existe la transferencia inicial para no duplicarla ni borrar otras reales
+        $transferencia = TransferenciaSede::where('SedeDestinoID', $trujilloSedeId)
+            ->where('Monto', 200000)
+            ->first();
 
-        // 3. Crear Transferencia Oficial de 200,000 hacia Trujillo
-        $transferencia = TransferenciaSede::create([
-            'SedeOrigenID' => $gerenciaSedeId,
-            'SedeDestinoID' => $trujilloSedeId,
-            'Monto' => 200000,
-            'Estado' => 'ACEPTADO',
-            'UsuarioOrigenID' => 1,
-            'UsuarioRespondeID' => 1,
-            'FechaTransferencia' => now(),
-            'FechaRespuesta' => now(),
-            'CuentaOrigen' => 'CAJA_ABIERTA',
-            'CuentaDestino' => 'CAJA_ABIERTA'
-        ]);
+        $fechaInicial = '2026-04-06 08:00:00'; // Fecha en la que arrancaron los primeros créditos
 
-        MovimientoFondo::create([
-            'SedeID' => $trujilloSedeId,
-            'Tipo' => 'RECEPCION_TRANSFERENCIA',
-            'Monto' => 200000,
-            'SaldoAnterior' => 0,
-            'SaldoNuevo' => 200000,
-            'TransferenciaID' => $transferencia->TransferenciaID,
-            'UsuarioID' => 1,
-            'Observacion' => 'Capital inicial inyectado por Gerencia'
-        ]);
+        if ($transferencia) {
+            $transferencia->update([
+                'FechaTransferencia' => $fechaInicial,
+                'FechaRespuesta' => $fechaInicial,
+                'created_at' => $fechaInicial,
+                'updated_at' => $fechaInicial
+            ]);
+            $this->line("Transferencia de 200,000 existente actualizada a fecha inicial: {$fechaInicial}.");
+        } else {
+            $transferencia = TransferenciaSede::create([
+                'SedeOrigenID' => $gerenciaSedeId,
+                'SedeDestinoID' => $trujilloSedeId,
+                'Monto' => 200000,
+                'Estado' => 'ACEPTADO',
+                'UsuarioOrigenID' => 1,
+                'UsuarioRespondeID' => 1,
+                'FechaTransferencia' => $fechaInicial,
+                'FechaRespuesta' => $fechaInicial,
+                'CuentaOrigen' => 'CAJA_ABIERTA',
+                'CuentaDestino' => 'CAJA_ABIERTA',
+                'created_at' => $fechaInicial,
+                'updated_at' => $fechaInicial
+            ]);
+            $this->line("Transferencia oficial de 200,000 creada en la fecha: {$fechaInicial}.");
+        }
+
+        // Buscar el movimiento de fondo inicial o crearlo
+        $movimiento = MovimientoFondo::where('SedeID', $trujilloSedeId)
+            ->where('Tipo', 'RECEPCION_TRANSFERENCIA')
+            ->where('Monto', 200000)
+            ->first();
+
+        if ($movimiento) {
+            $movimiento->update([
+                'created_at' => $fechaInicial,
+                'updated_at' => $fechaInicial
+            ]);
+        } else {
+            MovimientoFondo::create([
+                'SedeID' => $trujilloSedeId,
+                'Tipo' => 'RECEPCION_TRANSFERENCIA',
+                'Monto' => 200000,
+                'SaldoAnterior' => 0,
+                'SaldoNuevo' => 200000,
+                'TransferenciaID' => $transferencia->TransferenciaID,
+                'UsuarioID' => 1,
+                'Observacion' => 'Capital inicial inyectado por Gerencia',
+                'created_at' => $fechaInicial,
+                'updated_at' => $fechaInicial
+            ]);
+        }
 
         // 4. Calcular prestamos de Trujillo
         $prestadoCapital = Credito::withoutGlobalScopes()
