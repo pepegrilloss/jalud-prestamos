@@ -1,31 +1,128 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>Reporte General del Día {{ $fecha->format('d/m/Y') }}</title>
     <style>
-        @page { margin: 10mm 8mm 10mm 8mm; }
-        body { font-family: 'Courier New', Courier, monospace; font-size: 8.5px; color: #000; line-height: 1.35; margin: 0; padding: 0; }
-        .header { width: 100%; margin-bottom: 10px; }
-        .header-table { width: 100%; border: none; }
-        .header-table td { border: none; padding: 0; vertical-align: top; }
-        .header-left { text-align: left; font-weight: bold; font-size: 11px; }
-        .header-right { text-align: right; font-size: 8.5px; }
-        .titulo { text-align: center; margin: 15px 0 5px 0; font-size: 11px; font-weight: bold; }
-        .titulo-separador { text-align: center; margin-bottom: 15px; }
-        .seccion-titulo { font-weight: bold; font-size: 11px; margin-top: 10px; margin-bottom: 2px; }
-        .seccion-subrayado { margin-bottom: 5px; }
-        .datos-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 8px; }
-        .datos-table th { border: none; padding: 3px 2px; text-align: left; font-weight: bold; font-size: 8px; border-top: 1px solid #000; border-bottom: 1px solid #000; }
-        .datos-table td { border: none; padding: 2px 2px; font-size: 8px; vertical-align: top; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .datos-table .monto { text-align: right; padding-right: 5px; }
-        .linea-separadora-doble { border: none; border-top: 1px solid #000; margin: 1px 0; }
-        .total-row { font-weight: bold; font-size: 9px; }
-        .total-row td { padding-top: 5px; border-top: 1px solid #000; }
-        .seccion-separador { margin: 15px 0 8px 0; }
+        @page {
+            margin: 10mm 8mm 10mm 8mm;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 8.5px;
+            color: #000;
+            line-height: 1.35;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .header-table {
+            width: 100%;
+            border: none;
+        }
+
+        .header-table td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+
+        .header-left {
+            text-align: left;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .header-right {
+            text-align: right;
+            font-size: 8.5px;
+        }
+
+        .titulo {
+            text-align: center;
+            margin: 15px 0 5px 0;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .titulo-separador {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .seccion-titulo {
+            font-weight: bold;
+            font-size: 11px;
+            margin-top: 10px;
+            margin-bottom: 2px;
+        }
+
+        .seccion-subrayado {
+            margin-bottom: 5px;
+        }
+
+        .datos-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            font-size: 8px;
+        }
+
+        .datos-table th {
+            border: none;
+            padding: 3px 2px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 8px;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+        }
+
+        .datos-table td {
+            border: none;
+            padding: 2px 2px;
+            font-size: 8px;
+            vertical-align: top;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .datos-table .monto {
+            text-align: right;
+            padding-right: 5px;
+        }
+
+        .linea-separadora-doble {
+            border: none;
+            border-top: 1px solid #000;
+            margin: 1px 0;
+        }
+
+        .total-row {
+            font-weight: bold;
+            font-size: 9px;
+        }
+
+        .total-row td {
+            padding-top: 5px;
+            border-top: 1px solid #000;
+        }
+
+        .seccion-separador {
+            margin: 15px 0 8px 0;
+        }
     </style>
 </head>
+
 <body>
 
     {{-- CABECERA --}}
@@ -53,7 +150,7 @@
     </div>
 
     {{-- ═══════════════════════════════════════ --}}
-    {{-- 1. AMORTIZACIONES                      --}}
+    {{-- 1. AMORTIZACIONES --}}
     {{-- ═══════════════════════════════════════ --}}
     <div class="seccion-titulo">&nbsp;AMORTIZACIONES</div>
     <div class="seccion-subrayado">&nbsp;===============</div>
@@ -93,7 +190,7 @@
     </table>
 
     {{-- ═══════════════════════════════════════ --}}
-    {{-- 2. EXTORNOS Y DEVOLUCIONES             --}}
+    {{-- 2. EXTORNOS Y DEVOLUCIONES --}}
     {{-- ═══════════════════════════════════════ --}}
     <div class="seccion-separador"></div>
     <div class="seccion-titulo">&nbsp;EXTORNOS Y DEVOLUCIONES</div>
@@ -145,7 +242,8 @@
                 @endphp
                 <tr>
                     <td>{{ $codigoCreditoExo }}</td>
-                    <td>{{ $exoneracion->FechaAprobacion ? \Carbon\Carbon::parse($exoneracion->FechaAprobacion)->format('d/m/Y') : '' }}</td>
+                    <td>{{ $exoneracion->FechaAprobacion ? \Carbon\Carbon::parse($exoneracion->FechaAprobacion)->format('d/m/Y') : '' }}
+                    </td>
                     <td>{{ $ctaClienteExo }}</td>
                     <td class="monto">{{ number_format($exoneracion->MontoExonerado, 2) }}</td>
                     <td style="text-align: center;">EXO</td>
@@ -171,7 +269,7 @@
     </table>
 
     {{-- ═══════════════════════════════════════ --}}
-    {{-- 3. CREDITOS EMITIDOS                   --}}
+    {{-- 3. CREDITOS EMITIDOS --}}
     {{-- ═══════════════════════════════════════ --}}
     <div class="seccion-separador"></div>
     <div class="seccion-titulo">&nbsp;CREDITOS EMITIDOS</div>
@@ -196,7 +294,9 @@
                     <td>{{ mb_strtoupper($credito->NombresApellidos ?? '') }}</td>
                     <td class="monto">{{ number_format($credito->MontoTotal, 2) }}</td>
                     <td class="monto">{{ number_format($credito->MontoInteres, 2) }}</td>
-                    <td class="monto">{{ number_format($credito->MontoTotalPagar ?? ($credito->MontoTotal + $credito->MontoInteres), 2) }}</td>
+                    <td class="monto">
+                        {{ number_format($credito->MontoTotalPagar ?? ($credito->MontoTotal + $credito->MontoInteres), 2) }}
+                    </td>
                 </tr>
             @empty
                 <tr>
@@ -205,20 +305,23 @@
             @endforelse
 
             @if($creditos->count() > 0)
-                <tr class="total-row">
-                    <td></td>
-                    <td></td>
-                    <td style="text-align: right; padding-right: 10px;">TOTAL CREDITOS EMITIDOS:</td>
-                    <td class="monto">{{ number_format($totalCreditosEmitidos, 2) }}</td>
-                    <td class="monto">{{ number_format($creditos->sum('MontoInteres'), 2) }}</td>
-                    <td class="monto">{{ number_format($creditos->sum(function($c) { return $c->MontoTotalPagar ?? ($c->MontoTotal + $c->MontoInteres); }), 2) }}</td>
-                </tr>
+                    <tr class="total-row">
+                        <td></td>
+                        <td></td>
+                        <td style="text-align: right; padding-right: 10px;">TOTAL CREDITOS EMITIDOS:</td>
+                        <td class="monto">{{ number_format($totalCreditosEmitidos, 2) }}</td>
+                        <td class="monto">{{ number_format($creditos->sum('MontoInteres'), 2) }}</td>
+                        <td class="monto">
+                            {{ number_format($creditos->sum(function ($c) {
+                return $c->MontoTotalPagar ?? ($c->MontoTotal + $c->MontoInteres); }), 2) }}
+                        </td>
+                    </tr>
             @endif
         </tbody>
     </table>
 
     {{-- ═══════════════════════════════════════ --}}
-    {{-- 4. BALANCE DE CAJA                     --}}
+    {{-- 4. BALANCE DE CAJA --}}
     {{-- ═══════════════════════════════════════ --}}
     <div class="seccion-separador"></div>
     <hr class="linea-separadora-doble">
@@ -231,24 +334,33 @@
         <tbody>
             <tr>
                 <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px;">SALDO CAJA ABIERTA:</td>
-                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px;">{{ number_format($saldoCajaAbierta, 2) }}</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px;">
+                    {{ number_format($saldoCajaAbierta, 2) }}</td>
             </tr>
             <tr>
-                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px;">CUENTA A MAYOR (VIRTUAL):</td>
-                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; color: #0056b3;">{{ number_format($saldoCuentaAMayor, 2) }}</td>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px;">CUENTA A MAYOR:</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; color: #0056b3;">
+                    {{ number_format($saldoCuentaAMayor, 2) }}</td>
             </tr>
             <tr>
                 <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px;">SALDO CAJA CHICA:</td>
-                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px;">{{ number_format($saldoCajaChica, 2) }}</td>
-            </tr>
-            <tr><td colspan="2">&nbsp;</td></tr>
-            <tr>
-                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 10px;">TOTAL AMORTIZACIONES DEL DIA:</td>
-                <td class="monto" style="width: 35%; font-weight: bold; font-size: 10px; color: #060;">+{{ number_format($totalAmortizaciones, 2) }}</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px;">
+                    {{ number_format($saldoCajaChica, 2) }}</td>
             </tr>
             <tr>
-                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 10px;">TOTAL CREDITOS EMITIDOS DEL DIA:</td>
-                <td class="monto" style="width: 35%; font-weight: bold; font-size: 10px; color: #c00;">-{{ number_format($totalCreditosEmitidos, 2) }}</td>
+                <td colspan="2">&nbsp;</td>
+            </tr>
+            <tr>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 10px;">TOTAL AMORTIZACIONES DEL
+                    DIA:</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 10px; color: #060;">
+                    +{{ number_format($totalAmortizaciones, 2) }}</td>
+            </tr>
+            <tr>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 10px;">TOTAL CREDITOS EMITIDOS
+                    DEL DIA:</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 10px; color: #c00;">
+                    -{{ number_format($totalCreditosEmitidos, 2) }}</td>
             </tr>
         </tbody>
     </table>
@@ -257,4 +369,5 @@
     <hr class="linea-separadora-doble">
 
 </body>
+
 </html>
