@@ -57,10 +57,18 @@ class ReporteDiarioController extends Controller
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'CHICLAYO';
 
-        // Obtener saldo de Caja Abierta y Caja Chica
         $fondo = $sedeId ? FondoSede::where('SedeID', $sedeId)->first() : null;
         $saldoCajaAbierta = $fondo ? $fondo->Saldo : 0;
         $saldoCajaChica = $fondo ? $fondo->SaldoCajaChica : 0;
+
+        $saldoCuentaAMayor = 0;
+        if ($sedeId) {
+            $saldoCuentaAMayor = Pago::withoutGlobalScopes()
+                ->where('SedeID', $sedeId)
+                ->where('Activo', true)
+                ->where('EsPagoAMayor', true)
+                ->sum('MontoPagado');
+        }
 
         // ─── 1. CAJA CHICA: GASTOS DEL DÍA ───
         $gastosQuery = Gasto::withoutGlobalScopes()
@@ -143,26 +151,26 @@ class ReporteDiarioController extends Controller
 
         $totalExoneraciones = $exoneraciones->sum('MontoExonerado');
 
-        // ─── 4b. CAJA ABIERTA - EXTORNOS / DEVOLUCIONES (Excedentes resueltos) ───
-        $extornosQuery = Excedente::withoutGlobalScopes()
-            ->where('Activo', true)
-            ->where('EstadoResolucion', 'RESUELTO')
-            ->whereDate('Fecha', $fecha);
+        // ─── 4b. CAJA ABIERTA - EXTORNOS / DEVOLUCIONES (Solicitudes resueltas) ───
+        $extornosQuery = \App\Models\SolicitudResolucionExcedente::withoutGlobalScopes()
+            ->where('Estado', 'APROBADA')
+            ->whereDate('created_at', $fecha);
 
         if ($sedeId) {
             $extornosQuery->where('SedeID', $sedeId);
         }
 
         $extornos = $extornosQuery
-            ->with(['clienteOrigen', 'zona'])
-            ->orderBy('ExcedenteID', 'asc')
+            ->with(['clienteOrigen', 'clienteDestino', 'excedente', 'creditoDestino.proposicion.cliente'])
+            ->orderBy('SolicitudID', 'asc')
             ->get();
 
-        $totalExtornos = $extornos->sum('Monto');
+        $totalExtornos = $extornos->sum('MontoAplicar');
 
-        // ─── 4c. CAJA ABIERTA - AMORTIZACIONES (Pagos) ───
+        // ─── 4c. CAJA ABIERTA - AMORTIZACIONES (Pagos Físicos) ───
         $pagosQuery = Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)
+            ->where('pago.EsPagoAMayor', false) // Excluir dinero virtual (Cuenta a Mayor)
             ->whereDate('pago.FechaPago', $fecha);
 
         if ($sedeId) {
@@ -224,6 +232,7 @@ class ReporteDiarioController extends Controller
             // Saldos
             'saldoCajaAbierta'      => $saldoCajaAbierta,
             'saldoCajaChica'        => $saldoCajaChica,
+            'saldoCuentaAMayor'     => $saldoCuentaAMayor,
             // 1. Caja Chica - Gastos
             'gastos'                => $gastos,
             'totalGastos'           => $totalGastos,

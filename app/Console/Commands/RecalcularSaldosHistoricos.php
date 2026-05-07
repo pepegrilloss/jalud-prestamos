@@ -41,6 +41,10 @@ class RecalcularSaldosHistoricos extends Command
         TransferenciaSede::truncate();
         $this->line("Movimientos y Transferencias antiguas limpiadas.");
 
+        // 1.5 Regularizar pagos antiguos: asegurar que todos los extornos históricos sean "Cuenta a Mayor"
+        Pago::whereNotNull('SolicitudResolucionID')->update(['EsPagoAMayor' => true]);
+        $this->line("Data regularizada: Los extornos pasados fueron marcados como Cuenta a Mayor.");
+
         // 2. Setear Gerencia con capital base
         $gerencia = FondoSede::updateOrCreate(
             ['SedeID' => $gerenciaSedeId],
@@ -96,9 +100,17 @@ class RecalcularSaldosHistoricos extends Command
             'Observacion' => 'Histórico: Consolidado de todos los créditos emitidos'
         ]);
 
-        // 5. Calcular pagos recaudados en Trujillo
+        // 5. Calcular pagos recaudados en Trujillo (SOLO DINERO FÍSICO REAL)
+        // Ignoramos los pagos virtuales generados por Extornos/Excedentes (EsPagoAMayor = true)
         $pagosRecaudados = Pago::where('SedeID', $trujilloSedeId)
             ->where('Activo', true)
+            ->where('EsPagoAMayor', false)
+            ->sum('MontoPagado');
+
+        // Calcular los Pagos a Mayor solo para reporte en consola
+        $pagosAMayor = Pago::where('SedeID', $trujilloSedeId)
+            ->where('Activo', true)
+            ->where('EsPagoAMayor', true)
             ->sum('MontoPagado');
 
         $saldoFinal = $saldoActual + $pagosRecaudados;
@@ -110,7 +122,7 @@ class RecalcularSaldosHistoricos extends Command
             'SaldoAnterior' => $saldoActual,
             'SaldoNuevo' => $saldoFinal,
             'UsuarioID' => 1,
-            'Observacion' => 'Histórico: Consolidado de todos los pagos recibidos'
+            'Observacion' => 'Histórico: Consolidado de todos los pagos físicos recibidos'
         ]);
 
         // 6. Actualizar FondoSede Trujillo
@@ -127,7 +139,9 @@ class RecalcularSaldosHistoricos extends Command
         $this->info("=================================================");
         $this->line("Inyección Base        : S/ 200,000.00");
         $this->line("Créditos Otorgados    : S/ -" . number_format($prestadoCapital, 2));
-        $this->line("Pagos Recuperados     : S/ +" . number_format($pagosRecaudados, 2));
+        $this->line("Pagos Físicos Recup.  : S/ +" . number_format($pagosRecaudados, 2));
+        $this->info("-------------------------------------------------");
+        $this->line("Cuenta a Mayor (Virtual): S/  " . number_format($pagosAMayor, 2) . " (Aislado, no suma a caja)");
         $this->info("-------------------------------------------------");
         $this->info("SALDO FÍSICO EN CAJA  : S/ " . number_format($saldoFinal, 2));
         $this->info("=================================================");

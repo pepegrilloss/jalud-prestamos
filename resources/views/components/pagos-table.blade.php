@@ -13,18 +13,73 @@
         
         $tempPagos = [];
         $saldoAcumulado = $montoTotalPagar;
-        
+
+        // Agrupar por fecha exacta
+        $pagosAgrupados = [];
         foreach ($pagosBase as $pago) {
-            $esTrasladado = $pago->EstadoTraslado === 'TRASLADADO';
-            $montoReal = $esTrasladado ? 0 : $pago->MontoPagado;
+            $fechaStr = $pago->FechaPago ? $pago->FechaPago->format('Y-m-d') : '0000-00-00';
+            if (!isset($pagosAgrupados[$fechaStr])) {
+                $pagosAgrupados[$fechaStr] = [];
+            }
+            $pagosAgrupados[$fechaStr][] = $pago;
+        }
+
+        foreach ($pagosAgrupados as $fecha => $pagosDelDia) {
+            $montoTotalDia = 0;
+            $esTrasladadoTotal = true;
+            $esMora = false;
+            $fechaRepresentativa = null;
+            $tiposPago = [];
+            $usuarios = [];
+            $observaciones = [];
+            $montoVisualSum = 0;
+
+            foreach ($pagosDelDia as $p) {
+                $esTrasladado = $p->EstadoTraslado === 'TRASLADADO';
+                $montoReal = $esTrasladado ? 0 : $p->MontoPagado;
+                $montoTotalDia += $montoReal;
+                $montoVisualSum += $p->MontoPagado;
+
+                if (!$esTrasladado) $esTrasladadoTotal = false;
+                if ($p->EsMora) $esMora = true;
+                
+                $tiposPago[] = $p->TipoPago ?? 'Efectivo';
+                if ($p->UsuarioRegistro) $usuarios[] = $p->UsuarioRegistro;
+                if ($p->FechaPago) $fechaRepresentativa = $p->FechaPago;
+
+                $obs = $p->Comentario ?? 'Conforme';
+                if ($p->solicitudResolucion && !str_contains($obs, 'Fecha')) {
+                    $fechaExc = $p->solicitudResolucion->excedente?->Fecha;
+                    if ($fechaExc) {
+                        $obs .= "\nFecha excedente: " . \Carbon\Carbon::parse($fechaExc)->format('d/m/Y');
+                    }
+                }
+
+                if (count($pagosDelDia) > 1) {
+                    $prefix = $p->EsPagoAMayor ? "Extorno" : "Pago Normal";
+                    $observaciones[] = "• {$prefix} (S/ " . number_format($p->MontoPagado, 2) . "):\n  " . str_replace("\n", "\n  ", $obs);
+                } else {
+                    $observaciones[] = $obs;
+                }
+            }
+
+            // Crear un objeto mock para que la vista lo lea igual que un modelo Pago
+            $pagoMock = new \App\Models\Pago();
+            $pagoMock->MontoPagado = $montoVisualSum;
+            $pagoMock->FechaPago = $fechaRepresentativa;
+            $pagoMock->TipoPago = collect($tiposPago)->unique()->implode(' / ');
+            $pagoMock->EsMora = $esMora;
+            $pagoMock->UsuarioRegistro = collect($usuarios)->unique()->implode(', ');
+            $pagoMock->Comentario = implode("\n\n", $observaciones);
+            $pagoMock->solicitudResolucion = null;
 
             $tempPagos[] = [
-                'pago' => $pago,
+                'pago' => $pagoMock,
                 'saldo_antes' => $saldoAcumulado,
-                'saldo_despues' => max(0, $saldoAcumulado - $montoReal),
-                'es_trasladado' => $esTrasladado,
+                'saldo_despues' => max(0, $saldoAcumulado - $montoTotalDia),
+                'es_trasladado' => $esTrasladadoTotal,
             ];
-            $saldoAcumulado -= $montoReal;
+            $saldoAcumulado -= $montoTotalDia;
         }
         
         $pagosDisplay = array_reverse($tempPagos);
