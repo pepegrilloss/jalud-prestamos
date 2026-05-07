@@ -49,7 +49,7 @@ class RecalcularSaldosHistoricos extends Command
         $gerencia = FondoSede::updateOrCreate(
             ['SedeID' => $gerenciaSedeId],
             [
-                'Saldo' => 1000000, // 1 millón para que pueda operar
+                'Saldo' => 0, // Inicia en 0 por solicitud del cliente
                 'SaldoCajaChica' => 0
             ]
         );
