@@ -336,8 +336,27 @@
     <table class="datos-table" style="margin-top: 5px;">
         <tbody>
             <tr>
-                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px;">SALDO CAJA ABIERTA:</td>
-                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px;">
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px; color: #555;">SALDO INICIAL DEL DIA (CAJA ABIERTA):</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; color: #555;">
+                    {{ number_format($saldoInicialCajaAbierta, 2) }}</td>
+            </tr>
+            @if(isset($totalInyeccionesDia) && $totalInyeccionesDia > 0)
+            <tr>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px; color: #28a745;">INYECCIONES DE CAPITAL (CAJA ABIERTA):</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; color: #28a745;">
+                    +{{ number_format($totalInyeccionesDia, 2) }}</td>
+            </tr>
+            @endif
+            @if(isset($totalOtrasOperacionesDia) && $totalOtrasOperacionesDia != 0)
+            <tr>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px; color: #17a2b8;">OTRAS OPERACIONES CAJA ABIERTA (Remesas, Traslados):</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; color: #17a2b8;">
+                    {{ $totalOtrasOperacionesDia > 0 ? '+' : '' }}{{ number_format($totalOtrasOperacionesDia, 2) }}</td>
+            </tr>
+            @endif
+            <tr>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px;">SALDO CIERRE DEL DIA (CAJA ABIERTA):</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; border-top: 1px solid #000;">
                     {{ number_format($saldoCajaAbierta, 2) }}</td>
             </tr>
             <tr>

@@ -27,22 +27,16 @@ class DashboardCreditosVencenHoyWidget extends BaseWidget
         $user = Auth::user();
         
 
-        $creditosConUltimaCuota = \App\Models\Cuota::where('Activo', true)
-            ->whereNotIn('Estado', ['PAGADA', 'DOMINGO', 'FERIADO'])
-            ->whereHas('credito.proposicion', function ($q) {
-                $q->where('FueRefinanciada', 0);
-            });
+        $fechaReferencia = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
 
-        $cuotasUltimas = $creditosConUltimaCuota->selectRaw('CreditoID, MAX(FechaVencimiento) as FechaVencimiento')
-            ->groupBy('CreditoID')
-            ->get();
-
-        $vencenHoy = 0;
-        foreach ($cuotasUltimas as $cuota) {
-            if ($cuota->FechaVencimiento && \Carbon\Carbon::parse($cuota->FechaVencimiento)->isToday()) {
-                $vencenHoy++;
-            }
-        }
+        $vencenHoy = \App\Models\Credito::where('Activo', true)
+            ->whereDate('FechaVencimiento', $fechaReferencia->toDateString())
+            ->where('EstatusCreditoFinal', '!=', 'SALDADO')
+            ->whereHas('proposicion', function ($q) {
+                $q->where('FueRefinanciada', 0)
+                  ->where('SaldoPendiente', '>', 0);
+            })
+            ->count();
 
         return [
             Stat::make('Créditos Vencen Hoy', $vencenHoy)

@@ -41,6 +41,9 @@ class ReporteDiarioController extends Controller
         }
 
         $fechaCarbon = Carbon::createFromFormat('Y-m-d', $fecha);
+        $ahora = Carbon::now();
+        $fechaInicioDia = $fechaCarbon->copy()->startOfDay();
+        $fechaFinDia = $fechaCarbon->copy()->endOfDay();
 
         // Obtener el registro de apertura/cierre para la sede
         $aperturaCierre = null;
@@ -59,7 +62,7 @@ class ReporteDiarioController extends Controller
 
         $fondo = $sedeId ? FondoSede::where('SedeID', $sedeId)->first() : null;
         $saldoCajaAbierta = $fondo ? $fondo->Saldo : 0;
-        $saldoCajaChica = $fondo ? $fondo->SaldoCajaChica : 0;
+        $saldoCajaChica = 0; // Se calculará dinámicamente más abajo
 
         $saldoCuentaAMayor = 0;
         if ($sedeId) {
@@ -67,6 +70,7 @@ class ReporteDiarioController extends Controller
                 ->where('SedeID', $sedeId)
                 ->where('Activo', true)
                 ->where('EsPagoAMayor', true)
+                ->where('FechaPago', '<=', $fechaFinDia)
                 ->sum('MontoPagado');
         }
 
@@ -105,7 +109,12 @@ class ReporteDiarioController extends Controller
         // ─── 2. INGRESO DE REMESAS (transferencias recibidas y aceptadas) ───
         $ingresosRemesasQuery = TransferenciaSede::withoutGlobalScopes()
             ->where('Estado', 'ACEPTADO')
-            ->whereDate('FechaRespuesta', $fecha);
+            ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                  ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
+                      $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
+                  });
+            });
 
         if ($sedeId) {
             $ingresosRemesasQuery->where('SedeDestinoID', $sedeId);
@@ -121,7 +130,12 @@ class ReporteDiarioController extends Controller
         // ─── 3. SALIDA DE REMESAS (transferencias enviadas y aceptadas) ───
         $salidasRemesasQuery = TransferenciaSede::withoutGlobalScopes()
             ->where('Estado', 'ACEPTADO')
-            ->whereDate('FechaRespuesta', $fecha);
+            ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                  ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
+                      $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
+                  });
+            });
 
         if ($sedeId) {
             $salidasRemesasQuery->where('SedeOrigenID', $sedeId);
@@ -138,7 +152,7 @@ class ReporteDiarioController extends Controller
         $exoneracionesQuery = SolicitudExoneracion::withoutGlobalScopes()
             ->where('Estado', 'APROBADO')
             ->where('Activo', true)
-            ->whereDate('FechaAprobacion', $fecha);
+            ->whereBetween('FechaAprobacion', [$fechaInicioDia, $fechaFinDia]);
 
         if ($sedeId) {
             $exoneracionesQuery->where('SedeID', $sedeId);
@@ -154,7 +168,7 @@ class ReporteDiarioController extends Controller
         // ─── 4b. CAJA ABIERTA - EXTORNOS / DEVOLUCIONES (Solicitudes resueltas) ───
         $extornosQuery = \App\Models\SolicitudResolucionExcedente::withoutGlobalScopes()
             ->where('Estado', 'APROBADA')
-            ->whereDate('created_at', $fecha);
+            ->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia]);
 
         if ($sedeId) {
             $extornosQuery->where('SedeID', $sedeId);
@@ -224,17 +238,148 @@ class ReporteDiarioController extends Controller
 
         $totalCreditosEmitidos = $creditos->sum('MontoTotal');
 
-        // Calcular datos
-        $ahora = Carbon::now();
+        // ─── CÁLCULO DE SALDOS EXACTOS POR DÍA (BASADO EN TABLAS REALES) ───
+        $saldoInicialCajaAbierta = 0;
+        $saldoCierreCajaAbierta = 0;
+        $totalInyeccionesDia = 0;
+        $totalOtrasOperacionesDia = 0;
+
+        if ($sedeId) {
+            // Función auxiliar para calcular el saldo real hasta un momento dado
+            $calcularSaldoHasta = function ($fechaLimite) use ($sedeId) {
+                // 1. Transferencias Recibidas (Entrada)
+                $transferenciasRecibidas = \App\Models\TransferenciaSede::withoutGlobalScopes()
+                    ->where('SedeDestinoID', $sedeId)
+                    ->where('Estado', 'ACEPTADO')
+                    ->where('CuentaDestino', 'CAJA_ABIERTA')
+                    ->where(function($q) use ($fechaLimite) {
+                        $q->where('FechaRespuesta', '<=', $fechaLimite)
+                          ->orWhere(function($q2) use ($fechaLimite) {
+                              $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $fechaLimite);
+                          });
+                    })
+                    ->sum('Monto');
+
+                // 2. Transferencias Enviadas (Salida)
+                $transferenciasEnviadas = \App\Models\TransferenciaSede::withoutGlobalScopes()
+                    ->where('SedeOrigenID', $sedeId)
+                    ->where('Estado', 'ACEPTADO')
+                    ->where('CuentaOrigen', 'CAJA_ABIERTA')
+                    ->where(function($q) use ($fechaLimite) {
+                        $q->where('FechaRespuesta', '<=', $fechaLimite)
+                          ->orWhere(function($q2) use ($fechaLimite) {
+                              $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $fechaLimite);
+                          });
+                    })
+                    ->sum('Monto');
+
+                // 3. Pagos / Amortizaciones (Entrada física)
+                $pagos = \App\Models\Pago::withoutGlobalScopes()
+                    ->where('Activo', true)
+                    ->where('EsPagoAMayor', false)
+                    ->where('FechaPago', '<=', $fechaLimite)
+                    ->whereHas('cuota.credito', function($q) use ($sedeId) {
+                        $q->where('SedeID', $sedeId);
+                    })
+                    ->sum('MontoPagado');
+
+                // 4. Créditos Emitidos (Salida)
+                $creditos = \App\Models\Credito::withoutGlobalScopes()
+                    ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+                    ->where('Credito.Activo', true)
+                    ->where('Credito.SedeID', $sedeId)
+                    ->where('Credito.FechaGeneracion', '<=', $fechaLimite)
+                    ->sum('ProposicionCredito.MontoTotal'); // El capital prestado
+
+                // 5. Inyecciones Manuales y Traslados (desde MovimientoFondo, si existen)
+                $otrosMovimientos = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                    ->where('created_at', '<=', $fechaLimite)
+                    ->whereIn('Tipo', ['INGRESO_CAPITAL', 'TRASLADO_CA_A_CC', 'TRASLADO_CC_A_CA'])
+                    ->get();
+
+                $inyecciones = $otrosMovimientos->where('Tipo', 'INGRESO_CAPITAL')->sum('Monto');
+                $trasladosEntrada = $otrosMovimientos->where('Tipo', 'TRASLADO_CC_A_CA')->sum(function($m) { return abs($m->Monto); });
+                $trasladosSalida = $otrosMovimientos->where('Tipo', 'TRASLADO_CA_A_CC')->sum(function($m) { return abs($m->Monto); });
+
+                return $transferenciasRecibidas + $pagos + $inyecciones + $trasladosEntrada 
+                     - $transferenciasEnviadas - $creditos - $trasladosSalida;
+            };
+
+            // Calcular saldo un milisegundo antes de iniciar el día
+            $saldoInicialCajaAbierta = $calcularSaldoHasta($fechaInicioDia->copy()->subSecond());
+            
+            // Calcular saldo al terminar el día
+            $saldoCierreCajaAbierta = $calcularSaldoHasta($fechaFinDia);
+
+            // Calcular saldo de Caja Chica históricamente
+            $calcularSaldoCajaChicaHasta = function ($fechaLimite) use ($sedeId) {
+                // Entradas a Caja Chica (Traslados desde Caja Abierta)
+                $trasladosEntrada = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                    ->where('created_at', '<=', $fechaLimite)
+                    ->where('Tipo', 'TRASLADO_CA_A_CC')
+                    ->get()
+                    ->sum(function($m) { return abs($m->Monto); });
+                    
+                // Salidas de Caja Chica (Gastos, Compras, Traslados a Caja Abierta)
+                $gastos = \App\Models\Gasto::withoutGlobalScopes()
+                    ->where('SedeID', $sedeId)
+                    ->where('FechaEmision', '<=', $fechaLimite)
+                    ->sum('Total');
+                    
+                $compras = \App\Models\Compra::withoutGlobalScopes()
+                    ->where('SedeID', $sedeId)
+                    ->where('FechaEmision', '<=', $fechaLimite)
+                    ->sum('Total');
+                    
+                $trasladosSalida = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                    ->where('created_at', '<=', $fechaLimite)
+                    ->where('Tipo', 'TRASLADO_CC_A_CA')
+                    ->get()
+                    ->sum(function($m) { return abs($m->Monto); });
+
+                return $trasladosEntrada - $gastos - $compras - $trasladosSalida;
+            };
+
+            $saldoCajaChica = $calcularSaldoCajaChicaHasta($fechaFinDia);
+
+            // Inyecciones o transferencias recibidas DEL DÍA (para mostrar en reporte)
+            $transferenciasRecibidasDia = \App\Models\TransferenciaSede::withoutGlobalScopes()
+                ->where('SedeDestinoID', $sedeId)
+                ->where('Estado', 'ACEPTADO')
+                ->where('CuentaDestino', 'CAJA_ABIERTA')
+                ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                    $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                      ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
+                          $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
+                      });
+                })
+                ->sum('Monto');
+                
+            $inyeccionesManualesDia = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                ->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia])
+                ->where('Tipo', 'INGRESO_CAPITAL')
+                ->sum('Monto');
+                
+            $totalInyeccionesDia = $transferenciasRecibidasDia + $inyeccionesManualesDia;
+
+            // Otras operaciones (para cuadrar el reporte matemáticamente)
+            $variacionCaja = $saldoCierreCajaAbierta - $saldoInicialCajaAbierta;
+            $operacionesConocidas = $totalAmortizaciones - $totalCreditosEmitidos + $totalInyeccionesDia;
+            $totalOtrasOperacionesDia = $variacionCaja - $operacionesConocidas;
+        }
 
         $data = [
             'fecha'                 => $fechaCarbon,
             'sedeNombre'            => strtoupper($sedeNombre),
             'emision'               => $ahora,
             // Saldos
-            'saldoCajaAbierta'      => $saldoCajaAbierta,
+            'saldoInicialCajaAbierta' => $saldoInicialCajaAbierta,
+            'saldoCajaAbierta'      => $saldoCierreCajaAbierta, // REEMPLAZADO por el saldo de cierre del día, no el live
+            'saldoLiveCajaAbierta'  => $saldoCajaAbierta, // Pasamos el live por si acaso
             'saldoCajaChica'        => $saldoCajaChica,
             'saldoCuentaAMayor'     => $saldoCuentaAMayor,
+            'totalInyeccionesDia'   => $totalInyeccionesDia,
+            'totalOtrasOperacionesDia' => $totalOtrasOperacionesDia,
             // 1. Caja Chica - Gastos
             'gastos'                => $gastos,
             'totalGastos'           => $totalGastos,
