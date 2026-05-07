@@ -180,11 +180,13 @@ class ReporteDiarioController extends Controller
         $pagos = $pagosQuery
             ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->leftJoin('Zona', 'ProposicionCredito.ZonaID', '=', 'Zona.ZonaID')
             ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
             ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
             ->select(
                 'pago.PagoID',
                 'ProposicionCredito.CodigoCredito',
+                'Zona.Nombre as ZonaNombre',
                 'TipoCredito.Codigo as TipoCreditoCodigo',
                 'Cliente.NombresApellidos',
                 'pago.MontoPagado'

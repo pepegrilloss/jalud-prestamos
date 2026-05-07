@@ -158,9 +158,10 @@
     <table class="datos-table">
         <thead>
             <tr>
-                <th style="width: 18%;">OPERACION</th>
-                <th style="width: 10%;">CREDITO</th>
-                <th style="width: 54%;">CLIENTE</th>
+                <th style="width: 13%;">OPERACION</th>
+                <th style="width: 15%;">ZONA</th>
+                <th style="width: 9%;">CRED.</th>
+                <th style="width: 45%;">CLIENTE</th>
                 <th style="width: 18%; text-align: right; padding-right: 5px;">MONTO</th>
             </tr>
         </thead>
@@ -168,18 +169,20 @@
             @forelse($pagos as $pago)
                 <tr>
                     <td>{{ $pago->CodigoCredito ?? '' }}</td>
+                    <td>{{ mb_strtoupper($pago->ZonaNombre ?? 'N/A') }}</td>
                     <td>{{ $pago->TipoCreditoCodigo ?? '001' }}</td>
                     <td>{{ mb_strtoupper($pago->NombresApellidos ?? '') }}</td>
                     <td class="monto">{{ number_format($pago->MontoPagado, 2) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4" style="text-align: center; padding: 5px;">Sin amortizaciones registradas</td>
+                    <td colspan="5" style="text-align: center; padding: 5px;">Sin amortizaciones registradas</td>
                 </tr>
             @endforelse
 
             @if($pagos->count() > 0)
                 <tr class="total-row">
+                    <td></td>
                     <td></td>
                     <td></td>
                     <td style="text-align: right; padding-right: 10px;">TOTAL AMORTIZACIONES:</td>
