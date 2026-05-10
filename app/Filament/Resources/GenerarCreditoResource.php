@@ -617,6 +617,12 @@ class GenerarCreditoResource extends Resource
                 'FueRefinanciada' => 1
             ]);
 
+            // Marcar el crédito anterior como SALDADO
+            $creditoAnterior->update([
+                'EstatusCreditoFinal' => 'SALDADO',
+                'FechaSaldamiento' => $fechaPago,
+            ]);
+
             $mensaje = "Pago automático de S/ " . number_format($saldoTotalPendiente, 2) . " para cerrar el crédito anterior.";
             if ($montoRefinanciamiento > $saldoTotalPendiente) {
                 $montoAMayor = $montoRefinanciamiento - $saldoTotalPendiente;
