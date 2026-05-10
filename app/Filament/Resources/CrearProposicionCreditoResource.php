@@ -75,6 +75,7 @@ class CrearProposicionCreditoResource extends Resource
                     ]),
 
                 Forms\Components\Section::make('Detalles del Crédito')
+                    ->columns(['default' => 1, 'md' => 2, 'lg' => 3, 'xl' => 12])
                     ->schema([
                         Forms\Components\Select::make('ClienteID')
                             ->label('Cliente')
@@ -90,7 +91,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->searchable()
                             ->preload()
                             ->native(false)
-                            ->columnSpan(8)
+                            ->columnSpan(['default' => 'full', 'xl' => 8])
                             ->dehydrated()
                             ->live(debounce: 0)
                             ->afterStateUpdated(function (Set $set, $state) {
@@ -107,7 +108,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->disabled()
                             ->dehydrated()
                             ->default(fn() => ProposicionCredito::generarCodigoCredito())
-                            ->columnSpan(4)
+                            ->columnSpan(['default' => 'full', 'xl' => 4])
                             ->prefixIcon('heroicon-o-hashtag'),
 
                         Forms\Components\Select::make('TipoCreditoID')
@@ -117,7 +118,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->searchable()
                             ->native(false)
                             ->live()
-                            ->columnSpan(8)
+                            ->columnSpan(['default' => 'full', 'xl' => 8])
                             ->prefixIcon('heroicon-o-tag')
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                 // Si se selecciona Refinanciamiento, crear una acción
@@ -251,7 +252,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->required()
                             ->numeric()
                             ->prefix('S/')
-                            ->columnSpan(4)
+                            ->columnSpan(['default' => 'full', 'xl' => 4])
                             ->live(debounce: 500)
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                 static::calcularTotales($set, $get, $state);
@@ -309,7 +310,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->searchable()
                             ->native(false)
                             ->live()
-                            ->columnSpan(8)
+                            ->columnSpan(['default' => 'full', 'xl' => 8])
                             ->prefixIcon('heroicon-o-receipt-percent')
                             ->afterStateUpdated(function (Set $set, $state, Get $get) {
                                 if ($tasa = Tasa::find($state)) {
@@ -325,7 +326,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->disabled()
                             ->dehydrated()
                             ->suffix('%')
-                            ->columnSpan(4)
+                            ->columnSpan(['default' => 'full', 'xl' => 4])
                             ->extraInputAttributes(['class' => 'bg-gray-50 border-gray-200 cursor-not-allowed'])
                             ->hint('Valor según tasa seleccionada'),
 
@@ -334,7 +335,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->required()
                             ->numeric()
                             ->suffix('días')
-                            ->columnSpan(4),
+                            ->columnSpan(['default' => 'full', 'md' => 1, 'xl' => 4]),
 
                         Forms\Components\TextInput::make('TasaMora')
                             ->label('Mora (S/)')
@@ -342,7 +343,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->numeric()
                             ->prefix('S/')
                             ->default(0.50)
-                            ->columnSpan(4),
+                            ->columnSpan(['default' => 'full', 'md' => 1, 'xl' => 4]),
 
                         Forms\Components\TextInput::make('NumeroCuotas')
                             ->label('N° Cuotas')
@@ -350,16 +351,17 @@ class CrearProposicionCreditoResource extends Resource
                             ->numeric()
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal')))
-                            ->columnSpan(4),
+                            ->columnSpan(['default' => 'full', 'md' => 1, 'xl' => 4]),
 
                         Forms\Components\Fieldset::make('Resumen del Crédito')
+                            ->columns(['default' => 1, 'md' => 3, 'xl' => 12])
                             ->schema([
                                 Forms\Components\TextInput::make('MontoCuota')
                                     ->label('Monto por Cuota')
                                     ->prefix('S/')
                                     ->disabled()
                                     ->dehydrated()
-                                    ->columnSpan(4)
+                                    ->columnSpan(['default' => 'full', 'md' => 1, 'xl' => 4])
                                     ->extraInputAttributes(['class' => 'bg-gray-100 font-medium'])
                                     ->hint('Calculado'),
 
@@ -368,7 +370,7 @@ class CrearProposicionCreditoResource extends Resource
                                     ->prefix('S/')
                                     ->disabled()
                                     ->dehydrated()
-                                    ->columnSpan(4)
+                                    ->columnSpan(['default' => 'full', 'md' => 1, 'xl' => 4])
                                     ->extraInputAttributes(['class' => 'bg-gray-100 font-medium'])
                                     ->hint('Calculado'),
 
@@ -377,7 +379,7 @@ class CrearProposicionCreditoResource extends Resource
                                     ->prefix('S/')
                                     ->disabled()
                                     ->dehydrated()
-                                    ->columnSpan(4)
+                                    ->columnSpan(['default' => 'full', 'md' => 1, 'xl' => 4])
                                     ->extraInputAttributes(['class' => 'bg-primary-50 border-primary-600 font-bold text-lg text-primary-700'])
                                     ->hint('Monto final estimado'),
                             ])->columns(12)
@@ -385,6 +387,7 @@ class CrearProposicionCreditoResource extends Resource
                     ])->columns(12),
 
                 Forms\Components\Section::make('Información Adicional')
+                    ->columns(['default' => 1, 'md' => 2])
                     ->schema([
                         Forms\Components\Select::make('ZonaID')
                             ->label('Zona')
@@ -395,7 +398,7 @@ class CrearProposicionCreditoResource extends Resource
                             ->dehydrated()
                             ->columnSpanFull(),
                         Forms\Components\Textarea::make('Observaciones')->rows(3)->columnSpanFull(),
-                    ])->columns(2),
+                    ]),
             ]);
     }
 
