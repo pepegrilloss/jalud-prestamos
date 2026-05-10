@@ -2,113 +2,103 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Models\ProposicionCredito;
-use App\Http\Controllers\RefinanciamientoController;
-use App\Http\Controllers\Api\RefinanciamientoApiController;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 Route::get('/', function () {
     return redirect('/admin/login');
 });
 
-Route::get('/api/refinanciamiento/cuentas-disponibles/{clienteID}', [RefinanciamientoApiController::class, 'obtenerCuentasDisponibles']);
+Route::middleware(['auth'])->group(function () {
+    Route::get('/pdf/acta-creditos', function () {
+        $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
 
-Route::get('/api/refinanciamiento/datos-cuenta/{proposicionCreditoID}', [RefinanciamientoApiController::class, 'obtenerDatosCuenta']);
+        $proposiciones = ProposicionCredito::with(['cliente', 'zona', 'tipoCredito', 'tasa'])
+            ->where('Activo', true)
+            ->whereDate('FechaPropuesta', '=', $fecha)
+            ->orderBy('CodigoCredito')
+            ->get();
 
-Route::get('/refinanciamiento/cuentas-disponibles/{clienteID}', [RefinanciamientoController::class, 'obtenerCuentasDisponibles'])
-    ->name('refinanciamiento.cuentas-disponibles');
+        $pdf = Pdf::loadView('pdf.acta-creditos', [
+            'proposiciones' => $proposiciones,
+            'fecha' => $fecha->format('d/m/Y'),
+        ]);
 
-Route::get('/refinanciamiento/datos-cuenta/{proposicionCreditoID}', [RefinanciamientoController::class, 'obtenerDatosCuenta'])
-    ->name('refinanciamiento.datos-cuenta');
+        $pdf->setPaper('a3', 'landscape');
 
-Route::get('/pdf/acta-creditos', function () {
-    $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+        return $pdf->stream('Acta_Creditos_' . now()->format('Y-m-d_His') . '.pdf');
+    })->name('acta-creditos.view');
 
-    $proposiciones = ProposicionCredito::with(['cliente', 'zona', 'tipoCredito', 'tasa'])
-        ->where('Activo', true)
-        ->whereDate('FechaPropuesta', '=', $fecha)
-        ->orderBy('CodigoCredito')
-        ->get();
+    Route::get('/excel/acta-creditos', [\App\Http\Controllers\DescargarActaExcelController::class, 'descargar'])
+        ->name('acta-creditos.excel');
 
-    $pdf = Pdf::loadView('pdf.acta-creditos', [
-        'proposiciones' => $proposiciones,
-        'fecha' => $fecha->format('d/m/Y'),
-    ]);
+    Route::get('/pdf/creditos-vencidos', function () {
+        $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
 
-    $pdf->setPaper('a3', 'landscape');
+        $creditos = \App\Models\Credito::where('Activo', 1)
+            ->whereDate('FechaVencimiento', '=', $fecha)
+            ->whereHas('proposicion', function ($q) {
+                $q->where('SaldoPendiente', '>', 0);
+            })
+            ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
+            ->orderBy('FechaVencimiento', 'asc')
+            ->get();
 
-    return $pdf->stream('Acta_Creditos_' . now()->format('Y-m-d_His') . '.pdf');
-})->name('acta-creditos.view');
+        $pdf = Pdf::loadView('reportes.creditos-vencidos', [
+            'creditos' => $creditos,
+            'fecha' => $fecha->format('d/m/Y'),
+        ]);
 
-Route::get('/excel/acta-creditos', [\App\Http\Controllers\DescargarActaExcelController::class, 'descargar'])
-    ->name('acta-creditos.excel');
+        $pdf->setPaper('a4', 'landscape');
 
-Route::get('/pdf/creditos-vencidos', function () {
-    $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+        return $pdf->stream('Creditos_Vencidos_' . $fecha->format('d-m-Y') . '.pdf');
+    })->name('creditos-vencidos.view');
 
-    $creditos = \App\Models\Credito::where('Activo', 1)
-        ->whereDate('FechaVencimiento', '=', $fecha)
-        ->whereHas('proposicion', function ($q) {
-            $q->where('SaldoPendiente', '>', 0);
-        })
-        ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
-        ->orderBy('FechaVencimiento', 'asc')
-        ->get();
+    Route::get('/pdf/cuentas-canceladas', function () {
+        $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
 
-    $pdf = Pdf::loadView('reportes.creditos-vencidos', [
-        'creditos' => $creditos,
-        'fecha' => $fecha->format('d/m/Y'),
-    ]);
+        $proposiciones = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
+            ->whereDate('FechaModificacion', '=', $fecha)
+            ->with(['cliente', 'credito'])
+            ->orderByDesc('FechaModificacion')
+            ->get();
 
-    $pdf->setPaper('a4', 'landscape');
+        $pdf = Pdf::loadView('reportes.cuentas-canceladas', [
+            'proposiciones' => $proposiciones,
+            'fecha' => $fecha->format('d/m/Y'),
+        ]);
 
-    return $pdf->stream('Creditos_Vencidos_' . $fecha->format('d-m-Y') . '.pdf');
-})->name('creditos-vencidos.view');
+        $pdf->setPaper('a4', 'landscape');
 
-Route::get('/pdf/cuentas-canceladas', function () {
-    $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+        return $pdf->stream('Cuentas_Canceladas_' . $fecha->format('d-m-Y') . '.pdf');
+    })->name('cuentas-canceladas.view');
 
-    $proposiciones = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
-        ->whereDate('FechaModificacion', '=', $fecha)
-        ->with(['cliente', 'credito'])
-        ->orderByDesc('FechaModificacion')
-        ->get();
+    Route::get('/reportes/compras/excel', [App\Http\Controllers\ComprasReporteController::class, 'descargarExcel'])
+        ->name('compras.excel');
 
-    $pdf = Pdf::loadView('reportes.cuentas-canceladas', [
-        'proposiciones' => $proposiciones,
-        'fecha' => $fecha->format('d/m/Y'),
-    ]);
+    Route::get('/reportes/compras/pdf', [App\Http\Controllers\ComprasReporteController::class, 'descargarPdf'])
+        ->name('compras.pdf');
 
-    $pdf->setPaper('a4', 'landscape');
+    Route::get('/reportes/gastos/excel', [App\Http\Controllers\GastoReporteController::class, 'descargarExcel'])
+        ->name('gastos.excel');
 
-    return $pdf->stream('Cuentas_Canceladas_' . $fecha->format('d-m-Y') . '.pdf');
-})->name('cuentas-canceladas.view');
+    Route::get('/reportes/gastos/pdf', [App\Http\Controllers\GastoReporteController::class, 'descargarPdf'])
+        ->name('gastos.pdf');
 
-Route::get('/reportes/compras/excel', [App\Http\Controllers\ComprasReporteController::class, 'descargarExcel'])
-    ->name('compras.excel');
+    Route::get('/libreta-pagos/{credito}', [App\Http\Controllers\LibretaPagosController::class, 'descargar'])
+        ->name('libreta-pagos.descargar');
 
-Route::get('/reportes/compras/pdf', [App\Http\Controllers\ComprasReporteController::class, 'descargarPdf'])
-    ->name('compras.pdf');
+    Route::get('/libreta-pagos/{credito}/pdf', [App\Http\Controllers\LibretaPagosController::class, 'descargarPdf'])
+        ->name('libreta-pagos.descargar-pdf');
 
-Route::get('/reportes/gastos/excel', [App\Http\Controllers\GastoReporteController::class, 'descargarExcel'])
-    ->name('gastos.excel');
+    Route::get('/libreta-pagos/{credito}/html', [App\Http\Controllers\LibretaPagosController::class, 'descargarPdf'])
+        ->name('libreta-pagos.html');
 
-Route::get('/reportes/gastos/pdf', [App\Http\Controllers\GastoReporteController::class, 'descargarPdf'])
-    ->name('gastos.pdf');
+    Route::get('/ticket/{credito}', [App\Http\Controllers\TicketDescargarController::class, 'descargar'])
+        ->name('ticket.descargar');
 
-Route::get('/libreta-pagos/{credito}', [App\Http\Controllers\LibretaPagosController::class, 'descargar'])
-    ->name('libreta-pagos.descargar');
+    Route::get('/pdf/reporte-diario', [App\Http\Controllers\ReporteDiarioController::class, 'descargar'])
+        ->name('reporte-diario.pdf');
 
-Route::get('/libreta-pagos/{credito}/pdf', [App\Http\Controllers\LibretaPagosController::class, 'descargarPdf'])
-    ->name('libreta-pagos.descargar-pdf');
-
-Route::get('/libreta-pagos/{credito}/html', [App\Http\Controllers\LibretaPagosController::class, 'descargarPdf'])
-    ->name('libreta-pagos.html');
-
-Route::get('/ticket/{credito}', [App\Http\Controllers\TicketDescargarController::class, 'descargar'])
-    ->name('ticket.descargar');
-
-Route::get('/pdf/reporte-diario', [App\Http\Controllers\ReporteDiarioController::class, 'descargar'])
-    ->name('reporte-diario.pdf');
-
-Route::get('/descargar-pagos/{credito}', [App\Http\Controllers\DescargarPagosController::class, 'descargar'])
-    ->name('descargar-pagos.pdf');
+    Route::get('/descargar-pagos/{credito}', [App\Http\Controllers\DescargarPagosController::class, 'descargar'])
+        ->name('descargar-pagos.pdf');
+});

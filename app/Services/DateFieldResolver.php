@@ -54,8 +54,7 @@ class DateFieldResolver
      */
     public static function getFechaAbierta(): ?Carbon
     {
-        $diaAbierto = AperturaCierreDia::where('EstadoDia', 'ABIERTO')->first();
-        return $diaAbierto?->Fecha ?? null;
+        return AperturaCierreDia::getDiaAbierto()?->Fecha;
     }
 
     /**

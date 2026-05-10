@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Credito;
 use App\Models\Mora;
+use App\Models\ProposicionCredito;
+use App\Models\CalendarioNoMoroso;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -15,12 +17,17 @@ class CalcularMoraRetroactiva extends Command
     public function handle(): int
     {
         $this->info("Calculando mora retroactivamente para todos los créditos vencidos...\n");
-        $this->info("(NO se calcula mora en domingos ni feriados)\n");
+        $this->info("(NO se calcula mora en domingos, feriados ni fechas del calendario no moroso)\n");
 
-        // Obtener días feriados de Perú para los años en rango
         $feriadosData = $this->obtenerFeriados();
 
-        // Obtener créditos vencidos que aún tengan saldo
+        $fechasNoMorosas = CalendarioNoMoroso::where('Activo', true)
+            ->get()
+            ->map(fn($item) => Carbon::parse($item->Fecha)->toDateString())
+            ->toArray();
+
+        $fechasExcluidas = array_unique(array_merge(array_keys($feriadosData), $fechasNoMorosas));
+
         $creditosVencidos = Credito::where('Activo', 1)
             ->whereDate('FechaVencimiento', '<', today())
             ->with(['proposicion.cliente.tasaMora', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
@@ -37,15 +44,17 @@ class CalcularMoraRetroactiva extends Command
             $porcentajeMora = $cliente->tasaMora?->Porcentaje ?? 0;
             if ($porcentajeMora <= 0) continue;
 
-            // Para cada día desde el vencimiento hasta HOY
-            $fecha = Carbon::createFromFormat('Y-m-d', $credito->FechaVencimiento->format('Y-m-d'));
-            
-            // Empezar desde el día después del vencimiento
-            $fecha = $fecha->addDay();
+            $vencimientoEfectivo = Carbon::parse($credito->FechaVencimiento);
+
+            while (in_array($vencimientoEfectivo->toDateString(), $fechasExcluidas)
+                   || $vencimientoEfectivo->dayOfWeek == 0) {
+                $vencimientoEfectivo->addDay();
+            }
+
+            $fecha = $vencimientoEfectivo->copy()->addDay();
             $hoy = today();
 
             while ($fecha <= $hoy) {
-                // VALIDAR: NO CALCULAR EN DOMINGO
                 if ($fecha->dayOfWeek == 0) {
                     $this->line("⊘ Crédito {$credito->CreditoID} - Fecha: {$fecha->format('d/m/Y')} - DOMINGO (omitido)");
                     $diasOmitidos++;
@@ -53,15 +62,18 @@ class CalcularMoraRetroactiva extends Command
                     continue;
                 }
 
-                // VALIDAR: NO CALCULAR EN FERIADO
-                if (isset($feriadosData[$fecha->format('Y-m-d')])) {
-                    $this->line("⊘ Crédito {$credito->CreditoID} - Fecha: {$fecha->format('d/m/Y')} - FERIADO ({$feriadosData[$fecha->format('Y-m-d')]}) (omitido)");
+                $fechaStr = $fecha->format('Y-m-d');
+                $esFeriadoNacional = isset($feriadosData[$fechaStr]);
+                $esNoMoroso = in_array($fechaStr, $fechasNoMorosas);
+
+                if ($esFeriadoNacional || $esNoMoroso) {
+                    $motivo = $esFeriadoNacional ? "FERIADO ({$feriadosData[$fechaStr]})" : 'CALENDARIO NO MOROSO';
+                    $this->line("⊘ Crédito {$credito->CreditoID} - Fecha: {$fecha->format('d/m/Y')} - {$motivo} (omitido)");
                     $diasOmitidos++;
                     $fecha = $fecha->addDay();
                     continue;
                 }
 
-                // Verificar si ya existe mora registrada para este día
                 $moraExiste = Mora::where('CreditoID', $credito->CreditoID)
                     ->whereDate('FechaMora', $fecha)
                     ->exists();
@@ -71,25 +83,23 @@ class CalcularMoraRetroactiva extends Command
                     continue;
                 }
 
-                // Obtener saldo pendiente de la proposición de crédito
-                $saldoPendiente = $credito->proposicion?->SaldoPendiente ?? 0;
+                $saldoPendiente = $credito->proposicion
+                    ? ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID)
+                    : 0;
 
                 if ($saldoPendiente <= 0) {
                     $fecha = $fecha->addDay();
                     continue;
                 }
 
-                // Calcular mora diaria
                 $montoMora = $saldoPendiente * ($porcentajeMora / 100);
 
-                // Obtener mora acumulada anterior
                 $moraAnterior = Mora::where('CreditoID', $credito->CreditoID)
                     ->orderBy('FechaMora', 'desc')
                     ->first();
 
                 $moraAcumulada = ($moraAnterior?->MoraAcumulada ?? 0) + $montoMora;
 
-                // Registrar la mora
                 Mora::create([
                     'CreditoID' => $credito->CreditoID,
                     'FechaMora' => $fecha,
@@ -110,7 +120,7 @@ class CalcularMoraRetroactiva extends Command
 
         $this->info("\n✅ Cálculo retroactivo completado!");
         $this->info("   Moras registradas: {$morasRegistradas}");
-        $this->info("   Días omitidos (domingos/feriados): {$diasOmitidos}");
+        $this->info("   Días omitidos (domingos/feriados/calendario no moroso): {$diasOmitidos}");
         $this->info("   Monto total: S/. " . number_format($morasTotales, 2));
 
         return 0;

@@ -4,6 +4,8 @@ namespace App\Observers;
 
 use App\Models\Pago;
 use App\Models\ProposicionCredito;
+use App\Services\FondoSedeService;
+use Illuminate\Support\Facades\Log;
 
 class PagoObserver
 {
@@ -25,37 +27,43 @@ class PagoObserver
 
     /**
      * Handle the Pago "deleted" event.
+     * Revierte el movimiento de caja para evitar descuadre.
      */
     public function deleted(Pago $pago): void
     {
         $this->actualizarSaldoPendiente($pago);
+
+        if ($pago->SedeID && $pago->MontoPagado > 0) {
+            try {
+                app(FondoSedeService::class)->registrarReversionRecaudo(
+                    $pago->SedeID,
+                    $pago->MontoPagado,
+                    $pago->PagoID,
+                    auth()->id()
+                );
+            } catch (\Exception $e) {
+                Log::warning('FondoSede: No se pudo revertir ingreso por borrado de pago', [
+                    'PagoID' => $pago->PagoID,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
     }
 
     /**
-     * Actualizar el SaldoPendiente de la ProposicionCredito asociada
+     * Actualizar el SaldoPendiente de la ProposicionCredito asociada.
+     * Fuente única de verdad: sum(MontoCuota) - sum(MontoPagado excluyendo trasladados).
      */
     private function actualizarSaldoPendiente(Pago $pago): void
     {
-        // Obtener el crédito asociado
         $credito = $pago->credito;
-        
+
         if ($credito && $credito->proposicion) {
-            $proposicion = $credito->proposicion;
-            
-            // Calcular total de pagos activos (excluyendo los trasladados)
-            $totalPagos = $credito->pagos()
-                ->where('Activo', true)
-                ->where(function ($q) {
-                    $q->whereNull('EstadoTraslado')
-                      ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
-                })
-                ->sum('MontoPagado');
-            
-            // Calcular saldo pendiente: Monto Total a Pagar - Total de Pagos
-            $saldoPendiente = max(0, $proposicion->MontoTotalPagar - $totalPagos);
-            
-            // Actualizar el SaldoPendiente en ProposicionCredito
-            $proposicion->update([
+            $saldoPendiente = ProposicionCredito::calcularSaldoPendiente(
+                $credito->proposicion->ProposicionCreditoID
+            );
+
+            $credito->proposicion->update([
                 'SaldoPendiente' => $saldoPendiente
             ]);
         }

@@ -27,7 +27,9 @@ class Pago extends Model
         'EsPagoAutomatico',
         'Comentario',
         'UsuarioRegistro',
-        'FechaCierre',
+        'UserModificacionID',
+        'FechaModificacion',
+        'FechaCreacion',
         'Activo',
         'SedeID',
         'SolicitudResolucionID',
@@ -37,6 +39,7 @@ class Pago extends Model
 
     protected $casts = [
         'FechaPago' => 'datetime:Y-m-d',
+        'FechaModificacion' => 'datetime',
         'FechaCierre' => 'datetime',
         'EsMora' => 'boolean',
         'EsPagoAMayor' => 'boolean',

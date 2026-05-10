@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Credito;
 use App\Models\Mora;
 use App\Models\CalendarioNoMoroso;
+use App\Models\ProposicionCredito;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -90,8 +91,10 @@ class CalcularMoraAutomatica implements ShouldQueue
                     continue; // Ya se calculó para esa fecha
                 }
 
-                // Obtener saldo pendiente de la proposición de crédito
-                $saldoPendiente = $credito->proposicion?->SaldoPendiente ?? 0;
+                // Obtener saldo pendiente usando la fuente única de verdad (suma cuotas - suma pagos)
+                $saldoPendiente = $credito->proposicion
+                    ? ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID)
+                    : 0;
 
                 if ($saldoPendiente <= 0) {
                     \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': Saldo pendiente <= 0: ' . number_format($saldoPendiente, 2));

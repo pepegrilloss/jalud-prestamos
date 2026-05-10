@@ -3,14 +3,17 @@
 namespace App\Filament\Resources\PagoResource\Pages;
 
 use App\Filament\Resources\PagoResource;
-use App\Models\Cuota;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class EditPago extends EditRecord
 {
     protected static string $resource = PagoResource::class;
+
+    private ?float $montoOriginal = null;
 
     public function mount(int|string $record): void
     {
@@ -57,59 +60,64 @@ class EditPago extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $this->montoOriginal = (float) $this->record->MontoPagado;
         return $data;
     }
 
     protected function afterSave(): void
     {
-        $pago = $this->record;
-        
-        if (!$pago || !$pago->CuotaID) {
-            return;
-        }
-        
-        $cuota = \App\Models\Cuota::find($pago->CuotaID);
-        $credito = $pago->credito;
+        try {
+            DB::transaction(function () {
+                $pago = $this->record;
 
-        if (!$cuota || !$credito) {
-            return;
-        }
+                if (!$pago || !$pago->CuotaID) {
+                    return;
+                }
 
-        // Calcular el total pagado para esta cuota sumando desde la tabla pago
-        $totalPagadoEnCuota = \App\Models\Pago::where('CuotaID', $cuota->CuotaID)
-            ->where('Activo', 1)
-            ->sum('MontoPagado');
+                $pago = \App\Models\Pago::lockForUpdate()->find($pago->PagoID);
+                $cuota = \App\Models\Cuota::lockForUpdate()->find($pago->CuotaID);
 
-        // Determinar el nuevo estado basándose en si está completamente pagada
-        $nuevoEstado = $cuota->Estado;
-        if ($totalPagadoEnCuota >= $cuota->MontoCuota) {
-            $nuevoEstado = Cuota::ESTADO_PAGADA;
-        } elseif (now()->isAfter($cuota->FechaVencimiento) && $totalPagadoEnCuota < $cuota->MontoCuota) {
-            $nuevoEstado = Cuota::ESTADO_MORA;
-        }
+                if (!$cuota) {
+                    return;
+                }
 
-        // Actualizar solo el estado de la cuota
-        $cuota->update([
-            'Estado' => $nuevoEstado,
-        ]);
+                // Registrar trazabilidad de edición (columnas dedicadas, no comentarios)
+                $pago->update([
+                    'FechaModificacion' => now(),
+                    'UserModificacionID' => auth()->id(),
+                ]);
 
-        // Actualizar ProposicionCredito con el saldo pendiente total (calculado desde pagos)
-        $proposicion = $credito->proposicion;
-        
-        if ($proposicion) {
-            $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
-            $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
-                ->where('Activo', 1)
-                ->sum('MontoPagado');
-            $proposicion->update([
-                'SaldoPendiente' => $montoCuotasTotal - $totalPagado,
+                // El PagoObserver::updated() se encarga de recalcular SaldoPendiente
+
+                Log::info('SEGURIDAD - EditPago::afterSave - Pago editado', [
+                    'PagoID' => $pago->PagoID,
+                    'CreditoID' => $pago->CreditoID,
+                    'MontoAnterior' => $this->montoOriginal,
+                    'MontoNuevo' => $pago->MontoPagado,
+                    'UsuarioID' => auth()->id(),
+                    'IP' => request()->ip(),
+                ]);
+            }, 2);
+
+            Notification::make()
+                ->success()
+                ->title('Pago Actualizado')
+                ->body('El pago ha sido actualizado correctamente')
+                ->send();
+
+        } catch (\Exception $e) {
+            Log::error('SEGURIDAD - EditPago::afterSave - Error en transacción', [
+                'error_message' => $e->getMessage(),
+                'PagoID' => $this->record->PagoID ?? 'desconocido',
+                'UsuarioID' => auth()->id(),
+                'timestamp' => now()->toIso8601String()
             ]);
-        }
 
-        Notification::make()
-            ->success()
-            ->title('Pago Actualizado')
-            ->body('El pago ha sido actualizado correctamente')
-            ->send();
+            Notification::make()
+                ->danger()
+                ->title('Error al actualizar pago')
+                ->body('No se pudo guardar los cambios. Contacta a administración.')
+                ->send();
+        }
     }
 }

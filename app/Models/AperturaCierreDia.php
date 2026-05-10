@@ -60,20 +60,44 @@ class AperturaCierreDia extends Model
     }
 
     /**
-     * Verifica si ALGÚN día está abierto (sin importar la fecha)
-     * Este es el método que usa Filament para validar operaciones
+     * Verifica si hay un día abierto para operaciones.
+     * Solo permite UN día abierto a la vez. Puede ser hoy o un día pasado.
+     * Si hay múltiples abiertos, deja solo el más reciente y cierra los demás.
      */
     public static function estaAbierto(): bool
     {
+        $abiertos = self::where('EstadoDia', 'ABIERTO')
+            ->orderBy('Fecha', 'desc')
+            ->get();
+
+        if ($abiertos->isEmpty()) {
+            return false;
+        }
+
+        if ($abiertos->count() > 1) {
+            $primero = $abiertos->shift();
+            foreach ($abiertos as $dia) {
+                \Illuminate\Support\Facades\Log::warning('AperturaCierreDia: Cerrando día abierto duplicado', [
+                    'AperturaCierreDiaID' => $dia->AperturaCierreDiaID,
+                    'Fecha' => $dia->Fecha->toDateString(),
+                    'SedeID' => $dia->SedeID,
+                    'DiaConservado' => $primero->Fecha->toDateString(),
+                ]);
+                $dia->update(['EstadoDia' => 'CERRADO', 'FechaCierre' => now()]);
+            }
+        }
+
         return self::where('EstadoDia', 'ABIERTO')->exists();
     }
 
     /**
-     * Obtiene el día abierto (cualquiera que sea)
+     * Obtiene el día abierto (el único, o el más reciente si hubo duplicados).
      */
     public static function getDiaAbierto(): ?self
     {
-        return self::where('EstadoDia', 'ABIERTO')->first();
+        return self::where('EstadoDia', 'ABIERTO')
+            ->orderBy('Fecha', 'desc')
+            ->first();
     }
 
     /**
@@ -159,6 +183,8 @@ class AperturaCierreDia extends Model
             \Illuminate\Support\Facades\Log::info("Solicitudes de resolución de excedentes cerradas en {$fecha}: {$solicitudesActualizadas}");
 
             \Illuminate\Support\Facades\Log::info("Día cerrado exitosamente: {$fecha}");
+
+            $this->registrarHistorial('CERRAR', $clientesActualizados + $proposicionesActualizadas + $creditosActualizados + $pagosActualizados + $cuotasActualizadas + $analisisActualizados + $evaluacionesActualizadas + $excedentesActualizados + $solicitudesActualizadas);
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error generando cierre de día: ' . $e->getMessage(), [
@@ -254,6 +280,8 @@ class AperturaCierreDia extends Model
                 'timestamp' => now()
             ]);
 
+            $this->registrarHistorial('REABRIR', $clientesActualizados + $proposicionesActualizadas + $creditosActualizados + $pagosActualizados + $cuotasActualizadas + $analisisActualizados + $evaluacionesActualizadas + $excedentesActualizados + $solicitudesActualizadas);
+
         } catch (\Exception $e) {
             $logFile = storage_path('logs/reopening-debug.log');
             file_put_contents($logFile, "ERROR en reabrirDia: " . $e->getMessage() . "\n", FILE_APPEND);
@@ -264,6 +292,29 @@ class AperturaCierreDia extends Model
                 'exception' => $e
             ]);
             throw $e;
+        }
+    }
+
+    /**
+     * Registrar en bitácora de auditoría el evento de cierre o reapertura.
+     */
+    private function registrarHistorial(string $accion, int $cantidadRegistros): void
+    {
+        try {
+            \Illuminate\Support\Facades\DB::table('historial_apertura_cierre')->insert([
+                'SedeID' => $this->SedeID,
+                'Fecha' => $this->Fecha->toDateString(),
+                'Accion' => $accion,
+                'UsuarioID' => auth()->id(),
+                'Observaciones' => $this->Observaciones,
+                'CantidadRegistrosAfectados' => $cantidadRegistros,
+                'FechaHora' => now(),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error registrando historial de {$accion}", [
+                'fecha' => $this->Fecha,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

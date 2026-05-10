@@ -254,33 +254,16 @@ class CrearProposicionCreditoResource extends Resource
                             ->columnSpan(4)
                             ->live(debounce: 500)
                             ->afterStateUpdated(function (Set $set, Get $get, $state) {
-                                // Calcular totales siempre
                                 static::calcularTotales($set, $get, $state);
-
-                                // Solo validar máximo si NO es refinanciamiento
-                                $tipoID = $get('TipoCreditoID');
-                                if ($tipoID) {
-                                    $tipoCredito = TipoCredito::find($tipoID);
-                                    if (!($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento')) {
-                                        static::validarMontoMaximo($set, $get, $state);
-                                    }
-                                }
+                                static::validarMontoMaximo($set, $get, $state);
                             })
                             ->helperText(function (Get $get, $state) {
                                 if (!$state || !$get('ClienteID')) {
                                     return '';
                                 }
 
-                                // No validar MMR si es refinanciamiento
-                                $tipoID = $get('TipoCreditoID');
-                                if ($tipoID) {
-                                    $tipoCredito = TipoCredito::find($tipoID);
-                                    if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
-                                        return ''; // Sin restricción de MMR para refinanciamiento
-                                    }
-                                }
-
-                                $disponible = self::calcularMontoDisponible($get('ClienteID'));
+                                $exclusionID = self::obtenerExclusionMMR($get);
+                                $disponible = self::calcularMontoDisponible($get('ClienteID'), $exclusionID);
                                 $montoActual = (float) $state;
 
                                 if ($disponible['montoDisponible'] <= 0) {
@@ -298,16 +281,8 @@ class CrearProposicionCreditoResource extends Resource
                                     return null;
                                 }
 
-                                // No validar MMR si es refinanciamiento
-                                $tipoID = $get('TipoCreditoID');
-                                if ($tipoID) {
-                                    $tipoCredito = TipoCredito::find($tipoID);
-                                    if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
-                                        return 'heroicon-s-check-circle'; // Sin restricción para refinanciamiento
-                                    }
-                                }
-
-                                $disponible = self::calcularMontoDisponible($get('ClienteID'));
+                                $exclusionID = self::obtenerExclusionMMR($get);
+                                $disponible = self::calcularMontoDisponible($get('ClienteID'), $exclusionID);
                                 $montoActual = (float) $state;
 
                                 return $montoActual > $disponible['montoDisponible'] ? 'heroicon-s-exclamation-circle' : 'heroicon-s-check-circle';
@@ -315,18 +290,10 @@ class CrearProposicionCreditoResource extends Resource
                             ->rules([
                                 function (Get $get) {
                                     return function ($attribute, $value, $fail) use ($get) {
-                                        // No validar MMR si es refinanciamiento
-                                        $tipoID = $get('TipoCreditoID');
-                                        if ($tipoID) {
-                                            $tipoCredito = TipoCredito::find($tipoID);
-                                            if ($tipoCredito && strtolower($tipoCredito->Descripcion) === 'refinanciamiento') {
-                                                return; // Sin restricción de MMR para refinanciamiento
-                                            }
-                                        }
-
                                         $clienteID = $get('ClienteID');
                                         if ($clienteID) {
-                                            $disponible = self::calcularMontoDisponible($clienteID);
+                                            $exclusionID = self::obtenerExclusionMMR($get);
+                                            $disponible = self::calcularMontoDisponible($clienteID, $exclusionID);
                                             if ((float) $value > (float) $disponible['montoDisponible']) {
                                                 $fail("Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo recomendado: S/ {$disponible['montoMaximoRecomendado']}, Ya utilizado: S/ {$disponible['montoUtilizado']})");
                                             }
@@ -531,7 +498,25 @@ class CrearProposicionCreditoResource extends Resource
         }
     }
 
-    protected static function calcularMontoDisponible($clienteID): array
+    /**
+     * Determina si hay una proposición a excluir del cálculo MMR (refinanciamiento).
+     * Retorna el ProposicionCreditoID a excluir, o null si no aplica.
+     */
+    protected static function obtenerExclusionMMR(Get $get): ?int
+    {
+        $tipoID = $get('TipoCreditoID');
+        if (!$tipoID) {
+            return null;
+        }
+        $tipoCredito = TipoCredito::find($tipoID);
+        if (!$tipoCredito || strtolower($tipoCredito->Descripcion) !== 'refinanciamiento') {
+            return null;
+        }
+        $anteriorID = $get('ProposicionCreditoAnteriorID');
+        return $anteriorID ? (int) $anteriorID : null;
+    }
+
+    protected static function calcularMontoDisponible($clienteID, $excluirProposicionID = null): array
     {
         $cliente = Cliente::find($clienteID);
         if (!$cliente || !$cliente->analisisEconomico) {
@@ -544,10 +529,6 @@ class CrearProposicionCreditoResource extends Resource
 
         $montoMaximoRecomendado = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
 
-        // IMPORTANTE: Solo considerar como "utilizado" los créditos que tienen saldo pendiente REAL > 0
-        // Los créditos ya pagados (saldo = 0) no deben contar como monto utilizado
-
-        // Obtener proposiciones activas no refinanciadas
         $proposiciones = ProposicionCredito::where('ClienteID', $clienteID)
             ->where('Activo', true)
             ->where('FueRefinanciada', 0)
@@ -557,9 +538,11 @@ class CrearProposicionCreditoResource extends Resource
             })
             ->get();
 
-        // Solo sumar el MontoTotal de las proposiciones que tienen saldo pendiente mayor a 0
         $montoUtilizado = 0;
         foreach ($proposiciones as $proposicion) {
+            if ($excluirProposicionID && $proposicion->ProposicionCreditoID == $excluirProposicionID) {
+                continue;
+            }
             $saldoPendiente = ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
             if ($saldoPendiente > 0) {
                 $montoUtilizado += (float) $proposicion->MontoTotal;
@@ -587,7 +570,8 @@ class CrearProposicionCreditoResource extends Resource
             return;
         }
 
-        $disponible = self::calcularMontoDisponible($clienteID);
+        $exclusionID = self::obtenerExclusionMMR($get);
+        $disponible = self::calcularMontoDisponible($clienteID, $exclusionID);
         $montoTotal = (float) $monto;
 
         if ($montoTotal > $disponible['montoDisponible']) {

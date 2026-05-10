@@ -422,4 +422,40 @@ class FondoSedeService
             return $fondo;
         });
     }
+
+    /**
+     * Revertir un ingreso por recaudo cuando se borra un pago.
+     * Descuenta el monto de la caja abierta y registra el movimiento de auditoría.
+     */
+    public function registrarReversionRecaudo($sedeId, $monto, $pagoId, $usuarioId)
+    {
+        if ($monto <= 0) {
+            return;
+        }
+
+        return DB::transaction(function () use ($sedeId, $monto, $pagoId, $usuarioId) {
+            $fondo = FondoSede::lockForUpdate()->firstOrCreate(
+                ['SedeID' => $sedeId],
+                ['Saldo' => 0, 'SaldoCajaChica' => 0]
+            );
+
+            $saldoAnterior = $fondo->Saldo;
+            $saldoNuevo = $saldoAnterior - $monto;
+
+            $fondo->Saldo = $saldoNuevo;
+            $fondo->save();
+
+            MovimientoFondo::create([
+                'SedeID' => $sedeId,
+                'Tipo' => 'REVERSION_RECAUDO',
+                'Monto' => -$monto,
+                'SaldoAnterior' => $saldoAnterior,
+                'SaldoNuevo' => $saldoNuevo,
+                'UsuarioID' => $usuarioId,
+                'Observacion' => "Reversión por borrado de pago #{$pagoId}",
+            ]);
+
+            return $fondo;
+        });
+    }
 }
