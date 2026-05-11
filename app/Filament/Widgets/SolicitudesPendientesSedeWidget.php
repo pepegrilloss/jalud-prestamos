@@ -75,4 +75,9 @@ class SolicitudesPendientesSedeWidget extends BaseWidget
             ->paginated(false)
             ->defaultSort('TransferenciaID', 'desc');
     }
+
+    public static function canView(): bool
+    {
+        return filament()->getCurrentPanel()?->getId() !== 'gerencia';
+    }
 }
