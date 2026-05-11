@@ -206,15 +206,18 @@ class FondoSedeService
             throw ValidationException::withMessages(['SedeDestinoID' => 'No puedes transferir entre la misma cuenta de la misma sede.']);
         }
 
-        $fondoOrigen = FondoSede::lockForUpdate()->where('SedeID', $sedeOrigenId)->first();
+        // Solo validar saldo si no es una solicitud de Gerencia (la sede ejecuta después)
+        if (!$esSolicitudGerencia) {
+            $fondoOrigen = FondoSede::lockForUpdate()->where('SedeID', $sedeOrigenId)->first();
 
-        if ($cuentaOrigen === 'CAJA_CHICA') {
-            if (!$fondoOrigen || $fondoOrigen->SaldoCajaChica < $monto) {
-                throw ValidationException::withMessages(['Monto' => 'Saldo insuficiente en Caja Chica para esta transferencia.']);
-            }
-        } else {
-            if (!$fondoOrigen || $fondoOrigen->Saldo < $monto) {
-                throw ValidationException::withMessages(['Monto' => 'Saldo insuficiente en Caja Abierta para esta transferencia.']);
+            if ($cuentaOrigen === 'CAJA_CHICA') {
+                if (!$fondoOrigen || $fondoOrigen->SaldoCajaChica < $monto) {
+                    throw ValidationException::withMessages(['Monto' => 'Saldo insuficiente en Caja Chica para esta transferencia.']);
+                }
+            } else {
+                if (!$fondoOrigen || $fondoOrigen->Saldo < $monto) {
+                    throw ValidationException::withMessages(['Monto' => 'Saldo insuficiente en Caja Abierta para esta transferencia.']);
+                }
             }
         }
 
