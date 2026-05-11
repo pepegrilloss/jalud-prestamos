@@ -9,19 +9,26 @@ use App\Models\Credito;
 use App\Models\Cuota;
 use App\Models\Pago;
 use App\Models\Excedente;
+use App\Models\TransferenciaSede;
+use App\Models\FondoSede;
+use App\Models\MovimientoFondo;
+use App\Models\SolicitudResolucionExcedente;
 use App\Observers\AuditObserver;
 
 class AuditServiceProvider extends ServiceProvider
 {
     public function boot()
     {
-        // Registrar observers en todos los modelos que quieras auditar
         User::observe(AuditObserver::class);
         Cliente::observe(AuditObserver::class);
         Credito::observe(AuditObserver::class);
         Cuota::observe(AuditObserver::class);
         Pago::observe(AuditObserver::class);
         Excedente::observe(AuditObserver::class);
+        TransferenciaSede::observe(AuditObserver::class);
+        FondoSede::observe(AuditObserver::class);
+        MovimientoFondo::observe(AuditObserver::class);
+        SolicitudResolucionExcedente::observe(AuditObserver::class);
     }
 
     public function register()
