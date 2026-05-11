@@ -295,7 +295,8 @@ class ProposicionCredito extends Model
             \App\Models\User::notificarAdmin(
                 "Proposición {$estado}",
                 "{$codigo} — {$nombre} — S/ {$monto}",
-                $icono
+                $icono,
+                $this->SedeID
             );
         } catch (\Exception $e) {
         }

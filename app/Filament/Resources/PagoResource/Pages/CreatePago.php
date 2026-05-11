@@ -560,7 +560,8 @@ class CreatePago extends CreateRecord
                             \App\Models\User::notificarAdmin(
                                 'Crédito saldado',
                                 "{$codigo} — {$nombre}",
-                                'heroicon-o-check-circle'
+                                'heroicon-o-check-circle',
+                                $credito->proposicion->SedeID
                             );
                         } catch (\Exception $e) {
                         }

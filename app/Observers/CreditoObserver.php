@@ -24,7 +24,8 @@ class CreditoObserver
                 User::notificarAdmin(
                     'Crédito desembolsado',
                     "{$codigo} — {$nombre} — S/ {$monto}",
-                    'heroicon-o-banknotes'
+                    'heroicon-o-banknotes',
+                    $proposicion->SedeID
                 );
             }
         } catch (\Exception $e) {

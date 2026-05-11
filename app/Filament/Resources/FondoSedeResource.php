@@ -227,7 +227,8 @@ class FondoSedeResource extends Resource
                                 \App\Models\User::notificarAdmin(
                                     'Solicitud de traslado interno',
                                     "{$record->sede->Nombre} — {$direccion} — S/ {$data['monto']}",
-                                    'heroicon-o-arrows-right-left'
+                                    'heroicon-o-arrows-right-left',
+                                    $record->SedeID
                                 );
                             } catch (\Exception $e) {
                             }
@@ -284,7 +285,8 @@ class FondoSedeResource extends Resource
                                 \App\Models\User::notificarAdmin(
                                     'Solicitud de capital',
                                     "{$record->sede->Nombre} solicita S/ {$data['monto']} a Gerencia",
-                                    'heroicon-o-building-library'
+                                    'heroicon-o-building-library',
+                                    $record->SedeID
                                 );
                             } catch (\Exception $e) {
                             }

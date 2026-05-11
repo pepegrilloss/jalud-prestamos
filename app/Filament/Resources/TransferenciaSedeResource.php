@@ -234,7 +234,8 @@ class TransferenciaSedeResource extends Resource
                                 $record->EsSolicitudCapital
                                     ? "S/ {$record->MontoAprobado} a {$record->sedeOrigen->Nombre}"
                                     : "S/ {$record->Monto} — {$record->sedeOrigen->Nombre} → {$record->sedeDestino->Nombre}",
-                                'heroicon-o-check-circle'
+                                'heroicon-o-check-circle',
+                                $record->EsSolicitudCapital ? $record->SedeOrigenID : $record->SedeDestinoID
                             );
                         } catch (\Exception $e) {
                             Notification::make()
@@ -273,7 +274,8 @@ class TransferenciaSedeResource extends Resource
                             User::notificarAdmin(
                                 'Transferencia ejecutada',
                                 "{$record->sedeDestino->Nombre} transfirió S/ {$record->Monto} a Gerencia",
-                                'heroicon-o-banknotes'
+                                'heroicon-o-banknotes',
+                                $record->SedeDestinoID
                             );
                         } catch (\Exception $e) {
                             Notification::make()
@@ -304,7 +306,8 @@ class TransferenciaSedeResource extends Resource
                             User::notificarAdmin(
                                 'Transferencia rechazada',
                                 "S/ {$record->Monto} — {$record->sedeOrigen->Nombre} → {$record->sedeDestino->Nombre}",
-                                'heroicon-o-x-circle'
+                                'heroicon-o-x-circle',
+                                $record->SedeOrigenID
                             );
                         } catch (\Exception $e) {
                             Notification::make()

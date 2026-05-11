@@ -52,12 +52,13 @@ class ManageTransferenciaSedes extends ManageRecords
                         throw $e;
                     }
                 })
-                ->after(function () {
+                ->after(function (\App\Models\TransferenciaSede $record) {
                     try {
                         \App\Models\User::notificarAdmin(
                             'Nueva remesa / transferencia',
                             'Solicitud pendiente de aprobación',
-                            'heroicon-o-truck'
+                            'heroicon-o-truck',
+                            $record->EsSolicitudCapital ? $record->SedeDestinoID : $record->SedeOrigenID
                         );
                     } catch (\Exception $e) {
                     }
@@ -117,7 +118,8 @@ class ManageTransferenciaSedes extends ManageRecords
                         \App\Models\User::notificarAdmin(
                             'Gerencia solicita transferencia',
                             \App\Models\Sede::find($data['SedeDestinoID'])?->Nombre . " — S/ {$data['Monto']}",
-                            'heroicon-o-arrow-down-circle'
+                            'heroicon-o-arrow-down-circle',
+                            $data['SedeDestinoID']
                         );
                     } catch (\Exception $e) {
                         Notification::make()

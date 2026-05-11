@@ -30,7 +30,8 @@ class ProposicionCreditoObserver
             User::notificarAdmin(
                 'Nueva proposición de crédito',
                 "{$codigo} — {$nombre} — S/ {$monto}",
-                'heroicon-o-document-plus'
+                'heroicon-o-document-plus',
+                $proposicionCredito->SedeID
             );
         } catch (\Exception $e) {
         }

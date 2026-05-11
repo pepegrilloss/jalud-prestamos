@@ -154,13 +154,19 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Enviar notificación a todos los administradores (super_admin y admin).
+     * Enviar notificación a administradores, opcionalmente filtrado por sede.
      */
-    public static function notificarAdmin(string $titulo, string $cuerpo, ?string $icono = 'heroicon-o-bell'): void
+    public static function notificarAdmin(string $titulo, string $cuerpo, ?string $icono = 'heroicon-o-bell', ?int $sedeId = null): void
     {
         $adminRoles = [\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName(), 'admin'];
 
-        $users = static::role($adminRoles)->get();
+        $users = static::role($adminRoles);
+
+        if ($sedeId) {
+            $users = $users->where('SedeID', $sedeId);
+        }
+
+        $users = $users->get();
 
         if ($users->isEmpty()) {
             return;
