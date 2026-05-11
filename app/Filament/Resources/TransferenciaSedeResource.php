@@ -153,13 +153,13 @@ class TransferenciaSedeResource extends Resource
                 Tables\Columns\TextColumn::make('MontoAprobado')
                     ->label('Aprobado')
                     ->money('PEN')
-                    ->visible(fn (TransferenciaSede $record) => $record->EsSolicitudCapital)
+                    ->visible(fn (?TransferenciaSede $record) => $record?->EsSolicitudCapital ?? false)
                     ->color('success'),
                 Tables\Columns\TextColumn::make('Tipo')
                     ->label('Tipo')
-                    ->getStateUsing(fn (TransferenciaSede $record) => $record->EsSolicitudCapital ? 'Solicitud Capital' : 'Remesa')
+                    ->getStateUsing(fn (?TransferenciaSede $record) => ($record?->EsSolicitudCapital ?? false) ? 'Solicitud Capital' : 'Remesa')
                     ->badge()
-                    ->color(fn (TransferenciaSede $record) => $record->EsSolicitudCapital ? 'info' : 'gray'),
+                    ->color(fn (?TransferenciaSede $record) => ($record?->EsSolicitudCapital ?? false) ? 'info' : 'gray'),
                 Tables\Columns\TextColumn::make('Estado')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
