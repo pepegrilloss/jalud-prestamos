@@ -142,7 +142,7 @@ class CalcularMoraAutomatica implements ShouldQueue
                 // Log para auditoría
                 \Log::info('[JOB] Mora calculada', [
                     'CreditoID' => $credito->CreditoID,
-                    'ClienteDNI' => $cliente->DNI,
+                    'ClienteID' => $cliente->ClienteID,
                     'Fecha' => $fecha->toDateString(),
                     'SaldoPendiente' => $saldoPendiente,
                     'Porcentaje' => $porcentajeMora,
