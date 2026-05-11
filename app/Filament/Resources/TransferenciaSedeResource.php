@@ -27,6 +27,18 @@ class TransferenciaSedeResource extends Resource
     protected static ?string $modelLabel = 'Remesa / Transferencia';
     protected static ?string $pluralModelLabel = 'Remesas y Transferencias';
 
+    public static function getNavigationBadge(): ?string
+    {
+        if (!self::esGerencia()) return null;
+        $count = static::getModel()::where('Estado', 'PENDIENTE')->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function shouldRegisterNavigation(): bool
     {
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {

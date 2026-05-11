@@ -37,15 +37,24 @@ class CajaAbiertaWidget extends BaseWidget
 
         if ($sedeId) {
             $fondo = FondoSede::where('SedeID', $sedeId)->first();
-            $saldoCajaAbierta = $fondo ? $fondo->Saldo : 0;
+            $saldoCajaAbierta = $fondo ? (float) $fondo->Saldo : 0;
             $sedeNombre = $fondo?->sede?->Nombre ?? 'Sede actual';
             $ultimaActualizacion = $fondo?->updated_at?->diffForHumans() ?? 'Sin movimientos';
 
+            $color = match(true) {
+                $saldoCajaAbierta <= 0 => 'danger',
+                $saldoCajaAbierta < 500 => 'danger',
+                $saldoCajaAbierta < 2000 => 'warning',
+                default => 'success',
+            };
+
+            $alerta = $saldoCajaAbierta <= 0 ? '⚠️ ¡CAJA VACÍA!' : ($saldoCajaAbierta < 500 ? '⚠️ Saldo crítico' : '');
+
             return [
                 Stat::make("Caja Abierta - {$sedeNombre}", 'S/ ' . number_format($saldoCajaAbierta, 2))
-                    ->description("Último movimiento: {$ultimaActualizacion}")
-                    ->descriptionIcon('heroicon-m-building-storefront')
-                    ->color($saldoCajaAbierta > 0 ? 'success' : 'danger'),
+                    ->description($alerta ?: "Último movimiento: {$ultimaActualizacion}")
+                    ->descriptionIcon($alerta ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-building-storefront')
+                    ->color($color),
             ];
         }
 

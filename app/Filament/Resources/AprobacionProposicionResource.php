@@ -23,6 +23,17 @@ class AprobacionProposicionResource extends Resource
     protected static ?string $label = 'Aprobación de Proposición';
     protected static ?string $pluralLabel = 'Aprobaciones de Proposiciones';
 
+    public static function getNavigationBadge(): ?string
+    {
+        $count = ProposicionCredito::where('Estado', 'PENDIENTE')->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     /**
      * Override para usar los permisos de 'aprobacion::proposicion' en lugar de
      * los de ProposicionCreditoPolicy (que apunta a otro recurso).

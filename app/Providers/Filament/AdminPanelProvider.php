@@ -64,11 +64,17 @@ class AdminPanelProvider extends PanelProvider
                         </div>
                         <div class="w-px h-5 bg-gray-300 dark:bg-gray-600"></div>
                         <div class="flex items-center leading-none">
-                            <span class="text-sm md:text-base font-bold text-primary-600 dark:text-primary-400">
-                                @php
-                                    $sedeId = session("sede_activa");
-                                    $sedeNombre = $sedeId ? \App\Models\Sede::find($sedeId)?->Nombre : "GLOBAL";
-                                @endphp
+                            @php
+                                $sedeId = session("sede_activa");
+                                $sede = $sedeId ? \App\Models\Sede::find($sedeId) : null;
+                                $sedeNombre = $sede?->Nombre ?? ($sedeId ? "Sede #{$sedeId}" : "GLOBAL");
+                                $colores = ["#a4cb3b", "#3b82f6", "#ef4444", "#f59e0b", "#8b5cf6", "#10b981", "#ec4899", "#6366f1"];
+                                $colorIndex = $sedeId ? ($sedeId % count($colores)) : 0;
+                                $colorSede = $colores[$colorIndex];
+                                $inicial = mb_substr($sedeNombre, 0, 1);
+                            @endphp
+                            <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold mr-2" style="background-color: {{ $colorSede }};">{{ $inicial }}</span>
+                            <span class="text-sm md:text-base font-bold" style="color: {{ $colorSede }};">
                                 {{ $sedeNombre }}
                             </span>
                             @if(auth()->user()->esAdmin() || auth()->user()->can("page_SelectSede"))
