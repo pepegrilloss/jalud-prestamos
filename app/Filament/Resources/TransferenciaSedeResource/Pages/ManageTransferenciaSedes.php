@@ -130,42 +130,4 @@ class ManageTransferenciaSedes extends ManageRecords
                 }),
         ];
     }
-                        } else {
-                            if (auth()->user()->esAdmin() && session('sede_activa')) {
-                                $sedeOrigenId = session('sede_activa');
-                            }
-                        }
-                        
-                        if (!$sedeOrigenId) {
-                            throw ValidationException::withMessages([
-                                'Sede' => 'Tu usuario no tiene una sede asignada como origen.'
-                            ]);
-                        }
-
-                        return $service->crearTransferencia(
-                            $sedeOrigenId,
-                            $data['SedeDestinoID'],
-                            $data['Monto'],
-                            auth()->id(),
-                            $data['Observacion'],
-                            $data['CuentaOrigen'] ?? 'CAJA_ABIERTA',
-                            $data['CuentaDestino'] ?? 'CAJA_ABIERTA'
-                        );
-                    } catch (\Exception $e) {
-                        throw $e;
-                    }
-                })
-                ->after(function () {
-                    try {
-                        \App\Models\User::notificarAdmin(
-                            'Nueva remesa / transferencia',
-                            'Solicitud pendiente de aprobación',
-                            'heroicon-o-truck'
-                        );
-                    } catch (\Exception $e) {
-                    }
-                })
-                ->successNotificationTitle('Remesa enviada con éxito')
-        ];
-    }
 }
