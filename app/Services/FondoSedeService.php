@@ -197,7 +197,7 @@ class FondoSedeService
      * Crear y enviar una transferencia a otra sede.
      * Soporta cuenta origen/destino: CAJA_ABIERTA o CAJA_CHICA
      */
-    public function crearTransferencia($sedeOrigenId, $sedeDestinoId, $monto, $usuarioId, $observacion, $cuentaOrigen = 'CAJA_ABIERTA', $cuentaDestino = 'CAJA_ABIERTA', $esSolicitudCapital = false)
+    public function crearTransferencia($sedeOrigenId, $sedeDestinoId, $monto, $usuarioId, $observacion, $cuentaOrigen = 'CAJA_ABIERTA', $cuentaDestino = 'CAJA_ABIERTA', $esSolicitudCapital = false, $esSolicitudGerencia = false)
     {
         if ($monto <= 0) {
             throw ValidationException::withMessages(['Monto' => 'El monto debe ser mayor a 0.']);
@@ -224,6 +224,7 @@ class FondoSedeService
             'CuentaOrigen' => $cuentaOrigen,
             'CuentaDestino' => $cuentaDestino,
             'EsSolicitudCapital' => $esSolicitudCapital,
+            'EsSolicitudGerencia' => $esSolicitudGerencia,
             'UsuarioOrigenID' => $usuarioId,
             'Monto' => $monto,
             'Estado' => 'PENDIENTE',
@@ -525,6 +526,73 @@ class FondoSedeService
             ]);
 
             return $fondo;
+        });
+    }
+
+    /**
+     * Ejecutar una transferencia solicitada por Gerencia: Sede → Gerencia, directo sin aprobación.
+     */
+    public function ejecutarTransferenciaSolicitada(TransferenciaSede $transferencia, $usuarioId): TransferenciaSede
+    {
+        if ($transferencia->Estado !== 'PENDIENTE') {
+            throw ValidationException::withMessages(['estado' => 'La solicitud ya fue procesada.']);
+        }
+
+        if (!$transferencia->EsSolicitudGerencia) {
+            throw ValidationException::withMessages(['tipo' => 'Esta transferencia no es una solicitud de Gerencia.']);
+        }
+
+        return DB::transaction(function () use ($transferencia, $usuarioId) {
+            $fondoSede = FondoSede::lockForUpdate()->where('SedeID', $transferencia->SedeDestinoID)->first();
+            if (!$fondoSede || $fondoSede->Saldo < $transferencia->Monto) {
+                throw ValidationException::withMessages(['saldo' => 'Saldo insuficiente en Caja Abierta para realizar la transferencia.']);
+            }
+
+            $saldoAntSede = $fondoSede->Saldo;
+            $saldoNuevoSede = $saldoAntSede - $transferencia->Monto;
+            $fondoSede->Saldo = $saldoNuevoSede;
+            $fondoSede->save();
+
+            MovimientoFondo::create([
+                'SedeID' => $transferencia->SedeDestinoID,
+                'Tipo' => 'ENVIO_TRANSFERENCIA',
+                'Monto' => -$transferencia->Monto,
+                'SaldoAnterior' => $saldoAntSede,
+                'SaldoNuevo' => $saldoNuevoSede,
+                'TransferenciaID' => $transferencia->TransferenciaID,
+                'UsuarioID' => $usuarioId,
+                'Observacion' => "Transferencia a Gerencia por solicitud #{$transferencia->TransferenciaID}",
+            ]);
+
+            $fondoGerencia = FondoSede::lockForUpdate()->firstOrCreate(
+                ['SedeID' => $transferencia->SedeOrigenID],
+                ['Saldo' => 0, 'SaldoCajaChica' => 0]
+            );
+
+            $saldoAntGerencia = $fondoGerencia->Saldo;
+            $saldoNuevoGerencia = $saldoAntGerencia + $transferencia->Monto;
+            $fondoGerencia->Saldo = $saldoNuevoGerencia;
+            $fondoGerencia->save();
+
+            MovimientoFondo::create([
+                'SedeID' => $transferencia->SedeOrigenID,
+                'Tipo' => 'RECEPCION_TRANSFERENCIA',
+                'Monto' => $transferencia->Monto,
+                'SaldoAnterior' => $saldoAntGerencia,
+                'SaldoNuevo' => $saldoNuevoGerencia,
+                'TransferenciaID' => $transferencia->TransferenciaID,
+                'UsuarioID' => $usuarioId,
+                'Observacion' => "Recepción desde {$transferencia->sedeDestino->Nombre} por solicitud #{$transferencia->TransferenciaID}",
+            ]);
+
+            $transferencia->update([
+                'Estado' => 'ACEPTADO',
+                'UsuarioRespondeID' => $usuarioId,
+                'MontoAprobado' => $transferencia->Monto,
+                'FechaRespuesta' => now(),
+            ]);
+
+            return $transferencia;
         });
     }
 }

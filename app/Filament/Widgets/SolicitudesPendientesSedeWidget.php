@@ -28,20 +28,36 @@ class SolicitudesPendientesSedeWidget extends BaseWidget
 
         return $table
             ->query(
-                TransferenciaSede::where('SedeOrigenID', $sedeId)
-                    ->where('Estado', 'PENDIENTE')
+                TransferenciaSede::where(function ($q) use ($sedeId) {
+                    $q->where(function ($sq) use ($sedeId) {
+                        $sq->where('SedeOrigenID', $sedeId)
+                           ->where('Estado', 'PENDIENTE');
+                    })->orWhere(function ($sq) use ($sedeId) {
+                        $sq->where('SedeDestinoID', $sedeId)
+                           ->where('EsSolicitudGerencia', true)
+                           ->where('Estado', 'PENDIENTE');
+                    });
+                })
             )
-            ->heading('Solicitudes Pendientes de esta Sede')
-            ->description('Estas solicitudes están pendientes de aprobación por Gerencia.')
+            ->heading('Solicitudes y Órdenes Pendientes')
+            ->description('Solicitudes de capital, traslados internos y órdenes de Gerencia pendientes de acción.')
             ->columns([
                 Tables\Columns\TextColumn::make('TransferenciaID')
                     ->label('#')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('Tipo')
                     ->label('Tipo')
-                    ->getStateUsing(fn (TransferenciaSede $record) => $record->EsSolicitudCapital ? 'Solicitud Capital' : 'Traslado Interno')
+                    ->getStateUsing(fn (TransferenciaSede $record) => match(true) {
+                        $record->EsSolicitudGerencia => 'Gerencia solicita',
+                        $record->EsSolicitudCapital => 'Solicitud Capital',
+                        default => 'Traslado Interno',
+                    })
                     ->badge()
-                    ->color(fn (TransferenciaSede $record) => $record->EsSolicitudCapital ? 'info' : 'warning'),
+                    ->color(fn (TransferenciaSede $record) => match(true) {
+                        $record->EsSolicitudGerencia => 'warning',
+                        $record->EsSolicitudCapital => 'info',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('Monto')
                     ->label('Monto Solicitado')
                     ->money('PEN'),

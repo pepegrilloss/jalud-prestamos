@@ -17,7 +17,8 @@ class TransferenciaSede extends Model
         'SedeDestinoID',
         'CuentaOrigen',
         'CuentaDestino',
-        'EsSolicitudCapital',
+            'EsSolicitudCapital',
+            'EsSolicitudGerencia',
         'UsuarioOrigenID',
         'UsuarioRespondeID',
         'Monto',
@@ -32,6 +33,7 @@ class TransferenciaSede extends Model
         'Monto' => 'decimal:2',
         'MontoAprobado' => 'decimal:2',
         'EsSolicitudCapital' => 'boolean',
+        'EsSolicitudGerencia' => 'boolean',
         'FechaTransferencia' => 'datetime',
         'FechaRespuesta' => 'datetime',
     ];

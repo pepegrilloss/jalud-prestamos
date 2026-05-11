@@ -157,9 +157,17 @@ class TransferenciaSedeResource extends Resource
                     ->color('success'),
                 Tables\Columns\TextColumn::make('Tipo')
                     ->label('Tipo')
-                    ->getStateUsing(fn (?TransferenciaSede $record) => ($record?->EsSolicitudCapital ?? false) ? 'Solicitud Capital' : 'Remesa')
+                    ->getStateUsing(fn (?TransferenciaSede $record) => match(true) {
+                        ($record?->EsSolicitudGerencia ?? false) => 'Solicitud Gerencia',
+                        ($record?->EsSolicitudCapital ?? false) => 'Solicitud Capital',
+                        default => 'Remesa',
+                    })
                     ->badge()
-                    ->color(fn (?TransferenciaSede $record) => ($record?->EsSolicitudCapital ?? false) ? 'info' : 'gray'),
+                    ->color(fn (?TransferenciaSede $record) => match(true) {
+                        ($record?->EsSolicitudGerencia ?? false) => 'warning',
+                        ($record?->EsSolicitudCapital ?? false) => 'info',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('Estado')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -237,6 +245,45 @@ class TransferenciaSedeResource extends Resource
                         }
                     }),
                 
+                Tables\Actions\Action::make('Transferir')
+                    ->label('Transferir a Gerencia')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirmar Transferencia a Gerencia')
+                    ->modalDescription(fn (TransferenciaSede $record) => "Transferir S/ " . number_format((float) $record->Monto, 2) . " a Gerencia. Esta acción es inmediata y no requiere aprobación adicional.")
+                    ->visible(function (TransferenciaSede $record) {
+                        if ($record->Estado !== 'PENDIENTE') return false;
+                        if (!$record->EsSolicitudGerencia) return false;
+                        $sedeId = auth()->user()->SedeID;
+                        if (auth()->user()->esAdmin() && session('sede_activa')) {
+                            $sedeId = session('sede_activa');
+                        }
+                        return $sedeId === $record->SedeDestinoID;
+                    })
+                    ->action(function (TransferenciaSede $record, FondoSedeService $service) {
+                        try {
+                            $service->ejecutarTransferenciaSolicitada($record, auth()->id());
+                            Notification::make()
+                                ->success()
+                                ->title('Transferencia realizada')
+                                ->body('El dinero ha sido transferido a Gerencia exitosamente.')
+                                ->send();
+
+                            User::notificarAdmin(
+                                'Transferencia ejecutada',
+                                "{$record->sedeDestino->Nombre} transfirió S/ {$record->Monto} a Gerencia",
+                                'heroicon-o-banknotes'
+                            );
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Error al transferir')
+                                ->body($e->getMessage())
+                                ->send();
+                        }
+                    }),
+
                 Tables\Actions\Action::make('Rechazar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
@@ -279,7 +326,7 @@ class TransferenciaSedeResource extends Resource
         ];
     }
 
-    private static function esGerencia(): bool
+    public static function esGerencia(): bool
     {
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             return true;
