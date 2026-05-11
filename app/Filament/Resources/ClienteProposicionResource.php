@@ -32,6 +32,17 @@ class ClienteProposicionResource extends Resource
     protected static ?string $modelLabel = 'Proposición';
     protected static ?string $pluralModelLabel = 'Proposiciones';
 
+    public static function getNavigationBadge(): ?string
+    {
+        $count = \App\Models\ProposicionCredito::where('Estado', 'PENDIENTE')->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     /**
      * Override para usar los permisos de 'cliente::proposicion' en lugar de ProposicionCreditoPolicy.
      */

@@ -38,6 +38,19 @@ class GenerarCreditoResource extends Resource
     protected static ?string $modelLabel = 'Generar Crédito';
     protected static ?string $pluralModelLabel = 'Generar Crédito';
 
+    public static function getNavigationBadge(): ?string
+    {
+        $count = \App\Models\ProposicionCredito::where('Estado', 'APROBADO')
+            ->whereDoesntHave('credito')
+            ->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
+    }
+
     /**
      * Override para usar los permisos de 'generar::credito' en lugar de ProposicionCreditoPolicy.
      */
