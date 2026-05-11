@@ -137,8 +137,8 @@ class CalcularMoraRetroactiva extends Command
         // Obtener feriados desde hace 2 años hasta 2 años en el futuro
         for ($anno = $annoActual - 2; $anno <= $annoActual + 2; $anno++) {
             try {
-                $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
-                $feriados = json_decode($response, true);
+                $response = \Illuminate\Support\Facades\Http::timeout(5)->retry(2, 100)->get("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
+                $feriados = $response->json();
                 if ($feriados) {
                     foreach ($feriados as $feriado) {
                         $feriadosData[$feriado['date']] = $feriado['localName'];

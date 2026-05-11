@@ -467,8 +467,8 @@ class GenerarCreditoResource extends Resource
                             
                             for ($anno = $annoInicio; $anno <= $annoFin; $anno++) {
                                 try {
-                                    $response = file_get_contents("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
-                                    $feriados = json_decode($response, true);
+                                    $response = \Illuminate\Support\Facades\Http::timeout(5)->retry(2, 100)->get("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
+                                    $feriados = $response->json();
                                     foreach ($feriados as $feriado) {
                                         $feriadosData[$feriado['date']] = $feriado['localName'];
                                     }
