@@ -26,9 +26,11 @@ class DashboardCobradoDiarioWidget extends BaseWidget
         $promotorCobrador = $user->promotorCobrador;
         $zonaID = $promotorCobrador?->ZonaID ?? null;
 
+        $fecha = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
+
         $pagosQuery = \App\Models\Pago::where('Activo', true)
             ->where('EsPagoAutomatico', 0)
-            ->whereDate('FechaPago', now());
+            ->whereDate('FechaPago', $fecha);
 
         if ($zonaID) {
             $pagosQuery->whereHas('cuota.credito.proposicion', function ($q) use ($zonaID) {

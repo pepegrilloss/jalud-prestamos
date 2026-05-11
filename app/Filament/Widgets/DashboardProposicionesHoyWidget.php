@@ -32,7 +32,9 @@ class DashboardProposicionesHoyWidget extends BaseWidget
             });
         }
 
-        $proposicionesHoy = (clone $query)->whereDate('FechaPropuesta', now())->count();
+        $fecha = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
+
+        $proposicionesHoy = (clone $query)->whereDate('FechaPropuesta', $fecha)->count();
 
         return [
             Stat::make('Proposiciones de Hoy', $proposicionesHoy)

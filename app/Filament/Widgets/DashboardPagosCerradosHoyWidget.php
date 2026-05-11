@@ -27,9 +27,11 @@ class DashboardPagosCerradosHoyWidget extends BaseWidget
         $user = Auth::user();
         
 
+        $fecha = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
+
         $pagosCount = \App\Models\Pago::where('Activo', true)
             ->where('EsPagoAutomatico', 0)
-            ->whereDate('FechaPago', now())
+            ->whereDate('FechaPago', $fecha)
             ->count();
 
         return [
