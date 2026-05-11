@@ -7,15 +7,23 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Filament\Models\Contracts\FilamentUser;
-use Filament\Models\Contracts\HasName;
-use Filament\Notifications\HasDatabaseNotifications;
 use Filament\Notifications\Notification;
 use Filament\Panel;
 use App\Traits\AprobacionMultiNivel;
 
 class User extends Authenticatable implements FilamentUser
 {
-    use HasFactory, Notifiable, HasRoles, HasDatabaseNotifications, AprobacionMultiNivel;
+    use HasFactory, Notifiable, HasRoles, AprobacionMultiNivel;
+
+    protected function getFilamentDatabaseNotificationsTable(): string
+    {
+        return 'notifications';
+    }
+
+    public function receivesBroadcastNotificationsOn(): string
+    {
+        return 'App.Models.User.' . $this->id;
+    }
 
     protected $fillable = [
         'name',
