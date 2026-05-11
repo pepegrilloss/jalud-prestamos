@@ -401,11 +401,4 @@ class FondoSedeResource extends Resource
             'index' => Pages\ManageFondoSedes::route('/'),
         ];
     }
-
-    public static function getWidgets(): array
-    {
-        return [
-            \App\Filament\Widgets\SolicitudesPendientesSedeWidget::class,
-        ];
-    }
 }

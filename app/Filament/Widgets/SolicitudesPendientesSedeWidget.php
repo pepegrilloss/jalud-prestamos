@@ -59,15 +59,4 @@ class SolicitudesPendientesSedeWidget extends BaseWidget
             ->paginated(false)
             ->defaultSort('TransferenciaID', 'desc');
     }
-
-    public static function canView(): bool
-    {
-        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-            return false;
-        }
-        $user = auth()->user();
-        if (!$user) return false;
-        if ($user->esAdmin()) return true;
-        return (bool) $user->SedeID;
-    }
 }

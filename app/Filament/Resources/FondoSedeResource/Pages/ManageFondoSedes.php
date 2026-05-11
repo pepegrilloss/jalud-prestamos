@@ -12,8 +12,13 @@ class ManageFondoSedes extends ManageRecords
 
     protected function getHeaderActions(): array
     {
+        return [];
+    }
+
+    protected function getFooterWidgets(): array
+    {
         return [
-            // Las acciones ahora están directamente en la tabla (FondoSedeResource)
+            \App\Filament\Widgets\SolicitudesPendientesSedeWidget::class,
         ];
     }
 }
