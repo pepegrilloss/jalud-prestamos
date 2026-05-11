@@ -250,6 +250,8 @@ class ProposicionCredito extends Model
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
             $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
             $this->save();
+
+            $this->notificarCambioEstado('RECHAZADO');
         } elseif ($this->todasAprobacionesAprobadas()) {
             $ultimaAprobacion = $this->aprobaciones()->where('Estado', 'APROBADO')->latest('FechaAprobacion')->first();
             $this->Estado = 'APROBADO';
@@ -259,8 +261,8 @@ class ProposicionCredito extends Model
             $this->FechaModificacion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
             $this->save();
 
-            // Si es un refinanciamiento aprobado, desactivar y marcar como refinanciada la proposición anterior
             $this->desactivarProposicionRefinanciada();
+            $this->notificarCambioEstado('APROBADO');
         }
     }
 
@@ -269,7 +271,6 @@ class ProposicionCredito extends Model
      */
     public function desactivarProposicionRefinanciada(): void
     {
-        // Si tiene proposición anterior para refinanciar
         if ($this->ProposicionCreditoAnteriorID) {
             $proposicionAnterior = ProposicionCredito::find($this->ProposicionCreditoAnteriorID);
 
@@ -279,6 +280,24 @@ class ProposicionCredito extends Model
                 $proposicionAnterior->FechaModificacion = now();
                 $proposicionAnterior->save();
             }
+        }
+    }
+
+    private function notificarCambioEstado(string $estado): void
+    {
+        try {
+            $cliente = $this->cliente;
+            $nombre = $cliente?->NombresApellidos ?? 'N/A';
+            $monto = number_format((float) $this->MontoTotal, 2);
+            $codigo = $this->CodigoCredito;
+            $icono = $estado === 'APROBADO' ? 'heroicon-o-check-badge' : 'heroicon-o-x-circle';
+
+            \App\Models\User::notificarAdmin(
+                "Proposición {$estado}",
+                "{$codigo} — {$nombre} — S/ {$monto}",
+                $icono
+            );
+        } catch (\Exception $e) {
         }
     }
 

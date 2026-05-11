@@ -3,33 +3,37 @@
 namespace App\Observers;
 
 use App\Models\ProposicionCredito;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class ProposicionCreditoObserver
 {
-    /**
-     * Handle the ProposicionCredito "created" event.
-     */
     public function created(ProposicionCredito $proposicionCredito): void
     {
-        // Generar código si no existe
         if (!$proposicionCredito->CodigoCredito) {
             $proposicionCredito->update([
                 'CodigoCredito' => ProposicionCredito::generarCodigoCredito(),
             ]);
         }
 
-        // Usar afterCommit para asegurar que se ejecute DESPUÉS de que se guarde en BD
         DB::transaction(function () use ($proposicionCredito) {
-            // Forzar refresh para asegurar que el ID está disponible en BD
             $proposicionCredito->refresh();
-            
-            // Crear las aprobaciones requeridas
             $proposicionCredito->crearAprobacionesRequeridas();
-            
-            // NOTA: El marcado como FueRefinanciada ahora se hace en GenerarCreditoResource
-            // cuando se genera el crédito, no cuando se crea la proposición
         }, attempts: 3);
+
+        try {
+            $cliente = $proposicionCredito->cliente;
+            $nombre = $cliente?->NombresApellidos ?? 'N/A';
+            $monto = number_format((float) $proposicionCredito->MontoTotal, 2);
+            $codigo = $proposicionCredito->CodigoCredito;
+
+            User::notificarAdmin(
+                'Nueva proposición de crédito',
+                "{$codigo} — {$nombre} — S/ {$monto}",
+                'heroicon-o-document-plus'
+            );
+        } catch (\Exception $e) {
+        }
     }
 
     /**

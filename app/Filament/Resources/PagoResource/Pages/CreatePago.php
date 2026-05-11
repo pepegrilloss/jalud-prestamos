@@ -552,6 +552,18 @@ class CreatePago extends CreateRecord
                             'FechaSaldamiento' => $fechaSaldamiento,
                             'UsuarioID' => auth()->id()
                         ]);
+
+                        try {
+                            $cliente = $credito->proposicion->cliente;
+                            $nombre = $cliente?->NombresApellidos ?? 'N/A';
+                            $codigo = $credito->proposicion->CodigoCredito ?? 'N/A';
+                            \App\Models\User::notificarAdmin(
+                                'Crédito saldado',
+                                "{$codigo} — {$nombre}",
+                                'heroicon-o-check-circle'
+                            );
+                        } catch (\Exception $e) {
+                        }
                     }
                 }
 

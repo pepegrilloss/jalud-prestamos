@@ -221,6 +221,16 @@ class FondoSedeResource extends Resource
                                 ->title('Solicitud de traslado enviada a Gerencia')
                                 ->body('La solicitud quedará pendiente hasta que Gerencia la apruebe.')
                                 ->send();
+
+                            try {
+                                $direccion = $data['direccion'] === 'CA_A_CC' ? 'Caja Abierta → Caja Chica' : 'Caja Chica → Caja Abierta';
+                                \App\Models\User::notificarAdmin(
+                                    'Solicitud de traslado interno',
+                                    "{$record->sede->Nombre} — {$direccion} — S/ {$data['monto']}",
+                                    'heroicon-o-arrows-right-left'
+                                );
+                            } catch (\Exception $e) {
+                            }
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->danger()

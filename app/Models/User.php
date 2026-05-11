@@ -7,12 +7,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
+use Filament\Notifications\HasDatabaseNotifications;
+use Filament\Notifications\Notification;
 use Filament\Panel;
 use App\Traits\AprobacionMultiNivel;
 
 class User extends Authenticatable implements FilamentUser
 {
-    use HasFactory, Notifiable, HasRoles, AprobacionMultiNivel;
+    use HasFactory, Notifiable, HasRoles, HasDatabaseNotifications, AprobacionMultiNivel;
 
     protected $fillable = [
         'name',
@@ -140,5 +143,25 @@ class User extends Authenticatable implements FilamentUser
     public function esAdmin(): bool
     {
         return $this->hasRole(\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName());
+    }
+
+    /**
+     * Enviar notificación a todos los administradores (super_admin y admin).
+     */
+    public static function notificarAdmin(string $titulo, string $cuerpo, ?string $icono = 'heroicon-o-bell'): void
+    {
+        $adminRoles = [\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName(), 'admin'];
+
+        $users = static::role($adminRoles)->get();
+
+        if ($users->isEmpty()) {
+            return;
+        }
+
+        Notification::make()
+            ->title($titulo)
+            ->body($cuerpo)
+            ->icon($icono)
+            ->sendToDatabase($users);
     }
 }

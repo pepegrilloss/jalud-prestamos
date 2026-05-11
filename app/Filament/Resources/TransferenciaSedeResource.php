@@ -6,6 +6,7 @@ use App\Filament\Resources\TransferenciaSedeResource\Pages;
 use App\Models\TransferenciaSede;
 use App\Models\FondoSede;
 use App\Models\Sede;
+use App\Models\User;
 use App\Services\FondoSedeService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -188,6 +189,12 @@ class TransferenciaSedeResource extends Resource
                                 ->success()
                                 ->title('Transferencia aceptada')
                                 ->send();
+
+                            User::notificarAdmin(
+                                'Transferencia aceptada',
+                                "S/ {$record->Monto} — {$record->sedeOrigen->Nombre} → {$record->sedeDestino->Nombre}",
+                                'heroicon-o-check-circle'
+                            );
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->danger()
@@ -213,6 +220,12 @@ class TransferenciaSedeResource extends Resource
                                 ->title('Transferencia rechazada')
                                 ->body('Los fondos han sido devueltos a la sede de origen.')
                                 ->send();
+
+                            User::notificarAdmin(
+                                'Transferencia rechazada',
+                                "S/ {$record->Monto} — {$record->sedeOrigen->Nombre} → {$record->sedeDestino->Nombre}",
+                                'heroicon-o-x-circle'
+                            );
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->danger()

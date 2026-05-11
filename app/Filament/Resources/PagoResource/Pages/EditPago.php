@@ -99,6 +99,16 @@ class EditPago extends EditRecord
                 ]);
             }, 2);
 
+            try {
+                $codigo = $pago->credito?->proposicion?->CodigoCredito ?? 'N/A';
+                \App\Models\User::notificarAdmin(
+                    'Pago editado',
+                    "Pago #{$pago->PagoID} — S/ " . number_format($this->montoOriginal ?? 0, 2) . " → S/ " . number_format((float) $pago->MontoPagado, 2) . " — {$codigo} — por " . (auth()->user()?->name ?? 'Sistema'),
+                    'heroicon-o-pencil-square'
+                );
+            } catch (\Exception $e) {
+            }
+
             Notification::make()
                 ->success()
                 ->title('Pago Actualizado')

@@ -53,6 +53,16 @@ class ManageTransferenciaSedes extends ManageRecords
                         throw $e;
                     }
                 })
+                ->after(function () {
+                    try {
+                        \App\Models\User::notificarAdmin(
+                            'Nueva remesa / transferencia',
+                            'Solicitud pendiente de aprobación',
+                            'heroicon-o-truck'
+                        );
+                    } catch (\Exception $e) {
+                    }
+                })
                 ->successNotificationTitle('Remesa enviada con éxito')
         ];
     }

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Credito;
 use App\Models\Cuota;
+use App\Models\User;
 use Carbon\Carbon;
 
 class CreditoObserver
@@ -11,6 +12,23 @@ class CreditoObserver
     public function created(Credito $credito)
     {
         $this->generarCuotas($credito);
+
+        try {
+            $proposicion = $credito->proposicion;
+            if ($proposicion) {
+                $cliente = $proposicion->cliente;
+                $nombre = $cliente?->NombresApellidos ?? 'N/A';
+                $monto = number_format((float) $proposicion->MontoTotal, 2);
+                $codigo = $proposicion->CodigoCredito;
+
+                User::notificarAdmin(
+                    'Crédito desembolsado',
+                    "{$codigo} — {$nombre} — S/ {$monto}",
+                    'heroicon-o-banknotes'
+                );
+            }
+        } catch (\Exception $e) {
+        }
     }
 
     private function generarCuotas(Credito $credito)
