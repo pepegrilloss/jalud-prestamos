@@ -202,8 +202,8 @@ class FondoSedeService
         if ($monto <= 0) {
             throw ValidationException::withMessages(['Monto' => 'El monto debe ser mayor a 0.']);
         }
-        if ($sedeOrigenId == $sedeDestinoId) {
-            throw ValidationException::withMessages(['SedeDestinoID' => 'No puedes transferir a la misma sede.']);
+        if ($sedeOrigenId == $sedeDestinoId && $cuentaOrigen === $cuentaDestino) {
+            throw ValidationException::withMessages(['SedeDestinoID' => 'No puedes transferir entre la misma cuenta de la misma sede.']);
         }
 
         $fondoOrigen = FondoSede::where('SedeID', $sedeOrigenId)->first();

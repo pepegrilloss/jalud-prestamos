@@ -179,18 +179,7 @@ class TransferenciaSedeResource extends Resource
                     ->requiresConfirmation()
                     ->visible(function (TransferenciaSede $record) {
                         if ($record->Estado !== 'PENDIENTE') return false;
-                        
-                        // En panel gerencia, verificar si destino es Gerencia
-                        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-                            $sedeGerencia = Sede::where('Nombre', 'like', '%Gerencia%')->first();
-                            return $sedeGerencia && $record->SedeDestinoID == $sedeGerencia->SedeID;
-                        }
-                        
-                        $sedeId = auth()->user()->SedeID;
-                        if (auth()->user()->esAdmin() && session('sede_activa')) {
-                            $sedeId = session('sede_activa');
-                        }
-                        return $sedeId === $record->SedeDestinoID;
+                        return self::esGerencia();
                     })
                     ->action(function (TransferenciaSede $record, FondoSedeService $service) {
                         try {
@@ -214,18 +203,7 @@ class TransferenciaSedeResource extends Resource
                     ->requiresConfirmation()
                     ->visible(function (TransferenciaSede $record) {
                         if ($record->Estado !== 'PENDIENTE') return false;
-
-                        // En panel gerencia, verificar si destino es Gerencia
-                        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-                            $sedeGerencia = Sede::where('Nombre', 'like', '%Gerencia%')->first();
-                            return $sedeGerencia && $record->SedeDestinoID == $sedeGerencia->SedeID;
-                        }
-
-                        $sedeId = auth()->user()->SedeID;
-                        if (auth()->user()->esAdmin() && session('sede_activa')) {
-                            $sedeId = session('sede_activa');
-                        }
-                        return $sedeId === $record->SedeDestinoID;
+                        return self::esGerencia();
                     })
                     ->action(function (TransferenciaSede $record, FondoSedeService $service) {
                         try {
@@ -253,5 +231,18 @@ class TransferenciaSedeResource extends Resource
         return [
             'index' => Pages\ManageTransferenciaSedes::route('/'),
         ];
+    }
+
+    private static function esGerencia(): bool
+    {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+        $sedeActiva = session('sede_activa');
+        if ($sedeActiva) {
+            $sede = Sede::find($sedeActiva);
+            return $sede && stripos($sede->Nombre, 'Gerencia') !== false;
+        }
+        return false;
     }
 }

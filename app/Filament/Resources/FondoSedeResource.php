@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\FondoSedeResource\Pages;
 use App\Models\FondoSede;
 use App\Models\Sede;
+use App\Models\TransferenciaSede;
 use App\Services\FondoSedeService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -176,78 +177,55 @@ class FondoSedeResource extends Resource
                         }
                     }),
 
-                // Traslado Caja Abierta → Caja Chica
-                Tables\Actions\Action::make('trasladoACajaChica')
-                    ->label('→ Caja Chica')
-                    ->icon('heroicon-m-arrow-right')
-                    ->color('info')
-                    ->form([
-                        Forms\Components\TextInput::make('monto')
-                            ->label('Monto a trasladar (S/)')
-                            ->numeric()
-                            ->required()
-                            ->minValue(0.01),
-                        Forms\Components\Textarea::make('observacion')
-                            ->label('Observación')
-                            ->default('Traslado de Caja Abierta a Caja Chica'),
-                    ])
-                    ->action(function (FondoSede $record, array $data, FondoSedeService $service) {
-                        try {
-                            $service->transferirEntreCajas(
-                                $record->SedeID,
-                                true, // de Caja Abierta a Caja Chica
-                                $data['monto'],
-                                auth()->id(),
-                                $data['observacion']
-                            );
-
-                            Notification::make()
-                                ->title('Traslado a Caja Chica exitoso')
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            Notification::make()
-                                ->title('Error en traslado')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                // Traslado Caja Chica → Caja Abierta
-                Tables\Actions\Action::make('trasladoACajaAbierta')
-                    ->label('→ Caja Abierta')
-                    ->icon('heroicon-m-arrow-left')
+                // Solicitar traslado interno (Caja Abierta ↔ Caja Chica) — pendiente de aprobación por Gerencia
+                Tables\Actions\Action::make('solicitarTrasladoInterno')
+                    ->label('Solicitar Traslado')
+                    ->icon('heroicon-m-arrows-right-left')
                     ->color('warning')
                     ->form([
+                        Forms\Components\Select::make('direccion')
+                            ->label('Dirección del Traslado')
+                            ->options([
+                                'CA_A_CC' => 'Caja Abierta → Caja Chica',
+                                'CC_A_CA' => 'Caja Chica → Caja Abierta',
+                            ])
+                            ->required()
+                            ->native(false),
                         Forms\Components\TextInput::make('monto')
                             ->label('Monto a trasladar (S/)')
                             ->numeric()
                             ->required()
                             ->minValue(0.01),
                         Forms\Components\Textarea::make('observacion')
-                            ->label('Observación')
-                            ->default('Traslado de Caja Chica a Caja Abierta'),
+                            ->label('Motivo / Observación')
+                            ->required()
+                            ->default('Solicitud de traslado interno'),
                     ])
                     ->action(function (FondoSede $record, array $data, FondoSedeService $service) {
                         try {
-                            $service->transferirEntreCajas(
+                            $cuentaOrigen = $data['direccion'] === 'CA_A_CC' ? 'CAJA_ABIERTA' : 'CAJA_CHICA';
+                            $cuentaDestino = $data['direccion'] === 'CA_A_CC' ? 'CAJA_CHICA' : 'CAJA_ABIERTA';
+
+                            $service->crearTransferencia(
                                 $record->SedeID,
-                                false, // de Caja Chica a Caja Abierta
+                                $record->SedeID,
                                 $data['monto'],
                                 auth()->id(),
-                                $data['observacion']
+                                $data['observacion'],
+                                $cuentaOrigen,
+                                $cuentaDestino
                             );
 
                             Notification::make()
-                                ->title('Traslado a Caja Abierta exitoso')
                                 ->success()
+                                ->title('Solicitud de traslado enviada a Gerencia')
+                                ->body('La solicitud quedará pendiente hasta que Gerencia la apruebe.')
                                 ->send();
                         } catch (\Exception $e) {
                             Notification::make()
-                                ->title('Error en traslado')
-                                ->body($e->getMessage())
                                 ->danger()
+                                ->title('Error al solicitar traslado')
+                                ->body($e->getMessage())
                                 ->send();
                         }
                     }),
