@@ -49,12 +49,12 @@ class CalcularMoraAutomatica implements ShouldQueue
                 ->map(fn($item) => \Carbon\Carbon::parse($item->Fecha)->toDateString())
                 ->toArray();
 
-            // Obtener todos los créditos que:
-            // 1. Han vencido (FechaVencimiento <= fecha_actual)
-            // 2. Tienen saldo pendiente
-            // 3. Están activos
-            $creditosVencidos = Credito::where('Activo', 1)
+            // Obtener todos los créditos vencidos de TODAS las sedes activas.
+            // Sin auth context, el global scope no filtra, así que usamos withoutGlobalScope + explicit scoping.
+            $creditosVencidos = Credito::withoutGlobalScope('sede')
+                ->where('Activo', 1)
                 ->whereDate('FechaVencimiento', '<=', $fecha)
+                ->whereIn('SedeID', \App\Models\Sede::where('Activo', true)->pluck('SedeID'))
                 ->with(['proposicion.cliente.tasaMora', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
                 ->get();
 
@@ -135,6 +135,7 @@ class CalcularMoraAutomatica implements ShouldQueue
                     'PorcentajeMora' => $porcentajeMora,
                     'MontoMora' => $montoMora,
                     'MoraAcumulada' => $moraAcumulada,
+                    'SedeID' => $credito->SedeID,
                 ]);
 
                 $morasCreadas++;
