@@ -8,7 +8,7 @@ Route::get('/', function () {
     return redirect('/admin/login');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/pdf/acta-creditos', function () {
         $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
 

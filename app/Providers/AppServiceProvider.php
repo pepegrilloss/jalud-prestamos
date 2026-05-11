@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use App\Models\ProposicionCredito;
 use App\Models\Credito;
 use App\Models\Pago;
@@ -27,6 +30,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
         ProposicionCredito::observe(ProposicionCreditoObserver::class);
         Credito::observe(CreditoObserver::class);
         Pago::observe(PagoObserver::class);
