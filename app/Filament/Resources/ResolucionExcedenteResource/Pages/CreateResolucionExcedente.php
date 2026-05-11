@@ -28,6 +28,16 @@ class CreateResolucionExcedente extends CreateRecord
             $record->saveQuietly();
         }
 
+        try {
+            \App\Models\User::notificarAdmin(
+                'Solicitud de extorno / devolución',
+                'Nueva solicitud pendiente de aprobación por S/ ' . number_format((float) $record->MontoAplicar, 2),
+                'heroicon-o-arrow-path',
+                $record->SedeID
+            );
+        } catch (\Exception $e) {
+        }
+
         return $record;
     }
 }

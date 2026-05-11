@@ -28,6 +28,16 @@ class ViewAprobacionResolucion extends ViewRecord
                         ->title('Solicitud Aprobada y Ejecutada')
                         ->success()
                         ->send();
+
+                    try {
+                        \App\Models\User::notificarAdmin(
+                            'Extorno / Devolución aprobada',
+                            'Solicitud #' . $record->SolicitudID . ' — S/ ' . number_format((float) $record->MontoAplicar, 2),
+                            'heroicon-o-check-circle',
+                            $record->SedeID
+                        );
+                    } catch (\Exception $e) {
+                    }
                 }),
 
             Actions\Action::make('Rechazar')
@@ -41,6 +51,16 @@ class ViewAprobacionResolucion extends ViewRecord
                         ->title('Solicitud Rechazada')
                         ->success()
                         ->send();
+
+                    try {
+                        \App\Models\User::notificarAdmin(
+                            'Extorno / Devolución rechazada',
+                            'Solicitud #' . $record->SolicitudID . ' — S/ ' . number_format((float) $record->MontoAplicar, 2),
+                            'heroicon-o-x-circle',
+                            $record->SedeID
+                        );
+                    } catch (\Exception $e) {
+                    }
                 }),
         ];
     }
