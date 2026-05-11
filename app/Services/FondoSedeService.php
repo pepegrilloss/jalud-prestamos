@@ -206,9 +206,8 @@ class FondoSedeService
             throw ValidationException::withMessages(['SedeDestinoID' => 'No puedes transferir entre la misma cuenta de la misma sede.']);
         }
 
-        $fondoOrigen = FondoSede::where('SedeID', $sedeOrigenId)->first();
+        $fondoOrigen = FondoSede::lockForUpdate()->where('SedeID', $sedeOrigenId)->first();
 
-        // Validar saldo según cuenta origen
         if ($cuentaOrigen === 'CAJA_CHICA') {
             if (!$fondoOrigen || $fondoOrigen->SaldoCajaChica < $monto) {
                 throw ValidationException::withMessages(['Monto' => 'Saldo insuficiente en Caja Chica para esta transferencia.']);
