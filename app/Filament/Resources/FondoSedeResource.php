@@ -239,6 +239,63 @@ class FondoSedeResource extends Resource
                                 ->send();
                         }
                     }),
+
+                // Solicitar capital a Gerencia — pendiente de aprobación
+                Tables\Actions\Action::make('solicitarCapitalGerencia')
+                    ->label('Solicitar Capital')
+                    ->icon('heroicon-o-building-library')
+                    ->color('primary')
+                    ->form([
+                        Forms\Components\TextInput::make('monto')
+                            ->label('Monto a solicitar (S/)')
+                            ->numeric()
+                            ->required()
+                            ->minValue(0.01),
+                        Forms\Components\Textarea::make('observacion')
+                            ->label('Motivo / Observación')
+                            ->required()
+                            ->default('Solicitud de capital a Gerencia'),
+                    ])
+                    ->action(function (FondoSede $record, array $data, FondoSedeService $service) {
+                        try {
+                            $sedeGerencia = Sede::where('Nombre', 'like', '%Gerencia%')->first();
+                            if (!$sedeGerencia) {
+                                throw new \Exception('No se encontró la sede de Gerencia.');
+                            }
+
+                            $service->crearTransferencia(
+                                $record->SedeID,
+                                $sedeGerencia->SedeID,
+                                $data['monto'],
+                                auth()->id(),
+                                $data['observacion'],
+                                'CAJA_ABIERTA',
+                                'CAJA_ABIERTA',
+                                true
+                            );
+
+                            Notification::make()
+                                ->success()
+                                ->title('Solicitud de capital enviada a Gerencia')
+                                ->body('La solicitud quedará pendiente hasta que Gerencia la apruebe.')
+                                ->send();
+
+                            try {
+                                \App\Models\User::notificarAdmin(
+                                    'Solicitud de capital',
+                                    "{$record->sede->Nombre} solicita S/ {$data['monto']} a Gerencia",
+                                    'heroicon-o-building-library'
+                                );
+                            } catch (\Exception $e) {
+                            }
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Error al solicitar capital')
+                                ->body($e->getMessage())
+                                ->send();
+                        }
+                    }),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()

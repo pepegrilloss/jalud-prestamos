@@ -150,6 +150,16 @@ class TransferenciaSedeResource extends Resource
                     ->money('PEN')
                     ->sortable()
                     ->weight('bold'),
+                Tables\Columns\TextColumn::make('MontoAprobado')
+                    ->label('Aprobado')
+                    ->money('PEN')
+                    ->visible(fn (TransferenciaSede $record) => $record->EsSolicitudCapital)
+                    ->color('success'),
+                Tables\Columns\TextColumn::make('Tipo')
+                    ->label('Tipo')
+                    ->getStateUsing(fn (TransferenciaSede $record) => $record->EsSolicitudCapital ? 'Solicitud Capital' : 'Remesa')
+                    ->badge()
+                    ->color(fn (TransferenciaSede $record) => $record->EsSolicitudCapital ? 'info' : 'gray'),
                 Tables\Columns\TextColumn::make('Estado')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -178,21 +188,44 @@ class TransferenciaSedeResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
+                    ->form(function (TransferenciaSede $record) {
+                        if (!$record->EsSolicitudCapital) {
+                            return [];
+                        }
+                        return [
+                            Forms\Components\TextInput::make('montoAprobado')
+                                ->label('Monto a Aprobar (S/)')
+                                ->numeric()
+                                ->required()
+                                ->minValue(0.01)
+                                ->maxValue((float) $record->Monto)
+                                ->default((float) $record->Monto)
+                                ->helperText('Puede aprobar el monto total o uno parcial. Máx: S/' . number_format((float) $record->Monto, 2)),
+                        ];
+                    })
+                    ->modalHeading(function (TransferenciaSede $record) {
+                        return $record->EsSolicitudCapital
+                            ? 'Aprobar Solicitud de Capital'
+                            : 'Aceptar Transferencia';
+                    })
                     ->visible(function (TransferenciaSede $record) {
                         if ($record->Estado !== 'PENDIENTE') return false;
                         return self::esGerencia();
                     })
-                    ->action(function (TransferenciaSede $record, FondoSedeService $service) {
+                    ->action(function (TransferenciaSede $record, FondoSedeService $service, array $data = []) {
                         try {
-                            $service->aceptarTransferencia($record, auth()->id());
+                            $montoAprobado = $record->EsSolicitudCapital ? ($data['montoAprobado'] ?? null) : null;
+                            $service->aceptarTransferencia($record, auth()->id(), $montoAprobado);
                             Notification::make()
                                 ->success()
-                                ->title('Transferencia aceptada')
+                                ->title($record->EsSolicitudCapital ? 'Capital aprobado' : 'Transferencia aceptada')
                                 ->send();
 
                             User::notificarAdmin(
-                                'Transferencia aceptada',
-                                "S/ {$record->Monto} — {$record->sedeOrigen->Nombre} → {$record->sedeDestino->Nombre}",
+                                $record->EsSolicitudCapital ? 'Capital aprobado' : 'Transferencia aceptada',
+                                $record->EsSolicitudCapital
+                                    ? "S/ {$record->MontoAprobado} a {$record->sedeOrigen->Nombre}"
+                                    : "S/ {$record->Monto} — {$record->sedeOrigen->Nombre} → {$record->sedeDestino->Nombre}",
                                 'heroicon-o-check-circle'
                             );
                         } catch (\Exception $e) {

@@ -17,9 +17,11 @@ class TransferenciaSede extends Model
         'SedeDestinoID',
         'CuentaOrigen',
         'CuentaDestino',
+        'EsSolicitudCapital',
         'UsuarioOrigenID',
         'UsuarioRespondeID',
         'Monto',
+        'MontoAprobado',
         'Estado',
         'Observacion',
         'FechaTransferencia',
@@ -27,6 +29,9 @@ class TransferenciaSede extends Model
     ];
 
     protected $casts = [
+        'Monto' => 'decimal:2',
+        'MontoAprobado' => 'decimal:2',
+        'EsSolicitudCapital' => 'boolean',
         'FechaTransferencia' => 'datetime',
         'FechaRespuesta' => 'datetime',
     ];
