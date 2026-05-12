@@ -44,8 +44,11 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
             })
             ->with(['proposicion.cliente', 'proposicion.tipoCredito']);
 
-        if ($fechaDesde || $fechaHasta) {
-            $query->whereBetween('FechaVencimiento', [$fechaCarbonDesde->startOfDay(), $fechaCarbonHasta->endOfDay()]);
+        if ($fechaDesde) {
+            $query->whereDate('FechaVencimiento', '>=', $fechaCarbonDesde->toDateString());
+        }
+        if ($fechaHasta) {
+            $query->whereDate('FechaVencimiento', '<=', $fechaCarbonHasta->toDateString());
         }
 
         $creditos = $query->orderBy('FechaVencimiento', 'asc')->get();
