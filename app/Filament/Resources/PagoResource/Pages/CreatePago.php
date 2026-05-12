@@ -569,19 +569,12 @@ class CreatePago extends CreateRecord
                 }
 
                 if ($pagoOriginal->SedeID && $pagoOriginal->MontoPagado > 0) {
-                    try {
-                        app(FondoSedeService::class)->registrarIngresoRecaudo(
-                            $pagoOriginal->SedeID,
-                            $pagoOriginal->MontoPagado,
-                            $pagoOriginal->PagoID,
-                            auth()->id()
-                        );
-                    } catch (\Exception $e) {
-                        \Log::warning('FondoSede: No se pudo registrar ingreso por recaudo', [
-                            'PagoID' => $pagoOriginal->PagoID,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
+                    app(FondoSedeService::class)->registrarIngresoRecaudo(
+                        $pagoOriginal->SedeID,
+                        $pagoOriginal->MontoPagado,
+                        $pagoOriginal->PagoID,
+                        auth()->id()
+                    );
                 }
             }, 2); // Máximo 2 reintentos si hay conflicto de concurrencia
 

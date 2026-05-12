@@ -441,6 +441,10 @@ class FondoSedeService
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
 
+            if ($fondo->Saldo < $monto) {
+                throw ValidationException::withMessages(['Monto' => 'Saldo insuficiente en Caja Abierta. Saldo disponible: S/ ' . number_format($fondo->Saldo, 2)]);
+            }
+
             $saldoAnterior = $fondo->Saldo;
             $saldoNuevo = $saldoAnterior - $monto;
 

@@ -409,7 +409,6 @@ class GenerarCreditoResource extends Resource
                             ->columns(1)
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
-                        // ── VALIDAR SALDO EN CAJA ABIERTA ──
                         $montoDesembolso = $record->MontoTotal;
                         $user = auth()->user();
                         $sedeId = $user->SedeID;
@@ -429,6 +428,7 @@ class GenerarCreditoResource extends Resource
 
                         $fondoService = app(\App\Services\FondoSedeService::class);
 
+                        // Pre-check rápido (soft, sin lock) para UX
                         try {
                             $fondoService->verificarSaldo($sedeId, $montoDesembolso);
                         } catch (\Exception $e) {
@@ -441,96 +441,54 @@ class GenerarCreditoResource extends Resource
                             return;
                         }
 
-                        // ── CREAR EL CRÉDITO ──
-                        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-                        $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-                        
-                        $credito = Credito::create([
-                            'ProposicionCreditoID' => $record->ProposicionCreditoID,
-                            'TipoPagoID' => $data['TipoPagoID'],
-                            'ComentarioGeneracion' => $data['ComentarioGeneracion'],
-                            'FechaGeneracion' => $fechaGeneracion,
-                            'UserGeneracionID' => auth()->id(),
-                            'Activo' => true,
-                        ]);
-
-                        // ── DESCONTAR DE CAJA ABIERTA ──
+                        // Transacción atómica: crédito + egreso. Si falla, todo se revierte.
                         try {
-                            $fondoService->registrarEgresoColocacion(
-                                $sedeId,
-                                $montoDesembolso,
-                                $credito->CreditoID,
-                                auth()->id()
-                            );
+                            DB::transaction(function () use ($record, $data, $sedeId, $montoDesembolso, $fondoService) {
+                                $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+                                $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+                                
+                                $credito = Credito::create([
+                                    'ProposicionCreditoID' => $record->ProposicionCreditoID,
+                                    'TipoPagoID' => $data['TipoPagoID'],
+                                    'ComentarioGeneracion' => $data['ComentarioGeneracion'],
+                                    'FechaGeneracion' => $fechaGeneracion,
+                                    'UserGeneracionID' => auth()->id(),
+                                    'Activo' => true,
+                                ]);
+
+                                $fondoService->registrarEgresoColocacion(
+                                    $sedeId,
+                                    $montoDesembolso,
+                                    $credito->CreditoID,
+                                    auth()->id()
+                                );
+
+                                // Calcular fechas y cuotas (fuera del lock de fondo)
+                            self::calcularFechasCredito($credito, $record);
+
+                                // Pago automático si es refinanciamiento
+                                if ($record->EsRefinanciamiento && $record->ProposicionCreditoAnteriorID) {
+                                    self::crearPagoAutomaticoRefinanciamiento($record, $credito);
+                                }
+                            });
+
+                            $this->calcularFechasCredito($credito, $record);
+
                         } catch (\Exception $e) {
-                            \Log::error('FondoSede: Error al registrar egreso colocación', [
-                                'CreditoID' => $credito->CreditoID,
+                            \Log::error('GenerarCredito: Error en transacción', [
+                                'ProposicionID' => $record->ProposicionCreditoID,
                                 'error' => $e->getMessage()
                             ]);
+                            Notification::make()
+                                ->danger()
+                                ->title('Error al generar crédito')
+                                ->body($e->getMessage())
+                                ->persistent()
+                                ->send();
+                            return;
                         }
 
-                        // Calcular fechas usando la misma lógica de cuotas
-                        // (omitiendo domingos y feriados)
-                        $feriadosData = [];
-                        try {
-                            $fechaInicio = \Carbon\Carbon::parse($credito->FechaGeneracion);
-                            $fechaFin = $fechaInicio->copy()->addDays($record->NumeroCuotas * 2); // Buffer de seguridad
-                            $annoInicio = $fechaInicio->year;
-                            $annoFin = $fechaFin->year;
-                            
-                            for ($anno = $annoInicio; $anno <= $annoFin; $anno++) {
-                                try {
-                                    $response = \Illuminate\Support\Facades\Http::timeout(5)->retry(2, 100)->get("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
-                                    $feriados = $response->json();
-                                    foreach ($feriados as $feriado) {
-                                        $feriadosData[$feriado['date']] = $feriado['localName'];
-                                    }
-                                } catch (\Exception $e) {
-                                    // Continuar sin feriados si falla la API
-                                }
-                            }
-                        } catch (\Exception $e) {
-                            // Continuar sin feriados
-                        }
-
-                        // Calcular FechaInicio (primera cuota real, omitiendo domingos y feriados)
-                        $fechaActual = \Carbon\Carbon::parse($credito->FechaGeneracion)->addDay();
-                        $cuotasContadas = 0;
-                        $fechaInicio = null;
-                        $fechaVencimiento = null;
-
-                        while ($cuotasContadas < $record->NumeroCuotas) {
-                            $esDomingo = $fechaActual->dayOfWeek == 0;
-                            $esFeriado = isset($feriadosData[$fechaActual->format('Y-m-d')]);
-
-                            // Si NO es domingo ni feriado, es una cuota real
-                            if (!$esDomingo && !$esFeriado) {
-                                if ($fechaInicio === null) {
-                                    $fechaInicio = $fechaActual->clone();
-                                }
-                                $fechaVencimiento = $fechaActual->clone();
-                                $cuotasContadas++;
-                            }
-
-                            $fechaActual->addDay();
-                        }
-
-                        // Actualizar crédito con las fechas calculadas
-                        if ($fechaInicio && $fechaVencimiento) {
-                            $credito->update([
-                                'FechaInicio' => $fechaInicio->format('Y-m-d'),
-                                'FechaVencimiento' => $fechaVencimiento->format('Y-m-d'),
-                            ]);
-                        }
-
-                        // Las cuotas se crean automáticamente en el Observer
-
-                        // PAGO AUTOMÁTICO SI ES REFINANCIAMIENTO
-                        if ($record->EsRefinanciamiento && $record->ProposicionCreditoAnteriorID) {
-                            self::crearPagoAutomaticoRefinanciamiento($record, $credito);
-                        }
-
-                        \Filament\Notifications\Notification::make()->title('Crédito Generado')->success()->send();
+                        Notification::make()->title('Crédito Generado')->success()->send();
                     }),
             ]);
     }
@@ -670,6 +628,56 @@ class GenerarCreditoResource extends Resource
             \App\Filament\Widgets\GenerarCreditosTotalWidget::class,
             \App\Filament\Widgets\GenerarCreditosCantidadWidget::class,
         ];
+    }
+
+    protected static function calcularFechasCredito(Credito $credito, ProposicionCredito $record): void
+    {
+        $feriadosData = [];
+        try {
+            $fechaInicio = \Carbon\Carbon::parse($credito->FechaGeneracion);
+            $fechaFin = $fechaInicio->copy()->addDays($record->NumeroCuotas * 2);
+            $annoInicio = $fechaInicio->year;
+            $annoFin = $fechaFin->year;
+            
+            for ($anno = $annoInicio; $anno <= $annoFin; $anno++) {
+                try {
+                    $response = \Illuminate\Support\Facades\Http::timeout(5)->retry(2, 100)->get("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
+                    $feriados = $response->json();
+                    foreach ($feriados as $feriado) {
+                        $feriadosData[$feriado['date']] = $feriado['localName'];
+                    }
+                } catch (\Exception $e) {
+                }
+            }
+        } catch (\Exception $e) {
+        }
+
+        $fechaActual = \Carbon\Carbon::parse($credito->FechaGeneracion)->addDay();
+        $cuotasContadas = 0;
+        $fechaInicio = null;
+        $fechaVencimiento = null;
+
+        while ($cuotasContadas < $record->NumeroCuotas) {
+            $esDomingo = $fechaActual->dayOfWeek == 0;
+            $esFeriado = isset($feriadosData[$fechaActual->format('Y-m-d')]);
+
+            if (!$esDomingo && !$esFeriado) {
+                if ($fechaInicio === null) {
+                    $fechaInicio = $fechaActual->clone();
+                }
+                $fechaVencimiento = $fechaActual->clone();
+                $cuotasContadas++;
+            }
+
+            $fechaActual->addDay();
+        }
+
+        if ($fechaInicio && $fechaVencimiento) {
+            $credito->update([
+                'FechaInicio' => $fechaInicio->format('Y-m-d'),
+                'FechaVencimiento' => $fechaVencimiento->format('Y-m-d'),
+            ]);
+        }
     }
 
     public static function getPages(): array
