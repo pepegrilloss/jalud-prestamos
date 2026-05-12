@@ -32,25 +32,42 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         ->name('acta-creditos.excel');
 
     Route::get('/pdf/creditos-vencidos', function () {
-        $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+        $fechaDesde = request()->get('fecha_desde') ?? request()->get('fecha');
+        $fechaHasta = request()->get('fecha_hasta') ?? request()->get('fecha');
 
-        $creditos = \App\Models\Credito::where('Activo', 1)
-            ->whereDate('FechaVencimiento', '=', $fecha)
+        $fechaCarbonDesde = $fechaDesde ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaDesde) : now();
+        $fechaCarbonHasta = $fechaHasta ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaHasta) : $fechaCarbonDesde;
+
+        $query = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) {
                 $q->where('SaldoPendiente', '>', 0);
             })
-            ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
-            ->orderBy('FechaVencimiento', 'asc')
-            ->get();
+            ->with(['proposicion.cliente', 'proposicion.tipoCredito']);
+
+        if ($fechaDesde || $fechaHasta) {
+            $query->whereBetween('FechaVencimiento', [$fechaCarbonDesde->startOfDay(), $fechaCarbonHasta->endOfDay()]);
+        }
+
+        $creditos = $query->orderBy('FechaVencimiento', 'asc')->get();
+
+        $titulo = $fechaCarbonDesde->format('d/m/Y');
+        if ($fechaDesde !== $fechaHasta) {
+            $titulo .= ' - ' . $fechaCarbonHasta->format('d/m/Y');
+        }
 
         $pdf = Pdf::loadView('reportes.creditos-vencidos', [
             'creditos' => $creditos,
-            'fecha' => $fecha->format('d/m/Y'),
+            'fecha' => $titulo,
         ]);
 
         $pdf->setPaper('a4', 'landscape');
 
-        return $pdf->stream('Creditos_Vencidos_' . $fecha->format('d-m-Y') . '.pdf');
+        $nombreArchivo = 'Creditos_Vencidos_' . $fechaCarbonDesde->format('d-m-Y');
+        if ($fechaDesde !== $fechaHasta) {
+            $nombreArchivo .= '_al_' . $fechaCarbonHasta->format('d-m-Y');
+        }
+
+        return $pdf->stream($nombreArchivo . '.pdf');
     })->name('creditos-vencidos.view');
 
     Route::get('/pdf/cuentas-canceladas', function () {
