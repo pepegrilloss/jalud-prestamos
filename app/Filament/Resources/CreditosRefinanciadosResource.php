@@ -180,14 +180,7 @@ class CreditosRefinanciadosResource extends Resource
                 });
             })
             ->actions([
-                Tables\Actions\Action::make('verCreditosRefinanciados')
-                    ->label('Ver Crédito Refinanciado')
-                    ->icon('heroicon-o-eye')
-                    ->modalHeading(fn ($record) => 'Crédito Refinanciado: ' . $record->proposicion->CodigoCredito)
-                    ->modalWidth('7xl')
-                    ->modalContent(fn ($record) => view('filament.components.credito-refinanciado-detalle', ['credito' => $record]))
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Cerrar'),
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\Action::make('descargar_libreta')
                     ->label('Excel')
                     ->tooltip('Descargar Libreta de Pagos (Excel)')
