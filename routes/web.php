@@ -32,22 +32,23 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         ->name('acta-creditos.excel');
 
     Route::get('/pdf/clientes-atraso', function () {
+        $ayer = now()->subDay()->endOfDay();
+
         $creditos = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) {
                 $q->where('SaldoPendiente', '>', 0);
             })
-            ->where(function ($q) {
-                $q->whereDoesntHave('pagos', fn($sq) => $sq->where('Activo', 1))
-                  ->whereDate('FechaGeneracion', '<=', now()->subDay()->toDateString());
-                $q->orWhere(function ($oq) {
-                    $oq->whereHas('pagos', fn($sq) => $sq->where('Activo', 1))
-                       ->whereDoesntHave('pagos', fn($sq) => $sq
-                           ->where('Activo', 1)
-                           ->whereDate('FechaPago', '>=', now()->subDay()->toDateString()));
-                });
-            })
+            ->whereRaw("(
+                SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
+                FROM pago
+                WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
+            ) <= ?", [$ayer])
             ->with(['proposicion.cliente', 'proposicion.zona'])
-            ->orderBy('FechaVencimiento', 'asc')
+            ->orderByRaw("(
+                SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
+                FROM pago
+                WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
+            ) ASC")
             ->get();
 
         $pdf = Pdf::loadView('reportes.clientes-atraso', [

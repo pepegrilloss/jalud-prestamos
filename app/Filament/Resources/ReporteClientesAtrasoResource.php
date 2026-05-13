@@ -78,26 +78,23 @@ class ReporteClientesAtrasoResource extends Resource
                     ->sortable(),
             ])
             ->modifyQueryUsing(function (Builder $query) {
+                $ayer = now()->subDay()->endOfDay();
+
                 $query->where('Activo', 1)
                     ->whereHas('proposicion', function ($q) {
                         $q->where('SaldoPendiente', '>', 0);
                     })
-                    ->where(function (Builder $sub) {
-                        // Sin pagos y el crédito se generó hace al menos 1 día
-                        $sub->where(function ($q) {
-                            $q->whereDoesntHave('pagos', fn($sq) => $sq->where('Activo', 1))
-                              ->whereDate('FechaGeneracion', '<=', now()->subDay()->toDateString());
-                        });
-                        // O con pagos pero el último pago fue hace al menos 1 día
-                        $sub->orWhere(function ($q) {
-                            $q->whereHas('pagos', fn($sq) => $sq->where('Activo', 1))
-                              ->whereDoesntHave('pagos', fn($sq) => $sq
-                                  ->where('Activo', 1)
-                                  ->whereDate('FechaPago', '>=', now()->subDay()->toDateString()));
-                        });
-                    })
+                    ->whereRaw("(
+                        SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
+                        FROM pago
+                        WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
+                    ) <= ?", [$ayer])
                     ->with(['proposicion.cliente', 'proposicion.zona', 'proposicion.tipoCredito'])
-                    ->orderBy('FechaVencimiento', 'asc');
+                    ->orderByRaw("(
+                        SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
+                        FROM pago
+                        WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
+                    ) ASC");
             })
             ->actions([])
             ->bulkActions([])
