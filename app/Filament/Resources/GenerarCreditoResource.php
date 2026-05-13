@@ -473,8 +473,6 @@ class GenerarCreditoResource extends Resource
                                 }
                             });
 
-                            $this->calcularFechasCredito($credito, $record);
-
                         } catch (\Exception $e) {
                             \Log::error('GenerarCredito: Error en transacción', [
                                 'ProposicionID' => $record->ProposicionCreditoID,
