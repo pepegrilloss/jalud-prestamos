@@ -91,6 +91,23 @@ class CreateCompra extends CreateRecord
                 );
             }
         }
+
+        // Notificar a administradores en la campanita
+        try {
+            $sede = $record->sede?->Nombre ?? 'N/A';
+            $proveedor = $record->proveedor?->Nombre ?? 'N/A';
+            $monto = number_format($record->Total, 2);
+            $usuario = auth()->user()->name ?? 'Sistema';
+            
+            \App\Models\User::notificarAdmin(
+                "Compra registrada — S/ {$monto}",
+                "Proveedor: {$proveedor} en {$sede} (por {$usuario})",
+                'heroicon-o-shopping-cart',
+                $record->SedeID
+            );
+        } catch (\Exception $e) {
+            \Log::warning('No se pudo enviar notificación de compra a admins', ['error' => $e->getMessage()]);
+        }
     }
 
     protected function getRedirectUrl(): string

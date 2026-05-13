@@ -578,13 +578,35 @@ class CreatePago extends CreateRecord
                 }
             }, 2); // Máximo 2 reintentos si hay conflicto de concurrencia
 
-            // Mostrar notificación al completar transacción
+            // Mostrar notificación toast al usuario actual
             $cuota = $this->record->cuota;
             Notification::make()
                 ->success()
                 ->title('✅ Pago Registrado Exitosamente')
                 ->body("Pago de S/ {$this->record->MontoPagado} registrado en la cuota #{$cuota->NumeroCuota} correctamente.")
                 ->send();
+
+            // Enviar notificación a la campanita de los admins
+            try {
+                $credito = $this->record->credito;
+                $cliente = $credito?->proposicion?->cliente;
+                $nombre = $cliente?->NombresApellidos ?? 'N/A';
+                $codigo = $credito?->proposicion?->CodigoCredito ?? 'N/A';
+                $monto = number_format($this->record->MontoPagado, 2);
+                $usuario = auth()->user()->name ?? 'Sistema';
+
+                \App\Models\User::notificarAdmin(
+                    "Pago registrado — S/ {$monto}",
+                    "{$codigo} — {$nombre} (por {$usuario})",
+                    'heroicon-o-banknotes',
+                    $this->record->SedeID
+                );
+            } catch (\Exception $e) {
+                \Log::warning('No se pudo enviar notificación de pago a admins', [
+                    'PagoID' => $this->record->PagoID ?? null,
+                    'error' => $e->getMessage()
+                ]);
+            }
 
         } catch (\Exception $e) {
             // CRÍTICO: Log sin información sensible pero con contexto

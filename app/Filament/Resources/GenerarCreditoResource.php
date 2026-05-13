@@ -488,6 +488,24 @@ class GenerarCreditoResource extends Resource
                         }
 
                         Notification::make()->title('Crédito Generado')->success()->send();
+
+                        // Notificar a administradores en la campanita
+                        try {
+                            $cliente = $record->cliente?->NombresApellidos ?? 'N/A';
+                            $monto = number_format($record->MontoTotal, 2);
+                            $codigo = $record->CodigoCredito ?? 'N/A';
+                            $usuario = auth()->user()->name ?? 'Sistema';
+                            $sede = \App\Models\Sede::find($sedeId)?->Nombre ?? 'N/A';
+
+                            \App\Models\User::notificarAdmin(
+                                "Crédito formalizado — S/ {$monto}",
+                                "{$codigo} — {$cliente} en {$sede} (por {$usuario})",
+                                'heroicon-o-check-badge',
+                                $sedeId
+                            );
+                        } catch (\Exception $e) {
+                            \Log::warning('No se pudo enviar notificación de crédito a admins', ['error' => $e->getMessage()]);
+                        }
                     }),
             ]);
     }

@@ -82,6 +82,21 @@ class GestionarAperturaCierre extends ManageRecords
                             $logger->success('[APERTURA_CIERRE] Registro creado exitosamente', [
                                 'id' => $record->AperturaCierreDiaID,
                             ]);
+
+                            // Notificar a administradores en la campanita
+                            try {
+                                $sede = $record->sede?->Nombre ?? 'N/A';
+                                $estado = $record->EstadoDia;
+                                $fecha = $record->Fecha->format('d/m/Y');
+                                $usuario = auth()->user()->name ?? 'Sistema';
+                                
+                                \App\Models\User::notificarAdmin(
+                                    "Día {$estado} — {$sede}",
+                                    "La fecha {$fecha} ha sido marcada como {$estado} por {$usuario}.",
+                                    $estado === 'ABIERTO' ? 'heroicon-o-lock-open' : 'heroicon-o-lock-closed',
+                                    $record->SedeID
+                                );
+                            } catch (\Exception $e) {}
                             
                             return $record;
                         });
@@ -174,6 +189,21 @@ class GestionarAperturaCierre extends ManageRecords
                 $logger->success('[APERTURA_CIERRE] Registro actualizado exitosamente', [
                     'id' => $record->getKey(),
                 ]);
+
+                // Notificar a administradores en la campanita
+                try {
+                    $sede = $recordLocked->fresh()->sede?->Nombre ?? 'N/A';
+                    $estado = $recordLocked->EstadoDia;
+                    $fecha = $recordLocked->Fecha->format('d/m/Y');
+                    $usuario = auth()->user()->name ?? 'Sistema';
+                    
+                    \App\Models\User::notificarAdmin(
+                        "Día {$estado} (Cambio) — {$sede}",
+                        "La fecha {$fecha} fue actualizada a {$estado} por {$usuario}.",
+                        $estado === 'ABIERTO' ? 'heroicon-o-lock-open' : 'heroicon-o-lock-closed',
+                        $recordLocked->SedeID
+                    );
+                } catch (\Exception $e) {}
                 
                 return $recordLocked->fresh();
             });
