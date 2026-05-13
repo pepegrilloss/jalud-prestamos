@@ -84,7 +84,7 @@ class AdminPanelProvider extends PanelProvider
                     </div>
                 ')
             )
-            
+
             ->favicon(asset('favicon-j.svg'))
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_NAV_START,
@@ -143,16 +143,16 @@ class AdminPanelProvider extends PanelProvider
                     ->group('Reportes')
                     ->sort(1)
                     ->url('#balance-diario')
-                    ->visible(fn (): bool => auth()->user()?->can('balance_diario') ?? false),
+                    ->visible(fn(): bool => auth()->user()?->can('balance_diario') ?? false),
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)') .
-                    (!auth()->user()?->esAdmin() ? '<style>.fi-icon-btn[aria-label="Notifications"]{display:none!important}</style>' : '')
+                (!auth()->user()?->esAdmin() ? '<style>.fi-icon-btn[aria-label="Notifications"]{display:none!important}</style>' : '')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                ])
+            ])
 
             ->middleware([
                 EncryptCookies::class,

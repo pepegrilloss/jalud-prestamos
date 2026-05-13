@@ -31,7 +31,7 @@ class CreatePago extends CreateRecord
         return [];
     }
 
-    public function getTitle(): string | \Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
         $url = static::getResource()::getUrl('index');
         return new \Illuminate\Support\HtmlString("
