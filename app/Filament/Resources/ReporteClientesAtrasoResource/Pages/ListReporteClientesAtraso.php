@@ -23,7 +23,18 @@ class ListReporteClientesAtraso extends ListRecords
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('danger')
                 ->action(function () {
-                    $url = route('clientes-atraso.view');
+                    $filtros = $this->tableFilters;
+                    $params = [];
+
+                    $cliente = $filtros['cliente']['value'] ?? null;
+                    if ($cliente) $params['cliente_id'] = $cliente;
+
+                    $fechaDesde = $filtros['fecha']['fecha_desde'] ?? null;
+                    $fechaHasta = $filtros['fecha']['fecha_hasta'] ?? null;
+                    if ($fechaDesde) $params['fecha_desde'] = $fechaDesde;
+                    if ($fechaHasta) $params['fecha_hasta'] = $fechaHasta;
+
+                    $url = route('clientes-atraso.view', $params);
                     $this->js("window.open('" . addslashes($url) . "', '_blank')");
                 }),
         ];

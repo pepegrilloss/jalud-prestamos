@@ -32,14 +32,29 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         ->name('acta-creditos.excel');
 
     Route::get('/pdf/clientes-atraso', function () {
-        $creditos = \App\Models\Credito::where('Activo', 1)
+        $fechaDesde = request()->get('fecha_desde');
+        $fechaHasta = request()->get('fecha_hasta');
+        $clienteId = request()->get('cliente_id');
+
+        $query = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) {
                 $q->where('SaldoPendiente', '>', 0);
             })
             ->select('Credito.*')
             ->selectRaw("DATEDIFF(NOW(), COALESCE((SELECT MAX(FechaPago) FROM pago WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1), FechaGeneracion)) as dias_atraso_calc")
-            ->havingRaw('dias_atraso_calc >= 1')
-            ->with(['proposicion.cliente', 'proposicion.zona'])
+            ->havingRaw('dias_atraso_calc >= 1');
+
+        if ($clienteId) {
+            $query->whereHas('proposicion', fn($q) => $q->where('ClienteID', $clienteId));
+        }
+        if ($fechaDesde) {
+            $query->whereDate('FechaVencimiento', '>=', $fechaDesde);
+        }
+        if ($fechaHasta) {
+            $query->whereDate('FechaVencimiento', '<=', $fechaHasta);
+        }
+
+        $creditos = $query->with(['proposicion.cliente', 'proposicion.zona'])
             ->orderByRaw('dias_atraso_calc DESC')
             ->get();
 
