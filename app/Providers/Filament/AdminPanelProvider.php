@@ -39,8 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('3rem')
-            ->databaseNotifications()
-            ->databaseNotificationsPolling('60s')
+            ->databaseNotifications(fn () => auth()->user()?->esAdmin() ?? false)
             ->colors([
                 'primary' => '#a4cb3b',
             ])
@@ -50,10 +49,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)') .
-                    (!auth()->user()?->esAdmin()
-                        ? '<script>document.addEventListener("alpine:initialized",()=>{const b=document.querySelector("[aria-label=\'Notifications\']");b&&b.closest(".fi-topbar > div")?.remove();})</script>'
-                        : '')
+                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
             )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
