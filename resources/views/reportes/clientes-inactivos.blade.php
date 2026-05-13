@@ -40,6 +40,13 @@
         </thead>
         <tbody>
             @forelse($clientes as $cliente)
+                @php
+                    $diasInactivo = $cliente->fecha_saldado
+                        ? \App\Services\DiasHabilesCalculator::contarDiasHabiles(
+                            \Carbon\Carbon::parse($cliente->fecha_saldado)->addDay(), now()
+                        )
+                        : 0;
+                @endphp
                 <tr>
                     <td>{{ $cliente->DNI ?? '-' }}</td>
                     <td>{{ $cliente->NombresApellidos ?? '-' }}</td>
@@ -47,7 +54,7 @@
                     <td class="numero">{{ number_format((float) ($cliente->ultimo_monto ?? 0), 2) }}</td>
                     <td class="numero">{{ number_format((float) ($cliente->ultimo_monto_total ?? 0), 2) }}</td>
                     <td>{{ $cliente->fecha_saldado ? \Carbon\Carbon::parse($cliente->fecha_saldado)->format('d/m/Y') : '-' }}</td>
-                    <td class="centro">{{ (int) ($cliente->dias_inactivo ?? 0) }}</td>
+                    <td class="centro">{{ $diasInactivo }}</td>
                 </tr>
             @empty
                 <tr><td colspan="7" style="text-align: center;">No hay clientes inactivos</td></tr>

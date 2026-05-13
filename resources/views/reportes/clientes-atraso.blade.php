@@ -58,7 +58,13 @@
         <tbody>
             @forelse($creditos as $credito)
                 @php
-                    $diasAtraso = $credito->dias_atraso_calc ?? 0;
+                    $ultimoPago = $credito->pagos()->where('Activo', 1)->max('FechaPago');
+                    $fechaRef = $ultimoPago ?? $credito->FechaGeneracion;
+                    $diasAtraso = $fechaRef
+                        ? \App\Services\DiasHabilesCalculator::contarDiasHabiles(
+                            \Carbon\Carbon::parse($fechaRef)->addDay(), now()
+                        )
+                        : 0;
                 @endphp
                 <tr>
                     <td>{{ $credito->proposicion->CodigoCredito ?? '-' }}</td>

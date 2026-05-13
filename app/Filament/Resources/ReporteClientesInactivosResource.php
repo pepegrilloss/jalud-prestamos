@@ -64,7 +64,13 @@ class ReporteClientesInactivosResource extends Resource
 
                 Tables\Columns\TextColumn::make('dias_inactivo')
                     ->label('Días Inactivo')
-                    ->getStateUsing(fn ($record) => (int) ($record->dias_inactivo ?? 0))
+                    ->getStateUsing(fn ($record) => $record->fecha_saldado
+                        ? \App\Services\DiasHabilesCalculator::contarDiasHabiles(
+                            \Carbon\Carbon::parse($record->fecha_saldado)->addDay(),
+                            now()
+                        )
+                        : 0
+                    )
                     ->sortable()
                     ->color('gray')
                     ->badge()

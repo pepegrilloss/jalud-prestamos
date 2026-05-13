@@ -63,7 +63,16 @@ class ReporteClientesAtrasoResource extends Resource
                 Tables\Columns\TextColumn::make('dias_atraso')
                     ->label('Días de Atraso')
                     ->getStateUsing(function ($record) {
-                        return $record->dias_atraso_calc ?? 0;
+                        $ultimoPago = $record->pagos()
+                            ->where('Activo', 1)
+                            ->max('FechaPago');
+                        $fechaReferencia = $ultimoPago ?? $record->FechaGeneracion;
+                        if (!$fechaReferencia) return 0;
+
+                        return \App\Services\DiasHabilesCalculator::contarDiasHabiles(
+                            \Carbon\Carbon::parse($fechaReferencia)->addDay(),
+                            now()
+                        );
                     })
                     ->sortable()
                     ->color('danger')
