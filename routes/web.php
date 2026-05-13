@@ -38,8 +38,8 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
 
         $clientes = \Illuminate\Support\Facades\DB::table('Cliente')
             ->select('Cliente.*')
-            ->selectRaw("MAX(credito.FechaSaldamiento) as fecha_saldado")
-            ->selectRaw("DATEDIFF(NOW(), MAX(credito.FechaSaldamiento)) as dias_inactivo")
+            ->selectRaw("MAX(Credito.FechaSaldamiento) as fecha_saldado")
+            ->selectRaw("DATEDIFF(NOW(), MAX(Credito.FechaSaldamiento)) as dias_inactivo")
             ->selectRaw("(SELECT pc.CodigoCredito FROM ProposicionCredito pc 
                 JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
                 WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
@@ -54,8 +54,8 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
                 ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto_total")
             ->join('ProposicionCredito as prop', 'prop.ClienteID', '=', 'Cliente.ClienteID')
             ->join('Credito', function ($join) {
-                $join->on('credito.ProposicionCreditoID', '=', 'prop.ProposicionCreditoID')
-                     ->where('credito.EstatusCreditoFinal', '=', 'SALDADO');
+                $join->on('Credito.ProposicionCreditoID', '=', 'prop.ProposicionCreditoID')
+                     ->where('Credito.EstatusCreditoFinal', '=', 'SALDADO');
             })
             ->where('Cliente.Activo', true)
             ->whereNotExists(function ($q) {
@@ -75,10 +75,10 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
             });
         }
         if ($fechaDesde) {
-            $clientes->havingRaw('MAX(credito.FechaSaldamiento) >= ?', [$fechaDesde]);
+            $clientes->havingRaw('MAX(Credito.FechaSaldamiento) >= ?', [$fechaDesde]);
         }
         if ($fechaHasta) {
-            $clientes->havingRaw('MAX(credito.FechaSaldamiento) <= ?', [$fechaHasta]);
+            $clientes->havingRaw('MAX(Credito.FechaSaldamiento) <= ?', [$fechaHasta]);
         }
 
         $clientes = $clientes->groupBy('Cliente.ClienteID')
