@@ -49,6 +49,7 @@
                 <th>Cliente</th>
                 <th>Zona</th>
                 <th class="numero">Monto</th>
+                <th class="numero">Monto + Interés</th>
                 <th class="numero">Saldo</th>
                 <th class="centro">Días Atraso</th>
                 <th>Vencimiento</th>
@@ -65,13 +66,14 @@
                     <td>{{ $credito->proposicion->cliente->NombresApellidos ?? '-' }}</td>
                     <td>{{ $credito->proposicion->zona->Nombre ?? '-' }}</td>
                     <td class="numero">{{ number_format($credito->proposicion->MontoTotal ?? 0, 2) }}</td>
+                    <td class="numero">{{ number_format($credito->proposicion->MontoTotalPagar ?? 0, 2) }}</td>
                     <td class="numero">{{ number_format($credito->proposicion->SaldoPendiente ?? 0, 2) }}</td>
                     <td class="centro badge-danger">{{ $diasAtraso }}</td>
                     <td>{{ $credito->FechaVencimiento?->format('d/m/Y') ?? '-' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" style="text-align: center;">No hay clientes con atraso</td>
+                    <td colspan="9" style="text-align: center;">No hay clientes con atraso</td>
                 </tr>
             @endforelse
         </tbody>

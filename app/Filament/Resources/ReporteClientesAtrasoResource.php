@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ReporteClientesAtrasoResource\Pages;
 use App\Models\Credito;
+use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -48,6 +49,11 @@ class ReporteClientesAtrasoResource extends Resource
                     ->money('PEN')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('proposicion.MontoTotalPagar')
+                    ->label('Monto + Interés')
+                    ->money('PEN')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('proposicion.SaldoPendiente')
                     ->label('Saldo')
                     ->money('PEN')
@@ -68,6 +74,33 @@ class ReporteClientesAtrasoResource extends Resource
                     ->label('Vencimiento')
                     ->date('d/m/Y')
                     ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('cliente')
+                    ->label('Cliente')
+                    ->relationship('proposicion.cliente', 'NombresApellidos')
+                    ->searchable()
+                    ->preload(),
+
+                Tables\Filters\Filter::make('fecha')
+                    ->label('Fecha')
+                    ->form([
+                        Forms\Components\DatePicker::make('fecha_desde')
+                            ->label('Desde'),
+                        Forms\Components\DatePicker::make('fecha_hasta')
+                            ->label('Hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['fecha_desde'] ?? null,
+                                fn(Builder $q, $date) => $q->whereDate('FechaVencimiento', '>=', $date)
+                            )
+                            ->when(
+                                $data['fecha_hasta'] ?? null,
+                                fn(Builder $q, $date) => $q->whereDate('FechaVencimiento', '<=', $date)
+                            );
+                    }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query->select('Credito.*')
