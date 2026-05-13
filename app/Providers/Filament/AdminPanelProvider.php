@@ -39,6 +39,8 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('3rem')
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('60s')
             ->colors([
                 'primary' => '#a4cb3b',
             ])
@@ -47,14 +49,11 @@ class AdminPanelProvider extends PanelProvider
                 Css::make('custom-scrollbar-css', public_path('css/custom-scrollbar.css')),
             ])
             ->renderHook(
-                PanelsRenderHook::USER_MENU_BEFORE,
-                fn() => auth()->user()?->esAdmin()
-                    ? Blade::render('@livewire(\'database-notifications\')')
-                    : ''
-            )
-            ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
+                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)') .
+                    (!auth()->user()?->esAdmin()
+                        ? '<script>document.addEventListener("alpine:initialized",()=>{const b=document.querySelector("[aria-label=\'Notifications\']");b&&b.closest(".fi-topbar > div")?.remove();})</script>'
+                        : '')
             )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
