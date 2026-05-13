@@ -28,8 +28,10 @@ class CalcularMoraRetroactiva extends Command
 
         $fechasExcluidas = array_unique(array_merge(array_keys($feriadosData), $fechasNoMorosas));
 
-        $creditosVencidos = Credito::where('Activo', 1)
+        $creditosVencidos = Credito::withoutGlobalScope('sede')
+            ->where('Activo', 1)
             ->whereDate('FechaVencimiento', '<', today())
+            ->whereIn('SedeID', \App\Models\Sede::where('Activo', true)->pluck('SedeID'))
             ->with(['proposicion.cliente.tasaMora', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
             ->get();
 
@@ -107,6 +109,7 @@ class CalcularMoraRetroactiva extends Command
                     'PorcentajeMora' => $porcentajeMora,
                     'MontoMora' => $montoMora,
                     'MoraAcumulada' => $moraAcumulada,
+                    'SedeID' => $credito->SedeID,
                 ]);
 
                 $morasRegistradas++;

@@ -302,9 +302,6 @@ class LibretaPagosExport
             $indiceFila++;
         }
 
-            $indiceFila++;
-        }
-
         // Ajuste de anchos de columnas
         $sheet->getColumnDimension('A')->setWidth(26);
         $sheet->getColumnDimension('B')->setWidth(10);

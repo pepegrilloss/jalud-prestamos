@@ -87,6 +87,20 @@ class EditPago extends EditRecord
                     'UserModificacionID' => auth()->id(),
                 ]);
 
+                // Ajustar FondoSede con el delta del monto (nuevo - viejo)
+                $montoNuevo = (float) $pago->MontoPagado;
+                $montoViejo = $this->montoOriginal ?? 0;
+                $delta = $montoNuevo - $montoViejo;
+
+                if ($delta != 0 && $pago->SedeID) {
+                    $fondoService = app(\App\Services\FondoSedeService::class);
+                    if ($delta > 0) {
+                        $fondoService->registrarIngresoRecaudo($pago->SedeID, $delta, $pago->PagoID, auth()->id());
+                    } else {
+                        $fondoService->registrarReversionRecaudo($pago->SedeID, abs($delta), $pago->PagoID, auth()->id());
+                    }
+                }
+
                 // El PagoObserver::updated() se encarga de recalcular SaldoPendiente
 
                 Log::info('SEGURIDAD - EditPago::afterSave - Pago editado', [

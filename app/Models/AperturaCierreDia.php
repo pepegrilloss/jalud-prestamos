@@ -129,58 +129,76 @@ class AperturaCierreDia extends Model
             $fechaCarbon = $this->Fecha->startOfDay(); // Carbon object as timestamp
             \Illuminate\Support\Facades\Log::info("Iniciando cerrarDia para fecha: {$fecha}");
 
-            // Cerrar clientes SIN CERRAR registrados ese día
-            $clientesActualizados = Cliente::whereNull('FechaCierre')
+            // Cerrar clientes SIN CERRAR registrados ese día (SOLO esta sede)
+            $clientesActualizados = Cliente::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Clientes cerrados en {$fecha}: {$clientesActualizados}");
+            \Illuminate\Support\Facades\Log::info("Clientes cerrados en {$fecha} (sede {$this->SedeID}): {$clientesActualizados}");
 
-            // Cerrar proposiciones SIN CERRAR propuestas ese día (usa FechaPropuesta)
-            $proposicionesActualizadas = ProposicionCredito::whereNull('FechaCierre')
+            // Cerrar proposiciones SIN CERRAR propuestas ese día (SOLO esta sede)
+            $proposicionesActualizadas = ProposicionCredito::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('FechaPropuesta', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Proposiciones cerradas en {$fecha}: {$proposicionesActualizadas}");
+            \Illuminate\Support\Facades\Log::info("Proposiciones cerradas en {$fecha} (sede {$this->SedeID}): {$proposicionesActualizadas}");
 
-            // Cerrar créditos SIN CERRAR generados ese día (usa FechaGeneracion)
-            $creditosActualizados = Credito::whereNull('FechaCierre')
+            // Cerrar créditos SIN CERRAR generados ese día (SOLO esta sede)
+            $creditosActualizados = Credito::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('FechaGeneracion', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Créditos cerrados en {$fecha}: {$creditosActualizados}");
+            \Illuminate\Support\Facades\Log::info("Créditos cerrados en {$fecha} (sede {$this->SedeID}): {$creditosActualizados}");
 
-            // Cerrar pagos SIN CERRAR registrados ese día (usa FechaPago)
-            $pagosActualizados = Pago::whereNull('FechaCierre')
+            // Cerrar pagos SIN CERRAR registrados ese día (SOLO esta sede)
+            $pagosActualizados = Pago::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('FechaPago', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Pagos cerrados en {$fecha}: {$pagosActualizados}");
+            \Illuminate\Support\Facades\Log::info("Pagos cerrados en {$fecha} (sede {$this->SedeID}): {$pagosActualizados}");
 
-            // Cerrar cuotas SIN CERRAR creadas ese día (usa FechaCreacion)
-            $cuotasActualizadas = Cuota::whereNull('FechaCierre')
+            // Cerrar cuotas SIN CERRAR creadas ese día (SOLO esta sede)
+            $cuotasActualizadas = Cuota::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('FechaCreacion', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Cuotas cerradas en {$fecha}: {$cuotasActualizadas}");
+            \Illuminate\Support\Facades\Log::info("Cuotas cerradas en {$fecha} (sede {$this->SedeID}): {$cuotasActualizadas}");
 
-            // Cerrar análisis económicos SIN CERRAR creados ese día (usa FechaAnalisis)
-            $analisisActualizados = AnalisisEconomico::whereNull('FechaCierre')
+            // Cerrar análisis económicos SIN CERRAR creados ese día (SOLO esta sede)
+            $analisisActualizados = AnalisisEconomico::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('FechaAnalisis', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Análisis económicos cerrados en {$fecha}: {$analisisActualizados}");
+            \Illuminate\Support\Facades\Log::info("Análisis económicos cerrados en {$fecha} (sede {$this->SedeID}): {$analisisActualizados}");
 
-            $evaluacionesActualizadas = EvaluacionCredito::whereNull('FechaCierre')
+            $evaluacionesActualizadas = EvaluacionCredito::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Evaluaciones de crédito cerradas en {$fecha}: {$evaluacionesActualizadas}");
+            \Illuminate\Support\Facades\Log::info("Evaluaciones de crédito cerradas en {$fecha} (sede {$this->SedeID}): {$evaluacionesActualizadas}");
 
-            // Cerrar excedentes SIN CERRAR registrados ese día (usa Fecha)
-            $excedentesActualizados = Excedente::whereNull('FechaCierre')
+            // Cerrar excedentes SIN CERRAR registrados ese día (SOLO esta sede)
+            $excedentesActualizados = Excedente::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('Fecha', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Excedentes cerrados en {$fecha}: {$excedentesActualizados}");
+            \Illuminate\Support\Facades\Log::info("Excedentes cerrados en {$fecha} (sede {$this->SedeID}): {$excedentesActualizados}");
 
-            // Cerrar solicitudes resolucion SIN CERRAR creadas ese día (usa created_at)
-            $solicitudesActualizadas = SolicitudResolucionExcedente::whereNull('FechaCierre')
+            // Cerrar solicitudes resolucion SIN CERRAR creadas ese día (SOLO esta sede)
+            $solicitudesActualizadas = SolicitudResolucionExcedente::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
                 ->whereDate('created_at', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
-            \Illuminate\Support\Facades\Log::info("Solicitudes de resolución de excedentes cerradas en {$fecha}: {$solicitudesActualizadas}");
+            \Illuminate\Support\Facades\Log::info("Solicitudes de resolución de excedentes cerradas en {$fecha} (sede {$this->SedeID}): {$solicitudesActualizadas}");
 
             \Illuminate\Support\Facades\Log::info("Día cerrado exitosamente: {$fecha}");
 
@@ -213,62 +231,82 @@ class AperturaCierreDia extends Model
             file_put_contents($logFile, "Fecha inicio: " . $fechaInicio->toDateTimeString() . "\n", FILE_APPEND);
             file_put_contents($logFile, "Fecha fin: " . $fechaFin->toDateTimeString() . "\n", FILE_APPEND);
 
-            // Reabrir clientes registrados ese día
-            $clientesActualizados = Cliente::whereDate('FechaCierre', $fecha)
+            // Reabrir clientes registrados ese día (SOLO esta sede)
+            $clientesActualizados = Cliente::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => null]);
-            file_put_contents($logFile, "Clientes actualizados: {$clientesActualizados}\n", FILE_APPEND);
+            file_put_contents($logFile, "Clientes actualizados (sede {$this->SedeID}): {$clientesActualizados}\n", FILE_APPEND);
 
-            // Reabrir proposiciones propuestas ese día (usa FechaPropuesta)
-            $proposicionesActualizadas = ProposicionCredito::whereDate('FechaCierre', $fecha)
+            // Reabrir proposiciones propuestas ese día (SOLO esta sede)
+            $proposicionesActualizadas = ProposicionCredito::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaPropuesta', $fecha)
                 ->update(['FechaCierre' => null]);
-            file_put_contents($logFile, "Proposiciones actualizadas: {$proposicionesActualizadas}\n", FILE_APPEND);
+            file_put_contents($logFile, "Proposiciones actualizadas (sede {$this->SedeID}): {$proposicionesActualizadas}\n", FILE_APPEND);
 
-            // Reabrir créditos generados ese día (usa FechaGeneracion)
-            $creditosActualizados = Credito::whereDate('FechaCierre', $fecha)
+            // Reabrir créditos generados ese día (SOLO esta sede)
+            $creditosActualizados = Credito::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaGeneracion', $fecha)
                 ->update(['FechaCierre' => null]);
-            file_put_contents($logFile, "Créditos actualizados: {$creditosActualizados}\n", FILE_APPEND);
+            file_put_contents($logFile, "Créditos actualizados (sede {$this->SedeID}): {$creditosActualizados}\n", FILE_APPEND);
 
-            // Reabrir pagos creados ese día (buscar por FechaPago)
-            $pagosAntes = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])->count();
-            file_put_contents($logFile, "\nPagos encontrados antes de actualizar: {$pagosAntes}\n", FILE_APPEND);
+            // Reabrir pagos creados ese día (SOLO esta sede)
+            $pagosAntes = Pago::withoutGlobalScope('sede')->where('SedeID', $this->SedeID)->whereBetween('FechaPago', [$fechaInicio, $fechaFin])->count();
+            file_put_contents($logFile, "\nPagos encontrados antes de actualizar (sede {$this->SedeID}): {$pagosAntes}\n", FILE_APPEND);
 
-            $pagosActualizados = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])
+            $pagosActualizados = Pago::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereBetween('FechaPago', [$fechaInicio, $fechaFin])
                 ->update(['FechaCierre' => null]);
-            file_put_contents($logFile, "Pagos actualizados: {$pagosActualizados}\n", FILE_APPEND);
+            file_put_contents($logFile, "Pagos actualizados (sede {$this->SedeID}): {$pagosActualizados}\n", FILE_APPEND);
 
-            $pagosDespues = Pago::whereBetween('FechaPago', [$fechaInicio, $fechaFin])
+            $pagosDespues = Pago::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereBetween('FechaPago', [$fechaInicio, $fechaFin])
                 ->whereNull('FechaCierre')
                 ->count();
-            file_put_contents($logFile, "Pagos con FechaCierre NULL después: {$pagosDespues}\n", FILE_APPEND);
+            file_put_contents($logFile, "Pagos con FechaCierre NULL después (sede {$this->SedeID}): {$pagosDespues}\n", FILE_APPEND);
 
-            // Reabrir cuotas creadas ese día (usa FechaCreacion)
-            $cuotasActualizadas = Cuota::whereDate('FechaCierre', $fecha)
+            // Reabrir cuotas creadas ese día (SOLO esta sede)
+            $cuotasActualizadas = Cuota::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaCreacion', $fecha)
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Cuotas actualizadas: {$cuotasActualizadas}\n", FILE_APPEND);
 
-            // Reabrir análisis económicos creados ese día (usa FechaAnalisis)
-            $analisisActualizados = AnalisisEconomico::whereDate('FechaCierre', $fecha)
+            // Reabrir análisis económicos creados ese día (SOLO esta sede)
+            $analisisActualizados = AnalisisEconomico::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaAnalisis', $fecha)
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Análisis económicos actualizados: {$analisisActualizados}\n", FILE_APPEND);
 
-            $evaluacionesActualizadas = EvaluacionCredito::whereDate('FechaCierre', $fecha)
+            $evaluacionesActualizadas = EvaluacionCredito::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereDate('FechaRegistro', $fecha)
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Evaluaciones actualizadas: {$evaluacionesActualizadas}\n", FILE_APPEND);
 
-            // Reabrir excedentes registrados ese día (usa Fecha)
-            $excedentesActualizados = Excedente::whereDate('FechaCierre', $fecha)
+            // Reabrir excedentes registrados ese día (SOLO esta sede)
+            $excedentesActualizados = Excedente::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereDate('Fecha', $fecha)
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Excedentes actualizados: {$excedentesActualizados}\n", FILE_APPEND);
 
-            // Reabrir solicitudes resolucion creadas ese día (usa created_at)
-            $solicitudesActualizadas = SolicitudResolucionExcedente::whereDate('FechaCierre', $fecha)
+            // Reabrir solicitudes resolucion creadas ese día (SOLO esta sede)
+            $solicitudesActualizadas = SolicitudResolucionExcedente::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereDate('created_at', $fecha)
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Solicitudes de resolución actualizadas: {$solicitudesActualizadas}\n", FILE_APPEND);

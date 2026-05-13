@@ -23,44 +23,24 @@ class ListReporteCreditosVencidos extends ListRecords
             Actions\Action::make('descargar_pdf')
                 ->label('Descargar PDF Créditos Vencidos')
                 ->icon('heroicon-o-document-arrow-down')
-                ->form([
-                    Forms\Components\DatePicker::make('fecha')
-                        ->label('Seleccionar Fecha')
-                        ->default(now())
-                        ->native(false)
-                        ->displayFormat('d/m/Y')
-                        ->required(),
-                ])
-                ->action(function (array $data) {
-                    if (!isset($data['fecha'])) {
-                        return;
+                ->color('danger')
+                ->action(function () {
+                    $filtros = $this->tableFilters['FechaVencimiento'] ?? [];
+                    $fechaDesde = $filtros['fecha_desde'] ?? null;
+                    $fechaHasta = $filtros['fecha_hasta'] ?? null;
+
+                    if (!$fechaDesde && !$fechaHasta) {
+                        $fechaDesde = now()->toDateString();
+                        $fechaHasta = now()->toDateString();
                     }
-                    
-                    $fecha = is_string($data['fecha']) ? $data['fecha'] : $data['fecha']->format('Y-m-d');
-                    
-                    // Validar si hay créditos vencidos para la fecha seleccionada
-                    $creditos = \App\Models\Credito::where('Activo', 1)
-                        ->whereDate('FechaVencimiento', '=', $fecha)
-                        ->whereHas('proposicion', function ($q) {
-                            $q->where('SaldoPendiente', '>', 0);
-                        })
-                        ->count();
-                    
-                    if ($creditos === 0) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Sin créditos vencidos')
-                            ->body('No hay créditos vencidos registrados para la fecha seleccionada.')
-                            ->warning()
-                            ->send();
-                        return;
-                    }
-                    
-                    $url = route('creditos-vencidos.view', ['fecha' => $fecha]);
-                    
-                    // Abrir en nueva ventana
+
+                    $params = [];
+                    if ($fechaDesde) $params['fecha_desde'] = $fechaDesde;
+                    if ($fechaHasta) $params['fecha_hasta'] = $fechaHasta;
+
+                    $url = route('creditos-vencidos.view', $params);
                     $this->js("window.open('" . addslashes($url) . "', '_blank')");
-                })
-                ->color('danger'),
+                }),
         ];
     }
 }

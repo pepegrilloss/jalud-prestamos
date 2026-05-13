@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\CompraResource\Pages;
 
 use App\Filament\Resources\CompraResource;
+use App\Services\FondoSedeService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -10,9 +11,12 @@ class EditCompra extends EditRecord
 {
     protected static string $resource = CompraResource::class;
 
+    private ?float $totalAnterior = null;
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Calcular subtotal de cada detalle
+        $this->totalAnterior = (float) ($this->record->Total ?? 0);
+
         if (isset($data['detalles'])) {
             foreach ($data['detalles'] as &$detalle) {
                 $cantidad = floatval($detalle['Cantidad'] ?? 0);
@@ -39,12 +43,51 @@ class EditCompra extends EditRecord
         return $data;
     }
 
+    protected function afterSave(): void
+    {
+        $record = $this->record;
+        $totalNuevo = (float) ($record->Total ?? 0);
+        $totalViejo = $this->totalAnterior ?? 0;
+        $delta = $totalNuevo - $totalViejo;
+
+        if ($delta != 0) {
+            $sedeId = $record->SedeID ?? auth()->user()->SedeID;
+            if (auth()->user()->esAdmin() && session('sede_activa')) {
+                $sedeId = session('sede_activa');
+            }
+            if ($sedeId) {
+                $service = app(FondoSedeService::class);
+                if ($delta > 0) {
+                    $service->registrarEgresoCajaChica($sedeId, $delta, $record->CompraID, auth()->id());
+                } else {
+                    $service->inyectarCapitalCajaChica($sedeId, abs($delta), auth()->id(), "Ajuste por edición de compra #{$record->CompraID}");
+                }
+            }
+        }
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             Actions\DeleteAction::make()
                 ->action(function ($record) {
                     $record->update(['Activo' => false]);
+
+                    $totalCompra = (float) ($record->Total ?? 0);
+                    if ($totalCompra > 0) {
+                        $sedeId = $record->SedeID ?? auth()->user()->SedeID;
+                        if (auth()->user()->esAdmin() && session('sede_activa')) {
+                            $sedeId = session('sede_activa');
+                        }
+                        if ($sedeId) {
+                            app(FondoSedeService::class)->inyectarCapitalCajaChica(
+                                $sedeId,
+                                $totalCompra,
+                                auth()->id(),
+                                "Reversión por eliminación de compra #{$record->CompraID}"
+                            );
+                        }
+                    }
                 }),
         ];
     }

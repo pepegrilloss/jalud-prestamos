@@ -31,26 +31,148 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/excel/acta-creditos', [\App\Http\Controllers\DescargarActaExcelController::class, 'descargar'])
         ->name('acta-creditos.excel');
 
-    Route::get('/pdf/creditos-vencidos', function () {
-        $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+    Route::get('/pdf/clientes-inactivos', function () {
+        $nombre = request()->get('nombre');
+        $fechaDesde = request()->get('fecha_desde');
+        $fechaHasta = request()->get('fecha_hasta');
 
-        $creditos = \App\Models\Credito::where('Activo', 1)
-            ->whereDate('FechaVencimiento', '=', $fecha)
-            ->whereHas('proposicion', function ($q) {
-                $q->where('SaldoPendiente', '>', 0);
+        $clientes = \Illuminate\Support\Facades\DB::table('Cliente')
+            ->select('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos')
+            ->selectRaw("MAX(Credito.FechaSaldamiento) as fecha_saldado")
+            ->selectRaw("DATEDIFF(NOW(), MAX(Credito.FechaSaldamiento)) as dias_inactivo")
+            ->selectRaw("(SELECT pc.CodigoCredito FROM ProposicionCredito pc 
+                JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_codigo")
+            ->selectRaw("(SELECT pc.MontoTotal FROM ProposicionCredito pc 
+                JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto")
+            ->selectRaw("(SELECT pc.MontoTotalPagar FROM ProposicionCredito pc 
+                JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto_total")
+            ->join('ProposicionCredito as prop', 'prop.ClienteID', '=', 'Cliente.ClienteID')
+            ->join('Credito', function ($join) {
+                $join->on('Credito.ProposicionCreditoID', '=', 'prop.ProposicionCreditoID')
+                     ->where('Credito.EstatusCreditoFinal', '=', 'SALDADO');
             })
-            ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
-            ->orderBy('FechaVencimiento', 'asc')
+            ->where('Cliente.Activo', true)
+            ->whereNotExists(function ($q) {
+                $q->selectRaw(1)
+                  ->from('ProposicionCredito as p2')
+                  ->join('Credito as c2', 'c2.ProposicionCreditoID', '=', 'p2.ProposicionCreditoID')
+                  ->whereColumn('p2.ClienteID', 'Cliente.ClienteID')
+                  ->where('p2.Activo', true)
+                  ->where('c2.Activo', true)
+                  ->where('c2.EstatusCreditoFinal', '!=', 'SALDADO');
+            });
+
+        if ($nombre) {
+            $clientes->where(function ($q) use ($nombre) {
+                $q->where('Cliente.NombresApellidos', 'like', "%{$nombre}%")
+                  ->orWhere('Cliente.DNI', 'like', "%{$nombre}%");
+            });
+        }
+        if ($fechaDesde) {
+            $clientes->havingRaw('MAX(Credito.FechaSaldamiento) >= ?', [$fechaDesde]);
+        }
+        if ($fechaHasta) {
+            $clientes->havingRaw('MAX(Credito.FechaSaldamiento) <= ?', [$fechaHasta]);
+        }
+
+        $clientes = $clientes->groupBy('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos')
+            ->havingRaw('dias_inactivo >= 1')
+            ->orderByRaw('dias_inactivo DESC')
             ->get();
 
-        $pdf = Pdf::loadView('reportes.creditos-vencidos', [
-            'creditos' => $creditos,
-            'fecha' => $fecha->format('d/m/Y'),
+        $pdf = Pdf::loadView('reportes.clientes-inactivos', [
+            'clientes' => $clientes,
+            'fecha' => now()->format('d/m/Y'),
         ]);
 
         $pdf->setPaper('a4', 'landscape');
 
-        return $pdf->stream('Creditos_Vencidos_' . $fecha->format('d-m-Y') . '.pdf');
+        return $pdf->stream('Clientes_Inactivos_' . now()->format('d-m-Y') . '.pdf');
+    })->name('clientes-inactivos.view');
+
+    Route::get('/pdf/clientes-atraso', function () {
+        $fechaDesde = request()->get('fecha_desde');
+        $fechaHasta = request()->get('fecha_hasta');
+        $clienteId = request()->get('cliente_id');
+
+        $query = \App\Models\Credito::where('Activo', 1)
+            ->whereHas('proposicion', function ($q) {
+                $q->where('SaldoPendiente', '>', 0);
+            })
+            ->select('Credito.*')
+            ->selectRaw("DATEDIFF(NOW(), COALESCE((SELECT MAX(FechaPago) FROM pago WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1), FechaGeneracion)) as dias_atraso_calc")
+            ->havingRaw('dias_atraso_calc >= 1');
+
+        if ($clienteId) {
+            $query->whereHas('proposicion', fn($q) => $q->where('ClienteID', $clienteId));
+        }
+        if ($fechaDesde) {
+            $query->whereDate('FechaVencimiento', '>=', $fechaDesde);
+        }
+        if ($fechaHasta) {
+            $query->whereDate('FechaVencimiento', '<=', $fechaHasta);
+        }
+
+        $creditos = $query->with(['proposicion.cliente', 'proposicion.zona'])
+            ->orderByRaw('dias_atraso_calc DESC')
+            ->get();
+
+        $pdf = Pdf::loadView('reportes.clientes-atraso', [
+            'creditos' => $creditos,
+            'fecha' => now()->format('d/m/Y'),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->stream('Clientes_Atraso_' . now()->format('d-m-Y') . '.pdf');
+    })->name('clientes-atraso.view');
+
+    Route::get('/pdf/creditos-vencidos', function () {
+        $fechaDesde = request()->get('fecha_desde') ?? request()->get('fecha');
+        $fechaHasta = request()->get('fecha_hasta') ?? request()->get('fecha');
+
+        $fechaCarbonDesde = $fechaDesde ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaDesde) : now();
+        $fechaCarbonHasta = $fechaHasta ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaHasta) : $fechaCarbonDesde;
+
+        $query = \App\Models\Credito::where('Activo', 1)
+            ->whereHas('proposicion', function ($q) {
+                $q->where('SaldoPendiente', '>', 0);
+            })
+            ->with(['proposicion.cliente', 'proposicion.tipoCredito']);
+
+        if ($fechaDesde) {
+            $query->whereDate('FechaVencimiento', '>=', $fechaCarbonDesde->toDateString());
+        }
+        if ($fechaHasta) {
+            $query->whereDate('FechaVencimiento', '<=', $fechaCarbonHasta->toDateString());
+        }
+
+        $creditos = $query->orderBy('FechaVencimiento', 'asc')->get();
+
+        $titulo = $fechaCarbonDesde->format('d/m/Y');
+        if ($fechaDesde !== $fechaHasta) {
+            $titulo .= ' - ' . $fechaCarbonHasta->format('d/m/Y');
+        }
+
+        $pdf = Pdf::loadView('reportes.creditos-vencidos', [
+            'creditos' => $creditos,
+            'fecha' => $titulo,
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        $nombreArchivo = 'Creditos_Vencidos_' . $fechaCarbonDesde->format('d-m-Y');
+        if ($fechaDesde !== $fechaHasta) {
+            $nombreArchivo .= '_al_' . $fechaCarbonHasta->format('d-m-Y');
+        }
+
+        return $pdf->stream($nombreArchivo . '.pdf');
     })->name('creditos-vencidos.view');
 
     Route::get('/pdf/cuentas-canceladas', function () {

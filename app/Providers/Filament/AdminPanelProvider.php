@@ -48,9 +48,8 @@ class AdminPanelProvider extends PanelProvider
                 Css::make('custom-scrollbar-css', public_path('css/custom-scrollbar.css')),
             ])
             ->renderHook(
-                PanelsRenderHook::HEAD_START,
-                fn(): string => '<link rel="stylesheet" href="' . asset('css/login-custom.css') . '?v=' . time() . '">' .
-                '<link rel="stylesheet" href="' . asset('css/custom-scrollbar.css') . '?v=' . time() . '">'
+                PanelsRenderHook::BODY_END,
+                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
             )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
@@ -147,7 +146,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
+                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)') .
+                    (!auth()->user()?->esAdmin() ? '<style>.fi-icon-btn[aria-label="Notifications"]{display:none!important}</style>' : '')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([

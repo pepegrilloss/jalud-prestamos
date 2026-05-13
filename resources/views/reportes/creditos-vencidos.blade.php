@@ -69,7 +69,7 @@
 <body>
     <div class="header">
         <div>Pagina 1</div>
-        <div>08/02/2026 09:41:04</div>
+        <div>{{ now()->format('d/m/Y H:i:s') }}</div>
     </div>
 
     <div style="text-align: left; margin-bottom: 30px;">
@@ -80,7 +80,7 @@
     <div class="line"></div>
 
     <div style="margin-bottom: 15px; font-size: 11px;">
-        <strong>VENCIDOS AL :</strong> 02/02/2026
+        <strong>VENCIDOS AL :</strong> {{ $fecha ?? now()->format('d/m/Y') }}
     </div>
 
     <table>
