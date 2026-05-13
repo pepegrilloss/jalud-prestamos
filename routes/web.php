@@ -37,7 +37,9 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         $fechaHasta = request()->get('fecha_hasta');
 
         $clientes = \Illuminate\Support\Facades\DB::table('Cliente')
-            ->select('Cliente.*')
+            ->selectRaw("Cliente.ClienteID")
+            ->selectRaw("ANY_VALUE(Cliente.DNI) as DNI")
+            ->selectRaw("ANY_VALUE(Cliente.NombresApellidos) as NombresApellidos")
             ->selectRaw("MAX(Credito.FechaSaldamiento) as fecha_saldado")
             ->selectRaw("DATEDIFF(NOW(), MAX(Credito.FechaSaldamiento)) as dias_inactivo")
             ->selectRaw("(SELECT pc.CodigoCredito FROM ProposicionCredito pc 

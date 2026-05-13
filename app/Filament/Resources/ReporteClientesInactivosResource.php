@@ -115,7 +115,11 @@ class ReporteClientesInactivosResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                $query->select('Cliente.*')
+                $query->selectRaw("Cliente.ClienteID")
+                    ->selectRaw("ANY_VALUE(Cliente.DNI) as DNI")
+                    ->selectRaw("ANY_VALUE(Cliente.NombresApellidos) as NombresApellidos")
+                    ->selectRaw("ANY_VALUE(Cliente.Activo) as Activo")
+                    ->selectRaw("ANY_VALUE(Cliente.SedeID) as SedeID")
                     ->selectRaw("MAX(Credito.FechaSaldamiento) as fecha_saldado")
                     ->selectRaw("DATEDIFF(NOW(), MAX(Credito.FechaSaldamiento)) as dias_inactivo")
                     ->selectRaw("(SELECT pc.CodigoCredito FROM ProposicionCredito pc 
