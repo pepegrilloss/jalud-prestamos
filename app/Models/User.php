@@ -128,20 +128,20 @@ class User extends Authenticatable implements FilamentUser
     {
         if ($this->esAdmin() && !session('sede_activa')) {
             $blockedPrefixes = ['create_', 'update_', 'delete_', 'restore_', 'forceDelete_'];
-            
+
             $abilitiesList = is_array($abilities) ? $abilities : [$abilities];
-            
+
             foreach ($abilitiesList as $ability) {
                 if (is_string($ability)) {
                     foreach ($blockedPrefixes as $prefix) {
                         if (str_starts_with($ability, $prefix)) {
-                            return false; 
+                            return false;
                         }
                     }
                 }
             }
         }
-        
+
         return parent::can($abilities, $arguments);
     }
 
@@ -158,25 +158,15 @@ class User extends Authenticatable implements FilamentUser
      */
     public static function notificarAdmin(string $titulo, string $cuerpo, ?string $icono = 'heroicon-o-bell', ?int $sedeId = null): void
     {
-        $superAdminRole = \BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName();
-        $adminRoles = [$superAdminRole, 'admin'];
+        $adminRoles = [\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName(), 'admin'];
 
         $users = static::role($adminRoles);
 
         if ($sedeId) {
-            $users = $users->where(function ($query) use ($sedeId, $superAdminRole) {
-                $query->where('SedeID', $sedeId) // Admins de la sede
-                      ->orWhereHas('roles', fn($q) => $q->where('name', $superAdminRole)) // Super Admins globales
-                      ->orWhereNull('SedeID'); // Usuarios sin sede asignada (suelen ser globales)
-            });
+            $users = $users->where('SedeID', $sedeId);
         }
 
         $users = $users->get();
-
-        // DEBUG: Agregar al usuario actual para probar si llegan las notificaciones
-        if (auth()->check()) {
-            $users->push(auth()->user());
-        }
 
         if ($users->isEmpty()) {
             return;
