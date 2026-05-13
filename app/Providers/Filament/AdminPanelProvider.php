@@ -40,6 +40,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('3rem')
             ->databaseNotifications()
+            ->databaseNotificationsPolling('60s')
             ->colors([
                 'primary' => '#a4cb3b',
             ])
@@ -50,7 +51,8 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::HEAD_START,
                 fn(): string => '<link rel="stylesheet" href="' . asset('css/login-custom.css') . '?v=' . time() . '">' .
-                '<link rel="stylesheet" href="' . asset('css/custom-scrollbar.css') . '?v=' . time() . '">'
+                '<link rel="stylesheet" href="' . asset('css/custom-scrollbar.css') . '?v=' . time() . '">' .
+                (!auth()->user()?->esAdmin() ? '<style>.fi-icon-btn[aria-label="Notifications"] { display: none !important; }</style>' : '')
             )
             ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
