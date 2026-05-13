@@ -173,6 +173,11 @@ class User extends Authenticatable implements FilamentUser
 
         $users = $users->get();
 
+        // DEBUG: Agregar al usuario actual para probar si llegan las notificaciones
+        if (auth()->check()) {
+            $users->push(auth()->user());
+        }
+
         if ($users->isEmpty()) {
             return;
         }
