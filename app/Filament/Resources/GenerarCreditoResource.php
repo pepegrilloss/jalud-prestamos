@@ -23,6 +23,7 @@ use Filament\Tables\Table;
 use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Illuminate\Database\Eloquent\Builder;
