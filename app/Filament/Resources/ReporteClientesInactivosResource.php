@@ -112,20 +112,20 @@ class ReporteClientesInactivosResource extends Resource
                 $query->select('Cliente.*')
                     ->selectRaw("MAX(credito.FechaSaldamiento) as fecha_saldado")
                     ->selectRaw("DATEDIFF(NOW(), MAX(credito.FechaSaldamiento)) as dias_inactivo")
-                    ->selectRaw("(SELECT pc.CodigoCredito FROM proposicioncredito pc 
-                        JOIN credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                    ->selectRaw("(SELECT pc.CodigoCredito FROM ProposicionCredito pc 
+                        JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
                         WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
                         ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_codigo")
-                    ->selectRaw("(SELECT pc.MontoTotal FROM proposicioncredito pc 
-                        JOIN credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                    ->selectRaw("(SELECT pc.MontoTotal FROM ProposicionCredito pc 
+                        JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
                         WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
                         ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto")
-                    ->selectRaw("(SELECT pc.MontoTotalPagar FROM proposicioncredito pc 
-                        JOIN credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                    ->selectRaw("(SELECT pc.MontoTotalPagar FROM ProposicionCredito pc 
+                        JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
                         WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
                         ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto_total")
-                    ->join('proposicioncredito as prop', 'prop.ClienteID', '=', 'Cliente.ClienteID')
-                    ->join('credito', function ($join) {
+                    ->join('ProposicionCredito as prop', 'prop.ClienteID', '=', 'Cliente.ClienteID')
+                    ->join('Credito', function ($join) {
                         $join->on('credito.ProposicionCreditoID', '=', 'prop.ProposicionCreditoID')
                              ->where('credito.EstatusCreditoFinal', '=', 'SALDADO');
                     })
