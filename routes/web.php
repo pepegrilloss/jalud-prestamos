@@ -33,9 +33,18 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
 
     Route::get('/pdf/clientes-atraso', function () {
         $creditos = \App\Models\Credito::where('Activo', 1)
-            ->whereDate('FechaVencimiento', '<', now())
             ->whereHas('proposicion', function ($q) {
                 $q->where('SaldoPendiente', '>', 0);
+            })
+            ->where(function ($q) {
+                $q->whereDoesntHave('pagos', fn($sq) => $sq->where('Activo', 1))
+                  ->whereDate('FechaGeneracion', '<=', now()->subDay()->toDateString());
+                $q->orWhere(function ($oq) {
+                    $oq->whereHas('pagos', fn($sq) => $sq->where('Activo', 1))
+                       ->whereDoesntHave('pagos', fn($sq) => $sq
+                           ->where('Activo', 1)
+                           ->whereDate('FechaPago', '>=', now()->subDay()->toDateString()));
+                });
             })
             ->with(['proposicion.cliente', 'proposicion.zona'])
             ->orderBy('FechaVencimiento', 'asc')

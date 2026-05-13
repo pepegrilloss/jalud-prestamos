@@ -79,9 +79,22 @@ class ReporteClientesAtrasoResource extends Resource
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query->where('Activo', 1)
-                    ->whereDate('FechaVencimiento', '<', now())
                     ->whereHas('proposicion', function ($q) {
                         $q->where('SaldoPendiente', '>', 0);
+                    })
+                    ->where(function (Builder $sub) {
+                        // Sin pagos y el crédito se generó hace al menos 1 día
+                        $sub->where(function ($q) {
+                            $q->whereDoesntHave('pagos', fn($sq) => $sq->where('Activo', 1))
+                              ->whereDate('FechaGeneracion', '<=', now()->subDay()->toDateString());
+                        });
+                        // O con pagos pero el último pago fue hace al menos 1 día
+                        $sub->orWhere(function ($q) {
+                            $q->whereHas('pagos', fn($sq) => $sq->where('Activo', 1))
+                              ->whereDoesntHave('pagos', fn($sq) => $sq
+                                  ->where('Activo', 1)
+                                  ->whereDate('FechaPago', '>=', now()->subDay()->toDateString()));
+                        });
                     })
                     ->with(['proposicion.cliente', 'proposicion.zona', 'proposicion.tipoCredito'])
                     ->orderBy('FechaVencimiento', 'asc');
