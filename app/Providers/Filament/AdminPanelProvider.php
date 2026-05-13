@@ -39,7 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('3rem')
-            ->databaseNotifications()
+            ->databaseNotifications(fn() => auth()->user()?->esAdmin() ?? false)
             ->databaseNotificationsPolling('60s')
             ->colors([
                 'primary' => '#a4cb3b',
@@ -147,8 +147,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)') .
-                (!auth()->user()?->esAdmin() ? '<style>.fi-icon-btn[aria-label="Notifications"]{display:none!important}</style>' : '')
+                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
