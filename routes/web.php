@@ -31,6 +31,26 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/excel/acta-creditos', [\App\Http\Controllers\DescargarActaExcelController::class, 'descargar'])
         ->name('acta-creditos.excel');
 
+    Route::get('/pdf/clientes-atraso', function () {
+        $creditos = \App\Models\Credito::where('Activo', 1)
+            ->whereDate('FechaVencimiento', '<', now())
+            ->whereHas('proposicion', function ($q) {
+                $q->where('SaldoPendiente', '>', 0);
+            })
+            ->with(['proposicion.cliente', 'proposicion.zona'])
+            ->orderBy('FechaVencimiento', 'asc')
+            ->get();
+
+        $pdf = Pdf::loadView('reportes.clientes-atraso', [
+            'creditos' => $creditos,
+            'fecha' => now()->format('d/m/Y'),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->stream('Clientes_Atraso_' . now()->format('d-m-Y') . '.pdf');
+    })->name('clientes-atraso.view');
+
     Route::get('/pdf/creditos-vencidos', function () {
         $fechaDesde = request()->get('fecha_desde') ?? request()->get('fecha');
         $fechaHasta = request()->get('fecha_hasta') ?? request()->get('fecha');

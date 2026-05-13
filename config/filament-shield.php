@@ -57,6 +57,7 @@ return [
         'abrir_dia_apertura',
         'cerrar_dia_apertura',
         'balance_diario',
+        'view_any_reporte::clientes::atraso',
     ],
 
     'generator' => [
