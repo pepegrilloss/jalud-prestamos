@@ -31,6 +31,71 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/excel/acta-creditos', [\App\Http\Controllers\DescargarActaExcelController::class, 'descargar'])
         ->name('acta-creditos.excel');
 
+    Route::get('/pdf/clientes-inactivos', function () {
+        $nombre = request()->get('nombre');
+        $fechaDesde = request()->get('fecha_desde');
+        $fechaHasta = request()->get('fecha_hasta');
+
+        $clientes = \Illuminate\Support\Facades\DB::table('Cliente')
+            ->select('Cliente.*')
+            ->selectRaw("MAX(credito.FechaSaldamiento) as fecha_saldado")
+            ->selectRaw("DATEDIFF(NOW(), MAX(credito.FechaSaldamiento)) as dias_inactivo")
+            ->selectRaw("(SELECT pc.CodigoCredito FROM proposicioncredito pc 
+                JOIN credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_codigo")
+            ->selectRaw("(SELECT pc.MontoTotal FROM proposicioncredito pc 
+                JOIN credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto")
+            ->selectRaw("(SELECT pc.MontoTotalPagar FROM proposicioncredito pc 
+                JOIN credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto_total")
+            ->join('proposicioncredito as prop', 'prop.ClienteID', '=', 'Cliente.ClienteID')
+            ->join('credito', function ($join) {
+                $join->on('credito.ProposicionCreditoID', '=', 'prop.ProposicionCreditoID')
+                     ->where('credito.EstatusCreditoFinal', '=', 'SALDADO');
+            })
+            ->where('Cliente.Activo', true)
+            ->whereNotExists(function ($q) {
+                $q->selectRaw(1)
+                  ->from('proposicioncredito as p2')
+                  ->join('credito as c2', 'c2.ProposicionCreditoID', '=', 'p2.ProposicionCreditoID')
+                  ->whereColumn('p2.ClienteID', 'Cliente.ClienteID')
+                  ->where('p2.Activo', true)
+                  ->where('c2.Activo', true)
+                  ->where('c2.EstatusCreditoFinal', '!=', 'SALDADO');
+            });
+
+        if ($nombre) {
+            $clientes->where(function ($q) use ($nombre) {
+                $q->where('Cliente.NombresApellidos', 'like', "%{$nombre}%")
+                  ->orWhere('Cliente.DNI', 'like', "%{$nombre}%");
+            });
+        }
+        if ($fechaDesde) {
+            $clientes->havingRaw('MAX(credito.FechaSaldamiento) >= ?', [$fechaDesde]);
+        }
+        if ($fechaHasta) {
+            $clientes->havingRaw('MAX(credito.FechaSaldamiento) <= ?', [$fechaHasta]);
+        }
+
+        $clientes = $clientes->groupBy('Cliente.ClienteID')
+            ->havingRaw('dias_inactivo >= 1')
+            ->orderByRaw('dias_inactivo DESC')
+            ->get();
+
+        $pdf = Pdf::loadView('reportes.clientes-inactivos', [
+            'clientes' => $clientes,
+            'fecha' => now()->format('d/m/Y'),
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->stream('Clientes_Inactivos_' . now()->format('d-m-Y') . '.pdf');
+    })->name('clientes-inactivos.view');
+
     Route::get('/pdf/clientes-atraso', function () {
         $fechaDesde = request()->get('fecha_desde');
         $fechaHasta = request()->get('fecha_hasta');
