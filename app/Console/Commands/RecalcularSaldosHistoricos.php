@@ -110,15 +110,19 @@ class RecalcularSaldosHistoricos extends Command
 
         $saldoActual = 200000 - $prestadoCapital;
 
-        MovimientoFondo::create([
-            'SedeID' => $trujilloSedeId,
-            'Tipo' => 'EGRESO_COLOCACION',
-            'Monto' => -$prestadoCapital,
-            'SaldoAnterior' => 200000,
-            'SaldoNuevo' => $saldoActual,
-            'UsuarioID' => 1,
-            'Observacion' => 'Histórico: Consolidado de todos los créditos emitidos'
-        ]);
+        MovimientoFondo::updateOrCreate(
+            [
+                'SedeID' => $trujilloSedeId,
+                'Tipo' => 'EGRESO_COLOCACION',
+                'Observacion' => 'Histórico: Consolidado de todos los créditos emitidos'
+            ],
+            [
+                'Monto' => -$prestadoCapital,
+                'SaldoAnterior' => 200000,
+                'SaldoNuevo' => $saldoActual,
+                'UsuarioID' => 1
+            ]
+        );
 
         // 5. Calcular pagos recaudados en Trujillo (SOLO DINERO FÍSICO REAL)
         // Ignoramos los pagos virtuales generados por Extornos/Excedentes (EsPagoAMayor = true)
@@ -135,15 +139,19 @@ class RecalcularSaldosHistoricos extends Command
 
         $saldoFinal = $saldoActual + $pagosRecaudados;
 
-        MovimientoFondo::create([
-            'SedeID' => $trujilloSedeId,
-            'Tipo' => 'INGRESO_RECAUDO',
-            'Monto' => $pagosRecaudados,
-            'SaldoAnterior' => $saldoActual,
-            'SaldoNuevo' => $saldoFinal,
-            'UsuarioID' => 1,
-            'Observacion' => 'Histórico: Consolidado de todos los pagos físicos recibidos'
-        ]);
+        MovimientoFondo::updateOrCreate(
+            [
+                'SedeID' => $trujilloSedeId,
+                'Tipo' => 'INGRESO_RECAUDO',
+                'Observacion' => 'Histórico: Consolidado de todos los pagos físicos recibidos'
+            ],
+            [
+                'Monto' => $pagosRecaudados,
+                'SaldoAnterior' => $saldoActual,
+                'SaldoNuevo' => $saldoFinal,
+                'UsuarioID' => 1
+            ]
+        );
 
         // 6. Actualizar FondoSede Trujillo
         $trujillo = FondoSede::updateOrCreate(

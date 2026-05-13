@@ -39,7 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('3rem')
-            ->databaseNotifications()
+            ->databaseNotifications(fn () => auth()->user()?->esAdmin() ?? false)
             ->colors([
                 'primary' => '#a4cb3b',
             ])

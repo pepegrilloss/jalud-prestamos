@@ -113,16 +113,16 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 $creditoID = $get('CreditoOrigenID');
                                 if (!$creditoID)
                                     return [];
-                                    
+
                                 $pagos = Pago::where('CreditoID', $creditoID)
                                     ->where('Activo', 1)
                                     ->orderBy('FechaPago', 'asc')
                                     ->orderBy('PagoID', 'asc')
                                     ->get();
-                                    
+
                                 $opciones = [];
                                 $correlativo = 1;
-                                
+
                                 foreach ($pagos as $pago) {
                                     // Solo mostrar en las opciones los que no han sido trasladados
                                     if ($pago->EstadoTraslado !== 'TRASLADADO') {
@@ -131,7 +131,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     }
                                     $correlativo++;
                                 }
-                                
+
                                 // Devolver invertido para ver los más recientes primero
                                 return array_reverse($opciones, true);
                             })
@@ -172,12 +172,13 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->prefixIcon('heroicon-m-banknotes')
                             ->options(function (Get $get) {
                                 $fechaFiltro = $get('FiltroFechaExcedente');
-                                if (!$fechaFiltro) return []; // Si no hay fecha, retorna vacío
-
+                                if (!$fechaFiltro)
+                                    return []; // Si no hay fecha, retorna vacío
+                    
                                 $query = Excedente::where('EstadoResolucion', 'PENDIENTE')
                                     ->where('Activo', 1)
                                     ->whereDate('Fecha', $fechaFiltro);
-                                    
+
                                 $results = $query->get();
                                 if ($results->isEmpty())
                                     return [];
@@ -472,7 +473,9 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) { return false; }
+        if (!parent::canCreate()) {
+            return false;
+        }
 
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             if (request()->routeIs('*create') || request()->isMethod('post')) {
@@ -506,4 +509,10 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
             'view' => Pages\ViewResolucionExcedente::route('/{record}'),
         ];
     }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->hasPermissionTo('view_any_resolucion::excedente');
+    }
+
 }
