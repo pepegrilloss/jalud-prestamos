@@ -32,8 +32,6 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         ->name('acta-creditos.excel');
 
     Route::get('/pdf/clientes-atraso', function () {
-        $ayer = now()->subDay()->endOfDay();
-
         $creditos = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) {
                 $q->where('SaldoPendiente', '>', 0);
@@ -42,7 +40,7 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
                 SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
                 FROM pago
                 WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
-            ) <= ?", [$ayer])
+            ) <= DATE_SUB(NOW(), INTERVAL 1 DAY)")
             ->with(['proposicion.cliente', 'proposicion.zona'])
             ->orderByRaw("(
                 SELECT COALESCE(MAX(FechaPago), FechaGeneracion)

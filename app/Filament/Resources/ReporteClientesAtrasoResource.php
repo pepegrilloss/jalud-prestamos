@@ -78,8 +78,6 @@ class ReporteClientesAtrasoResource extends Resource
                     ->sortable(),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                $ayer = now()->subDay()->endOfDay();
-
                 $query->where('Activo', 1)
                     ->whereHas('proposicion', function ($q) {
                         $q->where('SaldoPendiente', '>', 0);
@@ -88,7 +86,7 @@ class ReporteClientesAtrasoResource extends Resource
                         SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
                         FROM pago
                         WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
-                    ) <= ?", [$ayer])
+                    ) <= DATE_SUB(NOW(), INTERVAL 1 DAY)")
                     ->with(['proposicion.cliente', 'proposicion.zona', 'proposicion.tipoCredito'])
                     ->orderByRaw("(
                         SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
