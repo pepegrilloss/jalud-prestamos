@@ -57,9 +57,7 @@
         <tbody>
             @forelse($creditos as $credito)
                 @php
-                    $ultimoPago = $credito->pagos()->where('Activo', 1)->max('FechaPago');
-                    $fechaRef = $ultimoPago ?? $credito->FechaGeneracion;
-                    $diasAtraso = $fechaRef ? max(0, (int) now()->startOfDay()->diffInDays($fechaRef)) : 0;
+                    $diasAtraso = $credito->dias_atraso_calc ?? 0;
                 @endphp
                 <tr>
                     <td>{{ $credito->proposicion->CodigoCredito ?? '-' }}</td>

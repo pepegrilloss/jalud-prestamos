@@ -36,17 +36,11 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
             ->whereHas('proposicion', function ($q) {
                 $q->where('SaldoPendiente', '>', 0);
             })
-            ->whereRaw("(
-                SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
-                FROM pago
-                WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
-            ) <= DATE_SUB(NOW(), INTERVAL 1 DAY)")
+            ->select('Credito.*')
+            ->selectRaw("DATEDIFF(NOW(), COALESCE((SELECT MAX(FechaPago) FROM pago WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1), FechaGeneracion)) as dias_atraso_calc")
+            ->havingRaw('dias_atraso_calc >= 1')
             ->with(['proposicion.cliente', 'proposicion.zona'])
-            ->orderByRaw("(
-                SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
-                FROM pago
-                WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
-            ) ASC")
+            ->orderByRaw('dias_atraso_calc DESC')
             ->get();
 
         $pdf = Pdf::loadView('reportes.clientes-atraso', [

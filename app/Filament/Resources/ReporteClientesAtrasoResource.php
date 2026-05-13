@@ -57,15 +57,7 @@ class ReporteClientesAtrasoResource extends Resource
                 Tables\Columns\TextColumn::make('dias_atraso')
                     ->label('Días de Atraso')
                     ->getStateUsing(function ($record) {
-                        $ultimoPago = $record->pagos()
-                            ->where('Activo', 1)
-                            ->max('FechaPago');
-
-                        $fechaReferencia = $ultimoPago ?? $record->FechaGeneracion;
-
-                        if (!$fechaReferencia) return 0;
-
-                        return max(0, (int) now()->startOfDay()->diffInDays($fechaReferencia));
+                        return $record->dias_atraso_calc ?? 0;
                     })
                     ->sortable()
                     ->color('danger')
@@ -78,21 +70,15 @@ class ReporteClientesAtrasoResource extends Resource
                     ->sortable(),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                $query->where('Activo', 1)
+                $query->select('Credito.*')
+                    ->selectRaw("DATEDIFF(NOW(), COALESCE((SELECT MAX(FechaPago) FROM pago WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1), FechaGeneracion)) as dias_atraso_calc")
+                    ->where('Activo', 1)
                     ->whereHas('proposicion', function ($q) {
                         $q->where('SaldoPendiente', '>', 0);
                     })
-                    ->whereRaw("(
-                        SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
-                        FROM pago
-                        WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
-                    ) <= DATE_SUB(NOW(), INTERVAL 1 DAY)")
+                    ->havingRaw('dias_atraso_calc >= 1')
                     ->with(['proposicion.cliente', 'proposicion.zona', 'proposicion.tipoCredito'])
-                    ->orderByRaw("(
-                        SELECT COALESCE(MAX(FechaPago), FechaGeneracion)
-                        FROM pago
-                        WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1
-                    ) ASC");
+                    ->orderByRaw('dias_atraso_calc DESC');
             })
             ->actions([])
             ->bulkActions([])
