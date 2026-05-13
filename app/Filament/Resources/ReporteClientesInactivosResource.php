@@ -115,11 +115,7 @@ class ReporteClientesInactivosResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                $query->selectRaw("Cliente.ClienteID")
-                    ->selectRaw("ANY_VALUE(Cliente.DNI) as DNI")
-                    ->selectRaw("ANY_VALUE(Cliente.NombresApellidos) as NombresApellidos")
-                    ->selectRaw("ANY_VALUE(Cliente.Activo) as Activo")
-                    ->selectRaw("ANY_VALUE(Cliente.SedeID) as SedeID")
+                $query->select('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos', 'Cliente.Activo', 'Cliente.SedeID')
                     ->selectRaw("MAX(Credito.FechaSaldamiento) as fecha_saldado")
                     ->selectRaw("DATEDIFF(NOW(), MAX(Credito.FechaSaldamiento)) as dias_inactivo")
                     ->selectRaw("(SELECT pc.CodigoCredito FROM ProposicionCredito pc 
@@ -147,7 +143,7 @@ class ReporteClientesInactivosResource extends Resource
                                  ->where('EstatusCreditoFinal', '!=', 'SALDADO');
                           });
                     })
-                    ->groupBy('Cliente.ClienteID')
+                    ->groupBy('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos', 'Cliente.Activo', 'Cliente.SedeID')
                     ->havingRaw('dias_inactivo >= 1')
                     ->orderByRaw('dias_inactivo DESC');
             })

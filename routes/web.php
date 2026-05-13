@@ -37,9 +37,7 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         $fechaHasta = request()->get('fecha_hasta');
 
         $clientes = \Illuminate\Support\Facades\DB::table('Cliente')
-            ->selectRaw("Cliente.ClienteID")
-            ->selectRaw("ANY_VALUE(Cliente.DNI) as DNI")
-            ->selectRaw("ANY_VALUE(Cliente.NombresApellidos) as NombresApellidos")
+            ->select('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos')
             ->selectRaw("MAX(Credito.FechaSaldamiento) as fecha_saldado")
             ->selectRaw("DATEDIFF(NOW(), MAX(Credito.FechaSaldamiento)) as dias_inactivo")
             ->selectRaw("(SELECT pc.CodigoCredito FROM ProposicionCredito pc 
@@ -83,7 +81,7 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
             $clientes->havingRaw('MAX(Credito.FechaSaldamiento) <= ?', [$fechaHasta]);
         }
 
-        $clientes = $clientes->groupBy('Cliente.ClienteID')
+        $clientes = $clientes->groupBy('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos')
             ->havingRaw('dias_inactivo >= 1')
             ->orderByRaw('dias_inactivo DESC')
             ->get();
