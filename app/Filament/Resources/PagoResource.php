@@ -99,12 +99,17 @@ class PagoResource extends Resource
 
                                 // Condiciones que se aplican a las proposiciones
                                 $propositionConditions = function ($q) use ($zonaID) {
-                                    $q->where('FueRefinanciada', 0)
-                                        ->where('Activo', true)
-                                        ->whereHas('credito', function ($sq) {
+                                    $user = auth()->user();
+                                    $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+
+                                    if (!$puedePagarMayor) {
+                                        $q->where('FueRefinanciada', 0);
+                                    }
+
+                                    $q->where('Activo', true)
+                                        ->whereHas('credito', function ($sq) use ($user, $puedePagarMayor) {
                                             $sq->where('Activo', 1);
-                                            $user = auth()->user();
-                                            if (!$user?->can('registrar_pagos_a_mayor') && !$user?->can('registrar_pagos_a_mayor_por_mora')) {
+                                            if (!$puedePagarMayor) {
                                                 $sq->where('EstatusCreditoFinal', '!=', 'SALDADO');
                                             }
                                         });
@@ -152,14 +157,19 @@ class PagoResource extends Resource
 
                                     $cliente = \App\Models\Cliente::with([
                                         'proposiciones' => function ($q) use ($zonaID) {
-                                            $q->whereHas('credito', function ($sq) {
+                                            $user = auth()->user();
+                                            $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+
+                                            if (!$puedePagarMayor) {
+                                                $q->where('FueRefinanciada', 0);
+                                            }
+
+                                            $q->whereHas('credito', function ($sq) use ($user, $puedePagarMayor) {
                                                 $sq->where('Activo', 1);
-                                                $user = auth()->user();
-                                                if (!$user?->can('registrar_pagos_a_mayor') && !$user?->can('registrar_pagos_a_mayor_por_mora')) {
+                                                if (!$puedePagarMayor) {
                                                     $sq->where('EstatusCreditoFinal', '!=', 'SALDADO');
                                                 }
                                             })
-                                                ->where('FueRefinanciada', 0)
                                                 ->where('Activo', true)
                                                 ->with('tipoCredito');
 
@@ -233,23 +243,24 @@ class PagoResource extends Resource
 
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
+                                $user = auth()->user();
+                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
                                 // Obtener créditos y filtrar solo los que tienen saldo > 0
                                 $creditos = \App\Models\Credito::with('proposicion.tipoCredito')
-                                    ->whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
+                                    ->whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
                                     $q->where('ClienteID', $clienteID)
-                                        ->where('FueRefinanciada', 0)
                                         ->where('Activo', true);
+                                    
+                                    if (!$puedePagarMayor) {
+                                        $q->where('FueRefinanciada', 0);
+                                    }
+
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);
                                     }
                                 })
                                     ->where('Activo', 1);
-                                
-                                $user = auth()->user();
-                                if (!$user?->can('registrar_pagos_a_mayor') && !$user?->can('registrar_pagos_a_mayor_por_mora')) {
-                                    $creditos->where('EstatusCreditoFinal', '!=', 'SALDADO');
-                                }
                                 
                                 $creditos = $creditos->get()->filter(function ($credito) {
                                     $user = auth()->user();

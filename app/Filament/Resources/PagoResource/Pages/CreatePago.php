@@ -346,17 +346,20 @@ class CreatePago extends CreateRecord
         // 1. Asegurar primero el CreditoID (por si Filament lo quitó al estar oculto o no fue seteado)
         if (!isset($data['CreditoID']) || empty($data['CreditoID'])) {
             $clienteID = $data['ClienteID'] ?? null;
-            if ($clienteID) {
-                $query = \App\Models\Credito::with('proposicion')->whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
-                    $q->where('ClienteID', $clienteID)
-                        ->where('FueRefinanciada', 0);
+                $user = auth()->user();
+                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+
+                $query = \App\Models\Credito::with('proposicion')->whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
+                    $q->where('ClienteID', $clienteID);
+                    
+                    if (!$puedePagarMayor) {
+                        $q->where('FueRefinanciada', 0);
+                    }
+
                     if ($zonaID) {
                         $q->where('ZonaID', $zonaID);
                     }
                 })->where('Activo', 1);
-
-                $user = auth()->user();
-                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
                 if (!$puedePagarMayor) {
                     $query->where('EstatusCreditoFinal', '!=', 'SALDADO');
