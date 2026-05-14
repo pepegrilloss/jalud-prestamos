@@ -143,6 +143,8 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return parent::can($abilities, $arguments);
+
+        //hola
     }
 
     /**
