@@ -437,6 +437,11 @@ class PagoResource extends Resource
                             ->disabled()
                             ->native(false)
                             ->displayFormat('d/m/Y'),
+
+                        Forms\Components\Toggle::make('EsMora')
+                            ->label('Es Pago de Mora')
+                            ->helperText('Marcar si este pago corresponde a mora. No afecta el saldo pendiente del crédito.')
+                            ->visible(fn () => auth()->user()?->can('registrar_pago_mora') ?? false),
                     ]),
 
                 Forms\Components\Section::make('Comentarios')

@@ -11,17 +11,23 @@ class PagoObserver
 {
     public function created(Pago $pago): void
     {
-        $this->actualizarSaldoPendiente($pago);
+        if (!$pago->EsMora) {
+            $this->actualizarSaldoPendiente($pago);
+        }
     }
 
     public function updated(Pago $pago): void
     {
-        $this->actualizarSaldoPendiente($pago);
+        if (!$pago->EsMora) {
+            $this->actualizarSaldoPendiente($pago);
+        }
     }
 
     public function deleted(Pago $pago): void
     {
-        $this->actualizarSaldoPendiente($pago);
+        if (!$pago->EsMora) {
+            $this->actualizarSaldoPendiente($pago);
+        }
 
         if ($pago->SedeID && $pago->MontoPagado > 0) {
             try {
