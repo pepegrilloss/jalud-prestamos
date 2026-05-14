@@ -419,7 +419,9 @@ class CreatePago extends CreateRecord
         $data['TipoPago'] = $tipoPago;
 
         // Mantener para compatibilidad con datos históricos (ya no se usan en el formulario)
-        $data['EsMora'] = false;
+        if (!auth()->user()?->can('registrar_pago_mora')) {
+            $data['EsMora'] = false;
+        }
         $data['EsPagoAMayor'] = false;
 
         // Usar el valor que el usuario seleccionó en los botones
@@ -467,23 +469,25 @@ class CreatePago extends CreateRecord
                     'CreditoID' => $pagoOriginal->CreditoID,
                     'CuotaID' => $pagoOriginal->CuotaID,
                     'MontoPagado' => $pagoOriginal->MontoPagado,
+                    'EsMora' => $pagoOriginal->EsMora,
                     'UsuarioID' => auth()->id(),
                     'IP' => request()->ip(),
                     'FechaPago' => $fechaPago
                 ]);
 
-                $credito = \App\Models\Credito::with('proposicion.cliente')->lockForUpdate()->find($pagoOriginal->CreditoID);
+                // Si es pago de mora, solo registrar en caja, no afecta cuota ni saldo
+                if (!$pagoOriginal->EsMora) {
+                    $credito = \App\Models\Credito::with('proposicion.cliente')->lockForUpdate()->find($pagoOriginal->CreditoID);
 
-                if (!$credito) {
-                    throw new \Exception('Crédito no encontrado: ' . $pagoOriginal->CreditoID);
-                }
+                    if (!$credito) {
+                        throw new \Exception('Crédito no encontrado: ' . $pagoOriginal->CreditoID);
+                    }
 
-                // Obtener solo la cuota seleccionada con lock
-                $cuota = \App\Models\Cuota::lockForUpdate()->find($pagoOriginal->CuotaID);
+                    $cuota = \App\Models\Cuota::lockForUpdate()->find($pagoOriginal->CuotaID);
 
-                if (!$cuota) {
-                    throw new \Exception('Cuota no encontrada: ' . $pagoOriginal->CuotaID);
-                }
+                    if (!$cuota) {
+                        throw new \Exception('Cuota no encontrada: ' . $pagoOriginal->CuotaID);
+                    }
 
                 \Log::info('SEGURIDAD - CreatePago::afterCreate - Procesando cuota', [
                     'CuotaID' => $cuota->CuotaID,
@@ -660,5 +664,6 @@ class CreatePago extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
-    }
-}
+                    }
+                }
+                } // fin if (!$pagoOriginal->EsMora)

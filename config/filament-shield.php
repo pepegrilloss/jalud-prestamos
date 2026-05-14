@@ -59,6 +59,7 @@ return [
         'balance_diario',
         'view_any_reporte::clientes::atraso',
         'view_any_reporte::clientes::inactivos',
+        'registrar_pago_mora',
     ],
 
     'generator' => [
