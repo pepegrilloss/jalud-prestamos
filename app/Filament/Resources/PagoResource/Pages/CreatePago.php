@@ -78,43 +78,82 @@ class CreatePago extends CreateRecord
         }
 
         if ($esCreditoSaldado) {
-            $actions = [];
             $user = auth()->user();
+            $opciones = [];
 
             if ($user?->can('registrar_pagos_a_mayor')) {
-                $actions[] = Actions\Action::make('registrar_a_mayor')
-                    ->label('PAGO A MAYOR')
-                    ->icon('heroicon-o-plus-circle')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalHeading('⚠️ Confirmar Pago A Mayor')
-                    ->modalDescription('¿Estás seguro de registrar este pago como A MAYOR? (El dinero no irá a la caja abierta)')
-                    ->modalSubmitActionLabel('✓ Confirmar')
-                    ->modalCancelActionLabel('✗ Cancelar')
-                    ->action(function () {
-                        $this->tipoPagoAMayorSeleccionado = 'MAYOR';
-                        $this->create();
-                    });
+                $opciones['MAYOR'] = 'Pago a Mayor (Excedente)';
             }
-
             if ($user?->can('registrar_pagos_a_mayor_por_mora')) {
-                $actions[] = Actions\Action::make('registrar_a_mayor_por_mora')
-                    ->label('PAGO A MAYOR POR MORA')
-                    ->icon('heroicon-o-exclamation-triangle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('⚠️ Confirmar Pago A Mayor Por Mora')
-                    ->modalDescription('¿Estás seguro de registrar este pago como A MAYOR POR MORA? (El dinero no irá a la caja abierta)')
-                    ->modalSubmitActionLabel('✓ Confirmar')
-                    ->modalCancelActionLabel('✗ Cancelar')
-                    ->action(function () {
-                        $this->tipoPagoAMayorSeleccionado = 'MAYOR_MORA';
-                        $this->create();
-                    });
+                $opciones['MAYOR_MORA'] = 'Pago a Mayor por Mora';
             }
 
-            $actions[] = $this->getCancelFormAction();
-            return $actions;
+            return [
+                Actions\Action::make('confirmar_pago_saldado')
+                    ->label('Crear Pago')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('⚠️ Confirmar Registro de Pago')
+                    ->modalDescription(function () {
+                        try {
+                            $data = $this->form->getRawState();
+                            $creditoID = $data['CreditoID'] ?? null;
+                            $montoPagado = $data['MontoPagado'] ?? null;
+
+                            if (!$creditoID || !$montoPagado) {
+                                return 'Por favor complete todos los campos requeridos (Cliente y Monto).';
+                            }
+
+                            $credito = \App\Models\Credito::with(['proposicion.cliente', 'proposicion.tipoCredito'])->find($creditoID);
+
+                            if (!$credito || !$credito->proposicion || !$credito->proposicion->cliente) {
+                                return 'No se pudo cargar la información del crédito o cliente.';
+                            }
+
+                            $cliente = $credito->proposicion->cliente;
+                            $tipoCredito = e($credito->proposicion->tipoCredito?->Descripcion ?? 'N/A');
+                            $monto = number_format($montoPagado, 2);
+                            $nombre = e($cliente->NombresApellidos ?? '');
+
+                            $metodoPagoBruto = $data['TipoPago'] ?? 'EFECTIVO';
+                            $metodoPagoDisplay = match ($metodoPagoBruto) {
+                                'EFECTIVO' => 'Efectivo',
+                                'YAPE_PLIN' => 'Yape / Plin',
+                                'TRANSFERENCIA_BANCARIA' => 'Transferencia Bancaria',
+                                default => $metodoPagoBruto
+                            };
+
+                            return new \Illuminate\Support\HtmlString(
+                                view('filament.components.pago-modal-confirmacion', [
+                                    'nombre' => $nombre,
+                                    'tipoCredito' => $tipoCredito,
+                                    'monto' => $monto,
+                                    'metodoPago' => $metodoPagoDisplay
+                                ])->render()
+                            );
+
+                        } catch (\Exception $e) {
+                            return 'Error al cargar los datos.';
+                        }
+                    })
+                    ->form([
+                        \Filament\Forms\Components\Radio::make('tipo_pago_mayor')
+                            ->label('Clasificación de Ingreso (Crédito Saldado)')
+                            ->options($opciones)
+                            ->required()
+                            ->helperText('Este crédito ya se encuentra saldado. El dinero NO ingresará a la caja abierta diaria.')
+                    ])
+                    ->modalSubmitActionLabel('✓ Confirmar')
+                    ->modalCancelActionLabel('✗ Cancelar')
+                    ->action(function (array $data) {
+                        $this->tipoPagoAMayorSeleccionado = $data['tipo_pago_mayor'];
+                        $this->pagoInicialSeleccionado = false;
+                        $this->create();
+                    }),
+
+                $this->getCancelFormAction(),
+            ];
         }
 
         if ($esPagoInicial) {
