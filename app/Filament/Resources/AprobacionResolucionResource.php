@@ -20,8 +20,8 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
 
     protected static ?string $navigationIcon = 'heroicon-o-check-badge';
     protected static ?string $navigationGroup = 'Gestión de Pagos';
-    protected static ?string $modelLabel = 'Aprobación';
-    protected static ?string $pluralModelLabel = 'Aprobación de Extornos y Devoluciones';
+    protected static ?string $modelLabel = 'Aprobación Extorno/Devolución';
+    protected static ?string $pluralModelLabel = 'Aprobación Extorno/Devolución';
     protected static ?int $navigationSort = 11;
     protected static ?string $slug = 'aprobacion-extornos-devoluciones';
 
