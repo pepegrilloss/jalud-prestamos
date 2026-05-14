@@ -89,10 +89,10 @@ class CreatePago extends CreateRecord
             }
 
             return [
-                Actions\Action::make('confirmar_pago_saldado')
+                Actions\Action::make('confirmar_pago')
                     ->label('Crear Pago')
                     ->icon('heroicon-o-check-circle')
-                    ->color('primary')
+                    ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('⚠️ Confirmar Registro de Pago')
                     ->modalDescription(function () {
