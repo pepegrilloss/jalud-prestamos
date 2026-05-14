@@ -36,7 +36,7 @@
 
             foreach ($pagosDelDia as $p) {
                 $esTrasladado = $p->EstadoTraslado === 'TRASLADADO';
-                $montoReal = $esTrasladado ? 0 : $p->MontoPagado;
+                $montoReal = ($esTrasladado || $p->EsMora) ? 0 : $p->MontoPagado;
                 $montoTotalDia += $montoReal;
                 $montoVisualSum += $p->MontoPagado;
 
