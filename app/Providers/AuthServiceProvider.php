@@ -17,8 +17,8 @@ class AuthServiceProvider extends ServiceProvider
     {
         // Regla Global: Modo Solo Lectura para "Todas las Sedes"
         Gate::before(function ($user, $ability) {
-            // Si es SuperAdmin pero está en "Todas las Sedes" (session sede_activa es null)
-            if ($user->esAdmin() && !session('sede_activa')) {
+            // Si es SuperAdmin o tiene permiso para ver todas las sedes, pero está en "Todas las Sedes" (session sede_activa es null)
+            if (($user->esAdmin() || $user->can('ver_todas_las_sedes')) && !session('sede_activa')) {
                 
                 // Prefijos de habilidades que modifican el sistema
                 $blockedPrefixes = ['create_', 'update_', 'delete_', 'restore_', 'forceDelete_'];

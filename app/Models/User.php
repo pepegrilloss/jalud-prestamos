@@ -126,7 +126,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function can($abilities, $arguments = [])
     {
-        if ($this->esAdmin() && !session('sede_activa')) {
+        if (($this->esAdmin() || $this->can('ver_todas_las_sedes')) && !session('sede_activa')) {
             $blockedPrefixes = ['create_', 'update_', 'delete_', 'restore_', 'forceDelete_'];
 
             $abilitiesList = is_array($abilities) ? $abilities : [$abilities];

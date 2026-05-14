@@ -64,7 +64,7 @@ class GerenciaPanelProvider extends PanelProvider
                                 @endphp
                                 {{ $sedeNombre }}
                             </span>
-                            @if(auth()->user()->esAdmin() || auth()->user()->can("page_SelectSede"))
+                            @if(auth()->user()->esAdmin() || auth()->user()->can("page_SelectSede") || auth()->user()->can("ver_todas_las_sedes"))
                                 <a href="{{ route("filament.admin.pages.select-sede") }}" 
                                    class="ml-2 p-1 text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all" 
                                    title="Cambiar Sede">

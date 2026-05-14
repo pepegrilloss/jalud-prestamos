@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Ocultar globalmente TODAS las acciones de Filament (botones, acciones en tabla) si está en "Todas las sedes"
         $hideNonViewActions = function ($action) {
-            if (auth()->check() && auth()->user()->esAdmin() && empty(session('sede_activa'))) {
+            if (auth()->check() && (auth()->user()->esAdmin() || auth()->user()->can('ver_todas_las_sedes')) && empty(session('sede_activa'))) {
                 if (!in_array($action->getName(), ['view', 'ver'])) {
                     $action->hidden(true);
                 }
