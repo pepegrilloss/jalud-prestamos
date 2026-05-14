@@ -571,6 +571,7 @@ class CreatePago extends CreateRecord
                         }
                     }
                 }
+                } // fin if (!$pagoOriginal->EsMora)
 
                 if ($pagoOriginal->SedeID && $pagoOriginal->MontoPagado > 0) {
                     app(FondoSedeService::class)->registrarIngresoRecaudo(
@@ -664,6 +665,5 @@ class CreatePago extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
-                    }
-                }
-                } // fin if (!$pagoOriginal->EsMora)
+    }
+}

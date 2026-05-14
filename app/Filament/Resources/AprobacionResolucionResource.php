@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AprobacionResolucionResource\Pages;
-use App\Models\SolicitudResolucionExcedente;
+use App\Models\AprobacionResolucion;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -16,18 +16,18 @@ use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 
 class AprobacionResolucionResource extends Resource implements HasShieldPermissions
 {
-    protected static ?string $model = SolicitudResolucionExcedente::class;
+    protected static ?string $model = AprobacionResolucion::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-check-badge';
     protected static ?string $navigationGroup = 'Gestión de Pagos';
-    protected static ?string $modelLabel = 'Aprobación';
-    protected static ?string $pluralModelLabel = 'Aprobación de Extornos y Devoluciones';
+    protected static ?string $modelLabel = 'Aprobación Extorno/Devolución';
+    protected static ?string $pluralModelLabel = 'Aprobación Extorno/Devolución';
     protected static ?int $navigationSort = 11;
     protected static ?string $slug = 'aprobacion-extornos-devoluciones';
 
     public static function getNavigationBadge(): ?string
     {
-        $count = static::getModel()::where('Estado', 'PENDIENTE')->count();
+        $count = AprobacionResolucion::where('Estado', 'PENDIENTE')->count();
         return $count > 0 ? (string) $count : null;
     }
 

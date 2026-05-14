@@ -6,6 +6,5 @@ $kernel->bootstrap();
 
 use Spatie\Permission\Models\Permission;
 
-$permissions = Permission::pluck('name')->toArray();
-echo "TODOS LOS PERMISOS EN DB:\n";
-print_r($permissions);
+$permissions = Permission::where('name', 'like', '%sede%')->pluck('name')->toArray();
+echo "Permissions found: " . implode(', ', $permissions) . "\n";
