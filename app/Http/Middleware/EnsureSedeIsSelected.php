@@ -54,14 +54,14 @@ class EnsureSedeIsSelected
 
         // --- Lógica de auto-selección ---
 
-        // Si el usuario NO es admin y NO tiene permiso para ver todas las sedes, y tiene una sede fija asignada, la seteamos automáticamente
-        if (!$user->esAdmin() && !$user->puedeVerTodasLasSedes() && $user->SedeID) {
+        // Si el usuario NO es admin y NO tiene permiso para ver todas las sedes o seleccionar operativas, y tiene una sede fija asignada, la seteamos automáticamente
+        if (!$user->esAdmin() && !$user->puedeVerTodasLasSedes() && !$user->puedeSeleccionarSedesOperativas() && $user->SedeID) {
             session(['sede_activa' => $user->SedeID]);
             return $next($request);
         }
 
-        // Si es admin o tiene permiso para ver todas las sedes, lo obligamos a pasar por la pantalla de selección
-        if ($user->esAdmin() || $user->puedeVerTodasLasSedes()) {
+        // Si es admin o tiene permisos de selección, lo obligamos a pasar por la pantalla de selección
+        if ($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) {
             return redirect('/admin/select-sede');
         }
 

@@ -157,6 +157,14 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Permiso para seleccionar sedes operativas (sin acceso a Gerencia ni Todas las Sedes)
+     */
+    public function puedeSeleccionarSedesOperativas(): bool
+    {
+        return $this->hasAnyPermission(['Seleccionar Sedes Operativas', 'seleccionar_sedes_operativas']);
+    }
+
+    /**
      * Verifica si el usuario es super administrador (acceso a todas las sedes)
      */
     public function esAdmin(): bool

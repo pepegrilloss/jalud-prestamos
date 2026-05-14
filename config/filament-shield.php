@@ -54,6 +54,7 @@ return [
 
     'custom_permissions' => [
         'ver_todas_las_sedes',
+        'seleccionar_sedes_operativas',
         'abrir_dia_apertura',
         'cerrar_dia_apertura',
         'balance_diario',

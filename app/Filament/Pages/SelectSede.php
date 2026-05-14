@@ -22,10 +22,15 @@ class SelectSede extends Page
     {
         $user = auth()->user();
 
-        if ($user->esAdmin() || $user->puedeVerTodasLasSedes()) {
-            return Sede::where('Activo', true)
-                ->orderBy('Nombre')
-                ->get();
+        if ($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) {
+            $query = Sede::where('Activo', true);
+
+            // Si SOLO tiene permiso para sedes operativas, ocultar Gerencia
+            if (!$user->esAdmin() && !$user->puedeVerTodasLasSedes() && $user->puedeSeleccionarSedesOperativas()) {
+                $query->where('Nombre', 'NOT LIKE', '%gerencia%');
+            }
+
+            return $query->orderBy('Nombre')->get();
         }
 
         // Si no es admin pero tiene una sede asignada (por si acaso el middleware no la auto-seteo)

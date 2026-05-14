@@ -8,7 +8,7 @@
         <div class="selection-grid">
             @php $user = auth()->user(); @endphp
 
-            {{-- Opción "Todas las Sedes" solo para administradores o con permiso especial --}}
+            {{-- Opción "Todas las Sedes" solo para administradores o con permiso completo --}}
             @if($user->esAdmin() || $user->puedeVerTodasLasSedes())
                 <div wire:click="seleccionarSede(0)" class="sede-card group">
                     <div class="icon-circle">
