@@ -383,9 +383,6 @@ class CreatePago extends CreateRecord
                 } else {
                     throw new \Exception('No se encontró un crédito válido para este cliente.');
                 }
-            } else {
-                throw new \Exception('El cliente es obligatorio.');
-            }
         }
 
         // Validar que el monto sea obligatorio y positivo
