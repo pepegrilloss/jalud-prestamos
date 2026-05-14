@@ -250,8 +250,8 @@ class PagoResource extends Resource
                                 if (!$user?->can('registrar_pagos_a_mayor') && !$user?->can('registrar_pagos_a_mayor_por_mora')) {
                                     $creditos->where('EstatusCreditoFinal', '!=', 'SALDADO');
                                 }
-                                    ->get()
-                                    ->filter(function ($credito) {
+                                
+                                $creditos = $creditos->get()->filter(function ($credito) {
                                     $user = auth()->user();
                                     $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
                                     $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
