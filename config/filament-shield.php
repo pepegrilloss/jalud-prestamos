@@ -55,6 +55,8 @@ return [
     'custom_permissions' => [
         'ver_todas_las_sedes',
         'seleccionar_sedes_operativas',
+        'registrar_pagos_a_mayor',
+        'registrar_pagos_a_mayor_por_mora',
         'abrir_dia_apertura',
         'cerrar_dia_apertura',
         'balance_diario',

@@ -19,6 +19,9 @@ class CreatePago extends CreateRecord
 
     // Guardar el valor de EsPagoInicial que el usuario seleccionó
     public ?bool $pagoInicialSeleccionado = null;
+    
+    // Guardar el tipo de pago a mayor ('MAYOR' o 'MAYOR_MORA')
+    public ?string $tipoPagoAMayorSeleccionado = null;
 
     // Deshabilitar la notificación por defecto de Filament
     protected function getCreatedNotification(): ?\Filament\Notifications\Notification
@@ -62,6 +65,56 @@ class CreatePago extends CreateRecord
             $esPagoInicial = $this->esPagoInicial();
         } catch (\Exception $e) {
             $esPagoInicial = false;
+        }
+
+        // Verificar si es crédito saldado
+        $esCreditoSaldado = false;
+        $creditoObj = null;
+        if (!empty($data['CreditoID'])) {
+            $creditoObj = \App\Models\Credito::find($data['CreditoID']);
+            if ($creditoObj && $creditoObj->EstatusCreditoFinal === 'SALDADO') {
+                $esCreditoSaldado = true;
+            }
+        }
+
+        if ($esCreditoSaldado) {
+            $actions = [];
+            $user = auth()->user();
+
+            if ($user?->can('registrar_pagos_a_mayor')) {
+                $actions[] = Actions\Action::make('registrar_a_mayor')
+                    ->label('PAGO A MAYOR')
+                    ->icon('heroicon-o-plus-circle')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('⚠️ Confirmar Pago A Mayor')
+                    ->modalDescription('¿Estás seguro de registrar este pago como A MAYOR? (El dinero no irá a la caja abierta)')
+                    ->modalSubmitActionLabel('✓ Confirmar')
+                    ->modalCancelActionLabel('✗ Cancelar')
+                    ->action(function () {
+                        $this->tipoPagoAMayorSeleccionado = 'MAYOR';
+                        $this->create();
+                    });
+            }
+
+            if ($user?->can('registrar_pagos_a_mayor_por_mora')) {
+                $actions[] = Actions\Action::make('registrar_a_mayor_por_mora')
+                    ->label('PAGO A MAYOR POR MORA')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('⚠️ Confirmar Pago A Mayor Por Mora')
+                    ->modalDescription('¿Estás seguro de registrar este pago como A MAYOR POR MORA? (El dinero no irá a la caja abierta)')
+                    ->modalSubmitActionLabel('✓ Confirmar')
+                    ->modalCancelActionLabel('✗ Cancelar')
+                    ->action(function () {
+                        $this->tipoPagoAMayorSeleccionado = 'MAYOR_MORA';
+                        $this->create();
+                    });
+            }
+
+            $actions[] = $this->getCancelFormAction();
+            return $actions;
         }
 
         if ($esPagoInicial) {
@@ -256,19 +309,28 @@ class CreatePago extends CreateRecord
         if (!isset($data['CreditoID']) || empty($data['CreditoID'])) {
             $clienteID = $data['ClienteID'] ?? null;
             if ($clienteID) {
-                $creditos = \App\Models\Credito::with('proposicion')->whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
+                $query = \App\Models\Credito::with('proposicion')->whereHas('proposicion', function ($q) use ($clienteID, $zonaID) {
                     $q->where('ClienteID', $clienteID)
                         ->where('FueRefinanciada', 0);
                     if ($zonaID) {
                         $q->where('ZonaID', $zonaID);
                     }
-                })->where('Activo', 1)->where('EstatusCreditoFinal', '!=', 'SALDADO')->get();
+                })->where('Activo', 1);
 
-                // Filtrar solo créditos con saldo > 0
-                $creditosConSaldo = $creditos->filter(function ($credito) {
+                $user = auth()->user();
+                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+
+                if (!$puedePagarMayor) {
+                    $query->where('EstatusCreditoFinal', '!=', 'SALDADO');
+                }
+
+                $creditos = $query->get();
+
+                // Filtrar créditos con saldo > 0 o saldados si tiene permiso
+                $creditosConSaldo = $creditos->filter(function ($credito) use ($puedePagarMayor) {
                     if ($credito->proposicion) {
                         $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
-                        return $saldo > 0;
+                        return $saldo > 0 || ($puedePagarMayor && $credito->EstatusCreditoFinal === 'SALDADO');
                     }
                     return false;
                 });
@@ -276,9 +338,9 @@ class CreatePago extends CreateRecord
                 if ($creditosConSaldo->count() == 1) {
                     $data['CreditoID'] = $creditosConSaldo->first()->CreditoID;
                 } else if ($creditosConSaldo->count() > 1) {
-                    throw new \Exception('El cliente tiene múltiples créditos activos con saldo. Seleccione uno explícitamente.');
+                    throw new \Exception('El cliente tiene múltiples créditos elegibles. Seleccione uno explícitamente.');
                 } else {
-                    throw new \Exception('No se encontró un crédito activo con saldo pendiente para este cliente.');
+                    throw new \Exception('No se encontró un crédito válido para este cliente.');
                 }
             } else {
                 throw new \Exception('El cliente es obligatorio.');
@@ -422,7 +484,22 @@ class CreatePago extends CreateRecord
         if (!auth()->user()?->can('registrar_pago_mora')) {
             $data['EsMora'] = false;
         }
-        $data['EsPagoAMayor'] = false;
+        if ($this->tipoPagoAMayorSeleccionado === 'MAYOR') {
+            if (!auth()->user()?->can('registrar_pagos_a_mayor')) {
+                throw new \Exception('No tienes permiso para registrar pagos a mayor.');
+            }
+            $data['EsPagoAMayor'] = true;
+            $data['EsPagoAMayorPorMora'] = false;
+        } elseif ($this->tipoPagoAMayorSeleccionado === 'MAYOR_MORA') {
+            if (!auth()->user()?->can('registrar_pagos_a_mayor_por_mora')) {
+                throw new \Exception('No tienes permiso para registrar pagos a mayor por mora.');
+            }
+            $data['EsPagoAMayor'] = false;
+            $data['EsPagoAMayorPorMora'] = true;
+        } else {
+            $data['EsPagoAMayor'] = false;
+            $data['EsPagoAMayorPorMora'] = false;
+        }
 
         // Usar el valor que el usuario seleccionó en los botones
         // Si no seleccionó nada explícitamente, hacer detección automática
@@ -576,12 +653,15 @@ class CreatePago extends CreateRecord
                 } // fin if (!$pagoOriginal->EsMora)
 
                 if ($pagoOriginal->SedeID && $pagoOriginal->MontoPagado > 0) {
-                    app(FondoSedeService::class)->registrarIngresoRecaudo(
-                        $pagoOriginal->SedeID,
-                        $pagoOriginal->MontoPagado,
-                        $pagoOriginal->PagoID,
-                        auth()->id()
-                    );
+                    // Si es pago a mayor o pago a mayor por mora, NO va a la caja abierta
+                    if (!$pagoOriginal->EsPagoAMayor && !$pagoOriginal->EsPagoAMayorPorMora) {
+                        app(FondoSedeService::class)->registrarIngresoRecaudo(
+                            $pagoOriginal->SedeID,
+                            $pagoOriginal->MontoPagado,
+                            $pagoOriginal->PagoID,
+                            auth()->id()
+                        );
+                    }
                 }
             }, 2); // Máximo 2 reintentos si hay conflicto de concurrencia
 
