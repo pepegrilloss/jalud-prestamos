@@ -417,6 +417,7 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
 
+                                $user = auth()->user();
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
                                 $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
