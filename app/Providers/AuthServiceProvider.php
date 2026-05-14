@@ -17,6 +17,11 @@ class AuthServiceProvider extends ServiceProvider
     {
         // Regla Global: Modo Solo Lectura para "Todas las Sedes"
         Gate::before(function ($user, $ability) {
+            // Evitar recursión infinita
+            if (in_array($ability, ['Ver Todas Las Sedes', 'ver_todas_las_sedes'])) {
+                return null;
+            }
+
             // Si es SuperAdmin o tiene permiso para ver todas las sedes, pero está en "Todas las Sedes" (session sede_activa es null)
             if (($user->esAdmin() || $user->puedeVerTodasLasSedes()) && !session('sede_activa')) {
                 

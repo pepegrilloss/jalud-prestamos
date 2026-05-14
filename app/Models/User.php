@@ -126,10 +126,12 @@ class User extends Authenticatable implements FilamentUser
      */
     public function can($abilities, $arguments = [])
     {
-        if (($this->esAdmin() || $this->puedeVerTodasLasSedes()) && !session('sede_activa')) {
-            $blockedPrefixes = ['create_', 'update_', 'delete_', 'restore_', 'forceDelete_'];
+        // Evitar recursión infinita: si estamos validando los propios permisos de sede, saltar el bloqueo
+        $abilitiesList = is_array($abilities) ? $abilities : [$abilities];
+        $isCheckingSedePermission = in_array('Ver Todas Las Sedes', $abilitiesList) || in_array('ver_todas_las_sedes', $abilitiesList);
 
-            $abilitiesList = is_array($abilities) ? $abilities : [$abilities];
+        if (!$isCheckingSedePermission && ($this->esAdmin() || $this->puedeVerTodasLasSedes()) && !session('sede_activa')) {
+            $blockedPrefixes = ['create_', 'update_', 'delete_', 'restore_', 'forceDelete_'];
 
             foreach ($abilitiesList as $ability) {
                 if (is_string($ability)) {
@@ -151,7 +153,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function puedeVerTodasLasSedes(): bool
     {
-        return $this->can('Ver Todas Las Sedes') || $this->can('ver_todas_las_sedes');
+        return $this->hasAnyPermission(['Ver Todas Las Sedes', 'ver_todas_las_sedes']);
     }
 
     /**
