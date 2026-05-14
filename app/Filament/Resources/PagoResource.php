@@ -103,11 +103,16 @@ class PagoResource extends Resource
                                     $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
                                     if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0);
+                                        $q->where('FueRefinanciada', 0)
+                                          ->where('Activo', true);
+                                    } else {
+                                        $q->where(function($sub) {
+                                            $sub->where('Activo', true)
+                                                ->orWhere('FueRefinanciada', 1);
+                                        });
                                     }
 
-                                    $q->where('Activo', true)
-                                        ->whereHas('credito', function ($sq) use ($user, $puedePagarMayor) {
+                                    $q->whereHas('credito', function ($sq) use ($user, $puedePagarMayor) {
                                             $sq->where('Activo', 1);
                                             if (!$puedePagarMayor) {
                                                 $sq->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
@@ -161,7 +166,13 @@ class PagoResource extends Resource
                                             $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
                                             if (!$puedePagarMayor) {
-                                                $q->where('FueRefinanciada', 0);
+                                                $q->where('FueRefinanciada', 0)
+                                                  ->where('Activo', true);
+                                            } else {
+                                                $q->where(function($sub) {
+                                                    $sub->where('Activo', true)
+                                                        ->orWhere('FueRefinanciada', 1);
+                                                });
                                             }
 
                                             $q->whereHas('credito', function ($sq) use ($user, $puedePagarMayor) {
@@ -170,7 +181,6 @@ class PagoResource extends Resource
                                                     $sq->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
                                                 }
                                             })
-                                                ->where('Activo', true)
                                                 ->with('tipoCredito');
 
                                             if ($zonaID) {
@@ -249,11 +259,16 @@ class PagoResource extends Resource
                                 // Obtener créditos y filtrar solo los que tienen saldo > 0
                                 $creditos = \App\Models\Credito::with('proposicion.tipoCredito')
                                     ->whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
-                                    $q->where('ClienteID', $clienteID)
-                                        ->where('Activo', true);
+                                    $q->where('ClienteID', $clienteID);
                                     
                                     if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0);
+                                        $q->where('FueRefinanciada', 0)
+                                          ->where('Activo', true);
+                                    } else {
+                                        $q->where(function($sub) {
+                                            $sub->where('Activo', true)
+                                                ->orWhere('FueRefinanciada', 1);
+                                        });
                                     }
 
                                     if ($zonaID) {
@@ -297,11 +312,16 @@ class PagoResource extends Resource
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
                                 $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
-                                    $q->where('ClienteID', $clienteID)
-                                        ->where('Activo', true);
+                                    $q->where('ClienteID', $clienteID);
                                     
                                     if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0);
+                                        $q->where('FueRefinanciada', 0)
+                                          ->where('Activo', true);
+                                    } else {
+                                        $q->where(function($sub) {
+                                            $sub->where('Activo', true)
+                                                ->orWhere('FueRefinanciada', 1);
+                                        });
                                     }
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);
@@ -339,11 +359,16 @@ class PagoResource extends Resource
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
                                 $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
-                                    $q->where('ClienteID', $clienteID)
-                                        ->where('Activo', true);
+                                    $q->where('ClienteID', $clienteID);
                                     
                                     if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0);
+                                        $q->where('FueRefinanciada', 0)
+                                          ->where('Activo', true);
+                                    } else {
+                                        $q->where(function($sub) {
+                                            $sub->where('Activo', true)
+                                                ->orWhere('FueRefinanciada', 1);
+                                        });
                                     }
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);

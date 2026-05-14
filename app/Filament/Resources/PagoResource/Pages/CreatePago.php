@@ -353,7 +353,13 @@ class CreatePago extends CreateRecord
                     $q->where('ClienteID', $clienteID);
                     
                     if (!$puedePagarMayor) {
-                        $q->where('FueRefinanciada', 0);
+                        $q->where('FueRefinanciada', 0)
+                          ->where('Activo', true);
+                    } else {
+                        $q->where(function($sub) {
+                            $sub->where('Activo', true)
+                                ->orWhere('FueRefinanciada', 1);
+                        });
                     }
 
                     if ($zonaID) {
