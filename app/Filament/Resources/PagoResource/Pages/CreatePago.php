@@ -557,6 +557,7 @@ class CreatePago extends CreateRecord
                             'UsuarioID' => auth()->id()
                         ]);
 
+                        /* 
                         try {
                             $cliente = $credito->proposicion->cliente;
                             $nombre = $cliente?->NombresApellidos ?? 'N/A';
@@ -569,6 +570,7 @@ class CreatePago extends CreateRecord
                             );
                         } catch (\Exception $e) {
                         }
+                        */
                     }
                 }
                 } // fin if (!$pagoOriginal->EsMora)
@@ -592,6 +594,7 @@ class CreatePago extends CreateRecord
                 ->send();
 
             // Enviar notificación a la campanita de los admins
+            /* 
             try {
                 $credito = $this->record->credito;
                 $cliente = $credito?->proposicion?->cliente;
@@ -612,6 +615,7 @@ class CreatePago extends CreateRecord
                     'error' => $e->getMessage()
                 ]);
             }
+            */
 
         } catch (\Exception $e) {
             // CRÍTICO: Log sin información sensible pero con contexto
