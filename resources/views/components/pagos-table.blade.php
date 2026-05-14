@@ -34,6 +34,9 @@
             $observaciones = [];
             $montoVisualSum = 0;
 
+            $esPagoAMayor = false;
+            $esPagoAMayorPorMora = false;
+
             foreach ($pagosDelDia as $p) {
                 $esTrasladado = $p->EstadoTraslado === 'TRASLADADO';
                 $montoReal = ($esTrasladado || $p->EsMora) ? 0 : $p->MontoPagado;
@@ -42,6 +45,8 @@
 
                 if (!$esTrasladado) $esTrasladadoTotal = false;
                 if ($p->EsMora) $esMora = true;
+                if ($p->EsPagoAMayor) $esPagoAMayor = true;
+                if ($p->EsPagoAMayorPorMora) $esPagoAMayorPorMora = true;
                 
                 $tiposPago[] = $p->TipoPago ?? 'Efectivo';
                 if ($p->UsuarioRegistro) $usuarios[] = $p->UsuarioRegistro;
@@ -56,7 +61,13 @@
                 }
 
                 if (count($pagosDelDia) > 1) {
-                    $prefix = $p->EsPagoAMayor ? "Extorno" : "Pago Normal";
+                    if ($p->EsPagoAMayorPorMora) {
+                        $prefix = "Pago A Mayor Por Mora";
+                    } elseif ($p->EsPagoAMayor) {
+                        $prefix = "Pago A Mayor";
+                    } else {
+                        $prefix = "Pago Normal";
+                    }
                     $observaciones[] = "• {$prefix} (S/ " . number_format($p->MontoPagado, 2) . "):\n  " . str_replace("\n", "\n  ", $obs);
                 } else {
                     $observaciones[] = $obs;
@@ -69,6 +80,8 @@
             $pagoMock->FechaPago = $fechaRepresentativa;
             $pagoMock->TipoPago = collect($tiposPago)->unique()->implode(' / ');
             $pagoMock->EsMora = $esMora;
+            $pagoMock->EsPagoAMayor = $esPagoAMayor;
+            $pagoMock->EsPagoAMayorPorMora = $esPagoAMayorPorMora;
             $pagoMock->UsuarioRegistro = collect($usuarios)->unique()->implode(', ');
             $pagoMock->Comentario = implode("\n\n", $observaciones);
             $pagoMock->solicitudResolucion = null;
@@ -164,6 +177,12 @@
                                         }
                                     }
                                 @endphp
+                                @if($pago->EsPagoAMayor)
+                                    <span class="bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400 px-1.5 py-0.5 rounded border border-warning-200 dark:border-warning-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">PAGO A MAYOR</span>
+                                @endif
+                                @if($pago->EsPagoAMayorPorMora)
+                                    <span class="bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400 px-1.5 py-0.5 rounded border border-danger-200 dark:border-danger-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">A MAYOR POR MORA</span>
+                                @endif
                                 {!! nl2br(e($obs)) !!}
                             </td>
                         </tr>
