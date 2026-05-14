@@ -148,7 +148,9 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)') .
-                    (!auth()->user()?->esAdmin() ? '<style>.fi-icon-btn[aria-label="Notifications"]{display:none!important}</style>' : '')
+                    (!auth()->user()?->esAdmin()
+                        ? '<script>setTimeout(function(){var e=document.querySelector("[aria-label=\"Notifications\"]");e&&e.parentElement&&(e.parentElement.style.display="none")},500);</script>'
+                        : '')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
