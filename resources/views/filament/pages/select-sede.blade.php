@@ -9,7 +9,7 @@
             @php $user = auth()->user(); @endphp
 
             {{-- Opción "Todas las Sedes" solo para administradores o con permiso especial --}}
-            @if($user->esAdmin() || $user->can('ver_todas_las_sedes'))
+            @if($user->esAdmin() || $user->puedeVerTodasLasSedes())
                 <div wire:click="seleccionarSede(0)" class="sede-card group">
                     <div class="icon-circle">
                         <x-heroicon-o-globe-americas class="sede-icon" />

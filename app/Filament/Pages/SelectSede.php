@@ -22,7 +22,7 @@ class SelectSede extends Page
     {
         $user = auth()->user();
 
-        if ($user->esAdmin() || $user->can('ver_todas_las_sedes')) {
+        if ($user->esAdmin() || $user->puedeVerTodasLasSedes()) {
             return Sede::where('Activo', true)
                 ->orderBy('Nombre')
                 ->get();
