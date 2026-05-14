@@ -362,7 +362,7 @@ class CreatePago extends CreateRecord
                 })->where('Activo', 1);
 
                 if (!$puedePagarMayor) {
-                    $query->where('EstatusCreditoFinal', '!=', 'SALDADO');
+                    $query->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
                 }
 
                 $creditos = $query->get();
@@ -371,7 +371,7 @@ class CreatePago extends CreateRecord
                 $creditosConSaldo = $creditos->filter(function ($credito) use ($puedePagarMayor) {
                     if ($credito->proposicion) {
                         $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
-                        return $saldo > 0 || ($puedePagarMayor && $credito->EstatusCreditoFinal === 'SALDADO');
+                        return $saldo > 0 || ($puedePagarMayor && in_array($credito->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']));
                     }
                     return false;
                 });
