@@ -14,17 +14,25 @@
         $tempPagos = [];
         $saldoAcumulado = $montoTotalPagar;
 
-        // Agrupar por fecha exacta
+        // Agrupar por fecha exacta, pero separar pagos a mayor / a mayor por mora
         $pagosAgrupados = [];
         foreach ($pagosBase as $pago) {
             $fechaStr = $pago->FechaPago ? $pago->FechaPago->format('Y-m-d') : '0000-00-00';
-            if (!isset($pagosAgrupados[$fechaStr])) {
-                $pagosAgrupados[$fechaStr] = [];
+            
+            // Los pagos a mayor y a mayor por mora van como filas independientes
+            if ($pago->EsPagoAMayor || $pago->EsPagoAMayorPorMora) {
+                $key = $fechaStr . '_amayor_' . $pago->PagoID;
+                $pagosAgrupados[$key] = [$pago];
+            } else {
+                $key = $fechaStr . '_normal';
+                if (!isset($pagosAgrupados[$key])) {
+                    $pagosAgrupados[$key] = [];
+                }
+                $pagosAgrupados[$key][] = $pago;
             }
-            $pagosAgrupados[$fechaStr][] = $pago;
         }
 
-        foreach ($pagosAgrupados as $fecha => $pagosDelDia) {
+        foreach ($pagosAgrupados as $grupoKey => $pagosDelDia) {
             $montoTotalDia = 0;
             $esTrasladadoTotal = true;
             $esMora = false;
@@ -39,7 +47,7 @@
 
             foreach ($pagosDelDia as $p) {
                 $esTrasladado = $p->EstadoTraslado === 'TRASLADADO';
-                $montoReal = ($esTrasladado || $p->EsMora) ? 0 : $p->MontoPagado;
+                $montoReal = ($esTrasladado || $p->EsMora || $p->EsPagoAMayor || $p->EsPagoAMayorPorMora) ? 0 : $p->MontoPagado;
                 $montoTotalDia += $montoReal;
                 $montoVisualSum += $p->MontoPagado;
 
