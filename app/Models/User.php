@@ -173,13 +173,21 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Verifica si el usuario tiene algún permiso de multi-sede.
+     */
+    public function isPrivileged(): bool
+    {
+        return $this->esAdmin() || $this->puedeVerTodasLasSedes() || $this->puedeSeleccionarSedesOperativas();
+    }
+
+    /**
      * Devuelve el SedeID efectivo según el contexto del usuario.
      * Para usuarios privilegiados (admin, ver todas las sedes, seleccionar sedes operativas),
      * usa la sede activa en sesión. Para usuarios normales, usa su sede asignada.
      */
     public function getEffectiveSedeId(): ?int
     {
-        if ($this->esAdmin() || $this->puedeVerTodasLasSedes() || $this->puedeSeleccionarSedesOperativas()) {
+        if ($this->isPrivileged()) {
             return session('sede_activa') ?: $this->SedeID;
         }
         return $this->SedeID;

@@ -25,7 +25,7 @@ class GenerarCreditosTotalWidget extends BaseWidget
 
         // Aplicar filtro de sede si no es admin
         $user = auth()->user();
-        if ($user && !$user->esAdmin() && $user->SedeID) {
+        if ($user && !$user->isPrivileged() && $user->SedeID) {
             $query->where('SedeID', $user->SedeID);
         }
 

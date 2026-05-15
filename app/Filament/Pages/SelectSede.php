@@ -48,6 +48,19 @@ class SelectSede extends Page
             $sedeId = null;
         }
 
+        // Validar que el usuario tenga permiso para esta sede
+        if ($sedeId !== null) {
+            $user = auth()->user();
+            if (!($user->esAdmin() || $user->puedeVerTodasLasSedes())) {
+                $sede = Sede::find($sedeId);
+                if ($sede && str_contains(strtolower($sede->Nombre), 'gerencia')) {
+                    session(['sede_activa' => $user->SedeID]);
+                    $this->redirect('/admin');
+                    return;
+                }
+            }
+        }
+
         session(['sede_activa' => $sedeId]);
         
         // Verificar si la sede seleccionada es "Gerencia General"

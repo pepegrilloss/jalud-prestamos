@@ -37,10 +37,7 @@ class EditGasto extends EditRecord
 
         if ($delta == 0) return;
 
-        $sedeId = $record->SedeID ?? auth()->user()->SedeID;
-        if (auth()->user()->esAdmin() && session('sede_activa')) {
-            $sedeId = session('sede_activa');
-        }
+        $sedeId = auth()->user()->getEffectiveSedeId();
         if (!$sedeId) return;
 
         $service = app(FondoSedeService::class);
@@ -59,10 +56,7 @@ class EditGasto extends EditRecord
                     $record->update(['Activo' => false]);
 
                     if ($record->MetodoGasto === 'CAJA CHICA' && (float) $record->Total > 0) {
-                        $sedeId = $record->SedeID ?? auth()->user()->SedeID;
-                        if (auth()->user()->esAdmin() && session('sede_activa')) {
-                            $sedeId = session('sede_activa');
-                        }
+                        $sedeId = auth()->user()->getEffectiveSedeId();
                         if ($sedeId) {
                             app(FondoSedeService::class)->inyectarCapitalCajaChica(
                                 $sedeId,

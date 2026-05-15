@@ -16,11 +16,7 @@ class SolicitudesPendientesSedeWidget extends BaseWidget
     public function table(Table $table): Table
     {
         $user = auth()->user();
-        $sedeId = $user->SedeID;
-
-        if ($user->esAdmin() && session('sede_activa')) {
-            $sedeId = session('sede_activa');
-        }
+        $sedeId = $user->getEffectiveSedeId();
 
         if (!$sedeId) {
             return $table->query(TransferenciaSede::query()->whereRaw('1=0'));

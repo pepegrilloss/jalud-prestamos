@@ -59,7 +59,7 @@ class FondoSedeResource extends Resource
         }
 
         // Si NO es admin, forzar que solo vea su propia sede.
-        if (!$user->esAdmin()) {
+        if (!$user->isPrivileged()) {
             if ($user->SedeID) {
                 $query->where('SedeID', $user->SedeID);
             } else {

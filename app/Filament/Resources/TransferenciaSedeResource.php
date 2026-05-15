@@ -62,17 +62,13 @@ class TransferenciaSedeResource extends Resource
                 Forms\Components\Select::make('SedeDestinoID')
                     ->label('Sede Destino')
                     ->options(function () {
-                        $userSedeId = auth()->user()->SedeID;
+                        $userSedeId = auth()->user()->getEffectiveSedeId();
                         
                         // Si estamos en el panel de gerencia, el origen es la sede de Gerencia
                         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
                             $sedeGerencia = Sede::where('Nombre', 'like', '%Gerencia%')->first();
                             if ($sedeGerencia) {
                                 $userSedeId = $sedeGerencia->SedeID;
-                            }
-                        } else {
-                            if (auth()->user()->esAdmin() && session('sede_activa')) {
-                                $userSedeId = session('sede_activa');
                             }
                         }
 
@@ -118,10 +114,7 @@ class TransferenciaSedeResource extends Resource
                 if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
                     return $query;
                 }
-                $sedeId = auth()->user()->SedeID;
-                if (auth()->user()->esAdmin() && session('sede_activa')) {
-                    $sedeId = session('sede_activa');
-                }
+                $sedeId = auth()->user()->getEffectiveSedeId();
                 if ($sedeId) {
                     $query->where(function($q) use ($sedeId) {
                         $q->where('SedeOrigenID', $sedeId)
@@ -268,10 +261,7 @@ class TransferenciaSedeResource extends Resource
                     ->visible(function (TransferenciaSede $record) {
                         if ($record->Estado !== 'PENDIENTE') return false;
                         if (!$record->EsSolicitudGerencia) return false;
-                        $sedeId = auth()->user()->SedeID;
-                        if (auth()->user()->esAdmin() && session('sede_activa')) {
-                            $sedeId = session('sede_activa');
-                        }
+                        $sedeId = auth()->user()->getEffectiveSedeId();
                         return $sedeId === $record->SedeDestinoID;
                     })
                     ->action(function (TransferenciaSede $record, FondoSedeService $service) {

@@ -412,10 +412,7 @@ class GenerarCreditoResource extends Resource
                     ->action(function (ProposicionCredito $record, array $data) {
                         $montoDesembolso = $record->MontoTotal;
                         $user = auth()->user();
-                        $sedeId = $user->SedeID;
-                        if ($user->esAdmin() && session('sede_activa')) {
-                            $sedeId = session('sede_activa');
-                        }
+                        $sedeId = $user->getEffectiveSedeId();
 
                         if (!$sedeId) {
                             Notification::make()

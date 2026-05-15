@@ -73,7 +73,7 @@ trait BelongsToSede
         $user = auth()->user();
 
         self::$sedeFilterCache = [
-            'esPrivilegiado' => $user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas(),
+            'esPrivilegiado' => $user->isPrivileged(),
             'sedeActiva' => session('sede_activa'),
             'sedeUsuario' => $user->SedeID,
         ];

@@ -51,10 +51,7 @@ class EditCompra extends EditRecord
         $delta = $totalNuevo - $totalViejo;
 
         if ($delta != 0) {
-            $sedeId = $record->SedeID ?? auth()->user()->SedeID;
-            if (auth()->user()->esAdmin() && session('sede_activa')) {
-                $sedeId = session('sede_activa');
-            }
+            $sedeId = auth()->user()->getEffectiveSedeId();
             if ($sedeId) {
                 $service = app(FondoSedeService::class);
                 if ($delta > 0) {
@@ -75,10 +72,7 @@ class EditCompra extends EditRecord
 
                     $totalCompra = (float) ($record->Total ?? 0);
                     if ($totalCompra > 0) {
-                        $sedeId = $record->SedeID ?? auth()->user()->SedeID;
-                        if (auth()->user()->esAdmin() && session('sede_activa')) {
-                            $sedeId = session('sede_activa');
-                        }
+                        $sedeId = auth()->user()->getEffectiveSedeId();
                         if ($sedeId) {
                             app(FondoSedeService::class)->inyectarCapitalCajaChica(
                                 $sedeId,

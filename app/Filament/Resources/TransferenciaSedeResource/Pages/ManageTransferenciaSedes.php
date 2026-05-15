@@ -20,16 +20,12 @@ class ManageTransferenciaSedes extends ManageRecords
                 ->label('Nueva Remesa / Transferencia')
                 ->using(function (array $data, FondoSedeService $service): \Illuminate\Database\Eloquent\Model {
                     try {
-                        $sedeOrigenId = auth()->user()->SedeID;
+                        $sedeOrigenId = auth()->user()->getEffectiveSedeId();
                         
                         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
                             $sedeGerencia = \App\Models\Sede::where('Nombre', 'like', '%Gerencia%')->first();
                             if ($sedeGerencia) {
                                 $sedeOrigenId = $sedeGerencia->SedeID;
-                            }
-                        } else {
-                            if (auth()->user()->esAdmin() && session('sede_activa')) {
-                                $sedeOrigenId = session('sede_activa');
                             }
                         }
                         

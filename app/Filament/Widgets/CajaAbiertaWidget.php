@@ -28,7 +28,7 @@ class CajaAbiertaWidget extends BaseWidget
         $user = Auth::user();
         $sedeId = $user->SedeID;
 
-        if ($user->esAdmin()) {
+        if ($user->isPrivileged()) {
             $sedeActiva = session('sede_activa');
             if ($sedeActiva) {
                 $sedeId = $sedeActiva;

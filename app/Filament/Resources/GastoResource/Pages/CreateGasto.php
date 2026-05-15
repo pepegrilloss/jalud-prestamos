@@ -23,11 +23,7 @@ class CreateGasto extends CreateRecord
 
         // Si el método de gasto es CAJA CHICA, validar saldo ANTES de crear
         if (($data['MetodoGasto'] ?? '') === 'CAJA CHICA' && $totalAnticipado > 0) {
-            $sedeId = $data['SedeID'] ?? auth()->user()->SedeID;
-
-            if (auth()->user()->esAdmin() && session('sede_activa')) {
-                $sedeId = session('sede_activa');
-            }
+            $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
                 $fondo = \App\Models\FondoSede::where('SedeID', $sedeId)->first();
@@ -58,11 +54,7 @@ class CreateGasto extends CreateRecord
 
         // Descontar de Caja Chica si el método es CAJA CHICA
         if ($record->MetodoGasto === 'CAJA CHICA' && $total > 0) {
-            $sedeId = $record->SedeID ?? auth()->user()->SedeID;
-
-            if (auth()->user()->esAdmin() && session('sede_activa')) {
-                $sedeId = session('sede_activa');
-            }
+            $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
                 app(FondoSedeService::class)->registrarEgresoCajaChica(

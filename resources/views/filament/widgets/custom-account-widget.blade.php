@@ -4,7 +4,7 @@
     $sedeNombre = 'No asignada';
 
     if ($user) {
-        if ($user->esAdmin()) {
+        if ($user->isPrivileged()) {
             $sedeActiva = session('sede_activa');
             if ($sedeActiva) {
                 $sedeObj = \App\Models\Sede::withoutGlobalScopes()->find($sedeActiva);

@@ -43,11 +43,7 @@ class CreateCompra extends CreateRecord
 
         // Validar saldo en Caja Chica ANTES de crear la compra
         if ($totalCompra > 0) {
-            $sedeId = $data['SedeID'] ?? auth()->user()->SedeID;
-
-            if (auth()->user()->esAdmin() && session('sede_activa')) {
-                $sedeId = session('sede_activa');
-            }
+            $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
                 $fondo = \App\Models\FondoSede::where('SedeID', $sedeId)->first();
@@ -76,11 +72,7 @@ class CreateCompra extends CreateRecord
         $total = floatval($record->Total);
 
         if ($total > 0) {
-            $sedeId = $record->SedeID ?? auth()->user()->SedeID;
-
-            if (auth()->user()->esAdmin() && session('sede_activa')) {
-                $sedeId = session('sede_activa');
-            }
+            $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
                 app(FondoSedeService::class)->registrarEgresoCajaChica(

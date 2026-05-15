@@ -175,10 +175,7 @@ class CreateCredito extends CreateRecord
 
         // Resolver sede correctamente (admin usa sede_activa de sesión)
         $user = auth()->user();
-        $sedeId = $user->SedeID;
-        if ($user->esAdmin() && session('sede_activa')) {
-            $sedeId = session('sede_activa');
-        }
+        $sedeId = $user->getEffectiveSedeId();
 
         $fondoService = app(FondoSedeService::class);
 
