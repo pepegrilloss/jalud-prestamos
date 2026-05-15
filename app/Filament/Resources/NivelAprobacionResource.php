@@ -40,8 +40,7 @@ class NivelAprobacionResource extends Resource
                             ->required()
                             ->maxLength(50)
                             ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
-                                $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
-                                return $rule->where('SedeID', $sedeId);
+                                return $rule->where('SedeID', auth()->user()->getEffectiveSedeId());
                             })
                             ->label('Nombre')
                             ->placeholder('Ej: Nivel 1, Gerente, etc.'),

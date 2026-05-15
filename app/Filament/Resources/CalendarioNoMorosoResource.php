@@ -32,8 +32,7 @@ class CalendarioNoMorosoResource extends Resource
                     ->native(false)
                     ->minDate(today())
                     ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
-                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
-                        return $rule->where('SedeID', $sedeId);
+                        return $rule->where('SedeID', auth()->user()->getEffectiveSedeId());
                     }),
 
                 Forms\Components\TextInput::make('Descripcion')

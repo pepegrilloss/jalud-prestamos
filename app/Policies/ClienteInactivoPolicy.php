@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Cliente;
+use App\Models\ClienteInactivo;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class ClientePolicy
+class ClienteInactivoPolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class ClientePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_cliente');
+        return $user->can('view_any_reporte::clientes::inactivos');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Cliente $cliente): bool
+    public function view(User $user, ClienteInactivo $clienteInactivo): bool
     {
-        return $user->can('view_cliente');
+        return $user->can('view_reporte::clientes::inactivos');
     }
 
     /**
@@ -31,23 +31,23 @@ class ClientePolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_cliente');
+        return $user->can('create_reporte::clientes::inactivos');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Cliente $cliente): bool
+    public function update(User $user, ClienteInactivo $clienteInactivo): bool
     {
-        return $user->can('update_cliente');
+        return $user->can('update_reporte::clientes::inactivos');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Cliente $cliente): bool
+    public function delete(User $user, ClienteInactivo $clienteInactivo): bool
     {
-        return $user->can('delete_cliente');
+        return $user->can('delete_reporte::clientes::inactivos');
     }
 
     /**
@@ -61,7 +61,7 @@ class ClientePolicy
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, Cliente $cliente): bool
+    public function forceDelete(User $user, ClienteInactivo $clienteInactivo): bool
     {
         return $user->can('{{ ForceDelete }}');
     }
@@ -77,7 +77,7 @@ class ClientePolicy
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, Cliente $cliente): bool
+    public function restore(User $user, ClienteInactivo $clienteInactivo): bool
     {
         return $user->can('{{ Restore }}');
     }
@@ -93,7 +93,7 @@ class ClientePolicy
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, Cliente $cliente): bool
+    public function replicate(User $user, ClienteInactivo $clienteInactivo): bool
     {
         return $user->can('{{ Replicate }}');
     }

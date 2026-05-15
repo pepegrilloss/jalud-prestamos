@@ -55,7 +55,7 @@ class ReporteDiarioController extends Controller
         // Resolver SedeID: del registro, del parámetro, o del usuario autenticado
         $sedeId = $aperturaCierre?->SedeID
             ?? $sedeIdParam
-            ?? (auth()->check() ? (auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID) : null);
+            ?? (auth()->check() ? auth()->user()->getEffectiveSedeId() : null);
 
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'CHICLAYO';

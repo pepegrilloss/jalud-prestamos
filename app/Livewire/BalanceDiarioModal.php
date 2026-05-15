@@ -50,7 +50,7 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
 
                 // Resolver sede del usuario
                 $user = auth()->user();
-                $sedeId = $user->esAdmin() ? session('sede_activa') : $user->SedeID;
+                $sedeId = $user->getEffectiveSedeId();
 
                 // Buscar el registro de apertura/cierre para esa fecha y sede
                 $apertura = AperturaCierreDia::withoutGlobalScopes()

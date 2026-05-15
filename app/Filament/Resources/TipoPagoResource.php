@@ -34,7 +34,7 @@ class TipoPagoResource extends Resource
                     ->required()
                     ->maxLength(50)
                     ->unique(ignoreRecord: true, modifyRuleUsing: function (\Illuminate\Validation\Rules\Unique $rule) {
-                        return $rule->where('SedeID', auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID);
+                        return $rule->where('SedeID', auth()->user()->getEffectiveSedeId());
                     }),
                 Forms\Components\Toggle::make('Activo')
                     ->label('Activo')

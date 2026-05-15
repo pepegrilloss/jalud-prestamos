@@ -58,8 +58,7 @@ class TipoExoneracionResource extends Resource
                     ->required()
                     ->maxLength(1)
                     ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
-                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
-                        return $rule->where('SedeID', $sedeId);
+                        return $rule->where('SedeID', auth()->user()->getEffectiveSedeId());
                     })
                     ->helperText('P=Pronto Pago, I=Interés, M=Mora'),
                 Forms\Components\TextInput::make('Nombre')
@@ -67,8 +66,7 @@ class TipoExoneracionResource extends Resource
                     ->required()
                     ->maxLength(50)
                     ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
-                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
-                        return $rule->where('SedeID', $sedeId);
+                        return $rule->where('SedeID', auth()->user()->getEffectiveSedeId());
                     }),
                 Forms\Components\Textarea::make('Descripcion')
                     ->label('Descripción')

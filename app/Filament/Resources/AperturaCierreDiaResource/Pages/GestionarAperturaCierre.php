@@ -25,7 +25,7 @@ class GestionarAperturaCierre extends ManageRecords
                     $logger = new AperturaCierreDiaLogger();
 
                     // Validar contra Calendario No Moroso
-                    $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                    $sedeId = auth()->user()->getEffectiveSedeId();
                     $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $data['Fecha'])
                         ->where('SedeID', $sedeId)
                         ->where('Activo', true)

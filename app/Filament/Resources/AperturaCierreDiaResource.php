@@ -48,13 +48,12 @@ class AperturaCierreDiaResource extends Resource
                     ->maxDate(today())
                     ->native(false)
                     ->unique(AperturaCierreDia::class, 'Fecha', ignoreRecord: true, modifyRuleUsing: function ($rule) {
-                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
-                        return $rule->where('SedeID', $sedeId);
+                        return $rule->where('SedeID', auth()->user()->getEffectiveSedeId());
                     })
                     ->rules([
                         function () {
                             return function ($attribute, $value, $fail) {
-                                $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
+                                $sedeId = auth()->user()->getEffectiveSedeId();
                                 $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $value)
                                     ->where('SedeID', $sedeId)
                                     ->where('Activo', true)

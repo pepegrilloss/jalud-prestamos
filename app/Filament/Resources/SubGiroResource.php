@@ -40,8 +40,7 @@ class SubGiroResource extends Resource
                     ->required()
                     ->maxLength(400)
                     ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule, Forms\Get $get) {
-                        $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
-                        return $rule->where('SedeID', $sedeId)
+                        return $rule->where('SedeID', auth()->user()->getEffectiveSedeId())
                                     ->where('GiroID', $get('GiroID'));
                     }),
                 Forms\Components\Toggle::make('Activo')
