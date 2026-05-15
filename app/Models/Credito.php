@@ -17,7 +17,8 @@ class Credito extends Model
         'CreditoID', // NUNCA permitir actualizar la columna IDENTITY
     ];
 
-    protected $with = ['proposicion', 'tipoPago'];
+    // NOTA: No usar protected $with aquí. Usar ->with() explícito en cada Resource/query donde se necesite.
+    // Esto evita cargar relaciones innecesarias en counts, updates masivos y observers.
 
     protected $casts = [
         'FechaGeneracion' => 'datetime',

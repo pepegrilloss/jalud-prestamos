@@ -96,53 +96,41 @@ class PagoResource extends Resource
                             ->options(function () {
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
+                                $user = auth()->user();
+                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                                // Condiciones que se aplican a las proposiciones
-                                $propositionConditions = function ($q) use ($zonaID) {
-                                    $user = auth()->user();
-                                    $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
-
+                                // OPTIMIZADO: Filtrar por columna SaldoPendiente en SQL
+                                $query = \App\Models\Cliente::whereHas('proposiciones', function ($q) use ($zonaID, $puedePagarMayor) {
                                     if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0)
-                                          ->where('Activo', true);
+                                        $q->where('FueRefinanciada', 0)->where('Activo', true);
                                     } else {
                                         $q->where(function($sub) {
-                                            $sub->where('Activo', true)
-                                                ->orWhere('FueRefinanciada', 1);
+                                            $sub->where('Activo', true)->orWhere('FueRefinanciada', 1);
                                         });
                                     }
 
-                                    $q->whereHas('credito', function ($sq) use ($user, $puedePagarMayor) {
-                                            $sq->where('Activo', 1);
-                                            if (!$puedePagarMayor) {
-                                                $sq->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
-                                            }
-                                        });
+                                    // Filtrar por saldo > 0 O créditos saldados si tiene permiso
+                                    $q->where(function ($saldoQ) use ($puedePagarMayor) {
+                                        $saldoQ->where('SaldoPendiente', '>', 0);
+                                        if ($puedePagarMayor) {
+                                            $saldoQ->orWhereHas('credito', fn($cq) => $cq->whereIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']));
+                                        }
+                                    });
+
+                                    $q->whereHas('credito', function ($sq) use ($puedePagarMayor) {
+                                        $sq->where('Activo', 1);
+                                        if (!$puedePagarMayor) {
+                                            $sq->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
+                                        }
+                                    });
 
                                     if ($zonaID) {
                                         $q->where('ZonaID', $zonaID);
                                     }
-                                };
+                                });
 
-                                $query = \App\Models\Cliente::whereHas('proposiciones', $propositionConditions);
-
-                                return $query->with(['proposiciones' => $propositionConditions])
-                                    ->get()
-                                    ->filter(function ($cliente) {
-                                        // Solo incluir clientes que tengan al menos un crédito con saldo > 0
-                                        foreach ($cliente->proposiciones as $proposicion) {
-                                            $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
-                                            $user = auth()->user();
-                                            $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
-                                            if ($saldo > 0 || ($puedePagarMayor && in_array($proposicion->credito?->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']))) {
-                                                return true;
-                                            }
-                                        }
-                                        return false;
-                                    })
-                                    ->mapWithKeys(function ($cliente) {
-                                        return [$cliente->ClienteID => "{$cliente->NombresApellidos} - {$cliente->DNI}"];
-                                    });
+                                return $query->pluck('NombresApellidos', 'ClienteID')
+                                    ->map(fn($nombre, $id) => $nombre . ' - ' . \App\Models\Cliente::where('ClienteID', $id)->value('DNI'));
                             })
                             ->required()
                             ->searchable()
@@ -195,7 +183,8 @@ class PagoResource extends Resource
                                         $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
                                         $proposicionesConSaldo = $cliente->proposiciones->filter(function ($prop) use ($puedePagarMayor) {
-                                            $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($prop->ProposicionCreditoID);
+                                            // OPTIMIZADO: Leer de columna SaldoPendiente (ya cargada con el modelo)
+                                            $saldo = (float) ($prop->SaldoPendiente ?? 0);
                                             return $saldo > 0 || ($puedePagarMayor && in_array($prop->credito?->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']));
                                         });
 
@@ -247,47 +236,17 @@ class PagoResource extends Resource
                             ->prefixIcon('heroicon-m-identification')
                             ->options(function (Forms\Get $get) {
                                 $clienteID = $get('ClienteID');
-                                if (!$clienteID) {
-                                    return [];
-                                }
+                                if (!$clienteID) { return []; }
 
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
                                 $user = auth()->user();
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                                // Obtener créditos y filtrar solo los que tienen saldo > 0
-                                $creditos = \App\Models\Credito::with('proposicion.tipoCredito')
-                                    ->whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
-                                    $q->where('ClienteID', $clienteID);
-                                    
-                                    if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0)
-                                          ->where('Activo', true);
-                                    } else {
-                                        $q->where(function($sub) {
-                                            $sub->where('Activo', true)
-                                                ->orWhere('FueRefinanciada', 1);
-                                        });
-                                    }
+                                // OPTIMIZADO: Usa servicio centralizado (lee columna SaldoPendiente)
+                                $creditos = \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor);
 
-                                    if ($zonaID) {
-                                        $q->where('ZonaID', $zonaID);
-                                    }
-                                })
-                                    ->where('Activo', 1);
-                                
-                                $creditos = $creditos->get()->filter(function ($credito) {
-                                    $user = auth()->user();
-                                    $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
-                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
-                                    return $saldo > 0 || ($puedePagarMayor && in_array($credito->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']));
-                                });
-
-                                // Solo mostrar este select si hay 2+ créditos con saldo
-                                if ($creditos->count() < 2) {
-                                    return [];
-                                }
+                                if ($creditos->count() < 2) { return []; }
 
                                 return $creditos->mapWithKeys(function ($credito) {
                                     $tipo = $credito->proposicion->tipoCredito?->Descripcion ?? 'N/A';
@@ -299,97 +258,30 @@ class PagoResource extends Resource
                                 });
                             })
                             ->required(function (Forms\Get $get) {
-                                // Solo requerido si el select es visible (cuando hay 2+ créditos con saldo)
                                 $clienteID = $get('ClienteID');
-                                if (!$clienteID) {
-                                    return false;
-                                }
+                                if (!$clienteID) { return false; }
 
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
-
                                 $user = auth()->user();
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                                $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
-                                    $q->where('ClienteID', $clienteID);
-                                    
-                                    if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0)
-                                          ->where('Activo', true);
-                                    } else {
-                                        $q->where(function($sub) {
-                                            $sub->where('Activo', true)
-                                                ->orWhere('FueRefinanciada', 1);
-                                        });
-                                    }
-                                    if ($zonaID) {
-                                        $q->where('ZonaID', $zonaID);
-                                    }
-                                })->where('Activo', 1);
-                                
-                                $user = auth()->user();
-                                if (!$user?->can('registrar_pagos_a_mayor') && !$user?->can('registrar_pagos_a_mayor_por_mora')) {
-                                    $creditos->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
-                                }
-                                $creditos = $creditos->with('proposicion')->get();
-
-                                // Filtrar créditos con saldo > 0 o saldados si tiene permiso
-                                $user = auth()->user();
-                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
-                                $creditosConSaldo = $creditos->filter(function ($credito) use ($puedePagarMayor) {
-                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
-                                    return $saldo > 0 || ($puedePagarMayor && in_array($credito->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']));
-                                });
-
-                                return $creditosConSaldo->count() >= 2;
+                                // OPTIMIZADO: Usa servicio centralizado
+                                return \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count() >= 2;
                             })
                             ->searchable()
                             ->native(false)
                             ->visible(function (Forms\Get $get) {
                                 $clienteID = $get('ClienteID');
-                                if (!$clienteID) {
-                                    return false;
-                                }
+                                if (!$clienteID) { return false; }
 
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
-
                                 $user = auth()->user();
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                                $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
-                                    $q->where('ClienteID', $clienteID);
-                                    
-                                    if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0)
-                                          ->where('Activo', true);
-                                    } else {
-                                        $q->where(function($sub) {
-                                            $sub->where('Activo', true)
-                                                ->orWhere('FueRefinanciada', 1);
-                                        });
-                                    }
-                                    if ($zonaID) {
-                                        $q->where('ZonaID', $zonaID);
-                                    }
-                                })->where('Activo', 1);
-                                
-                                $user = auth()->user();
-                                if (!$user?->can('registrar_pagos_a_mayor') && !$user?->can('registrar_pagos_a_mayor_por_mora')) {
-                                    $creditos->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
-                                }
-                                $creditos = $creditos->with('proposicion')->get();
-
-                                // Filtrar créditos con saldo > 0 o saldados si tiene permiso
-                                $user = auth()->user();
-                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
-                                $creditosConSaldo = $creditos->filter(function ($credito) use ($puedePagarMayor) {
-                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
-                                    return $saldo > 0 || ($puedePagarMayor && in_array($credito->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']));
-                                });
-
-                                return $creditosConSaldo->count() >= 2;
+                                // OPTIMIZADO: Usa servicio centralizado
+                                return \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count() >= 2;
                             })
                             ->disabled(fn(Forms\Get $get) => !$get('ClienteID'))
                             ->dehydrated()
@@ -405,51 +297,18 @@ class PagoResource extends Resource
                             ->dehydrated(false)
                             ->placeholder('Información del crédito')
                             ->visible(function (Forms\Get $get) {
-                                // No mostrar en view, solo en edit/create
-                                if (request()->routeIs('*.view')) {
-                                    return false;
-                                }
+                                if (request()->routeIs('*.view')) { return false; }
 
                                 $clienteID = $get('ClienteID');
-                                if (!$clienteID)
-                                    return true;
+                                if (!$clienteID) return true;
 
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
-
                                 $user = auth()->user();
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                                $creditos = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
-                                    $q->where('ClienteID', $clienteID);
-                                    
-                                    if (!$puedePagarMayor) {
-                                        $q->where('FueRefinanciada', 0)
-                                          ->where('Activo', true);
-                                    } else {
-                                        $q->where(function($sub) {
-                                            $sub->where('Activo', true)
-                                                ->orWhere('FueRefinanciada', 1);
-                                        });
-                                    }
-                                    if ($zonaID) {
-                                        $q->where('ZonaID', $zonaID);
-                                    }
-                                })->where('Activo', 1);
-                                
-                                if (!$puedePagarMayor) {
-                                    $creditos->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
-                                }
-                                $creditos = $creditos->with('proposicion')->get();
-
-                                // Filtrar créditos con saldo > 0 o saldados si tiene permiso
-                                $creditosConSaldo = $creditos->filter(function ($credito) use ($puedePagarMayor) {
-                                    $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
-                                    return $saldo > 0 || ($puedePagarMayor && in_array($credito->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']));
-                                });
-
-                                // Solo visible si tiene 1 crédito con saldo. Si tiene 2+, se usa el Select anterior.
-                                return $creditosConSaldo->count() < 2;
+                                // OPTIMIZADO: Usa servicio centralizado
+                                return \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count() < 2;
                             }),
 
                         Forms\Components\Placeholder::make('tipo_credito_view')
@@ -662,7 +521,7 @@ class PagoResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('SedeID')
                                     ->label('Sede')
-                                    ->options(\App\Models\Sede::all()->pluck('Nombre', 'SedeID')->toArray())
+                                    ->options(fn() => \App\Models\Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
                                     ->searchable()
                                     ->native(false)
                                     ->live()
@@ -670,8 +529,8 @@ class PagoResource extends Resource
 
                                 Forms\Components\Select::make('ClienteID')
                                     ->label('Cliente')
-                                    ->options(\App\Models\Cliente::all()->pluck('NombresApellidos', 'ClienteID')->toArray())
                                     ->searchable()
+                                    ->getSearchResultsUsing(fn(string $search) => \App\Models\Cliente::where('NombresApellidos', 'like', "%{$search}%")->orWhere('DNI', 'like', "%{$search}%")->limit(50)->pluck('NombresApellidos', 'ClienteID'))
                                     ->native(false)
                                     ->live()
                                     ->visible(fn(Get $get) => in_array('cliente', $get('campos_activos') ?? [])),
@@ -684,7 +543,7 @@ class PagoResource extends Resource
 
                                 Forms\Components\Select::make('ZonaID')
                                     ->label('Zona')
-                                    ->options(\App\Models\Zona::all()->pluck('Nombre', 'ZonaID')->toArray())
+                                    ->options(fn() => \App\Models\Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
                                     ->searchable()
                                     ->native(false)
                                     ->live()

@@ -305,6 +305,7 @@ class ProposicionCredito extends Model
     /**
      * Obtener todos los créditos activos con saldo pendiente para un cliente
      * Excluye créditos que fueron refinanciados (FueRefinanciada = 1)
+     * OPTIMIZADO: Filtra por columna SaldoPendiente en vez de recalcular en loop
      */
     public static function obtenerCreditosActivosConSaldo($clienteID)
     {
@@ -312,70 +313,45 @@ class ProposicionCredito extends Model
             ->where('Activo', true)
             ->where('Estado', 'APROBADO')
             ->where('FueRefinanciada', 0)
+            ->where('SaldoPendiente', '>', 0)
             ->has('credito')
             ->with([
                 'credito' => function ($query) {
                     $query->where('Activo', true);
                 }
             ])
-            ->get()
-            ->filter(function ($proposicion) {
-                return self::calcularSaldoPendiente($proposicion->ProposicionCreditoID) > 0;
-            });
+            ->get();
     }
 
     /**
-     * Calcular el saldo pendiente de una proposición basado en sus cuotas
-     */
-    /**
-     * Calcular el saldo pendiente de una proposición basado en sus cuotas
-     * Usa la misma lógica que CreditoResource: Sum(MontoCuota) - Sum(MontoPagado)
+     * Obtener el saldo pendiente de una proposición.
+     * Lee directamente de la columna SaldoPendiente (0 queries adicionales).
+     * La columna se mantiene sincronizada por el PagoObserver.
      */
     public static function calcularSaldoPendiente($proposicionCreditoID)
     {
-        $credito = Credito::where('ProposicionCreditoID', $proposicionCreditoID)
-            ->where('Activo', true)
-            ->first();
+        return \App\Services\SaldoPendienteService::obtener($proposicionCreditoID);
+    }
 
-        if (!$credito) {
-            return 0;
-        }
-
-        // Obtener proposición para el cálculo del total de cuotas
-        $proposicion = ProposicionCredito::find($proposicionCreditoID);
-        if (!$proposicion) {
-            return 0;
-        }
-
-        // Calcular: Sum(MontoCuota) - Sum(MontoPagado desde tabla pago)
-        // MontoCuota incluye Capital + Interés
-        $montoCuotasTotal = (float) $credito->cuotas()
-            ->where('Activo', true)
-            ->sum('MontoCuota');
-
-        // Calcular total pagado desde la tabla pago (no desde cuota)
-        $totalPagado = \App\Models\Pago::where('Activo', 1)
-            ->where(function ($q) {
-                $q->whereNull('EstadoTraslado')
-                  ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
-            })
-            ->whereHas('cuota', function ($query) use ($credito) {
-                $query->where('CreditoID', $credito->CreditoID);
-            })
-            ->sum('MontoPagado');
-
-        return max(0, $montoCuotasTotal - $totalPagado);
+    /**
+     * Recalcular y guardar el saldo pendiente (solo para operaciones de escritura).
+     */
+    public static function recalcularSaldoPendiente($proposicionCreditoID): float
+    {
+        return \App\Services\SaldoPendienteService::recalcular($proposicionCreditoID);
     }
 
     /**
      * Obtener información formateada de un crédito para el modal de refinanciamiento
+     * OPTIMIZADO: Lee SaldoPendiente de la columna
      */
     public function obtenerInfoRefinanciamiento()
     {
-        $saldoPendiente = self::calcularSaldoPendiente($this->ProposicionCreditoID);
+        $saldoPendiente = (float) ($this->SaldoPendiente ?? 0);
 
         // Contar cuotas pendientes
-        $credito = Credito::where('ProposicionCreditoID', $this->ProposicionCreditoID)
+        $credito = Credito::withoutEagerLoads()
+            ->where('ProposicionCreditoID', $this->ProposicionCreditoID)
             ->where('Activo', true)
             ->first();
 
@@ -391,7 +367,7 @@ class ProposicionCredito extends Model
             'ProposicionCreditoID' => $this->ProposicionCreditoID,
             'CodigoCredito' => $this->CodigoCredito,
             'MontoOriginal' => (float) $this->MontoTotal,
-            'SaldoPendiente' => (float) $saldoPendiente,
+            'SaldoPendiente' => $saldoPendiente,
             'CuotasPendientes' => (int) $cuotasPendientes,
             'TasaInteres' => (float) $this->TasaInteres,
             'Plazo' => (int) $this->Plazo,

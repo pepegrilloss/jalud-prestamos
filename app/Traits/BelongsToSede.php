@@ -17,45 +17,76 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 trait BelongsToSede
 {
+    /**
+     * Caché estático por request para evitar resolver auth/permisos en cada query.
+     * Se resetea automáticamente al inicio de cada request HTTP.
+     */
+    private static ?array $sedeFilterCache = null;
+
     public static function bootBelongsToSede(): void
     {
         // Auto-asignar SedeID al crear un registro
         static::creating(function ($model) {
             if (empty($model->SedeID) && auth()->check()) {
-                $user = auth()->user();
-                if (($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) && session('sede_activa')) {
-                    // Usuario con selector de sede activo: usar la sede de la sesión
-                    $model->SedeID = session('sede_activa');
+                $filter = self::resolveSedeFilter();
+                if ($filter['sedeActiva']) {
+                    $model->SedeID = $filter['sedeActiva'];
                 } else {
-                    // Usuario normal o sin sede seleccionada: usar la sede del usuario
-                    $model->SedeID = $user->SedeID;
+                    $model->SedeID = $filter['sedeUsuario'];
                 }
             }
         });
 
-        // Global Scope: filtrar automáticamente por sede
+        // Global Scope: filtrar automáticamente por sede (con caché)
         static::addGlobalScope('sede', function (Builder $query) {
             if (!auth()->check()) {
                 return;
             }
 
-            $user = auth()->user();
+            $filter = self::resolveSedeFilter();
 
-            if ($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) {
+            if ($filter['esPrivilegiado']) {
                 // Usuario con selector de sede: filtrar por sede activa en sesión
-                $sedeActiva = session('sede_activa');
-                if ($sedeActiva) {
-                    $query->where($query->getModel()->getTable() . '.SedeID', $sedeActiva);
+                if ($filter['sedeActiva']) {
+                    $query->where($query->getModel()->getTable() . '.SedeID', $filter['sedeActiva']);
                 }
                 // Si no tiene sede en sesión → ve todo (no filtra)
             } else {
                 // Usuario normal: filtrar siempre por su sede asignada
-                $sedeID = $user->SedeID;
-                if ($sedeID) {
-                    $query->where($query->getModel()->getTable() . '.SedeID', $sedeID);
+                if ($filter['sedeUsuario']) {
+                    $query->where($query->getModel()->getTable() . '.SedeID', $filter['sedeUsuario']);
                 }
             }
         });
+    }
+
+    /**
+     * Resolver y cachear la información de filtrado de sede.
+     * Solo se ejecuta UNA VEZ por request HTTP.
+     */
+    private static function resolveSedeFilter(): array
+    {
+        if (self::$sedeFilterCache !== null) {
+            return self::$sedeFilterCache;
+        }
+
+        $user = auth()->user();
+
+        self::$sedeFilterCache = [
+            'esPrivilegiado' => $user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas(),
+            'sedeActiva' => session('sede_activa'),
+            'sedeUsuario' => $user->SedeID,
+        ];
+
+        return self::$sedeFilterCache;
+    }
+
+    /**
+     * Resetear caché de sede (útil para testing o cambio de sede en sesión).
+     */
+    public static function resetSedeFilterCache(): void
+    {
+        self::$sedeFilterCache = null;
     }
 
     /**

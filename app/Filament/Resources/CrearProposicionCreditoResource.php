@@ -546,7 +546,8 @@ class CrearProposicionCreditoResource extends Resource
             if ($excluirProposicionID && $proposicion->ProposicionCreditoID == $excluirProposicionID) {
                 continue;
             }
-            $saldoPendiente = ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
+            // OPTIMIZADO: Leer columna SaldoPendiente directamente
+            $saldoPendiente = (float) ($proposicion->SaldoPendiente ?? 0);
             if ($saldoPendiente > 0) {
                 $montoUtilizado += (float) $proposicion->MontoTotal;
             }

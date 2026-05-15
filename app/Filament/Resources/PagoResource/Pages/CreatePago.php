@@ -349,38 +349,8 @@ class CreatePago extends CreateRecord
                 $user = auth()->user();
                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                $query = \App\Models\Credito::with('proposicion')->whereHas('proposicion', function ($q) use ($clienteID, $zonaID, $puedePagarMayor) {
-                    $q->where('ClienteID', $clienteID);
-                    
-                    if (!$puedePagarMayor) {
-                        $q->where('FueRefinanciada', 0)
-                          ->where('Activo', true);
-                    } else {
-                        $q->where(function($sub) {
-                            $sub->where('Activo', true)
-                                ->orWhere('FueRefinanciada', 1);
-                        });
-                    }
-
-                    if ($zonaID) {
-                        $q->where('ZonaID', $zonaID);
-                    }
-                })->where('Activo', 1);
-
-                if (!$puedePagarMayor) {
-                    $query->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
-                }
-
-                $creditos = $query->get();
-
-                // Filtrar créditos con saldo > 0 o saldados si tiene permiso
-                $creditosConSaldo = $creditos->filter(function ($credito) use ($puedePagarMayor) {
-                    if ($credito->proposicion) {
-                        $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID);
-                        return $saldo > 0 || ($puedePagarMayor && in_array($credito->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']));
-                    }
-                    return false;
-                });
+                // OPTIMIZADO: Usa servicio centralizado (lee columna SaldoPendiente)
+                $creditosConSaldo = \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor);
 
                 if ($creditosConSaldo->count() == 1) {
                     $data['CreditoID'] = $creditosConSaldo->first()->CreditoID;

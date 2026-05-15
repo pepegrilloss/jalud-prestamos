@@ -32,7 +32,7 @@ class CalcularMoraRetroactiva extends Command
             ->where('Activo', 1)
             ->whereDate('FechaVencimiento', '<', today())
             ->whereIn('SedeID', \App\Models\Sede::where('Activo', true)->pluck('SedeID'))
-            ->with(['proposicion.cliente.tasaMora', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
+            ->with(['proposicion.cliente.tasaMora', 'tipoPago', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
             ->get();
 
         $morasRegistradas = 0;
@@ -85,8 +85,9 @@ class CalcularMoraRetroactiva extends Command
                     continue;
                 }
 
+                // OPTIMIZADO: Leer SaldoPendiente de la columna (mantenida por PagoObserver)
                 $saldoPendiente = $credito->proposicion
-                    ? ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID)
+                    ? (float) ($credito->proposicion->SaldoPendiente ?? 0)
                     : 0;
 
                 if ($saldoPendiente <= 0) {

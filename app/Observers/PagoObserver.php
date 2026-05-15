@@ -51,13 +51,9 @@ class PagoObserver
         $credito = $pago->credito;
 
         if ($credito && $credito->proposicion) {
-            $saldoPendiente = ProposicionCredito::calcularSaldoPendiente(
+            \App\Services\SaldoPendienteService::recalcular(
                 $credito->proposicion->ProposicionCreditoID
             );
-
-            $credito->proposicion->update([
-                'SaldoPendiente' => $saldoPendiente
-            ]);
         }
     }
 }

@@ -55,7 +55,7 @@ class CalcularMoraAutomatica implements ShouldQueue
                 ->where('Activo', 1)
                 ->whereDate('FechaVencimiento', '<=', $fecha)
                 ->whereIn('SedeID', \App\Models\Sede::where('Activo', true)->pluck('SedeID'))
-                ->with(['proposicion.cliente.tasaMora', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
+                ->with(['proposicion.cliente.tasaMora', 'tipoPago', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
                 ->get();
 
             \Log::info('[JOB] Créditos vencidos encontrados: ' . $creditosVencidos->count());
@@ -91,9 +91,9 @@ class CalcularMoraAutomatica implements ShouldQueue
                     continue; // Ya se calculó para esa fecha
                 }
 
-                // Obtener saldo pendiente usando la fuente única de verdad (suma cuotas - suma pagos)
+                // OPTIMIZADO: Leer SaldoPendiente de la columna (mantenida por PagoObserver)
                 $saldoPendiente = $credito->proposicion
-                    ? ProposicionCredito::calcularSaldoPendiente($credito->proposicion->ProposicionCreditoID)
+                    ? (float) ($credito->proposicion->SaldoPendiente ?? 0)
                     : 0;
 
                 if ($saldoPendiente <= 0) {

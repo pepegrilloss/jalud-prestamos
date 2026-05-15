@@ -144,24 +144,18 @@ class Cliente extends Model
 
     /**
      * Obtener créditos activos con saldo pendiente REAL (mayor a 0)
+     * OPTIMIZADO: Filtra por columna SaldoPendiente en SQL (sin N+1)
      */
     public function creditosConSaldo()
     {
         return $this->proposiciones()
             ->where('Activo', true)
             ->where('FueRefinanciada', 0)
+            ->where('SaldoPendiente', '>', 0)
             ->whereHas('credito', function ($query) {
                 $query->where('Activo', true);
             })
-            ->get()
-            ->filter(function ($proposicion) {
-                if (!$proposicion->credito) {
-                    return false;
-                }
-                // Verificar si el saldo pendiente real es mayor a 0
-                $saldoPendiente = ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID);
-                return $saldoPendiente > 0;
-            });
+            ->get();
     }
 
     /**

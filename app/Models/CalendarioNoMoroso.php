@@ -62,7 +62,7 @@ class CalendarioNoMoroso extends Model
                     ->toArray();
 
                 // --- 3. OBTENER CRÉDITOS ACTIVOS ---
-                $creditos = \App\Models\Credito::where('Activo', 1)->get();
+                $creditos = \App\Models\Credito::where('Activo', 1)->with('proposicion')->get();
 
                 foreach ($creditos as $credito) {
                     // Solo actualizar si la fecha no morosa cae DENTRO de la vida del crédito (entre su inicio y su vencimiento actual)
@@ -75,10 +75,10 @@ class CalendarioNoMoroso extends Model
                     $fechaVenc = $credito->FechaVencimiento ? \Carbon\Carbon::parse($credito->FechaVencimiento)->startOfDay() : null;
 
                     if ($fechaInicio && $fechaVenc) {
-                        // Validamos de forma más sencilla: la fecha del feriado debe ser >= inicio y <= vencimiento
+                        // Validamos: la fecha del feriado debe ser >= inicio y <= vencimiento
                         if ($fechaNoMorosa->greaterThanOrEqualTo($fechaInicio) && $fechaNoMorosa->lessThanOrEqualTo($fechaVenc)) {
-                            // Verificar si tiene saldo pendiente
-                            $saldo = \App\Models\ProposicionCredito::calcularSaldoPendiente($credito->ProposicionCreditoID);
+                            // OPTIMIZADO: Leer SaldoPendiente de la columna
+                            $saldo = (float) ($credito->proposicion?->SaldoPendiente ?? 0);
                             
                             if ($saldo > 0) {
                                 \Log::info("Actualizando crédito " . $credito->CreditoID . " por nueva fecha no morosa. Saldo: " . $saldo);
