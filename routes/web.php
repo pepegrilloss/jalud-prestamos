@@ -223,4 +223,7 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
 
     Route::get('/descargar-pagos/{credito}', [App\Http\Controllers\DescargarPagosController::class, 'descargar'])
         ->name('descargar-pagos.pdf');
+
+    Route::get('/pdf/reporte-cartera', [App\Http\Controllers\ReporteCarteraController::class, 'descargar'])
+        ->name('reporte-cartera.pdf');
 });

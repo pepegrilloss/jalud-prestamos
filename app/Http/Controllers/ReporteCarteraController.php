@@ -1,0 +1,185 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Credito;
+use App\Models\Pago;
+use App\Models\Sede;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+
+class ReporteCarteraController extends Controller
+{
+    public function descargar(Request $request)
+    {
+        $fechaDesde = $request->get('fecha_desde');
+        $fechaHasta = $request->get('fecha_hasta');
+        $tipos = $request->get('tipos', ''); // comma-separated: no_vencida,vencida,morosa,pesada
+
+        if (!$fechaDesde || !$fechaHasta) {
+            abort(400, 'Debe especificar un rango de fechas.');
+        }
+
+        $fechaCarbonDesde = Carbon::createFromFormat('Y-m-d', $fechaDesde);
+        $fechaCarbonHasta = Carbon::createFromFormat('Y-m-d', $fechaHasta);
+        $hoy = Carbon::today();
+
+        $tiposArray = array_filter(explode(',', $tipos));
+
+        if (empty($tiposArray)) {
+            abort(400, 'Debe seleccionar al menos un tipo de cartera.');
+        }
+
+        // Resolver SedeID
+        $user = auth()->user();
+        $sedeId = null;
+        if ($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) {
+            $sedeId = session('sede_activa');
+        } else {
+            $sedeId = $user->SedeID;
+        }
+
+        $sede = $sedeId ? Sede::find($sedeId) : null;
+        $sedeNombre = $sede?->Nombre ?? 'TODAS LAS SEDES';
+
+        // Obtener créditos activos con saldo pendiente
+        $query = Credito::withoutGlobalScopes()
+            ->where('Credito.Activo', 1)
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+            ->where('ProposicionCredito.SaldoPendiente', '>', 0)
+            ->where('ProposicionCredito.FueRefinanciada', 0);
+
+        if ($sedeId) {
+            $query->where('Credito.SedeID', $sedeId);
+        }
+
+        // Filtrar por rango de fecha de generación del crédito
+        $query->whereDate('Credito.FechaGeneracion', '>=', $fechaCarbonDesde->toDateString())
+              ->whereDate('Credito.FechaGeneracion', '<=', $fechaCarbonHasta->toDateString());
+
+        $creditos = $query->select(
+            'Credito.CreditoID',
+            'Credito.FechaGeneracion',
+            'Credito.FechaVencimiento',
+            'Credito.ProposicionCreditoID',
+            'TipoCredito.Descripcion as TipoCreditoDescripcion',
+            'Cliente.NombresApellidos',
+            'ProposicionCredito.MontoTotalPagar',
+            'ProposicionCredito.SaldoPendiente',
+            'ProposicionCredito.CodigoCredito'
+        )
+        ->orderBy('Credito.FechaVencimiento', 'asc')
+        ->get();
+
+        // Clasificar cada crédito según su categoría
+        $secciones = [];
+        $titulos = [
+            'no_vencida' => 'CARTERA NO VENCIDA',
+            'vencida'    => 'CARTERA VENCIDA (1 - 7 días)',
+            'morosa'     => 'CARTERA MOROSA (8 - 180 días)',
+            'pesada'     => 'CARTERA PESADA / PÉRDIDA (181+ días)',
+        ];
+
+        foreach ($tiposArray as $tipo) {
+            $secciones[$tipo] = [
+                'titulo'   => $titulos[$tipo] ?? strtoupper($tipo),
+                'creditos' => [],
+                'totalSaldo' => 0,
+            ];
+        }
+
+        foreach ($creditos as $credito) {
+            $fechaVenc = $credito->FechaVencimiento ? Carbon::parse($credito->FechaVencimiento) : null;
+
+            if (!$fechaVenc) {
+                continue;
+            }
+
+            // Calcular días de vencimiento
+            $diasVencimiento = $hoy->diffInDays($fechaVenc, false); // negativo si ya venció
+
+            // Calcular pagado real
+            $pagado = Pago::withoutGlobalScopes()
+                ->whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
+                ->where('Activo', 1)
+                ->sum('MontoPagado');
+
+            $total = (float) $credito->MontoTotalPagar;
+            $saldo = max(0, $total - $pagado);
+
+            if ($saldo <= 0) {
+                continue;
+            }
+
+            $item = [
+                'tipo'         => $credito->TipoCreditoDescripcion,
+                'cliente'      => $credito->NombresApellidos,
+                'total'        => $total,
+                'pagado'       => $pagado,
+                'saldo'        => $saldo,
+                'fecha'        => $credito->FechaGeneracion ? Carbon::parse($credito->FechaGeneracion)->format('d/m/Y') : '-',
+                'fecha_venc'   => $fechaVenc->format('d/m/Y'),
+                'dias'         => abs(intval($hoy->diffInDays($fechaVenc, false))),
+                'dias_raw'     => intval($hoy->diffInDays($fechaVenc, false)),
+            ];
+
+            if ($diasVencimiento >= 0) {
+                // No ha vencido aún (hoy o futuro)
+                if (in_array('no_vencida', $tiposArray)) {
+                    $secciones['no_vencida']['creditos'][] = $item;
+                    $secciones['no_vencida']['totalSaldo'] += $saldo;
+                }
+            } elseif (abs($diasVencimiento) <= 7) {
+                // Vencido entre 1 y 7 días
+                if (in_array('vencida', $tiposArray)) {
+                    $secciones['vencida']['creditos'][] = $item;
+                    $secciones['vencida']['totalSaldo'] += $saldo;
+                }
+            } elseif (abs($diasVencimiento) <= 180) {
+                // Vencido entre 8 y 180 días
+                if (in_array('morosa', $tiposArray)) {
+                    $secciones['morosa']['creditos'][] = $item;
+                    $secciones['morosa']['totalSaldo'] += $saldo;
+                }
+            } else {
+                // Vencido 181+ días
+                if (in_array('pesada', $tiposArray)) {
+                    $secciones['pesada']['creditos'][] = $item;
+                    $secciones['pesada']['totalSaldo'] += $saldo;
+                }
+            }
+        }
+
+        // Calcular total general
+        $totalGeneralSaldo = 0;
+        foreach ($secciones as $seccion) {
+            $totalGeneralSaldo += $seccion['totalSaldo'];
+        }
+
+        $rangoFechas = $fechaCarbonDesde->format('d/m/Y');
+        if ($fechaDesde !== $fechaHasta) {
+            $rangoFechas .= ' - ' . $fechaCarbonHasta->format('d/m/Y');
+        }
+
+        $data = [
+            'secciones'         => $secciones,
+            'totalGeneralSaldo' => $totalGeneralSaldo,
+            'sedeNombre'        => strtoupper($sedeNombre),
+            'rangoFechas'       => $rangoFechas,
+            'fechaEmision'      => now(),
+        ];
+
+        $pdf = Pdf::loadView('reportes.reporte-cartera', $data);
+        $pdf->setPaper('a4', 'landscape');
+
+        $nombreArchivo = 'Reporte_Cartera_' . $fechaCarbonDesde->format('d-m-Y');
+        if ($fechaDesde !== $fechaHasta) {
+            $nombreArchivo .= '_al_' . $fechaCarbonHasta->format('d-m-Y');
+        }
+
+        return $pdf->stream($nombreArchivo . '.pdf');
+    }
+}

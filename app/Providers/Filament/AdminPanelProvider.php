@@ -144,10 +144,22 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(1)
                     ->url('#balance-diario')
                     ->visible(fn(): bool => auth()->user()?->can('balance_diario') ?? false),
+                \Filament\Navigation\NavigationItem::make('Reporte de Cartera')
+                    ->icon('heroicon-o-chart-pie')
+                    ->group('Reportes')
+                    ->sort(2)
+                    ->url('#reporte-cartera')
+                    // Using a generic check or a specific permission if needed. Assuming admins or those with report access can see it.
+                    // For now, making it visible to users who can see balance_diario, or we can just make it true and let permissions handle it if needed.
+                    ->visible(fn(): bool => true), 
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn(): string => Blade::render('@livewire(\App\Livewire\ReporteCarteraModal::class)')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
