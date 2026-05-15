@@ -149,9 +149,7 @@ class AdminPanelProvider extends PanelProvider
                     ->group('Reportes')
                     ->sort(2)
                     ->url('#reporte-cartera')
-                    // Using a generic check or a specific permission if needed. Assuming admins or those with report access can see it.
-                    // For now, making it visible to users who can see balance_diario, or we can just make it true and let permissions handle it if needed.
-                    ->visible(fn(): bool => true), 
+                    ->visible(fn(): bool => auth()->user()?->can('reporte_cartera') ?? false), 
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,

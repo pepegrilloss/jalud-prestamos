@@ -19,6 +19,10 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
     #[\Livewire\Attributes\On('abrirReporteCartera')]
     public function abrirModal(): void
     {
+        if (! auth()->user()?->can('reporte_cartera')) {
+            return;
+        }
+
         $this->mountAction('generarReporte');
     }
 
