@@ -34,10 +34,10 @@
         }
 
         .cartera-checkbox-list label.fi-fo-checkbox-list-option-label:hover {
-            border-color: #3b82f6 !important;
-            background-color: #f0f7ff !important;
+            border-color: #9cd333 !important;
+            background-color: #f7fee7 !important;
             transform: translateY(-2px) !important;
-            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -2px rgba(59, 130, 246, 0.05) !important;
+            box-shadow: 0 10px 15px -3px rgba(156, 211, 51, 0.1), 0 4px 6px -2px rgba(156, 211, 51, 0.05) !important;
         }
 
         /* Contenedor del checkbox */
@@ -48,15 +48,20 @@
             border: 2px solid #d1d5db !important;
             width: 20px !important;
             height: 20px !important;
-            color: #3b82f6 !important;
+            color: #9cd333 !important;
             transition: all 0.2s ease !important;
+        }
+
+        .cartera-checkbox-list .fi-fo-checkbox-list-option-label input[type="checkbox"]:checked {
+            background-color: #9cd333 !important;
+            border-color: #9cd333 !important;
         }
 
         /* Cuando está marcado */
         .cartera-checkbox-list .fi-fo-checkbox-list-option-label:has(input:checked) {
-            border-color: #3b82f6 !important;
-            background-color: #eff6ff !important;
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1) !important;
+            border-color: #9cd333 !important;
+            background-color: #f0fdf4 !important;
+            box-shadow: 0 4px 6px -1px rgba(156, 211, 51, 0.1) !important;
         }
 
         /* Texto principal */
