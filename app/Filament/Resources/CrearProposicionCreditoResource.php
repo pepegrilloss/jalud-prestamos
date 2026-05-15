@@ -639,18 +639,28 @@ class CrearProposicionCreditoResource extends Resource
 
         $infoRefinanciamiento = $proposicionAnterior->obtenerInfoRefinanciamiento();
 
+        $montoTotal = (float) $infoRefinanciamiento['SaldoPendiente'];
+        $tasaInteres = (float) $infoRefinanciamiento['TasaInteres'];
+        $numeroCuotas = (int) $infoRefinanciamiento['NumeroCuotas'];
+
         // Cargar datos en el formulario
         $set('ProposicionCreditoAnteriorID', $proposicionAnteriorID);
         $set('EsRefinanciamiento', true);
-        $set('MontoTotal', $infoRefinanciamiento['SaldoPendiente']);
+        $set('MontoTotal', $montoTotal);
         $set('TasaID', $infoRefinanciamiento['TasaID']);
-        $set('TasaInteres', $infoRefinanciamiento['TasaInteres']);
+        $set('TasaInteres', $tasaInteres);
         $set('Plazo', $infoRefinanciamiento['Plazo']);
-        $set('NumeroCuotas', $infoRefinanciamiento['NumeroCuotas']);
+        $set('NumeroCuotas', $numeroCuotas);
         $set('TasaMora', $infoRefinanciamiento['TasaMora']);
 
-        // Recalcular totales
-        static::calcularTotales($set, $get, $infoRefinanciamiento['SaldoPendiente']);
+        // Calcular totales directamente (no usar calcularTotales porque $get no lee los $set recientes)
+        if ($montoTotal > 0 && $tasaInteres > 0 && $numeroCuotas > 0) {
+            $interes = $montoTotal * ($tasaInteres / 100);
+            $total = $montoTotal + $interes;
+            $set('MontoInteres', round($interes, 2));
+            $set('MontoTotalPagar', round($total, 2));
+            $set('MontoCuota', round($total / $numeroCuotas, 2));
+        }
 
         Notification::make()
             ->success()

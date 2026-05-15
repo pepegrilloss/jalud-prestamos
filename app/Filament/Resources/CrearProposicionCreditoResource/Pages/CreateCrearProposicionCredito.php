@@ -17,7 +17,7 @@ class CreateCrearProposicionCredito extends CreateRecord
 {
     protected static string $resource = CrearProposicionCreditoResource::class;
 
-    public function getTitle(): string | \Illuminate\Contracts\Support\Htmlable
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
         return new \Illuminate\Support\HtmlString("
             <div class='flex items-center gap-x-3'>
@@ -81,10 +81,9 @@ class CreateCrearProposicionCredito extends CreateRecord
             // Obtener información del crédito anterior
             $infoRefinanciamiento = $proposicionAnterior->obtenerInfoRefinanciamiento();
 
-            // Solo establecer MontoTotal si el usuario no lo modificó (si está vacío o igual al saldo pendiente)
-            if (empty($data['MontoTotal']) || (float) $data['MontoTotal'] == (float) $infoRefinanciamiento['SaldoPendiente']) {
+            // Si por alguna razón viene vacío, usamos el saldo pendiente
+            if (empty($data['MontoTotal'])) {
                 $data['MontoTotal'] = $infoRefinanciamiento['SaldoPendiente'];
-                $data['MontoTotalPagar'] = $infoRefinanciamiento['SaldoPendiente'];
             }
 
             $data['EsRefinanciamiento'] = true;
@@ -112,13 +111,13 @@ class CreateCrearProposicionCredito extends CreateRecord
         }
 
         $data['UserProponenteID'] = auth()->id();
-        
+
         // Inyectar fecha abierta si no está seteada (con hora actual)
         if (!isset($data['FechaPropuesta'])) {
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
             $data['FechaPropuesta'] = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
         }
-        
+
         $data['Estado'] = 'PENDIENTE';
         $data['Activo'] = true;
 
