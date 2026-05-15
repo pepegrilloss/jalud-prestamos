@@ -23,11 +23,11 @@ trait BelongsToSede
         static::creating(function ($model) {
             if (empty($model->SedeID) && auth()->check()) {
                 $user = auth()->user();
-                if (($user->esAdmin() || $user->puedeVerTodasLasSedes()) && session('sede_activa')) {
-                    // Admin con sede seleccionada: usar la sede de la sesión
+                if (($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) && session('sede_activa')) {
+                    // Usuario con selector de sede activo: usar la sede de la sesión
                     $model->SedeID = session('sede_activa');
                 } else {
-                    // Usuario normal o admin sin sede seleccionada: usar la sede del usuario
+                    // Usuario normal o sin sede seleccionada: usar la sede del usuario
                     $model->SedeID = $user->SedeID;
                 }
             }
@@ -41,8 +41,8 @@ trait BelongsToSede
 
             $user = auth()->user();
 
-            if ($user->esAdmin() || $user->puedeVerTodasLasSedes()) {
-                // Admin: filtrar solo si tiene una sede seleccionada en sesión
+            if ($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) {
+                // Usuario con selector de sede: filtrar por sede activa en sesión
                 $sedeActiva = session('sede_activa');
                 if ($sedeActiva) {
                     $query->where($query->getModel()->getTable() . '.SedeID', $sedeActiva);
