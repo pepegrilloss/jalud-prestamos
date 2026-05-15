@@ -48,6 +48,7 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
                     ->displayFormat('d/m/Y'),
                 CheckboxList::make('tipos')
                     ->label('Tipos de Cartera')
+                    ->extraAttributes(['class' => 'cartera-checkbox-list'])
                     ->options([
                         'no_vencida' => '📗 Cartera NO VENCIDA — Créditos que aún no vencen',
                         'vencida'    => '📙 Cartera VENCIDA — Hasta 7 días de vencimiento',
