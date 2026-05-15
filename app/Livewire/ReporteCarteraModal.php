@@ -50,10 +50,10 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
                     ->label('Tipos de Cartera')
                     ->extraAttributes(['class' => 'cartera-checkbox-list'])
                     ->options([
-                        'no_vencida' => '📗 Cartera NO VENCIDA — Créditos que aún no vencen',
-                        'vencida'    => '📙 Cartera VENCIDA — Hasta 7 días de vencimiento',
-                        'morosa'     => '📕 Cartera MOROSA — De 8 a 180 días de vencimiento',
-                        'pesada'     => '⛔ Cartera PESADA / PÉRDIDA — Más de 180 días',
+                        'no_vencida' => 'Cartera NO VENCIDA — Créditos que aún no vencen',
+                        'vencida'    => 'Cartera VENCIDA — Hasta 7 días de vencimiento',
+                        'morosa'     => 'Cartera MOROSA — De 8 a 180 días de vencimiento',
+                        'pesada'     => 'Cartera PESADA / PÉRDIDA — Más de 180 días',
                     ])
                     ->default(['no_vencida', 'vencida', 'morosa', 'pesada'])
                     ->required()
