@@ -44,8 +44,7 @@ class PromotorCobradorResource extends Resource
                             ->required()
                             ->maxLength(40)
                             ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
-                                $sedeId = auth()->user()->esAdmin() ? session('sede_activa') : auth()->user()->SedeID;
-                                return $rule->where('SedeID', $sedeId);
+                                return $rule->where('SedeID', auth()->user()->getEffectiveSedeId());
                             })
                             ->validationMessages([
                                 'unique' => 'Este código ya está registrado en el sistema.',

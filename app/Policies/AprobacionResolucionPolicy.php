@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Cliente;
+use App\Models\AprobacionResolucion;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class ClientePolicy
+class AprobacionResolucionPolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class ClientePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_reporte::clientes::inactivos');
+        return $user->can('view_any_aprobacion::resolucion');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Cliente $cliente): bool
+    public function view(User $user, AprobacionResolucion $aprobacionResolucion): bool
     {
-        return $user->can('view_reporte::clientes::inactivos');
+        return $user->can('view_aprobacion::resolucion');
     }
 
     /**
@@ -31,23 +31,23 @@ class ClientePolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_reporte::clientes::inactivos');
+        return $user->can('{{ Create }}');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Cliente $cliente): bool
+    public function update(User $user, AprobacionResolucion $aprobacionResolucion): bool
     {
-        return $user->can('update_reporte::clientes::inactivos');
+        return $user->can('update_aprobacion::resolucion');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Cliente $cliente): bool
+    public function delete(User $user, AprobacionResolucion $aprobacionResolucion): bool
     {
-        return $user->can('delete_reporte::clientes::inactivos');
+        return $user->can('{{ Delete }}');
     }
 
     /**
@@ -61,7 +61,7 @@ class ClientePolicy
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, Cliente $cliente): bool
+    public function forceDelete(User $user, AprobacionResolucion $aprobacionResolucion): bool
     {
         return $user->can('{{ ForceDelete }}');
     }
@@ -77,7 +77,7 @@ class ClientePolicy
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, Cliente $cliente): bool
+    public function restore(User $user, AprobacionResolucion $aprobacionResolucion): bool
     {
         return $user->can('{{ Restore }}');
     }
@@ -93,7 +93,7 @@ class ClientePolicy
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, Cliente $cliente): bool
+    public function replicate(User $user, AprobacionResolucion $aprobacionResolucion): bool
     {
         return $user->can('{{ Replicate }}');
     }

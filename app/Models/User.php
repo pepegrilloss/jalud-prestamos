@@ -173,6 +173,19 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Devuelve el SedeID efectivo según el contexto del usuario.
+     * Para usuarios privilegiados (admin, ver todas las sedes, seleccionar sedes operativas),
+     * usa la sede activa en sesión. Para usuarios normales, usa su sede asignada.
+     */
+    public function getEffectiveSedeId(): ?int
+    {
+        if ($this->esAdmin() || $this->puedeVerTodasLasSedes() || $this->puedeSeleccionarSedesOperativas()) {
+            return session('sede_activa') ?: $this->SedeID;
+        }
+        return $this->SedeID;
+    }
+
+    /**
      * Enviar notificación a administradores, opcionalmente filtrado por sede.
      */
     public static function notificarAdmin(string $titulo, string $cuerpo, ?string $icono = 'heroicon-o-bell', ?int $sedeId = null): void

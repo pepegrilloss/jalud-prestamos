@@ -49,6 +49,7 @@ class ReporteCarteraController extends Controller
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
             ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
             ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+            ->leftJoin('Zona', 'ProposicionCredito.ZonaID', '=', 'Zona.ZonaID')
             ->where('ProposicionCredito.SaldoPendiente', '>', 0)
             ->where('ProposicionCredito.FueRefinanciada', 0);
 
@@ -69,7 +70,8 @@ class ReporteCarteraController extends Controller
             'Cliente.NombresApellidos',
             'ProposicionCredito.MontoTotalPagar',
             'ProposicionCredito.SaldoPendiente',
-            'ProposicionCredito.CodigoCredito'
+            'ProposicionCredito.CodigoCredito',
+            'Zona.Nombre as ZonaNombre'
         )
         ->orderBy('Credito.FechaVencimiento', 'asc')
         ->get();
@@ -117,6 +119,7 @@ class ReporteCarteraController extends Controller
             $item = [
                 'tipo'         => $credito->TipoCreditoDescripcion,
                 'cliente'      => $credito->NombresApellidos,
+                'zona'         => $credito->ZonaNombre ?? '-',
                 'total'        => $total,
                 'pagado'       => $pagado,
                 'saldo'        => $saldo,

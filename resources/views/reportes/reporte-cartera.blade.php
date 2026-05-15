@@ -131,6 +131,7 @@
                     <tr>
                         <th>Tipo</th>
                         <th>Cliente</th>
+                        <th>Zona</th>
                         <th class="numero">Total</th>
                         <th class="numero">Pagado</th>
                         <th class="numero">Saldo</th>
@@ -144,6 +145,7 @@
                         <tr>
                             <td>{{ $item['tipo'] }}</td>
                             <td>{{ $item['cliente'] }}</td>
+                            <td>{{ $item['zona'] }}</td>
                             <td class="numero">{{ number_format($item['total'], 2) }}</td>
                             <td class="numero">{{ number_format($item['pagado'], 2) }}</td>
                             <td class="numero">{{ number_format($item['saldo'], 2) }}</td>
@@ -167,6 +169,54 @@
     <div class="total-general">
         TOTAL GENERAL SALDO: S/ {{ number_format($totalGeneralSaldo, 2) }}
     </div>
+
+    {{-- RESUMEN POR TIPO DE CARTERA --}}
+    <div style="page-break-before: always;"></div>
+
+    <div style="text-align: left; margin-bottom: 10px;">
+        <strong>JALUD  SAC</strong>
+    </div>
+    <div style="border-bottom: 1px solid #000; margin-bottom: 30px;"></div>
+
+    <table style="width: 60%; margin: 40px auto 0 auto;">
+        <thead>
+            <tr>
+                <th style="text-align: right; padding-right: 20px;"></th>
+                <th style="text-align: right; padding-right: 20px;"></th>
+                <th style="text-align: right;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @php
+                $ordenResumen = ['pesada', 'morosa', 'vencida', 'no_vencida'];
+                $nombresCortos = [
+                    'pesada'     => 'CARTERA PESADA',
+                    'morosa'     => 'CARTERA MOROSA',
+                    'vencida'    => 'CARTERA VENCIDA',
+                    'no_vencida' => 'CARTERA NO VENCIDA',
+                ];
+            @endphp
+            @foreach($ordenResumen as $tipo)
+                @if(isset($secciones[$tipo]))
+                    @php
+                        $porcentaje = $totalGeneralSaldo > 0
+                            ? ($secciones[$tipo]['totalSaldo'] / $totalGeneralSaldo) * 100
+                            : 0;
+                    @endphp
+                    <tr style="border-bottom: 1px solid #ddd;">
+                        <td style="text-align: right; padding: 6px 20px 6px 0; font-weight: bold;">{{ $nombresCortos[$tipo] }}</td>
+                        <td style="text-align: right; padding: 6px 20px 6px 0;">{{ number_format($secciones[$tipo]['totalSaldo'], 2) }}</td>
+                        <td style="text-align: right; padding: 6px 0;">{{ number_format($porcentaje, 2) }} %</td>
+                    </tr>
+                @endif
+            @endforeach
+            <tr style="border-top: 2px solid #000;">
+                <td style="text-align: right; padding: 8px 20px 8px 0; font-weight: bold; font-size: 11px;">TOTAL</td>
+                <td style="text-align: right; padding: 8px 20px 8px 0; font-weight: bold; font-size: 11px;">{{ number_format($totalGeneralSaldo, 2) }}</td>
+                <td style="text-align: right; padding: 8px 0; font-weight: bold; font-size: 11px;">100.00 %</td>
+            </tr>
+        </tbody>
+    </table>
 
     <div class="footer">
         <p>Este documento fue generado automaticamente por el sistema JALUD</p>
