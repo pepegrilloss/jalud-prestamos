@@ -12,6 +12,7 @@ class MostrarEstadoDia extends Command
 
     public function handle()
     {
+        // Este comando opera sobre TODAS las sedes sin filtro. Es intencional para operaciones de sistema.
         $estado = AperturaCierreDia::estadoDiaActual();
         $registro = AperturaCierreDia::hoyOHoy();
         $abierto = AperturaCierreDia::estaAbierto();

@@ -58,14 +58,11 @@ class CajaAbiertaWidget extends BaseWidget
             ];
         }
 
-        $totalCajaAbierta = FondoSede::sum('Saldo');
-        $sedeCount = FondoSede::count();
-
         return [
-            Stat::make('Caja Abierta - Total General', 'S/ ' . number_format($totalCajaAbierta, 2))
-                ->description("{$sedeCount} sedes con fondos")
+            Stat::make('Caja Abierta', 'S/ 0.00')
+                ->description('Sin sede asignada')
                 ->descriptionIcon('heroicon-m-building-library')
-                ->color('success'),
+                ->color('gray'),
         ];
     }
 }

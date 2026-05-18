@@ -18,11 +18,17 @@ class ProposicionCreditoStats extends BaseWidget
 
     protected function getStats(): array
     {
+        $user = auth()->user();
+        $query = ProposicionCredito::where('Estado', 'APROBADO')
+            ->whereDoesntHave('credito');
+
+        if ($user->getEffectiveSedeId()) {
+            $query->where('SedeID', $user->getEffectiveSedeId());
+        }
+
         return [
             Stat::make('Total Propuesto', 'S/ ' . number_format(
-                ProposicionCredito::where('Estado', 'APROBADO')
-                    ->whereDoesntHave('credito')
-                    ->sum('MontoTotal'),
+                $query->sum('MontoTotal'),
                 2
             ))
                 ->description('Suma de todos los montos totales propuestos')

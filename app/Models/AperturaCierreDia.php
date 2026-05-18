@@ -339,6 +339,7 @@ class AperturaCierreDia extends Model
     private function registrarHistorial(string $accion, int $cantidadRegistros): void
     {
         try {
+            // AVISO: Si se modifica este código en el futuro, mantener 'SedeID' => $this->SedeID explícito.
             \Illuminate\Support\Facades\DB::table('historial_apertura_cierre')->insert([
                 'SedeID' => $this->SedeID,
                 'Fecha' => $this->Fecha->toDateString(),

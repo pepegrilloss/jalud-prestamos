@@ -36,6 +36,8 @@ class DashboardCobradoDiarioWidget extends BaseWidget
             $pagosQuery->whereHas('cuota.credito.proposicion', function ($q) use ($zonaID) {
                 $q->where('ZonaID', $zonaID);
             });
+        } elseif (!$user->isPrivileged() || $user->getEffectiveSedeId()) {
+            $pagosQuery->where('SedeID', $user->getEffectiveSedeId());
         }
 
         $cobradoDiario = $pagosQuery->sum('MontoPagado');

@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CreditosRefinanciadosResource\Pages;
-use App\Models\Credito;
+use App\Models\CreditoRefinanciado;
 use App\Models\Zona;
 use App\Models\TipoCredito;
 use Filament\Forms;
@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Models\Sede;
 class CreditosRefinanciadosResource extends Resource
 {
-    protected static ?string $model = Credito::class;
+    protected static ?string $model = CreditoRefinanciado::class;
 
     protected static ?string $navigationGroup = 'Créditos';
     protected static ?string $navigationIcon = 'heroicon-o-arrow-path';

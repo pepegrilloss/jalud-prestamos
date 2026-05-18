@@ -39,6 +39,7 @@ class CreditoGeneradoCantidadWidget extends BaseWidget
 
     protected function getStats(): array
     {
+        $user = auth()->user();
         $fecha = $this->fechaFiltro;
 
         $query = Credito::whereHas('proposicion', function ($q) {
@@ -47,6 +48,10 @@ class CreditoGeneradoCantidadWidget extends BaseWidget
         
         if ($fecha) {
             $query->whereDate('FechaGeneracion', $fecha);
+        }
+
+        if (!$user->isPrivileged() || $user->getEffectiveSedeId()) {
+            $query->where('SedeID', $user->getEffectiveSedeId());
         }
 
         $cantidad = $query->count();

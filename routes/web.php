@@ -12,9 +12,12 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/pdf/acta-creditos', function () {
         $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
 
+        $sedeId = auth()->user()->getEffectiveSedeId();
+
         $proposiciones = ProposicionCredito::with(['cliente', 'zona', 'tipoCredito', 'tasa'])
             ->where('Activo', true)
             ->whereDate('FechaPropuesta', '=', $fecha)
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('CodigoCredito')
             ->get();
 
@@ -35,6 +38,9 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         $nombre = request()->get('nombre');
         $fechaDesde = request()->get('fecha_desde');
         $fechaHasta = request()->get('fecha_hasta');
+
+        $user = auth()->user();
+        $sedeId = $user->getEffectiveSedeId();
 
         $clientes = \Illuminate\Support\Facades\DB::table('Cliente')
             ->select('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos')
@@ -58,6 +64,7 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
                      ->where('Credito.EstatusCreditoFinal', '=', 'SALDADO');
             })
             ->where('Cliente.Activo', true)
+            ->when($sedeId, fn($q) => $q->where('Cliente.SedeID', $sedeId))
             ->whereNotExists(function ($q) {
                 $q->selectRaw(1)
                   ->from('ProposicionCredito as p2')
@@ -100,11 +107,13 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         $fechaDesde = request()->get('fecha_desde');
         $fechaHasta = request()->get('fecha_hasta');
         $clienteId = request()->get('cliente_id');
+        $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) {
                 $q->where('SaldoPendiente', '>', 0);
             })
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->select('Credito.*')
             ->selectRaw("DATEDIFF(NOW(), COALESCE((SELECT MAX(FechaPago) FROM pago WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1), FechaGeneracion)) as dias_atraso_calc")
             ->havingRaw('dias_atraso_calc >= 1');
@@ -139,11 +148,13 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
 
         $fechaCarbonDesde = $fechaDesde ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaDesde) : now();
         $fechaCarbonHasta = $fechaHasta ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaHasta) : $fechaCarbonDesde;
+        $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) {
                 $q->where('SaldoPendiente', '>', 0);
             })
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->with(['proposicion.cliente', 'proposicion.tipoCredito']);
 
         if ($fechaDesde) {
@@ -177,9 +188,11 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
 
     Route::get('/pdf/cuentas-canceladas', function () {
         $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
+        $sedeId = auth()->user()->getEffectiveSedeId();
 
         $proposiciones = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
             ->whereDate('FechaModificacion', '=', $fecha)
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->with(['cliente', 'credito'])
             ->orderByDesc('FechaModificacion')
             ->get();

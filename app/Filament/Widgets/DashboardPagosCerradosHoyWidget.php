@@ -29,10 +29,15 @@ class DashboardPagosCerradosHoyWidget extends BaseWidget
 
         $fecha = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
 
-        $pagosCount = \App\Models\Pago::where('Activo', true)
+        $pagosQuery = \App\Models\Pago::where('Activo', true)
             ->where('EsPagoAutomatico', 0)
-            ->whereDate('FechaPago', $fecha)
-            ->count();
+            ->whereDate('FechaPago', $fecha);
+
+        if (!$user->isPrivileged() || $user->getEffectiveSedeId()) {
+            $pagosQuery->where('SedeID', $user->getEffectiveSedeId());
+        }
+
+        $pagosCount = $pagosQuery->count();
 
         return [
             Stat::make('Pagos Cerrados Hoy', $pagosCount)

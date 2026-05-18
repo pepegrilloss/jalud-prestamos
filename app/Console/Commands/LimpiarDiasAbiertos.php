@@ -12,6 +12,7 @@ class LimpiarDiasAbiertos extends Command
 
     public function handle()
     {
+        // Este comando opera sobre TODAS las sedes sin filtro. Es intencional para operaciones de sistema.
         $this->info('🔍 Buscando días abiertos...');
         
         $diasAbiertos = AperturaCierreDia::where('EstadoDia', 'ABIERTO')

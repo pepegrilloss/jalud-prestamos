@@ -30,17 +30,10 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
     {
         return Action::make('generarReporte')
             ->modalHeading('REPORTE DE CARTERA')
-            ->modalDescription('Seleccione el rango de fechas y los tipos de cartera a incluir en el reporte.')
+            ->modalDescription('Seleccione la fecha y los tipos de cartera a incluir en el reporte.')
             ->form([
-                DatePicker::make('fecha_desde')
-                    ->label('Desde')
-                    ->required()
-                    ->default(today()->startOfMonth())
-                    ->native(false)
-                    ->maxDate(today())
-                    ->displayFormat('d/m/Y'),
-                DatePicker::make('fecha_hasta')
-                    ->label('Hasta')
+                DatePicker::make('fecha')
+                    ->label('Fecha')
                     ->required()
                     ->default(today())
                     ->native(false)
@@ -68,8 +61,7 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
             ->modalSubmitActionLabel('Generar PDF')
             ->modalCancelActionLabel('Salir')
             ->action(function (array $data) {
-                $fechaDesde = $data['fecha_desde'];
-                $fechaHasta = $data['fecha_hasta'];
+                $fecha = $data['fecha'];
                 $tipos = implode(',', $data['tipos'] ?? []);
 
                 if (empty($data['tipos'])) {
@@ -81,9 +73,8 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
                 }
 
                 $url = route('reporte-cartera.pdf', [
-                    'fecha_desde' => $fechaDesde,
-                    'fecha_hasta' => $fechaHasta,
-                    'tipos'       => $tipos,
+                    'fecha' => $fecha,
+                    'tipos' => $tipos,
                 ]);
 
                 $this->js("window.open('{$url}', '_blank')");

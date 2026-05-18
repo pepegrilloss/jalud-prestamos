@@ -29,14 +29,19 @@ class DashboardCreditosVencenHoyWidget extends BaseWidget
 
         $fechaReferencia = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
 
-        $vencenHoy = \App\Models\Credito::where('Activo', true)
+        $creditosQuery = \App\Models\Credito::where('Activo', true)
             ->whereDate('FechaVencimiento', $fechaReferencia->toDateString())
             ->where('EstatusCreditoFinal', '!=', 'SALDADO')
             ->whereHas('proposicion', function ($q) {
                 $q->where('FueRefinanciada', 0)
                   ->where('SaldoPendiente', '>', 0);
-            })
-            ->count();
+            });
+
+        if (!$user->isPrivileged() || $user->getEffectiveSedeId()) {
+            $creditosQuery->where('SedeID', $user->getEffectiveSedeId());
+        }
+
+        $vencenHoy = $creditosQuery->count();
 
         return [
             Stat::make('Créditos Vencen Hoy', $vencenHoy)

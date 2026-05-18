@@ -18,10 +18,12 @@ class ComprasReporteController extends Controller
     {
         $fechaDesde = request()->query('fecha_desde');
         $fechaHasta = request()->query('fecha_hasta');
+        $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = Compra::query()
             ->activos()
             ->with('tipoComprobante', 'proveedor', 'detalles')
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('FechaEmision', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {
@@ -187,10 +189,12 @@ class ComprasReporteController extends Controller
     {
         $fechaDesde = request()->query('fecha_desde');
         $fechaHasta = request()->query('fecha_hasta');
+        $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = Compra::query()
             ->activos()
             ->with('tipoComprobante', 'proveedor', 'detalles')
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('FechaEmision', 'desc');
 
         if (!empty($fechaDesde) && $fechaDesde !== 'null') {

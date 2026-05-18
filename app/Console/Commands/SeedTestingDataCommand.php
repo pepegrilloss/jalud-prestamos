@@ -98,6 +98,7 @@ class SeedTestingDataCommand extends Command
                     'GiroID' => $faker->randomElement($giros) ?? null,
                     'SubGiroID' => $faker->randomElement($subGiros) ?? null,
                     'Activo' => 1,
+                    'SedeID' => $sede->SedeID,
                 ]);
 
                 // 3. Create Proposicion Credito

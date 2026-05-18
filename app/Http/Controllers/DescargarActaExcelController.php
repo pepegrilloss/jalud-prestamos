@@ -15,9 +15,12 @@ class DescargarActaExcelController extends Controller
         $fechaInput = request()->query('fecha');
         $fecha = $fechaInput ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaInput) : now();
 
+        $sedeId = auth()->user()->getEffectiveSedeId();
+
         $proposiciones = ProposicionCredito::with(['cliente', 'zona', 'tipoCredito', 'tasa'])
             ->where('Activo', true)
             ->whereDate('FechaPropuesta', '=', $fecha)
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('CodigoCredito')
             ->get();
 

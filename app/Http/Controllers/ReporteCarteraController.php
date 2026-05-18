@@ -13,16 +13,14 @@ class ReporteCarteraController extends Controller
 {
     public function descargar(Request $request)
     {
-        $fechaDesde = $request->get('fecha_desde');
-        $fechaHasta = $request->get('fecha_hasta');
+        $fecha = $request->get('fecha');
         $tipos = $request->get('tipos', ''); // comma-separated: no_vencida,vencida,morosa,pesada
 
-        if (!$fechaDesde || !$fechaHasta) {
-            abort(400, 'Debe especificar un rango de fechas.');
+        if (!$fecha) {
+            abort(400, 'Debe especificar una fecha.');
         }
 
-        $fechaCarbonDesde = Carbon::createFromFormat('Y-m-d', $fechaDesde);
-        $fechaCarbonHasta = Carbon::createFromFormat('Y-m-d', $fechaHasta);
+        $fechaCarbon = Carbon::createFromFormat('Y-m-d', $fecha);
         $hoy = Carbon::today();
 
         $tiposArray = array_filter(explode(',', $tipos));
@@ -57,9 +55,8 @@ class ReporteCarteraController extends Controller
             $query->where('Credito.SedeID', $sedeId);
         }
 
-        // Filtrar por rango de fecha de generación del crédito
-        $query->whereDate('Credito.FechaGeneracion', '>=', $fechaCarbonDesde->toDateString())
-              ->whereDate('Credito.FechaGeneracion', '<=', $fechaCarbonHasta->toDateString());
+        // Filtrar por fecha de generación del crédito
+        $query->whereDate('Credito.FechaGeneracion', '=', $fechaCarbon->toDateString());
 
         $creditos = $query->select(
             'Credito.CreditoID',
@@ -162,10 +159,7 @@ class ReporteCarteraController extends Controller
             $totalGeneralSaldo += $seccion['totalSaldo'];
         }
 
-        $rangoFechas = $fechaCarbonDesde->format('d/m/Y');
-        if ($fechaDesde !== $fechaHasta) {
-            $rangoFechas .= ' - ' . $fechaCarbonHasta->format('d/m/Y');
-        }
+        $rangoFechas = $fechaCarbon->format('d/m/Y');
 
         $data = [
             'secciones'         => $secciones,
@@ -178,10 +172,7 @@ class ReporteCarteraController extends Controller
         $pdf = Pdf::loadView('reportes.reporte-cartera', $data);
         $pdf->setPaper('a4', 'landscape');
 
-        $nombreArchivo = 'Reporte_Cartera_' . $fechaCarbonDesde->format('d-m-Y');
-        if ($fechaDesde !== $fechaHasta) {
-            $nombreArchivo .= '_al_' . $fechaCarbonHasta->format('d-m-Y');
-        }
+        $nombreArchivo = 'Reporte_Cartera_' . $fechaCarbon->format('d-m-Y');
 
         return $pdf->stream($nombreArchivo . '.pdf');
     }

@@ -8,9 +8,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
+use App\Traits\BelongsToSede;
 
 class PagoCredito extends Model
 {
+    use BelongsToSede;
+
     protected $table = 'PagoCredito';
     protected $primaryKey = 'PagoCreditoID';
     public $timestamps = false;
@@ -38,6 +41,7 @@ class PagoCredito extends Model
         'MotivoAnulacion',
         'UsuarioAnulacion',
         'FechaAnulacion',
+        'SedeID',
     ];
 
     protected $casts = [

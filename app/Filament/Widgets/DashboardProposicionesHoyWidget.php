@@ -30,6 +30,8 @@ class DashboardProposicionesHoyWidget extends BaseWidget
             $query->whereHas('cliente', function ($q) use ($promotorID) {
                 $q->where('PromotorCobradorID', $promotorID);
             });
+        } elseif ($user->getEffectiveSedeId()) {
+            $query->where('SedeID', $user->getEffectiveSedeId());
         }
 
         $fecha = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();

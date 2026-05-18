@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ReporteCreditosVencidosResource\Pages;
-use App\Models\Credito;
+use App\Models\CreditoReporteVencido;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Models\Sede;
 class ReporteCreditosVencidosResource extends Resource
 {
-    protected static ?string $model = Credito::class;
+    protected static ?string $model = CreditoReporteVencido::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-exclamation-circle';
     protected static ?string $navigationGroup = 'Reportes';

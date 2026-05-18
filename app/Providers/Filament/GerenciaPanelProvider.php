@@ -20,6 +20,7 @@ use App\Filament\Pages\Auth\Login;
 use App\Filament\Resources\FondoSedeResource;
 use App\Filament\Resources\TransferenciaSedeResource;
 use App\Filament\Widgets\CajaAbiertaWidget;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 
 class GerenciaPanelProvider extends PanelProvider
 {
@@ -49,7 +50,26 @@ class GerenciaPanelProvider extends PanelProvider
             ->renderHook(
                 \Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn(): string => \Illuminate\Support\Facades\Blade::render('
-                    <div class="flex items-center gap-x-3 px-4 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm mr-4">
+                    @php
+                        $sedeId = session("sede_activa");
+                        $sedeNombre = $sedeId ? \App\Models\Sede::find($sedeId)?->Nombre : "GLOBAL";
+                        $puedeCambiarSede = auth()->user()->esAdmin() || auth()->user()->can("page_SelectSede") || auth()->user()->puedeVerTodasLasSedes() || auth()->user()->puedeSeleccionarSedesOperativas();
+                    @endphp
+
+                    <style>
+                        @media (max-width: 639px) {
+                            .fi-global-search { display: none !important; }
+                        }
+                    </style>
+
+                    {{-- VERSION MOVIL --}}
+                    <div class="flex sm:hidden items-center gap-x-1 px-1.5 py-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm mr-1">
+                        <span class="text-[10px] font-bold text-gray-800 dark:text-gray-200 leading-none whitespace-nowrap">JALUD</span>
+                        <span class="text-[10px] font-bold text-primary-600 dark:text-primary-400 leading-none truncate max-w-[65px]">{{ $sedeNombre }}</span>
+                    </div>
+
+                    {{-- VERSION DESKTOP --}}
+                    <div class="hidden sm:flex items-center gap-x-3 px-4 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm mr-4">
                         <div class="flex items-center gap-x-2">
                             <span class="text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 leading-none">
                                 PANEL GERENCIA
@@ -57,16 +77,12 @@ class GerenciaPanelProvider extends PanelProvider
                         </div>
                         <div class="w-px h-5 bg-gray-300 dark:bg-gray-600"></div>
                         <div class="flex items-center leading-none">
-                            <span class="text-sm md:text-base font-bold text-primary-600 dark:text-primary-400">
-                                @php
-                                    $sedeId = session("sede_activa");
-                                    $sedeNombre = $sedeId ? \App\Models\Sede::find($sedeId)?->Nombre : "GLOBAL";
-                                @endphp
+                            <span class="text-sm md:text-base font-bold text-primary-600 dark:text-primary-400 max-w-[120px] md:max-w-none truncate">
                                 {{ $sedeNombre }}
                             </span>
-                            @if(auth()->user()->esAdmin() || auth()->user()->can("page_SelectSede") || auth()->user()->puedeVerTodasLasSedes() || auth()->user()->puedeSeleccionarSedesOperativas())
+                            @if($puedeCambiarSede)
                                 <a href="{{ route("filament.admin.pages.select-sede") }}" 
-                                   class="ml-2 p-1 text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all" 
+                                   class="ml-2 p-1 flex-shrink-0 text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all" 
                                    title="Cambiar Sede">
                                     <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -104,6 +120,7 @@ class GerenciaPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->plugins([
+                FilamentShieldPlugin::make(),
                 \Hasnayeen\Themes\ThemesPlugin::make()
                     ->canViewThemesPage(fn() => auth()->user() ? auth()->user()->can('page_Themes') : false),
             ])

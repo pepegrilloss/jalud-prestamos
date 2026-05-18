@@ -12,6 +12,7 @@ class VerAperturaCierreLogs extends Command
 
     public function handle()
     {
+        // Este comando opera sobre TODAS las sedes sin filtro. Es intencional para operaciones de sistema.
         $logger = new AperturaCierreDiaLogger();
         
         if ($this->option('clear')) {

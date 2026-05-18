@@ -25,12 +25,19 @@ class DashboardMiTotalPrestadoWidget extends BaseWidget
     protected function getStats(): array
     {
         $user = Auth::user();
-        $promotorCobrador = $user->promotorCobrador;
-         // Solo para admin
+        $query = \App\Models\ProposicionCredito::whereHas('credito')
+            ->where('EsRefinanciamiento', 0);
 
-        $totalPrestado = \App\Models\ProposicionCredito::whereHas('credito')
-            ->where('EsRefinanciamiento', 0)
-            ->sum('MontoTotal');
+        $promotorCobrador = $user->promotorCobrador;
+        if ($promotorCobrador && $promotorCobrador->ZonaID) {
+            $query->where('ZonaID', $promotorCobrador->ZonaID);
+        } elseif (!$user->isPrivileged() && $user->SedeID) {
+            $query->where('SedeID', $user->SedeID);
+        } elseif ($user->isPrivileged() && $user->getEffectiveSedeId()) {
+            $query->where('SedeID', $user->getEffectiveSedeId());
+        }
+
+        $totalPrestado = $query->sum('MontoTotal');
 
         return [
             Stat::make('Mi Total Prestado', 'S/ ' . number_format($totalPrestado, 2))

@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\BelongsToSede;
 
 class TelefonoNegocio extends Model
 {
+    use BelongsToSede;
     protected $table = 'TelefonoNegocio';
     protected $primaryKey = 'TelefonoNegocioID';
     public $timestamps = false;

@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SolicitudExoneracionResource\Pages;
 use App\Models\SolicitudExoneracion;
-use App\Models\Credito;
+use App\Models\CreditoSolicitudExoneracion;
 use App\Models\AperturaCierreDia;
 use App\Models\Zona;
 use App\Models\TipoCredito;
@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Models\Sede;
 class SolicitudExoneracionResource extends Resource
 {
-    protected static ?string $model = Credito::class;
+    protected static ?string $model = CreditoSolicitudExoneracion::class;
 
     protected static ?string $navigationGroup = 'Exoneraciones';
     protected static ?int $navigationGroupSort = 100;

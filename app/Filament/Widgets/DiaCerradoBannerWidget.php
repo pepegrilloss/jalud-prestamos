@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\AperturaCierreDia;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+use Illuminate\Support\Facades\Auth;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -19,7 +20,10 @@ class DiaCerradoBannerWidget extends BaseWidget
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             return false;
         }
-        return !AperturaCierreDia::estaAbierto();
+        return !AperturaCierreDia::withoutGlobalScope('sede')
+            ->where('SedeID', Auth::user()->getEffectiveSedeId())
+            ->where('EstadoDia', 'ABIERTO')
+            ->exists();
     }
 
     protected function getStats(): array

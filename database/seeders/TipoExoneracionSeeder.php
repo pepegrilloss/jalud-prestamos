@@ -3,7 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use App\Models\TipoExoneracion;
+use App\Models\Sede;
 
 class TipoExoneracionSeeder extends Seeder
 {
@@ -12,28 +13,33 @@ class TipoExoneracionSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('TipoExoneracion')->insert([
-            [
-                'Codigo' => 'P',
-                'Nombre' => 'Pronto Pago',
-                'Descripcion' => 'Descuento por pagos puntuales',
-                'Activo' => true,
-                'FechaCreacion' => now(),
-            ],
-            [
-                'Codigo' => 'I',
-                'Nombre' => 'Interés',
-                'Descripcion' => 'Exoneración de intereses',
-                'Activo' => true,
-                'FechaCreacion' => now(),
-            ],
-            [
-                'Codigo' => 'M',
-                'Nombre' => 'Mora',
-                'Descripcion' => 'Exoneración de mora acumulada',
-                'Activo' => true,
-                'FechaCreacion' => now(),
-            ],
+        $sedeId = Sede::first()->SedeID;
+
+        TipoExoneracion::create([
+            'Codigo' => 'P',
+            'Nombre' => 'Pronto Pago',
+            'Descripcion' => 'Descuento por pagos puntuales',
+            'Activo' => true,
+            'FechaCreacion' => now(),
+            'SedeID' => $sedeId,
+        ]);
+
+        TipoExoneracion::create([
+            'Codigo' => 'I',
+            'Nombre' => 'Interés',
+            'Descripcion' => 'Exoneración de intereses',
+            'Activo' => true,
+            'FechaCreacion' => now(),
+            'SedeID' => $sedeId,
+        ]);
+
+        TipoExoneracion::create([
+            'Codigo' => 'M',
+            'Nombre' => 'Mora',
+            'Descripcion' => 'Exoneración de mora acumulada',
+            'Activo' => true,
+            'FechaCreacion' => now(),
+            'SedeID' => $sedeId,
         ]);
     }
 }

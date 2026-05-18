@@ -3,10 +3,10 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Credito;
+use App\Models\CreditoReporteAtraso;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-class CreditoPolicy
+class CreditoReporteAtrasoPolicy
 {
     use HandlesAuthorization;
 
@@ -15,15 +15,15 @@ class CreditoPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view_any_credito');
+        return $user->can('view_any_reporte::clientes::atraso');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Credito $credito): bool
+    public function view(User $user, CreditoReporteAtraso $creditoReporteAtraso): bool
     {
-        return $user->can('view_credito');
+        return $user->can('view_reporte::clientes::atraso');
     }
 
     /**
@@ -31,23 +31,23 @@ class CreditoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_credito');
+        return $user->can('create_reporte::clientes::atraso');
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Credito $credito): bool
+    public function update(User $user, CreditoReporteAtraso $creditoReporteAtraso): bool
     {
-        return $user->can('update_credito');
+        return $user->can('update_reporte::clientes::atraso');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Credito $credito): bool
+    public function delete(User $user, CreditoReporteAtraso $creditoReporteAtraso): bool
     {
-        return $user->can('delete_credito');
+        return $user->can('delete_reporte::clientes::atraso');
     }
 
     /**
@@ -61,7 +61,7 @@ class CreditoPolicy
     /**
      * Determine whether the user can permanently delete.
      */
-    public function forceDelete(User $user, Credito $credito): bool
+    public function forceDelete(User $user, CreditoReporteAtraso $creditoReporteAtraso): bool
     {
         return $user->can('{{ ForceDelete }}');
     }
@@ -77,7 +77,7 @@ class CreditoPolicy
     /**
      * Determine whether the user can restore.
      */
-    public function restore(User $user, Credito $credito): bool
+    public function restore(User $user, CreditoReporteAtraso $creditoReporteAtraso): bool
     {
         return $user->can('{{ Restore }}');
     }
@@ -93,7 +93,7 @@ class CreditoPolicy
     /**
      * Determine whether the user can replicate.
      */
-    public function replicate(User $user, Credito $credito): bool
+    public function replicate(User $user, CreditoReporteAtraso $creditoReporteAtraso): bool
     {
         return $user->can('{{ Replicate }}');
     }

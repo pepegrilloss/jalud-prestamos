@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class MovimientoFondo extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSede;
 
     protected $table = 'movimientos_fondo';
     protected $primaryKey = 'MovimientoID';

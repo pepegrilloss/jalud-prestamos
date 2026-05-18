@@ -48,14 +48,11 @@ class CajaChicaWidget extends BaseWidget
             ];
         }
 
-        $totalCajaChica = FondoSede::sum('SaldoCajaChica');
-        $sedeCount = FondoSede::count();
-
         return [
-            Stat::make('Caja Chica - Total General', 'S/ ' . number_format($totalCajaChica, 2))
-                ->description("{$sedeCount} sedes")
+            Stat::make('Caja Chica', 'S/ 0.00')
+                ->description('Sin sede asignada')
                 ->descriptionIcon('heroicon-m-wallet')
-                ->color('info'),
+                ->color('gray'),
         ];
     }
 }

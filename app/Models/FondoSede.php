@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\BelongsToSede;
 
 class FondoSede extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSede;
 
     protected $table = 'fondo_sedes';
     protected $primaryKey = 'FondoSedeID';

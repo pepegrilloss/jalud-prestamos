@@ -39,6 +39,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->where('SedeID', auth()->user()->getEffectiveSedeId()))
             ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('DNI')
