@@ -37,23 +37,26 @@ class SaldoPendienteService
             return 0;
         }
 
-        // Cálculo directo en SQL (1 solo query en vez de 3-4)
-        $result = DB::selectOne("
-            SELECT 
-                COALESCE(SUM(c.MontoCuota), 0) as total_cuotas,
-                COALESCE((
-                    SELECT SUM(p.MontoPagado) 
-                    FROM pago p 
-                    WHERE p.CreditoID = ? 
-                      AND p.Activo = 1
-                      AND (p.EstadoTraslado IS NULL OR p.EstadoTraslado != 'TRASLADADO')
-                      AND p.EsMora = 0
-                ), 0) as total_pagado
-            FROM cuota c 
-            WHERE c.CreditoID = ? AND c.Activo = 1
-        ", [$credito->CreditoID, $credito->CreditoID]);
+        // Calcular total pagado (1 query)
+        $totalPagado = (float) (DB::selectOne("
+            SELECT COALESCE((
+                SELECT SUM(p.MontoPagado) 
+                FROM pago p 
+                WHERE p.CreditoID = ? 
+                  AND p.Activo = 1
+                  AND (p.EstadoTraslado IS NULL OR p.EstadoTraslado != 'TRASLADADO')
+                  AND p.EsMora = 0
+            ), 0) as total_pagado
+        ", [$credito->CreditoID])->total_pagado ?? 0);
 
-        $saldo = max(0, ($result->total_cuotas ?? 0) - ($result->total_pagado ?? 0));
+        // La deuda real es MontoTotalPagar, no SUM(cuota.MontoCuota)
+        // Las cuotas son referenciales; sus montos pueden no cerrar exacto por redondeo
+        $proposicion = ProposicionCredito::withoutGlobalScope('sede')
+            ->withoutEagerLoads()
+            ->where('ProposicionCreditoID', $proposicionCreditoID)
+            ->first();
+
+        $saldo = max(0, (float)($proposicion->MontoTotalPagar ?? 0) - $totalPagado);
 
         // Actualización directa sin disparar model events (evita recursión)
         DB::table('ProposicionCredito')

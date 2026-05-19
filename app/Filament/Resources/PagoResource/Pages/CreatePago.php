@@ -616,7 +616,8 @@ class CreatePago extends CreateRecord
                 // Actualizar la proposición con el saldo pendiente total (calculado desde pagos)
                 $proposicion = $credito->proposicion;
                 if ($proposicion) {
-                    $montoCuotasTotal = $credito->cuotas()->sum('MontoCuota');
+                    // La deuda real es MontoTotalPagar, no SUM(cuota.MontoCuota)
+                    $montoCuotasTotal = (float)($credito->proposicion->MontoTotalPagar ?? 0);
                     $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
                         ->where('Activo', 1)
                         ->sum('MontoPagado');
