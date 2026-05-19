@@ -41,6 +41,10 @@
             </tr>
         </thead>
         <tbody>
+            @php
+                $totalMonto = 0;
+                $totalMontoTotal = 0;
+            @endphp
             @forelse($clientes as $cliente)
                 @php
                     $diasInactivo = $cliente->fecha_saldado
@@ -48,6 +52,8 @@
                             \Carbon\Carbon::parse($cliente->fecha_saldado)->addDay(), now()
                         )
                         : 0;
+                    $totalMonto += (float) ($cliente->ultimo_monto ?? 0);
+                    $totalMontoTotal += (float) ($cliente->ultimo_monto_total ?? 0);
                 @endphp
                 <tr>
                     <td>{{ $cliente->DNI ?? '-' }}</td>
@@ -63,6 +69,15 @@
             @empty
                 <tr><td colspan="9" style="text-align: center;">No hay clientes inactivos</td></tr>
             @endforelse
+
+            @if(count($clientes) > 0)
+                <tr style="border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; font-weight: bold;">
+                    <td colspan="5" style="text-align: right; font-weight: bold; padding: 6px 8px;">TOTAL GENERAL:</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalMonto, 2) }}</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalMontoTotal, 2) }}</td>
+                    <td colspan="2"></td>
+                </tr>
+            @endif
         </tbody>
     </table>
 

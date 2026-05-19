@@ -56,7 +56,7 @@ class ReporteCarteraController extends Controller
         }
 
         // Filtrar por fecha de generación del crédito
-        $query->whereDate('Credito.FechaGeneracion', '=', $fechaCarbon->toDateString());
+        $query->whereDate('Credito.FechaGeneracion', '<=', $fechaCarbon->toDateString());
 
         $creditos = $query->select(
             'Credito.CreditoID',

@@ -56,6 +56,11 @@
             </tr>
         </thead>
         <tbody>
+            @php
+                $totalMonto = 0;
+                $totalMontoTotal = 0;
+                $totalSaldo = 0;
+            @endphp
             @forelse($creditos as $credito)
                 @php
                     $ultimoPago = $credito->pagos()->where('Activo', 1)->max('FechaPago');
@@ -65,6 +70,10 @@
                             \Carbon\Carbon::parse($fechaRef)->addDay(), now()
                         )
                         : 0;
+
+                    $totalMonto += $credito->proposicion->MontoTotal ?? 0;
+                    $totalMontoTotal += $credito->proposicion->MontoTotalPagar ?? 0;
+                    $totalSaldo += $credito->proposicion->SaldoPendiente ?? 0;
                 @endphp
                 <tr>
                     <td>{{ $credito->proposicion->CodigoCredito ?? '-' }}</td>
@@ -82,6 +91,16 @@
                     <td colspan="9" style="text-align: center;">No hay clientes con atraso</td>
                 </tr>
             @endforelse
+
+            @if(count($creditos) > 0)
+                <tr style="border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; font-weight: bold;">
+                    <td colspan="4" style="text-align: right; font-weight: bold; padding: 6px 8px;">TOTAL GENERAL:</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalMonto, 2) }}</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalMontoTotal, 2) }}</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalSaldo, 2) }}</td>
+                    <td colspan="2"></td>
+                </tr>
+            @endif
         </tbody>
     </table>
 

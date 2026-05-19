@@ -98,7 +98,13 @@
             </tr>
         </thead>
         <tbody>
+            @php
+                $totalCancelado = 0;
+            @endphp
             @forelse($proposiciones as $prop)
+                @php
+                    $totalCancelado += $prop->MontoTotalPagar ?? 0;
+                @endphp
                 <tr>
                     <td>{{ str_pad($prop->ProposicionCreditoID, 11, '0', STR_PAD_LEFT) }}</td>
                     <td>{{ $prop->cliente?->NombresApellidos ?? '-' }}</td>
@@ -110,9 +116,17 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" style="text-align: center;">No hay datos disponibles</td>
+                    <td colspan="7" style="text-align: center;">No hay datos disponibles</td>
                 </tr>
             @endforelse
+
+            @if(count($proposiciones) > 0)
+                <tr style="border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; font-weight: bold;">
+                    <td colspan="4" style="text-align: right; font-weight: bold; padding: 6px 8px;">TOTAL GENERAL:</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalCancelado, 2) }}</td>
+                    <td colspan="2"></td>
+                </tr>
+            @endif
         </tbody>
     </table>
 
