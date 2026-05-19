@@ -41,7 +41,9 @@ class ListReporteCuentasCanceladas extends ListRecords
                     
                     // Validar si hay cuentas canceladas para la fecha seleccionada
                     $canceladas = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
-                        ->whereDate('FechaModificacion', '=', $fecha)
+                        ->whereHas('credito', function ($q) use ($fecha) {
+                            $q->whereDate('FechaSaldamiento', '=', $fecha);
+                        })
                         ->count();
                     
                     if ($canceladas === 0) {

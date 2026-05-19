@@ -74,6 +74,9 @@
 
     <div style="text-align: left; margin-bottom: 30px;">
         <strong>JALUD  SAC</strong>
+        @if(!empty($sedeNombre))
+            <br>&nbsp;&nbsp;{{ mb_strtoupper($sedeNombre) }}
+        @endif
     </div>
 
     <div class="title">CREDITOS VENCIDOS</div>
@@ -89,6 +92,7 @@
                 <th>DNI</th>
                 <th>TIPO</th>
                 <th>Cliente</th>
+                <th>Zona</th>
                 <th class="numero">Total</th>
                 <th class="numero">Pagado</th>
                 <th class="numero">Saldo</th>
@@ -96,6 +100,11 @@
             </tr>
         </thead>
         <tbody>
+            @php
+                $totalGeneralTotal = 0;
+                $totalGeneralPagado = 0;
+                $totalGeneralSaldo = 0;
+            @endphp
             @forelse($creditos as $credito)
                 @php
                     $pagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
@@ -103,11 +112,16 @@
                         ->sum('MontoPagado');
                     $total = $credito->proposicion->MontoTotalPagar ?? 0;
                     $saldo = $total - $pagado;
+
+                    $totalGeneralTotal += $total;
+                    $totalGeneralPagado += $pagado;
+                    $totalGeneralSaldo += $saldo;
                 @endphp
                 <tr>
                     <td>{{ $credito->proposicion?->cliente?->DNI ?? '-' }}</td>
                     <td>{{ $credito->proposicion?->tipoCredito?->Descripcion ?? '-' }}</td>
                     <td>{{ $credito->proposicion?->cliente?->NombresApellidos ?? '-' }}</td>
+                    <td>{{ $credito->proposicion?->zona?->Nombre ?? '-' }}</td>
                     <td class="numero">{{ number_format($total, 1) }}</td>
                     <td class="numero">{{ number_format($pagado, 1) }}</td>
                     <td class="numero">{{ number_format($saldo, 1) }}</td>
@@ -115,9 +129,19 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" style="text-align: center;">No hay creditos vencidos</td>
+                    <td colspan="8" style="text-align: center;">No hay creditos vencidos</td>
                 </tr>
             @endforelse
+
+            @if($creditos->count() > 0)
+                <tr style="border-top: 1px solid #000; border-bottom: 1px solid #000; font-weight: bold;">
+                    <td colspan="4" style="text-align: right; font-weight: bold; padding: 6px 8px;">TOTAL GENERAL:</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalGeneralTotal, 1) }}</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalGeneralPagado, 1) }}</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalGeneralSaldo, 1) }}</td>
+                    <td></td>
+                </tr>
+            @endif
         </tbody>
     </table>
 

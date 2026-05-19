@@ -50,6 +50,10 @@ class ReporteCreditosVencidosResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('proposicion.zona.Nombre')
+                    ->label('Zona')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('proposicion.MontoTotalPagar')
                     ->label('Total')
                     ->money('PEN')
@@ -130,7 +134,7 @@ class ReporteCreditosVencidosResource extends Resource
                     ->whereHas('proposicion', function ($q) {
                         $q->where('SaldoPendiente', '>', 0);
                     })
-                    ->with(['proposicion.cliente', 'proposicion.tipoCredito'])
+                    ->with(['proposicion.cliente', 'proposicion.tipoCredito', 'proposicion.zona'])
                     ->orderBy('FechaVencimiento', 'asc');
             })
             ->actions([])

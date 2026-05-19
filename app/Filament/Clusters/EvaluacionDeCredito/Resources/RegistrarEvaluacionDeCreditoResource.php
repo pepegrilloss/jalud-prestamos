@@ -51,9 +51,12 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                     ->iconColor('primary')
                     ->action(
                         Tables\Actions\Action::make('verCreditos')
-                            ->modalHeading(fn ($record) => 'Créditos de ' . $record->NombresApellidos)
+                            ->modalHeading(fn ($record, array $arguments) => 'Créditos de ' . (($record?->NombresApellidos) ?? (\App\Models\Cliente::find($arguments['cliente'] ?? null)?->NombresApellidos ?? 'Cliente')))
                             ->modalWidth('7xl')
-                            ->modalContent(fn ($record) => view('filament.components.client-credits-evaluacion-table', ['cliente' => $record]))
+                            ->modalContent(function ($record, array $arguments) {
+                                $cliente = $record ?? \App\Models\Cliente::with(['proposiciones' => fn($q) => $q->where('Estado', 'APROBADO')->has('credito')->with(['tipoCredito', 'credito']), 'negocio.zona'])->find($arguments['cliente'] ?? null);
+                                return view('filament.components.client-credits-evaluacion-table', ['cliente' => $cliente]);
+                            })
                             ->modalSubmitAction(false)
                             ->modalCancelActionLabel('Cerrar')
                     ),
@@ -405,9 +408,51 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
         return \Filament\Actions\Action::make('verDetalleCredito')
             ->label('Ver Detalle de Crédito')
             ->modalHeading('Detalle del Crédito')
+            ->modalDescription(function (?\App\Models\Credito $record, array $arguments): ?\Illuminate\Support\HtmlString {
+                $clienteNombre = 'Cliente';
+                $clienteId = null;
+                if ($record && $record->proposicion?->cliente) {
+                    $clienteNombre = $record->proposicion->cliente->NombresApellidos;
+                    $clienteId = $record->proposicion->ClienteID;
+                } else {
+                    $clienteId = $arguments['cliente'] ?? null;
+                    if ($clienteId) {
+                        $clienteNombre = \App\Models\Cliente::find($clienteId)?->NombresApellidos ?? 'Cliente';
+                    }
+                }
+                if (!$clienteId) return null;
+                $clienteNombre = e($clienteNombre);
+                return new \Illuminate\Support\HtmlString("
+                    <button type=\"button\"
+                        x-on:click=\"close(); \$wire.mountTableAction('verCreditos', '{$clienteId}')\"
+                        class=\"inline-flex items-center gap-x-1 text-sm font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300\">
+                        <svg class=\"w-4 h-4\" xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"2\" stroke=\"currentColor\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18\"/></svg>
+                        Regresar a créditos de {$clienteNombre}
+                    </button>
+                ");
+            })
             ->modalWidth('7xl')
-            ->infolist(\App\Filament\Resources\CreditoResource::getInfolistSchema())
-            ->record(fn (array $arguments) => \App\Models\Credito::find($arguments['credito'] ?? null))
+            ->infolist(function (\Filament\Infolists\Infolist $infolist): \Filament\Infolists\Infolist {
+                return $infolist
+                    ->schema(array_merge(
+                        [
+                            \Filament\Infolists\Components\ViewEntry::make('back_button')
+                                ->view('filament.components.back-button-credits')
+                                ->columnSpanFull()
+                        ],
+                        \App\Filament\Resources\CreditoResource::getInfolistSchema()
+                    ));
+            })
+            ->record(function (array $arguments) {
+                return \App\Models\Credito::with([
+                    'proposicion.cliente',
+                    'proposicion.zona',
+                    'proposicion.tipoCredito',
+                    'tipoPago',
+                    'moras',
+                    'pagos' => fn($q) => $q->where('Activo', 1)->with(['solicitudResolucion.excedente'])->orderBy('FechaPago', 'asc'),
+                ])->find($arguments['credito'] ?? null);
+            })
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Cerrar');
     }

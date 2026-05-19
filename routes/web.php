@@ -58,6 +58,15 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
                 JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
                 WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
                 ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto_total")
+            ->selectRaw("(SELECT c.FechaGeneracion FROM ProposicionCredito pc 
+                JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                ORDER BY c.FechaSaldamiento DESC LIMIT 1) as fecha_generado")
+            ->selectRaw("(SELECT z.Nombre FROM ProposicionCredito pc 
+                JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                JOIN Zona z ON z.ZonaID = pc.ZonaID
+                WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultima_zona")
             ->join('ProposicionCredito as prop', 'prop.ClienteID', '=', 'Cliente.ClienteID')
             ->join('Credito', function ($join) {
                 $join->on('Credito.ProposicionCreditoID', '=', 'prop.ProposicionCreditoID')
@@ -145,17 +154,27 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/pdf/creditos-vencidos', function () {
         $fechaDesde = request()->get('fecha_desde') ?? request()->get('fecha');
         $fechaHasta = request()->get('fecha_hasta') ?? request()->get('fecha');
+        $sedeParam = request()->get('sede_id');
+        $clienteId = request()->get('cliente_id');
+        $tipoCreditoId = request()->get('tipo_credito_id');
 
         $fechaCarbonDesde = $fechaDesde ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaDesde) : now();
         $fechaCarbonHasta = $fechaHasta ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaHasta) : $fechaCarbonDesde;
-        $sedeId = auth()->user()->getEffectiveSedeId();
+        
+        $sedeId = $sedeParam ?: auth()->user()->getEffectiveSedeId();
 
         $query = \App\Models\Credito::where('Activo', 1)
-            ->whereHas('proposicion', function ($q) {
+            ->whereHas('proposicion', function ($q) use ($clienteId, $tipoCreditoId) {
                 $q->where('SaldoPendiente', '>', 0);
+                if ($clienteId) {
+                    $q->where('ClienteID', $clienteId);
+                }
+                if ($tipoCreditoId) {
+                    $q->where('TipoCreditoID', $tipoCreditoId);
+                }
             })
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
-            ->with(['proposicion.cliente', 'proposicion.tipoCredito']);
+            ->with(['proposicion.cliente', 'proposicion.tipoCredito', 'proposicion.zona']);
 
         if ($fechaDesde) {
             $query->whereDate('FechaVencimiento', '>=', $fechaCarbonDesde->toDateString());
@@ -171,9 +190,17 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
             $titulo .= ' - ' . $fechaCarbonHasta->format('d/m/Y');
         }
 
+        $sedeNombre = '';
+        if ($sedeId) {
+            $sede = \App\Models\Sede::find($sedeId);
+            $sedeNombre = $sede ? $sede->Nombre : '';
+        }
+
         $pdf = Pdf::loadView('reportes.creditos-vencidos', [
             'creditos' => $creditos,
             'fecha' => $titulo,
+            'sedeNombre' => $sedeNombre,
+            'sedeId' => $sedeId,
         ]);
 
         $pdf->setPaper('a4', 'landscape');
@@ -190,11 +217,13 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
         $sedeId = auth()->user()->getEffectiveSedeId();
 
-        $proposiciones = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
-            ->whereDate('FechaModificacion', '=', $fecha)
-            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
-            ->with(['cliente', 'credito'])
-            ->orderByDesc('FechaModificacion')
+        $proposiciones = \App\Models\ProposicionCredito::select('ProposicionCredito.*')
+            ->join('Credito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->where('ProposicionCredito.SaldoPendiente', 0)
+            ->whereDate('Credito.FechaSaldamiento', '=', $fecha)
+            ->when($sedeId, fn($q) => $q->where('ProposicionCredito.SedeID', $sedeId))
+            ->with(['cliente', 'credito', 'zona'])
+            ->orderByDesc('Credito.FechaSaldamiento')
             ->get();
 
         $pdf = Pdf::loadView('reportes.cuentas-canceladas', [

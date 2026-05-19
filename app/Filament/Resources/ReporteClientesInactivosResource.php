@@ -35,13 +35,21 @@ class ReporteClientesInactivosResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('negocio.zona.Nombre')
+                Tables\Columns\TextColumn::make('ultima_zona')
                     ->label('Zona')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('ultimo_codigo')
                     ->label('Último Crédito')
                     ->getStateUsing(fn ($record) => $record->ultimo_codigo ?? '-')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('fecha_generado')
+                    ->label('Fecha Generación')
+                    ->getStateUsing(fn ($record) => $record->fecha_generado
+                        ? \Carbon\Carbon::parse($record->fecha_generado)->format('d/m/Y')
+                        : '-'
+                    )
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('ultimo_monto')
@@ -130,6 +138,15 @@ class ReporteClientesInactivosResource extends Resource
                         JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
                         WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
                         ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultimo_monto_total")
+                    ->selectRaw("(SELECT c.FechaGeneracion FROM ProposicionCredito pc 
+                        JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                        WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                        ORDER BY c.FechaSaldamiento DESC LIMIT 1) as fecha_generado")
+                    ->selectRaw("(SELECT z.Nombre FROM ProposicionCredito pc 
+                        JOIN Credito c ON c.ProposicionCreditoID = pc.ProposicionCreditoID 
+                        JOIN Zona z ON z.ZonaID = pc.ZonaID
+                        WHERE pc.ClienteID = Cliente.ClienteID AND c.EstatusCreditoFinal = 'SALDADO' 
+                        ORDER BY c.FechaSaldamiento DESC LIMIT 1) as ultima_zona")
                     ->join('ProposicionCredito as prop', 'prop.ClienteID', '=', 'Cliente.ClienteID')
                     ->join('Credito', function ($join) {
                         $join->on('Credito.ProposicionCreditoID', '=', 'prop.ProposicionCreditoID')

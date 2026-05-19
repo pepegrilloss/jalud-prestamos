@@ -59,6 +59,10 @@ class ReporteCuentasCanceladasResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('zona.Nombre')
+                    ->label('ZONA')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('CodigoCredito')
                     ->label('CUENTA')
                     ->searchable()
@@ -69,8 +73,8 @@ class ReporteCuentasCanceladasResource extends Resource
                     ->money('PEN')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('credito.FechaGeneracion')
-                    ->label('FECHA')
+                Tables\Columns\TextColumn::make('credito.FechaSaldamiento')
+                    ->label('FECHA SALDADO')
                     ->date('d/m/Y')
                     ->sortable(),
 
@@ -103,22 +107,29 @@ class ReporteCuentasCanceladasResource extends Resource
                             ->when(
                                 $data['fecha_desde'] ?? null,
                                 function (Builder $q, $date) {
-                                    return $q->whereDate('FechaModificacion', '>=', $date);
+                                    return $q->whereHas('credito', function (Builder $c) use ($date) {
+                                        $c->whereDate('FechaSaldamiento', '>=', $date);
+                                    });
                                 }
                             )
                             ->when(
                                 $data['fecha_hasta'] ?? null,
                                 function (Builder $q, $date) {
-                                    return $q->whereDate('FechaModificacion', '<=', $date);
+                                    return $q->whereHas('credito', function (Builder $c) use ($date) {
+                                        $c->whereDate('FechaSaldamiento', '<=', $date);
+                                    });
                                 }
                             );
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 // Mostrar solo proposiciones con saldo = 0 (canceladas)
-                $query->whereRaw('SaldoPendiente = 0')
-                    ->with(['cliente', 'credito'])
-                    ->orderByDesc('FechaModificacion');
+                $query->select('ProposicionCredito.*')
+                    ->join('Credito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+                    ->where('ProposicionCredito.SaldoPendiente', 0)
+                    ->whereNotNull('Credito.FechaSaldamiento')
+                    ->with(['cliente', 'credito', 'zona'])
+                    ->orderByDesc('Credito.FechaSaldamiento');
             })
             ->actions([])
             ->bulkActions([])

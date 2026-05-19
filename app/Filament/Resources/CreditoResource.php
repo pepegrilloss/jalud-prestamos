@@ -518,7 +518,7 @@ class CreditoResource extends Resource
 
                             Infolists\Components\TextEntry::make('PagosRealizados')
                                 ->label('N° Pagos')
-                                ->getStateUsing(fn($record) => $record->pagos()->where('Activo', 1)->count())
+                                ->getStateUsing(fn($record) => $record->relationLoaded('pagos') ? $record->pagos->count() : $record->pagos()->where('Activo', 1)->count())
                                 ->icon('heroicon-m-check-circle')
                                 ->badge()
                                 ->color('success'),

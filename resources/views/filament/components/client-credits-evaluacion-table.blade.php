@@ -16,7 +16,12 @@
             </tr>
         </thead>
         <tbody>
-            @forelse($cliente->proposiciones()->where('Estado', 'APROBADO')->has('credito')->with(['tipoCredito', 'credito'])->get() as $proposicion)
+            @php
+                $proposiciones = $cliente->relationLoaded('proposiciones') 
+                    ? $cliente->proposiciones 
+                    : $cliente->proposiciones()->where('Estado', 'APROBADO')->has('credito')->with(['tipoCredito', 'credito'])->get();
+            @endphp
+            @forelse($proposiciones as $proposicion)
                 <tr class="border-b dark:border-gray-700">
                     <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
                         {{ $proposicion->CodigoCredito }}
@@ -28,12 +33,12 @@
                     <td class="px-4 py-3 text-right">{{ number_format($proposicion->TasaInteres, 2) }} %</td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">{{ number_format($proposicion->MontoInteres, 2) }} PEN</td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">{{ number_format($proposicion->MontoTotalPagar, 2) }} PEN</td>
-                    <td class="px-4 py-3 text-right whitespace-nowrap">{{ number_format(\App\Models\ProposicionCredito::calcularSaldoPendiente($proposicion->ProposicionCreditoID), 2) }} PEN</td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">{{ number_format($proposicion->SaldoPendiente ?? 0, 2) }} PEN</td>
                     <td class="px-4 py-3 whitespace-nowrap">{{ $proposicion->credito->FechaGeneracion?->format('d/m/Y H:i') ?? '-' }}</td>
                     <td class="px-4 py-3 text-center">
                         <button 
                             type="button"
-                            x-on:click="close(); $wire.mountAction('verDetalleCredito', { credito: {{ $proposicion->credito->CreditoID }} })"
+                            x-on:click="close(); $wire.mountAction('verDetalleCredito', { credito: {{ $proposicion->credito->CreditoID }}, cliente: {{ $cliente->ClienteID }} })"
                             title="Ver Detalle"
                             class="text-primary-600 hover:text-primary-500 dark:text-primary-500 dark:hover:text-primary-400"
                         >

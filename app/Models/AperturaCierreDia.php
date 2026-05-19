@@ -62,7 +62,7 @@ class AperturaCierreDia extends Model
     /**
      * Verifica si hay un día abierto para operaciones.
      * Solo permite UN día abierto a la vez. Puede ser hoy o un día pasado.
-     * Si hay múltiples abiertos, deja solo el más reciente y cierra los demás.
+     * Si hay múltiples abiertos, deja solo el más reciente por sede y cierra los demás.
      */
     public static function estaAbierto(): bool
     {
@@ -75,16 +75,19 @@ class AperturaCierreDia extends Model
         }
 
         if ($abiertos->count() > 1) {
-            $primero = $abiertos->shift();
-            foreach ($abiertos as $dia) {
-                \Illuminate\Support\Facades\Log::warning('AperturaCierreDia: Cerrando día abierto duplicado', [
-                    'AperturaCierreDiaID' => $dia->AperturaCierreDiaID,
-                    'Fecha' => $dia->Fecha->toDateString(),
-                    'SedeID' => $dia->SedeID,
-                    'DiaConservado' => $primero->Fecha->toDateString(),
-                ]);
-                $dia->update(['EstadoDia' => 'CERRADO', 'FechaCierre' => now()]);
-            }
+            // Agrupar por SedeID para no cerrar días de otras sedes
+            $abiertos->groupBy('SedeID')->each(function ($grupo) {
+                $primero = $grupo->shift();
+                foreach ($grupo as $dia) {
+                    \Illuminate\Support\Facades\Log::warning('AperturaCierreDia: Cerrando día abierto duplicado', [
+                        'AperturaCierreDiaID' => $dia->AperturaCierreDiaID,
+                        'Fecha' => $dia->Fecha->toDateString(),
+                        'SedeID' => $dia->SedeID,
+                        'DiaConservado' => $primero->Fecha->toDateString(),
+                    ]);
+                    $dia->update(['EstadoDia' => 'CERRADO', 'FechaCierre' => now()]);
+                }
+            });
         }
 
         return self::where('EstadoDia', 'ABIERTO')->exists();
@@ -98,16 +101,6 @@ class AperturaCierreDia extends Model
         return self::where('EstadoDia', 'ABIERTO')
             ->orderBy('Fecha', 'desc')
             ->first();
-    }
-
-    /**
-     * Verifica si el día ACTUAL (hoy) está abierto
-     * Diferente a estaAbierto() que verifica si hay ALGÚN día abierto
-     */
-    public static function estaAbiertoHoy(): bool
-    {
-        $hoy = self::hoyOHoy();
-        return $hoy && $hoy->EstadoDia === 'ABIERTO';
     }
 
     /**
@@ -261,6 +254,7 @@ class AperturaCierreDia extends Model
 
             $pagosActualizados = Pago::withoutGlobalScope('sede')
                 ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
                 ->whereBetween('FechaPago', [$fechaInicio, $fechaFin])
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Pagos actualizados (sede {$this->SedeID}): {$pagosActualizados}\n", FILE_APPEND);

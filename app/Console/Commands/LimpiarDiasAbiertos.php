@@ -8,15 +8,15 @@ use Illuminate\Console\Command;
 class LimpiarDiasAbiertos extends Command
 {
     protected $signature = 'apertura:limpiar';
-    protected $description = 'Cierra todos los días abiertos excepto el primero';
+    protected $description = 'Cierra los días abiertos duplicados por cada sede';
 
     public function handle()
     {
-        // Este comando opera sobre TODAS las sedes sin filtro. Es intencional para operaciones de sistema.
+        // Este comando opera sobre TODAS las sedes. Agrupa por SedeID y conserva un día abierto por sede.
         $this->info('🔍 Buscando días abiertos...');
         
         $diasAbiertos = AperturaCierreDia::where('EstadoDia', 'ABIERTO')
-            ->orderBy('AperturaCierreDiaID')
+            ->orderBy('Fecha', 'desc')
             ->get();
 
         if ($diasAbiertos->count() === 0) {
@@ -24,43 +24,47 @@ class LimpiarDiasAbiertos extends Command
             return;
         }
 
-        if ($diasAbiertos->count() === 1) {
-            $this->info('✅ Solo hay 1 día abierto. Todo bien.');
-            return;
+        // Agrupar por sede para no mezclar días entre sedes
+        $grupos = $diasAbiertos->groupBy('SedeID');
+
+        $totalCerrados = 0;
+
+        foreach ($grupos as $sedeId => $grupo) {
+            $sedeNombre = \App\Models\Sede::withoutGlobalScopes()->find($sedeId)?->Nombre ?? "Sede #{$sedeId}";
+
+            if ($grupo->count() === 1) {
+                $this->line("✅ {$sedeNombre}: 1 día abierto. OK.");
+                continue;
+            }
+
+            $this->warn("⚠️ {$sedeNombre}: {$grupo->count()} días abiertos. Conservando el más reciente.");
+
+            $this->table(
+                ['ID', 'Fecha', 'Estado', 'Sede'],
+                $grupo->map(fn($d) => [
+                    'id' => $d->AperturaCierreDiaID,
+                    'fecha' => $d->Fecha->format('d/m/Y'),
+                    'estado' => $d->EstadoDia,
+                    'sede' => $sedeNombre,
+                ])->toArray()
+            );
+
+            // Conservar el más reciente (primero por orden), cerrar el resto
+            $diasAClosar = $grupo->skip(1);
+
+            foreach ($diasAClosar as $dia) {
+                $dia->update([
+                    'EstadoDia' => 'CERRADO',
+                    'FechaCierre' => now(),
+                ]);
+                $this->line("  ✓ Cerrado: {$dia->Fecha->format('d/m/Y')} (ID: {$dia->AperturaCierreDiaID})");
+                $totalCerrados++;
+            }
+            $this->line('');
         }
 
-        $this->warn("⚠️ Hay {$diasAbiertos->count()} días abiertos. Esto es incorrecto.");
-        $this->line('');
-
-        // Mostrar todos los días abiertos
-        $this->table(
-            ['ID', 'Fecha', 'Estado'],
-            $diasAbiertos->map(fn($d) => [
-                'id' => $d->AperturaCierreDiaID,
-                'fecha' => $d->Fecha->format('d/m/Y'),
-                'estado' => $d->EstadoDia,
-            ])->toArray()
-        );
-
-        $this->line('');
-        if (!$this->confirm('¿Deseas cerrar todos excepto el primero?')) {
-            $this->info('Operación cancelada.');
-            return;
+        if ($totalCerrados > 0) {
+            $this->info("✅ {$totalCerrados} día(s) cerrado(s).");
         }
-
-        // Cerrar todos excepto el primero
-        $primerDia = $diasAbiertos->first();
-        $diasAClosar = $diasAbiertos->skip(1);
-
-        foreach ($diasAClosar as $dia) {
-            $dia->update([
-                'EstadoDia' => 'CERRADO',
-                'FechaCierre' => now(),
-            ]);
-            $this->line("✓ Cerrado: {$dia->Fecha->format('d/m/Y')}");
-        }
-
-        $this->info('');
-        $this->info("✅ Operación completada. Día abierto: {$primerDia->Fecha->format('d/m/Y')}");
     }
 }

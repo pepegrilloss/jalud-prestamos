@@ -25,6 +25,7 @@ class Credito extends Model
         'FechaInicio' => 'date',
         'FechaVencimiento' => 'date',
         'FechaCierre' => 'datetime',
+        'FechaSaldamiento' => 'datetime',
         'Activo' => 'boolean',
     ];
 

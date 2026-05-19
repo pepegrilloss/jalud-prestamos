@@ -31,7 +31,9 @@
             <tr>
                 <th>DNI</th>
                 <th>Cliente</th>
+                <th>Zona</th>
                 <th>Último Crédito</th>
+                <th>F. Generación</th>
                 <th class="numero">Monto</th>
                 <th class="numero">Monto + Interés</th>
                 <th>Fecha Saldado</th>
@@ -50,14 +52,16 @@
                 <tr>
                     <td>{{ $cliente->DNI ?? '-' }}</td>
                     <td>{{ $cliente->NombresApellidos ?? '-' }}</td>
+                    <td>{{ $cliente->ultima_zona ?? '-' }}</td>
                     <td>{{ $cliente->ultimo_codigo ?? '-' }}</td>
+                    <td>{{ $cliente->fecha_generado ? \Carbon\Carbon::parse($cliente->fecha_generado)->format('d/m/Y') : '-' }}</td>
                     <td class="numero">{{ number_format((float) ($cliente->ultimo_monto ?? 0), 2) }}</td>
                     <td class="numero">{{ number_format((float) ($cliente->ultimo_monto_total ?? 0), 2) }}</td>
                     <td>{{ $cliente->fecha_saldado ? \Carbon\Carbon::parse($cliente->fecha_saldado)->format('d/m/Y') : '-' }}</td>
                     <td class="centro">{{ $diasInactivo }}</td>
                 </tr>
             @empty
-                <tr><td colspan="7" style="text-align: center;">No hay clientes inactivos</td></tr>
+                <tr><td colspan="9" style="text-align: center;">No hay clientes inactivos</td></tr>
             @endforelse
         </tbody>
     </table>

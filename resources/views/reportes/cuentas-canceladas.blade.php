@@ -90,9 +90,10 @@
             <tr>
                 <th>OPERACION</th>
                 <th>CLIENTE</th>
+                <th>ZONA</th>
                 <th>CUENTA</th>
                 <th class="numero">TOTAL</th>
-                <th>FECHA</th>
+                <th>FECHA SALDADO</th>
                 <th>VENCIMIENTO</th>
             </tr>
         </thead>
@@ -101,9 +102,10 @@
                 <tr>
                     <td>{{ str_pad($prop->ProposicionCreditoID, 11, '0', STR_PAD_LEFT) }}</td>
                     <td>{{ $prop->cliente?->NombresApellidos ?? '-' }}</td>
+                    <td>{{ $prop->zona?->Nombre ?? '-' }}</td>
                     <td>{{ $prop->CodigoCredito }}</td>
                     <td class="numero">{{ number_format($prop->MontoTotalPagar, 2) }}</td>
-                    <td>{{ $prop->credito?->FechaGeneracion?->format('d/m/Y') ?? '-' }}</td>
+                    <td>{{ $prop->credito?->FechaSaldamiento?->format('d/m/Y') ?? '-' }}</td>
                     <td>{{ $prop->credito?->FechaVencimiento?->format('d/m/Y') ?? '-' }}</td>
                 </tr>
             @empty

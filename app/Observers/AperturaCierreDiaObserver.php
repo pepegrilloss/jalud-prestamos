@@ -45,17 +45,23 @@ class AperturaCierreDiaObserver
             DiaAbierto::dispatch($model);
         }
 
-        // Si cambió a CERRADO, ejecutar cierre
+        // Si cambió a CERRADO, ejecutar cierre (como respaldo si no se hizo en la transacción del Resource)
         if ($model->wasChanged('EstadoDia') && $model->EstadoDia === 'CERRADO') {
-            Log::info('Iniciando cierre de día', ['Fecha' => $model->Fecha]);
+            Log::info('Iniciando cierre de día (Observer)', ['Fecha' => $model->Fecha]);
             try {
                 $model->cerrarDia();
-                Log::info('Cierre de día completado exitosamente', ['Fecha' => $model->Fecha]);
+                Log::info('Cierre de día completado exitosamente (Observer)', ['Fecha' => $model->Fecha]);
             } catch (\Exception $e) {
-                Log::error('Error en cerrarDia()', [
+                Log::error('Error en cerrarDia() - Revirtiendo EstadoDia a ABIERTO', [
                     'error' => $e->getMessage(),
                     'Fecha' => $model->Fecha,
-                    'trace' => $e->getTraceAsString()
+                    'SedeID' => $model->SedeID,
+                ]);
+                // Revertir el estado para que el día no quede cerrado a medias
+                $model->updateQuietly([
+                    'EstadoDia' => 'ABIERTO',
+                    'FechaCierre' => null,
+                    'UsuarioCierreID' => null,
                 ]);
             }
         }

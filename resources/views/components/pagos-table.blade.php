@@ -5,11 +5,13 @@
     if ($record) {
         $montoTotalPagar = (float) ($record->proposicion?->MontoTotalPagar ?? 0);
         
-        $pagosBase = $record->pagos()
-            ->with(['solicitudResolucion.excedente'])
-            ->where('Activo', true)
-            ->orderBy('FechaPago', 'asc')
-            ->get();
+        $pagosBase = $record->relationLoaded('pagos')
+            ? $record->pagos
+            : $record->pagos()
+                ->with(['solicitudResolucion.excedente'])
+                ->where('Activo', true)
+                ->orderBy('FechaPago', 'asc')
+                ->get();
         
         $tempPagos = [];
         $saldoAcumulado = $montoTotalPagar;

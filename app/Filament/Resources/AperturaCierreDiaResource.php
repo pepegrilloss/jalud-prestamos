@@ -203,6 +203,9 @@ class AperturaCierreDiaResource extends Resource
                                     'UsuarioCierreID' => auth()->id(),
                                 ]);
 
+                                // Ejecutar cierre de registros hijos dentro de la misma transacción
+                                $recordLocked->cerrarDia();
+
                                 $logger->success('[APERTURA_CIERRE] Día cerrado exitosamente');
                             });
 

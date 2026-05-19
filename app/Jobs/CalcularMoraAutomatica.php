@@ -30,24 +30,31 @@ class CalcularMoraAutomatica implements ShouldQueue
         \Log::info('[JOB] CalcularMoraAutomatica: Iniciando cálculo de moras', ['fecha' => $fecha->toDateString()]);
 
         // Validar contra el Calendario No Moroso - NO calcular mora si la fecha está registrada
-        $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $fecha->toDateString())
+        // Se valida por sede: un feriado local de una sede no debe bloquear la mora en otras
+        $fechaNoMorosaGlobal = CalendarioNoMoroso::withoutGlobalScope('sede')
+            ->where('Fecha', $fecha->toDateString())
             ->where('Activo', true)
             ->first();
 
-        if ($fechaNoMorosa) {
+        if ($fechaNoMorosaGlobal) {
             \Log::info('[JOB] No se calcula mora - Fecha está en Calendario No Moroso', [
                 'fecha' => $fecha->toDateString(),
-                'descripcion' => $fechaNoMorosa->Descripcion,
+                'descripcion' => $fechaNoMorosaGlobal->Descripcion,
+                'sede_id' => $fechaNoMorosaGlobal->SedeID,
             ]);
             return;
         }
 
         try {
-            // Precargar todas las fechas no morosas para optimizar el rendimiento (evita miles de consultas)
-            $fechasNoMorosas = CalendarioNoMoroso::where('Activo', true)
+            // Precargar todas las fechas no morosas AGRUPADAS POR SEDE
+            $fechasNoMorosasPorSede = CalendarioNoMoroso::withoutGlobalScope('sede')
+                ->where('Activo', true)
                 ->get()
-                ->map(fn($item) => \Carbon\Carbon::parse($item->Fecha)->toDateString())
-                ->toArray();
+                ->groupBy('SedeID')
+                ->map(fn($grupo) => $grupo
+                    ->map(fn($item) => \Carbon\Carbon::parse($item->Fecha)->toDateString())
+                    ->toArray()
+                );
 
             // Obtener todos los créditos vencidos de TODAS las sedes activas.
             // Sin auth context, el global scope no filtra, así que usamos withoutGlobalScope + explicit scoping.
@@ -68,8 +75,10 @@ class CalcularMoraAutomatica implements ShouldQueue
                 // --- LÓGICA DE VENCIMIENTO EFECTIVO ---
                 $vencimientoEfectivo = \Carbon\Carbon::parse($credito->FechaVencimiento);
                 
-                // Desplazar el vencimiento al siguiente día hábil si cae en un día no laborable (domingos, feriados, etc.)
-                while (in_array($vencimientoEfectivo->toDateString(), $fechasNoMorosas)) {
+                // Desplazar el vencimiento al siguiente día hábil si cae en día no laborable
+                // Solo para la sede del crédito (feriados locales no afectan otras sedes)
+                $fechasNoMorosasSede = $fechasNoMorosasPorSede[$credito->SedeID] ?? [];
+                while (in_array($vencimientoEfectivo->toDateString(), $fechasNoMorosasSede)) {
                     $vencimientoEfectivo->addDay();
                 }
 
