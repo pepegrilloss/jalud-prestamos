@@ -62,13 +62,20 @@ class ListPagos extends ListRecords
             $promotorCobrador = auth()->user()->promotorCobrador;
             
             if ($promotorCobrador && $promotorCobrador->ZonaID) {
-                // Filtrar pagos que pertenezcan a créditos cuyas proposiciones estén en la zona del promotor
                 return $query->whereHas('cuota.credito.proposicion', function (Builder $q) use ($promotorCobrador) {
                     $q->where('ZonaID', $promotorCobrador->ZonaID);
                 });
             }
 
             return $query->whereRaw('1 = 0');
+        }
+
+        // Si NO tiene el permiso "ver_todos_los_pagos", filtrar SOLO pagos del día abierto
+        if (!auth()->user()?->can('ver_todos_los_pagos')) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $query->whereDate('pago.FechaPago', $fechaAbierta->toDateString());
+            }
         }
 
         return $query;
