@@ -20,7 +20,7 @@ class FondoSedeService
         }
 
         return DB::transaction(function () use ($sedeId, $monto, $usuarioId, $observacion) {
-            $fondo = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $sedeId],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -57,7 +57,7 @@ class FondoSedeService
         }
 
         return DB::transaction(function () use ($sedeId, $monto, $usuarioId, $observacion) {
-            $fondo = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $sedeId],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -92,7 +92,7 @@ class FondoSedeService
         }
 
         return DB::transaction(function () use ($sedeId, $monto, $gastoId, $usuarioId) {
-            $fondo = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $sedeId],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -134,7 +134,7 @@ class FondoSedeService
         }
 
         return DB::transaction(function () use ($sedeId, $deCajaAbierta, $monto, $usuarioId, $observacion) {
-            $fondo = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $sedeId],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -208,7 +208,7 @@ class FondoSedeService
 
         // Solo validar saldo si no es una solicitud de Gerencia (la sede ejecuta después)
         if (!$esSolicitudGerencia) {
-            $fondoOrigen = FondoSede::lockForUpdate()->where('SedeID', $sedeOrigenId)->first();
+            $fondoOrigen = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->where('SedeID', $sedeOrigenId)->first();
 
             if ($cuentaOrigen === 'CAJA_CHICA') {
                 if (!$fondoOrigen || $fondoOrigen->SaldoCajaChica < $monto) {
@@ -264,7 +264,7 @@ class FondoSedeService
             $cuentaDestino = $transferencia->CuentaDestino ?? 'CAJA_ABIERTA';
 
             // 1. Bloquear y verificar saldo en Sede Origen
-            $fondoOrigen = FondoSede::lockForUpdate()->where('SedeID', $transferencia->SedeOrigenID)->first();
+            $fondoOrigen = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->where('SedeID', $transferencia->SedeOrigenID)->first();
 
             if ($cuentaOrigen === 'CAJA_CHICA') {
                 if (!$fondoOrigen || $fondoOrigen->SaldoCajaChica < $montoEfectivo) {
@@ -294,7 +294,7 @@ class FondoSedeService
                 'Observacion' => "Transferencia ID: {$transferencia->TransferenciaID} aceptada. Salida de {$cuentaOrigen}.",
             ]);
 
-            $fondoDestino = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondoDestino = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $transferencia->SedeDestinoID],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -339,7 +339,7 @@ class FondoSedeService
     private function aceptarSolicitudCapital(TransferenciaSede $transferencia, $usuarioId, $montoEfectivo): TransferenciaSede
     {
         return DB::transaction(function () use ($transferencia, $usuarioId, $montoEfectivo) {
-            $fondoGerencia = FondoSede::lockForUpdate()->where('SedeID', $transferencia->SedeDestinoID)->first();
+            $fondoGerencia = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->where('SedeID', $transferencia->SedeDestinoID)->first();
             if (!$fondoGerencia || $fondoGerencia->Saldo < $montoEfectivo) {
                 throw ValidationException::withMessages(['saldo' => 'Gerencia no cuenta con saldo suficiente en Caja Abierta.']);
             }
@@ -360,7 +360,7 @@ class FondoSedeService
                 'Observacion' => "Capital enviado a {$transferencia->sedeOrigen->Nombre} por solicitud #{$transferencia->TransferenciaID}",
             ]);
 
-            $fondoSede = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondoSede = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $transferencia->SedeOrigenID],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -418,7 +418,7 @@ class FondoSedeService
      */
     public function verificarSaldo($sedeId, $monto)
     {
-        $fondo = FondoSede::where('SedeID', $sedeId)->first();
+        $fondo = FondoSede::withoutGlobalScope('sede')->where('SedeID', $sedeId)->first();
         if (!$fondo || $fondo->Saldo < $monto) {
             $saldoActual = $fondo ? number_format($fondo->Saldo, 2) : '0.00';
             throw ValidationException::withMessages(['Monto' => "Saldo insuficiente en Caja Abierta. Saldo disponible: S/ {$saldoActual}. Monto requerido: S/ " . number_format($monto, 2)]);
@@ -436,7 +436,7 @@ class FondoSedeService
         }
 
         return DB::transaction(function () use ($sedeId, $monto, $creditoId, $usuarioId) {
-            $fondo = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $sedeId],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -475,7 +475,7 @@ class FondoSedeService
         }
 
         return DB::transaction(function () use ($sedeId, $monto, $pagoId, $usuarioId) {
-            $fondo = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $sedeId],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -511,7 +511,7 @@ class FondoSedeService
         }
 
         return DB::transaction(function () use ($sedeId, $monto, $pagoId, $usuarioId) {
-            $fondo = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $sedeId],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
@@ -550,7 +550,7 @@ class FondoSedeService
         }
 
         return DB::transaction(function () use ($transferencia, $usuarioId) {
-            $fondoSede = FondoSede::lockForUpdate()->where('SedeID', $transferencia->SedeDestinoID)->first();
+            $fondoSede = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->where('SedeID', $transferencia->SedeDestinoID)->first();
             if (!$fondoSede || $fondoSede->Saldo < $transferencia->Monto) {
                 throw ValidationException::withMessages(['saldo' => 'Saldo insuficiente en Caja Abierta para realizar la transferencia.']);
             }
@@ -571,7 +571,7 @@ class FondoSedeService
                 'Observacion' => "Transferencia a Gerencia por solicitud #{$transferencia->TransferenciaID}",
             ]);
 
-            $fondoGerencia = FondoSede::lockForUpdate()->firstOrCreate(
+            $fondoGerencia = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $transferencia->SedeOrigenID],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
             );
