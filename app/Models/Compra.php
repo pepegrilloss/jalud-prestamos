@@ -10,6 +10,29 @@ use App\Traits\BelongsToSede;
 class Compra extends Model
 {
     use BelongsToSede;
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                $model->FechaCreacion = $fecha;
+                $model->FechaModificacion = $fecha;
+            }
+        });
+
+        static::updating(function ($model) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                $model->FechaModificacion = $fecha;
+            }
+        });
+    }
+
     protected $table = 'Compra';
     protected $primaryKey = 'CompraID';
     public $timestamps = true;

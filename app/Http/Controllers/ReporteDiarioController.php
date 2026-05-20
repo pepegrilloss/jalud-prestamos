@@ -313,31 +313,35 @@ class ReporteDiarioController extends Controller
 
             // Calcular saldo de Caja Chica históricamente
             $calcularSaldoCajaChicaHasta = function ($fechaLimite) use ($sedeId) {
-                // Entradas a Caja Chica (Traslados desde Caja Abierta)
-                $trasladosEntrada = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
-                    ->where('created_at', '<=', $fechaLimite)
-                    ->where('Tipo', 'TRASLADO_CA_A_CC')
-                    ->get()
-                    ->sum(function($m) { return abs($m->Monto); });
-                    
-                // Salidas de Caja Chica (Gastos, Compras, Traslados a Caja Abierta)
-                $gastos = \App\Models\Gasto::withoutGlobalScopes()
+                $movimientos = \App\Models\MovimientoFondo::with('transferencia')
                     ->where('SedeID', $sedeId)
-                    ->where('FechaEmision', '<=', $fechaLimite)
-                    ->sum('Total');
-                    
-                $compras = \App\Models\Compra::withoutGlobalScopes()
-                    ->where('SedeID', $sedeId)
-                    ->where('FechaEmision', '<=', $fechaLimite)
-                    ->sum('Total');
-                    
-                $trasladosSalida = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
                     ->where('created_at', '<=', $fechaLimite)
-                    ->where('Tipo', 'TRASLADO_CC_A_CA')
-                    ->get()
-                    ->sum(function($m) { return abs($m->Monto); });
-
-                return $trasladosEntrada - $gastos - $compras - $trasladosSalida;
+                    ->get();
+                
+                $saldo = 0;
+                foreach ($movimientos as $m) {
+                    if ($m->Tipo === 'INGRESO_CAJA_CHICA') {
+                        $saldo += $m->Monto;
+                    } elseif ($m->Tipo === 'EGRESO_CAJA_CHICA') {
+                        $saldo += $m->Monto;
+                    } elseif ($m->Tipo === 'TRASLADO_CA_A_CC') {
+                        $saldo += abs($m->Monto);
+                    } elseif ($m->Tipo === 'TRASLADO_CC_A_CA') {
+                        $saldo -= abs($m->Monto);
+                    } elseif ($m->Tipo === 'RECEPCION_TRANSFERENCIA') {
+                        $transferencia = $m->transferencia;
+                        if ($transferencia && $transferencia->CuentaDestino === 'CAJA_CHICA') {
+                            $saldo += $m->Monto;
+                        }
+                    } elseif ($m->Tipo === 'ENVIO_TRANSFERENCIA') {
+                        $transferencia = $m->transferencia;
+                        if ($transferencia && $transferencia->CuentaOrigen === 'CAJA_CHICA') {
+                            $saldo += $m->Monto;
+                        }
+                    }
+                }
+                
+                return $saldo;
             };
 
             $saldoCajaChica = $calcularSaldoCajaChicaHasta($fechaFinDia);

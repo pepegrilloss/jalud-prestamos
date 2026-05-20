@@ -114,14 +114,14 @@ class CompraResource extends Resource
                                     ->label('Cant.')
                                     ->numeric()
                                     ->required()
-                                    ->step(0.01)
+                                    ->step('any')
                                     ->default(1)
                                     ->live(debounce: 500),
                                 Forms\Components\TextInput::make('PrecioUnitario')
                                     ->label('Precio Unit.')
                                     ->numeric()
                                     ->required()
-                                    ->step(0.01)
+                                    ->step('any')
                                     ->prefix('S/. ')
                                     ->live(debounce: 500),
                                 Forms\Components\TextInput::make('Subtotal')

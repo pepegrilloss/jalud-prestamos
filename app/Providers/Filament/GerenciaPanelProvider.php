@@ -20,7 +20,6 @@ use App\Filament\Pages\Auth\Login;
 use App\Filament\Resources\FondoSedeResource;
 use App\Filament\Resources\TransferenciaSedeResource;
 use App\Filament\Widgets\CajaAbiertaWidget;
-use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 
 class GerenciaPanelProvider extends PanelProvider
 {
@@ -120,7 +119,6 @@ class GerenciaPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->plugins([
-                FilamentShieldPlugin::make(),
                 \Hasnayeen\Themes\ThemesPlugin::make()
                     ->canViewThemesPage(fn() => auth()->user() ? auth()->user()->can('page_Themes') : false),
             ])

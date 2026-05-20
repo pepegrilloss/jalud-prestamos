@@ -10,6 +10,28 @@ class MovimientoFondo extends Model
 {
     use HasFactory, BelongsToSede;
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                $model->created_at = $fecha;
+                $model->updated_at = $fecha;
+            }
+        });
+
+        static::updating(function ($model) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                $model->updated_at = $fecha;
+            }
+        });
+    }
+
     protected $table = 'movimientos_fondo';
     protected $primaryKey = 'MovimientoID';
 

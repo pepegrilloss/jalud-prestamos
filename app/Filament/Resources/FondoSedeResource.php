@@ -201,7 +201,7 @@ class FondoSedeResource extends Resource
                             ->required()
                             ->default('Solicitud de traslado interno'),
                     ])
-                    ->action(function (FondoSede $record, array $data, FondoSedeService $service) {
+                    ->action(function (FondoSede $record, array $data, FondoSedeService $service, $livewire) {
                         try {
                             $cuentaOrigen = $data['direccion'] === 'CA_A_CC' ? 'CAJA_ABIERTA' : 'CAJA_CHICA';
                             $cuentaDestino = $data['direccion'] === 'CA_A_CC' ? 'CAJA_CHICA' : 'CAJA_ABIERTA';
@@ -221,6 +221,8 @@ class FondoSedeResource extends Resource
                                 ->title('Solicitud de traslado enviada a Gerencia')
                                 ->body('La solicitud quedará pendiente hasta que Gerencia la apruebe.')
                                 ->send();
+
+                            $livewire->dispatch('refreshSolicitudes');
 
                             try {
                                 $direccion = $data['direccion'] === 'CA_A_CC' ? 'Caja Abierta → Caja Chica' : 'Caja Chica → Caja Abierta';
@@ -257,7 +259,7 @@ class FondoSedeResource extends Resource
                             ->required()
                             ->default('Solicitud de capital a Gerencia'),
                     ])
-                    ->action(function (FondoSede $record, array $data, FondoSedeService $service) {
+                    ->action(function (FondoSede $record, array $data, FondoSedeService $service, $livewire) {
                         try {
                             $sedeGerencia = Sede::where('Nombre', 'like', '%Gerencia%')->first();
                             if (!$sedeGerencia) {
@@ -280,6 +282,8 @@ class FondoSedeResource extends Resource
                                 ->title('Solicitud de capital enviada a Gerencia')
                                 ->body('La solicitud quedará pendiente hasta que Gerencia la apruebe.')
                                 ->send();
+
+                            $livewire->dispatch('refreshSolicitudes');
 
                             try {
                                 \App\Models\User::notificarAdmin(

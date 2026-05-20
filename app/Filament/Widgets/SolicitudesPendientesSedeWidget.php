@@ -13,6 +13,10 @@ class SolicitudesPendientesSedeWidget extends BaseWidget
 
     protected int | string | array $columnSpan = 'full';
 
+    protected $listeners = [
+        'refreshSolicitudes' => '$refresh',
+    ];
+
     public function table(Table $table): Table
     {
         $user = auth()->user();

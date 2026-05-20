@@ -9,6 +9,32 @@ class TransferenciaSede extends Model
 {
     use HasFactory;
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                $model->FechaTransferencia = $fecha;
+                $model->created_at = $fecha;
+                $model->updated_at = $fecha;
+            }
+        });
+
+        static::updating(function ($model) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                if ($model->isDirty('FechaRespuesta')) {
+                    $model->FechaRespuesta = $fecha;
+                }
+                $model->updated_at = $fecha;
+            }
+        });
+    }
+
     protected $table = 'transferencia_sedes';
     protected $primaryKey = 'TransferenciaID';
 
