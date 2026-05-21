@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "DragonBound Companion Panel",
+  "description": "Panel local de notas y cronometro para dragonbound.net. No automatiza ni modifica el juego.",
+  "version": "1.0.0",
+  "permissions": [
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://dragonbound.net/*",
+        "*://www.dragonbound.net/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "DB Companion"
+  }
+}

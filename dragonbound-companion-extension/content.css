@@ -1,0 +1,12 @@
+#db-companion-root {
+  all: initial;
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483647;
+}
+
+#db-companion-root,
+#db-companion-root * {
+  box-sizing: border-box;
+}

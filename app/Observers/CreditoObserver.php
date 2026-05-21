@@ -13,6 +13,13 @@ class CreditoObserver
     {
         $this->generarCuotas($credito);
 
+        // Recalcular saldo pendiente al crear el crédito
+        try {
+            \App\Services\SaldoPendienteService::recalcular($credito->ProposicionCreditoID);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver: ' . $e->getMessage());
+        }
+
         try {
             $proposicion = $credito->proposicion;
             if ($proposicion) {
@@ -29,6 +36,26 @@ class CreditoObserver
                 );
             }
         } catch (\Exception $e) {
+        }
+    }
+
+    public function updated(Credito $credito)
+    {
+        if ($credito->wasChanged('Activo')) {
+            try {
+                \App\Services\SaldoPendienteService::recalcular($credito->ProposicionCreditoID);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver@updated: ' . $e->getMessage());
+            }
+        }
+    }
+
+    public function deleted(Credito $credito)
+    {
+        try {
+            \App\Services\SaldoPendienteService::recalcular($credito->ProposicionCreditoID);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver@deleted: ' . $e->getMessage());
         }
     }
 
