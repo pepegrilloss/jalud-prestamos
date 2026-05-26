@@ -4,14 +4,18 @@
     $sedeNombre = 'No asignada';
 
     if ($user) {
-        if ($user->isPrivileged()) {
-            $sedeActiva = session('sede_activa');
-            if ($sedeActiva) {
-                $sedeObj = \App\Models\Sede::withoutGlobalScopes()->find($sedeActiva);
-                $sedeNombre = $sedeObj?->Nombre ?? 'Sede desconocida';
-            } else {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            $filter = session('gerencia_dashboard_sede', '0');
+            if ($filter === '0' || $filter === '' || $filter === null) {
                 $sedeNombre = 'Todas las Sedes';
+            } else {
+                $sedeObj = \App\Models\Sede::withoutGlobalScopes()->find((int) $filter);
+                $sedeNombre = $sedeObj?->Nombre ?? 'Sin sede seleccionada';
             }
+        } elseif ($user->isPrivileged()) {
+            $sedeActiva = session('sede_activa');
+            $sedeObj = $sedeActiva ? \App\Models\Sede::withoutGlobalScopes()->find($sedeActiva) : null;
+            $sedeNombre = $sedeObj?->Nombre ?? 'Sin sede seleccionada';
         } elseif ($user->sede) {
             $sedeNombre = $user->sede->Nombre;
         }

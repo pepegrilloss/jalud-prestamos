@@ -147,6 +147,21 @@
                 <td colspan="12" class="text-center">No hay créditos registrados</td>
             </tr>
             @endforelse
+            @if($proposiciones->count() > 0)
+            @php
+                $totalMonto = $proposiciones->sum('MontoTotal');
+                $totalInteres = $proposiciones->sum('MontoInteres');
+                $totalGeneral = $totalMonto + $totalInteres;
+            @endphp
+            <tr style="font-weight: bold; background-color: #e8e8e8;">
+                <td colspan="4" style="text-align: right; font-size: 11px; padding-right: 10px;">TOTALES</td>
+                <td>S/ {{ number_format($totalMonto, 2) }}</td>
+                <td></td>
+                <td>S/ {{ number_format($totalGeneral, 2) }}</td>
+                <td>S/ {{ number_format($totalInteres, 2) }}</td>
+                <td colspan="4"></td>
+            </tr>
+            @endif
         </tbody>
     </table>
 

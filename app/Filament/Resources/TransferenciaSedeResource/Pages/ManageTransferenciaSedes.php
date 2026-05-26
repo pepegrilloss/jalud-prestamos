@@ -42,7 +42,10 @@ class ManageTransferenciaSedes extends ManageRecords
                             auth()->id(),
                             $data['Observacion'],
                             $data['CuentaOrigen'] ?? 'CAJA_ABIERTA',
-                            $data['CuentaDestino'] ?? 'CAJA_ABIERTA'
+                            $data['CuentaDestino'] ?? 'CAJA_ABIERTA',
+                            false,
+                            false,
+                            $data['VoucherImagen'] ?? null
                         );
                     } catch (\Exception $e) {
                         throw $e;
@@ -85,6 +88,14 @@ class ManageTransferenciaSedes extends ManageRecords
                         ->label('Motivo / Observación')
                         ->required()
                         ->columnSpanFull(),
+                    \Filament\Forms\Components\FileUpload::make('VoucherImagen')
+                        ->label('Voucher del Depósito')
+                        ->image()
+                        ->directory('fondos/vouchers')
+                        ->maxSize(5120)
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                        ->helperText('Sube el comprobante del depósito (opcional)')
+                        ->columnSpanFull(),
                 ])
                 ->action(function (array $data, FondoSedeService $service) {
                     try {
@@ -102,7 +113,8 @@ class ManageTransferenciaSedes extends ManageRecords
                             'CAJA_ABIERTA',
                             'CAJA_ABIERTA',
                             false,
-                            true
+                            true,
+                            $data['VoucherImagen'] ?? null
                         );
 
                         Notification::make()

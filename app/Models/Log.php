@@ -51,9 +51,9 @@ class Log extends Model
             'modelo_id' => $modeloId,
             'old_values' => $oldValues ? json_encode($oldValues) : null,
             'new_values' => $newValues ? json_encode($newValues) : null,
-            'ip_address' => request()->ip(),
+            'ip_address' => self::normalizarIp(request()->ip() ?? request()->header('X-Forwarded-For') ?? '127.0.0.1'),
             'user_agent' => request()->userAgent(),
-            'machine_name' => null, // CRÍTICO: NO exponer información de servidor
+            'machine_name' => php_uname('n') ?: gethostname() ?: null,
             'platform' => PHP_OS_FAMILY,
             'created_at' => now()
         ]);
@@ -99,5 +99,13 @@ class Log extends Model
         }
 
         return $values;
+    }
+
+    private static function normalizarIp(?string $ip): ?string
+    {
+        if ($ip === '::1' || $ip === '::ffff:127.0.0.1') {
+            return '127.0.0.1';
+        }
+        return $ip;
     }
 }

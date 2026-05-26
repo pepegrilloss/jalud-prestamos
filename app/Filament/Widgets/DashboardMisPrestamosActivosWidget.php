@@ -18,16 +18,35 @@ class DashboardMisPrestamosActivosWidget extends BaseWidget
     
     public static function canView(): bool
     {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
         return auth()->user()->can('widget_' . class_basename(static::class));
     }
+
+    protected function getListeners(): array
+    {
+        return ['sedeFilterChanged' => '$refresh'];
+    }
+
     protected function getStats(): array
     {
         $user = Auth::user();
+        $sedeIdOverride = null;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            $filter = session('gerencia_dashboard_sede', '0');
+            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+        }
+
         $promotorCobrador = $user->promotorCobrador;
-        $zonaID = $promotorCobrador?->ZonaID ?? null;
+        $zonaID = $sedeIdOverride ? null : ($promotorCobrador?->ZonaID ?? null);
 
         $creditosQuery = \App\Models\Credito::where('Activo', true)
-            ->whereHas('proposicion', function ($q) use ($zonaID) {
+            ->when($sedeIdOverride, fn($q) => $q->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride))
+            ->whereHas('proposicion', function ($q) use ($zonaID, $sedeIdOverride) {
+                if ($sedeIdOverride) {
+                    $q->withoutGlobalScope('sede');
+                }
                 $q->where('FueRefinanciada', 0);
                 if ($zonaID) {
                     $q->where('ZonaID', $zonaID);

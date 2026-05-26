@@ -39,6 +39,19 @@ class Excedente extends Model
         'Monto' => 'decimal:2',
     ];
 
+    protected function setVoucherImagenAttribute($value)
+    {
+        if ($value && is_string($value) && str_contains($value, '.')) {
+            $rutaCompleta = \Illuminate\Support\Facades\Storage::disk('public')->path($value);
+            $resultado = \App\Helpers\ImageOptimizer::optimize($rutaCompleta);
+            $rutaFinal = $resultado['path'];
+            $rutaFinal = str_replace(\Illuminate\Support\Facades\Storage::disk('public')->path(''), '', $rutaFinal);
+            $this->attributes['VoucherImagen'] = str_replace('\\', '/', ltrim($rutaFinal, '\\/'));
+        } else {
+            $this->attributes['VoucherImagen'] = $value;
+        }
+    }
+
     public function zona()
     {
         return $this->belongsTo(Zona::class, 'ZonaID', 'ZonaID');

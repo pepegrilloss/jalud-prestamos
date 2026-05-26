@@ -104,6 +104,14 @@ class TransferenciaSedeResource extends Resource
                     ->label('Motivo / Observación')
                     ->required()
                     ->columnSpanFull(),
+                Forms\Components\FileUpload::make('VoucherImagen')
+                    ->label('Voucher del Depósito')
+                    ->image()
+                    ->directory('fondos/vouchers')
+                    ->maxSize(5120)
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                    ->helperText('Sube el comprobante del depósito (opcional)')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -195,8 +203,19 @@ class TransferenciaSedeResource extends Resource
                         'ACEPTADO' => 'Aceptado',
                         'RECHAZADO' => 'Rechazado',
                     ]),
+
+            Tables\Filters\SelectFilter::make('SedeID')
+                ->label('Sede')
+                ->options(fn() => \App\Models\Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                ->visible(fn() => auth()->user()->isPrivileged() && !session('sede_activa')),
+            
             ])
             ->actions([
+                Tables\Actions\ViewAction::make()
+                    ->label('Ver')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->visible(fn() => self::esGerencia()),
                 Tables\Actions\Action::make('Aceptar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -328,6 +347,7 @@ class TransferenciaSedeResource extends Resource
     {
         return [
             'index' => Pages\ManageTransferenciaSedes::route('/'),
+            'view' => Pages\ViewTransferenciaSede::route('/{record}'),
         ];
     }
 

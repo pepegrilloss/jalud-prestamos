@@ -121,6 +121,7 @@ class ReporteClientesInactivosResource extends Resource
                                 fn(Builder $q, $date) => $q->havingRaw('MAX(Credito.FechaSaldamiento) <= ?', [$date])
                             );
                     }),
+
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query->select('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos', 'Cliente.Activo', 'Cliente.SedeID')

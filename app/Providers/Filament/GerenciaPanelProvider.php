@@ -17,9 +17,24 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\FacturasPendientes;
+use App\Filament\Pages\GerenciaDashboard;
+use App\Filament\Pages\GerenciaReportes;
+use App\Filament\Resources\AperturaCierreDiaResource;
+use App\Filament\Resources\CompraResource;
 use App\Filament\Resources\FondoSedeResource;
+use App\Filament\Resources\GastoResource;
 use App\Filament\Resources\TransferenciaSedeResource;
 use App\Filament\Widgets\CajaAbiertaWidget;
+use App\Filament\Widgets\CajaChicaWidget;
+use App\Filament\Widgets\CustomAccountWidget;
+use App\Filament\Widgets\DashboardCobradoDiarioWidget;
+use App\Filament\Widgets\DashboardCreditosVencenHoyWidget;
+use App\Filament\Widgets\DashboardMisClientesActivosWidget;
+use App\Filament\Widgets\DashboardMisPrestamosActivosWidget;
+use App\Filament\Widgets\DashboardMiTotalPrestadoWidget;
+use App\Filament\Widgets\DashboardPagosCerradosHoyWidget;
+use App\Filament\Widgets\DashboardProposicionesHoyWidget;
 
 class GerenciaPanelProvider extends PanelProvider
 {
@@ -50,6 +65,7 @@ class GerenciaPanelProvider extends PanelProvider
                 \Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn(): string => \Illuminate\Support\Facades\Blade::render('
                     @php
+                        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                         $sedeId = session("sede_activa");
                         $sedeNombre = $sedeId ? \App\Models\Sede::find($sedeId)?->Nombre : "GLOBAL";
                         $puedeCambiarSede = auth()->user()->esAdmin() || auth()->user()->can("page_SelectSede") || auth()->user()->puedeVerTodasLasSedes() || auth()->user()->puedeSeleccionarSedesOperativas();
@@ -61,17 +77,27 @@ class GerenciaPanelProvider extends PanelProvider
                         }
                     </style>
 
-                    {{-- VERSION MOVIL --}}
+                    {{-- VERSION MOVIL: puntito + fecha --}}
                     <div class="flex sm:hidden items-center gap-x-1 px-1.5 py-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm mr-1">
-                        <span class="text-[10px] font-bold text-gray-800 dark:text-gray-200 leading-none whitespace-nowrap">JALUD</span>
+                        <div class="w-1.5 h-1.5 rounded-full flex-shrink-0 {{ $fechaAbierta ? "bg-success-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]" : "bg-danger-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]" }}"></div>
+                        <span class="text-[10px] font-bold text-gray-800 dark:text-gray-200 leading-none whitespace-nowrap">
+                            {{ $fechaAbierta?->format("d/m/Y") ?? "CERRADO" }}
+                        </span>
                         <span class="text-[10px] font-bold text-primary-600 dark:text-primary-400 leading-none truncate max-w-[65px]">{{ $sedeNombre }}</span>
                     </div>
 
-                    {{-- VERSION DESKTOP --}}
+                    {{-- VERSION DESKTOP: PANEL GERENCIA + fecha + sede --}}
                     <div class="hidden sm:flex items-center gap-x-3 px-4 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm mr-4">
                         <div class="flex items-center gap-x-2">
                             <span class="text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 leading-none">
                                 PANEL GERENCIA
+                            </span>
+                        </div>
+                        <div class="w-px h-5 bg-gray-300 dark:bg-gray-600"></div>
+                        <div class="flex items-center gap-x-2">
+                            <div class="w-2.5 h-2.5 rounded-full {{ $fechaAbierta ? "bg-success-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-danger-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" }}"></div>
+                            <span class="text-sm md:text-base font-bold text-gray-800 dark:text-gray-200 leading-none">
+                                {{ $fechaAbierta?->format("d/m/Y") ?? "CERRADO" }}
                             </span>
                         </div>
                         <div class="w-px h-5 bg-gray-300 dark:bg-gray-600"></div>
@@ -96,14 +122,34 @@ class GerenciaPanelProvider extends PanelProvider
             ->brandName('JALUD - Gerencia')
             ->favicon(asset('favicon-j.svg'))
             ->navigationGroups([
+                'Administración',
                 'Tesorería',
+                'Compras y Gastos',
+                'Reportes',
             ])
             ->resources([
+                AperturaCierreDiaResource::class,
+                CompraResource::class,
                 FondoSedeResource::class,
+                GastoResource::class,
                 TransferenciaSedeResource::class,
             ])
+            ->pages([
+                FacturasPendientes::class,
+                GerenciaDashboard::class,
+                GerenciaReportes::class,
+            ])
             ->widgets([
+                CustomAccountWidget::class,
+                DashboardMisClientesActivosWidget::class,
+                DashboardMisPrestamosActivosWidget::class,
+                DashboardMiTotalPrestadoWidget::class,
+                DashboardCobradoDiarioWidget::class,
+                DashboardPagosCerradosHoyWidget::class,
+                DashboardProposicionesHoyWidget::class,
+                DashboardCreditosVencenHoyWidget::class,
                 CajaAbiertaWidget::class,
+                CajaChicaWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

@@ -31,33 +31,39 @@ class CreateCompra extends CreateRecord
             $data['SubtotalBase'] = $subtotalBase;
         }
 
-        if (empty($data['MontoIGV']) || floatval($data['MontoIGV']) == 0) {
+        $tipoIGV = $data['TipoIGV'] ?? 'GRAVADO';
+        if ($tipoIGV === 'EXONERADO') {
+            $data['MontoIGV'] = 0;
+            $data['Total'] = floatval($data['SubtotalBase']);
+        } else {
             $data['MontoIGV'] = round($subtotalBase * 0.18, 2);
-        }
-
-        if (empty($data['Total']) || floatval($data['Total']) == 0) {
             $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
         }
 
-        $totalCompra = floatval($data['Total']);
+        // Si es CRÉDITO, no validar ni descontar de Caja Chica
+        $data['EstadoPago'] = ($data['TipoCompra'] ?? 'CONTADO') === 'CREDITO' ? 'PENDIENTE' : 'PAGADO';
 
-        // Validar saldo en Caja Chica ANTES de crear la compra
-        if ($totalCompra > 0) {
-            $sedeId = auth()->user()->getEffectiveSedeId();
+        if (($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO') {
+            $totalCompra = floatval($data['Total']);
 
-            if ($sedeId) {
-                $fondo = \App\Models\FondoSede::where('SedeID', $sedeId)->first();
-                $saldoDisponible = $fondo ? $fondo->SaldoCajaChica : 0;
+            // Validar saldo en Caja Chica ANTES de crear la compra
+            if ($totalCompra > 0) {
+                $sedeId = auth()->user()->getEffectiveSedeId();
 
-                if ($saldoDisponible < $totalCompra) {
-                    Notification::make()
-                        ->danger()
-                        ->title('Saldo insuficiente en Caja Chica')
-                        ->body("Saldo disponible: S/ " . number_format($saldoDisponible, 2) . ". Monto requerido: S/ " . number_format($totalCompra, 2))
-                        ->persistent()
-                        ->send();
+                if ($sedeId) {
+                    $fondo = \App\Models\FondoSede::where('SedeID', $sedeId)->first();
+                    $saldoDisponible = $fondo ? $fondo->SaldoCajaChica : 0;
 
-                    $this->halt();
+                    if ($saldoDisponible < $totalCompra) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Saldo insuficiente en Caja Chica')
+                            ->body("Saldo disponible: S/ " . number_format($saldoDisponible, 2) . ". Monto requerido: S/ " . number_format($totalCompra, 2))
+                            ->persistent()
+                            ->send();
+
+                        $this->halt();
+                    }
                 }
             }
         }
@@ -67,11 +73,11 @@ class CreateCompra extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Descontar de Caja Chica
         $record = $this->record;
         $total = floatval($record->Total);
 
-        if ($total > 0) {
+        // Solo descuenta de Caja Chica si es CONTADO
+        if ($record->TipoCompra === 'CONTADO' && $total > 0) {
             $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {

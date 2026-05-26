@@ -68,15 +68,13 @@ class FondoSedeResource extends Resource
             return $query;
         }
 
-        // Si ES admin, pero está en el panel /admin, debe ver solo la sede seleccionada en sesión.
         $sedeId = session('sede_activa');
         if ($sedeId) {
             $query->where('SedeID', $sedeId);
         } else {
-            // Si el admin no ha seleccionado ninguna sede en el selector, no mostrar nada.
             $query->whereRaw('1 = 0');
         }
-        
+
         return $query;
     }
 
@@ -130,7 +128,7 @@ class FondoSedeResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                //
+
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -154,6 +152,14 @@ class FondoSedeResource extends Resource
                             ->label('Observación')
                             ->required()
                             ->default('Ingreso de capital inicial'),
+                        Forms\Components\FileUpload::make('VoucherImagen')
+                            ->label('Voucher del Depósito')
+                            ->image()
+                            ->directory('fondos/vouchers')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->helperText('Sube el comprobante del depósito (opcional)')
+                            ->columnSpanFull(),
                     ])
                     ->action(function (FondoSede $record, array $data, FondoSedeService $service) {
                         try {
@@ -161,7 +167,8 @@ class FondoSedeResource extends Resource
                                 $record->SedeID,
                                 $data['monto'],
                                 auth()->id(),
-                                $data['observacion']
+                                $data['observacion'],
+                                $data['VoucherImagen'] ?? null
                             );
 
                             Notification::make()
@@ -200,6 +207,14 @@ class FondoSedeResource extends Resource
                             ->label('Motivo / Observación')
                             ->required()
                             ->default('Solicitud de traslado interno'),
+                        Forms\Components\FileUpload::make('VoucherImagen')
+                            ->label('Voucher del Depósito')
+                            ->image()
+                            ->directory('fondos/vouchers')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->helperText('Sube el comprobante del depósito (opcional)')
+                            ->columnSpanFull(),
                     ])
                     ->action(function (FondoSede $record, array $data, FondoSedeService $service, $livewire) {
                         try {
@@ -213,7 +228,10 @@ class FondoSedeResource extends Resource
                                 auth()->id(),
                                 $data['observacion'],
                                 $cuentaOrigen,
-                                $cuentaDestino
+                                $cuentaDestino,
+                                false,
+                                false,
+                                $data['VoucherImagen'] ?? null
                             );
 
                             Notification::make()
@@ -258,6 +276,14 @@ class FondoSedeResource extends Resource
                             ->label('Motivo / Observación')
                             ->required()
                             ->default('Solicitud de capital a Gerencia'),
+                        Forms\Components\FileUpload::make('VoucherImagen')
+                            ->label('Voucher del Depósito')
+                            ->image()
+                            ->directory('fondos/vouchers')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->helperText('Sube el comprobante del depósito (opcional)')
+                            ->columnSpanFull(),
                     ])
                     ->action(function (FondoSede $record, array $data, FondoSedeService $service, $livewire) {
                         try {
@@ -274,7 +300,9 @@ class FondoSedeResource extends Resource
                                 $data['observacion'],
                                 'CAJA_ABIERTA',
                                 'CAJA_ABIERTA',
-                                true
+                                true,
+                                false,
+                                $data['VoucherImagen'] ?? null
                             );
 
                             Notification::make()
@@ -327,6 +355,14 @@ class FondoSedeResource extends Resource
                             ->label('Observación')
                             ->required()
                             ->default('Ingreso de capital inicial a la sede'),
+                        \Filament\Forms\Components\FileUpload::make('VoucherImagen')
+                            ->label('Voucher del Depósito')
+                            ->image()
+                            ->directory('fondos/vouchers')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->helperText('Sube el comprobante del depósito (opcional)')
+                            ->columnSpanFull(),
                     ])
                     ->action(function (array $data, \App\Services\FondoSedeService $service) {
                         try {
@@ -334,7 +370,8 @@ class FondoSedeResource extends Resource
                                 $data['sede_id'],
                                 $data['monto'],
                                 auth()->id(),
-                                $data['observacion']
+                                $data['observacion'],
+                                $data['VoucherImagen'] ?? null
                             );
 
                             \Filament\Notifications\Notification::make()
@@ -376,6 +413,14 @@ class FondoSedeResource extends Resource
                             ->label('Observación')
                             ->required()
                             ->default('Ingreso de capital inicial a la sede'),
+                        \Filament\Forms\Components\FileUpload::make('VoucherImagen')
+                            ->label('Voucher del Depósito')
+                            ->image()
+                            ->directory('fondos/vouchers')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->helperText('Sube el comprobante del depósito (opcional)')
+                            ->columnSpanFull(),
                     ])
                     ->action(function (array $data, \App\Services\FondoSedeService $service) {
                         try {
@@ -383,7 +428,8 @@ class FondoSedeResource extends Resource
                                 $data['sede_id'],
                                 $data['monto'],
                                 auth()->id(),
-                                $data['observacion']
+                                $data['observacion'],
+                                $data['VoucherImagen'] ?? null
                             );
 
                             \Filament\Notifications\Notification::make()

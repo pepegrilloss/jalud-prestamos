@@ -107,7 +107,13 @@ class GastoResource extends Resource
                                 'CAJA CHICA' => 'CAJA CHICA',
                             ])
                             ->required(),
-                    ])->columns(3),
+                        Forms\Components\Toggle::make('EsGasto')
+                            ->label('¿Es gasto?')
+                            ->inline(false)
+                            ->default(true)
+                            ->onIcon('heroicon-m-check')
+                            ->offIcon('heroicon-m-x-mark'),
+                    ])->columns(4),
 
                 Forms\Components\Section::make('Detalle del Gasto')
                     ->schema([
@@ -201,6 +207,13 @@ class GastoResource extends Resource
                     ->numeric(2)
                     ->prefix('S/. ')
                     ->sortable(),
+                Tables\Columns\IconColumn::make('EsGasto')
+                    ->label('¿Gasto?')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-badge')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger'),
                 Tables\Columns\IconColumn::make('Activo')
                     ->label('Estado')
                     ->boolean()
@@ -223,6 +236,12 @@ class GastoResource extends Resource
                         'CAJA CHICA' => 'CAJA CHICA',
                         'Tarjeta de crédito' => 'Tarjeta de crédito',
                         'Tarjeta de débito' => 'Tarjeta de débito',
+                    ]),
+                Tables\Filters\SelectFilter::make('EsGasto')
+                    ->label('¿Es gasto?')
+                    ->options([
+                        '1' => 'Solo gastos',
+                        '0' => 'Solo no gastos',
                     ]),
                 Tables\Filters\Filter::make('FechaEmision')
                     ->form([
@@ -267,17 +286,23 @@ class GastoResource extends Resource
 
     public static function canCreate(): bool
     {
-        return parent::canCreate() && \App\Models\AperturaCierreDia::estaAbierto();
+        if (!parent::canCreate()) return false;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
-        return parent::canEdit($record) && \App\Models\AperturaCierreDia::estaAbierto();
+        if (!parent::canEdit($record)) return false;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        return parent::canDelete($record) && \App\Models\AperturaCierreDia::estaAbierto();
+        if (!parent::canDelete($record)) return false;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array

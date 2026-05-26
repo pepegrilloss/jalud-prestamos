@@ -121,29 +121,8 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(\App\Models\Sede::class, 'SedeID', 'SedeID');
     }
 
-    /**
-     * Override del método can() para forzar modo Solo Lectura si está en "Todas las Sedes"
-     */
     public function can($abilities, $arguments = [])
     {
-        // Evitar recursión infinita: si estamos validando los propios permisos de sede, saltar el bloqueo
-        $abilitiesList = is_array($abilities) ? $abilities : [$abilities];
-        $isCheckingSedePermission = in_array('Ver Todas Las Sedes', $abilitiesList) || in_array('ver_todas_las_sedes', $abilitiesList);
-
-        if (!$isCheckingSedePermission && ($this->esAdmin() || $this->puedeVerTodasLasSedes()) && !session('sede_activa')) {
-            $blockedPrefixes = ['create_', 'update_', 'delete_', 'restore_', 'forceDelete_'];
-
-            foreach ($abilitiesList as $ability) {
-                if (is_string($ability)) {
-                    foreach ($blockedPrefixes as $prefix) {
-                        if (str_starts_with($ability, $prefix)) {
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
-
         return parent::can($abilities, $arguments);
     }
 

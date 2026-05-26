@@ -47,6 +47,11 @@ class Compra extends Model
         'SubtotalBase',
         'MontoIGV',
         'Total',
+        'TipoIGV',
+        'TipoCompra',
+        'EstadoPago',
+        'FechaPago',
+        'UsuarioPagoID',
         'Observaciones',
         'Activo',
         'SedeID',
@@ -62,6 +67,7 @@ class Compra extends Model
         'MontoIGV' => 'decimal:2',
         'Total' => 'decimal:2',
         'Activo' => 'boolean',
+        'FechaPago' => 'datetime',
     ];
 
     public function tipoComprobante(): BelongsTo
@@ -92,5 +98,10 @@ class Compra extends Model
     public function usuarioModificacion(): BelongsTo
     {
         return $this->belongsTo(User::class, 'UsuarioModificacion', 'id');
+    }
+
+    public function usuarioPago(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'UsuarioPagoID', 'id');
     }
 }

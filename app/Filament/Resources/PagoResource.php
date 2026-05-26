@@ -607,6 +607,7 @@ class PagoResource extends Resource
                                 fn(Builder $q) => $q->whereIn('pago.TipoPago', $data['TipoPago'])
                             );
                     }),
+
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(1)
             ->modifyQueryUsing(function (Builder $query) {

@@ -110,6 +110,7 @@ class ReporteClientesAtrasoResource extends Resource
                                 fn(Builder $q, $date) => $q->whereDate('FechaVencimiento', '<=', $date)
                             );
                     }),
+
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 $query->select('Credito.*')

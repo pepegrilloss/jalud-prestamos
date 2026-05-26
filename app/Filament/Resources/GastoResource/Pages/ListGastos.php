@@ -15,7 +15,7 @@ class ListGastos extends ListRecords
     public function getTitle(): string
     {
         $title = 'Gastos';
-        if (!AperturaCierreDia::estaAbierto()) {
+        if (filament()->getCurrentPanel()?->getId() !== 'gerencia' && !AperturaCierreDia::estaAbierto()) {
             $title .= ' ⚠️ (Día Cerrado)';
         }
         return $title;

@@ -46,11 +46,11 @@ trait BelongsToSede
             $filter = self::resolveSedeFilter();
 
             if ($filter['esPrivilegiado']) {
-                // Usuario con selector de sede: filtrar por sede activa en sesión
                 if ($filter['sedeActiva']) {
                     $query->where($query->getModel()->getTable() . '.SedeID', $filter['sedeActiva']);
+                } else {
+                    $query->whereRaw('1 = 0');
                 }
-                // Si no tiene sede en sesión → ve todo (no filtra)
             } else {
                 // Usuario normal: filtrar siempre por su sede asignada
                 if ($filter['sedeUsuario']) {

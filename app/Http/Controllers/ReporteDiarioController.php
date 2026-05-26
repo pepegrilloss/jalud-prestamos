@@ -34,7 +34,7 @@ class ReporteDiarioController extends Controller
     {
         $fecha = $request->get('fecha');
         $aperturaCierreDiaId = $request->get('id');
-        $sedeIdParam = $request->get('sede');
+        $sedeIdParam = $request->get('sede_id') ?? $request->get('sede');
 
         if (!$fecha) {
             abort(404, 'Fecha no proporcionada');
@@ -52,13 +52,17 @@ class ReporteDiarioController extends Controller
                 ->find($aperturaCierreDiaId);
         }
 
-        // Resolver SedeID: del registro, del parámetro, o del usuario autenticado
-        $sedeId = $aperturaCierre?->SedeID
-            ?? $sedeIdParam
-            ?? (auth()->check() ? auth()->user()->getEffectiveSedeId() : null);
+        if ($sedeIdParam === '0' || $sedeIdParam === 'todas' || $sedeIdParam === '') {
+            $sedeId = null;
+        } elseif ($sedeIdParam) {
+            $sedeId = (int) $sedeIdParam;
+        } else {
+            $sedeId = $aperturaCierre?->SedeID
+                ?? (auth()->check() ? auth()->user()->getEffectiveSedeId() : null);
+        }
 
         $sede = $sedeId ? Sede::find($sedeId) : null;
-        $sedeNombre = $sede?->Nombre ?? 'CHICLAYO';
+        $sedeNombre = $sede?->Nombre ?? 'SEDE NO ESPECIFICADA';
 
         $fondo = $sedeId ? FondoSede::where('SedeID', $sedeId)->first() : null;
         $saldoCajaAbierta = $fondo ? $fondo->Saldo : 0;

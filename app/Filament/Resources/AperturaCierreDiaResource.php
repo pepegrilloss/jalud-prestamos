@@ -329,6 +329,14 @@ class AperturaCierreDiaResource extends Resource
             ->defaultSort('Fecha', 'desc');
     }
 
+    public static function canViewAny(): bool
+    {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return auth()->check();
+        }
+        return parent::canViewAny();
+    }
+
     public static function getPages(): array
     {
         return [

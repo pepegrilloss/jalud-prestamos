@@ -31,12 +31,18 @@ class EditCompra extends EditRecord
             $data['SubtotalBase'] = $subtotalBase;
         }
 
-        if (empty($data['MontoIGV']) || floatval($data['MontoIGV']) == 0) {
+        $tipoIGV = $data['TipoIGV'] ?? 'GRAVADO';
+        if ($tipoIGV === 'EXONERADO') {
+            $data['MontoIGV'] = 0;
+            $data['Total'] = floatval($data['SubtotalBase']);
+        } else {
             $data['MontoIGV'] = round($subtotalBase * 0.18, 2);
+            $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
         }
 
-        if (empty($data['Total']) || floatval($data['Total']) == 0) {
-            $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
+        // Si es CRÉDITO, poner como pendiente
+        if (($data['TipoCompra'] ?? 'CONTADO') === 'CREDITO') {
+            $data['EstadoPago'] = $data['EstadoPago'] ?? 'PENDIENTE';
         }
 
         $data['UsuarioModificacion'] = auth()->id();
@@ -50,7 +56,8 @@ class EditCompra extends EditRecord
         $totalViejo = $this->totalAnterior ?? 0;
         $delta = $totalNuevo - $totalViejo;
 
-        if ($delta != 0) {
+        // Solo ajusta Caja Chica si es CONTADO
+        if ($record->TipoCompra === 'CONTADO' && $delta != 0) {
             $sedeId = auth()->user()->getEffectiveSedeId();
             if ($sedeId) {
                 $service = app(FondoSedeService::class);

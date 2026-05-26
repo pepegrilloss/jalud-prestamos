@@ -41,37 +41,29 @@ class SelectSede extends Page
         return collect();
     }
 
-    public function seleccionarSede(?int $sedeId = null): void
+    public function seleccionarSede(int $sedeId): void
     {
-        // sedeId null significa "Todas las Sedes" (solo para admins)
-        if ($sedeId === 0) {
-            $sedeId = null;
+        $user = auth()->user();
+        $sede = Sede::find($sedeId);
+
+        if (!$sede) {
+            return;
         }
 
-        // Validar que el usuario tenga permiso para esta sede
-        if ($sedeId !== null) {
-            $user = auth()->user();
-            if (!($user->esAdmin() || $user->puedeVerTodasLasSedes())) {
-                $sede = Sede::find($sedeId);
-                if ($sede && str_contains(strtolower($sede->Nombre), 'gerencia')) {
-                    session(['sede_activa' => $user->SedeID]);
-                    $this->redirect('/admin');
-                    return;
-                }
-            }
+        // Si la sede es Gerencia y el usuario no tiene acceso directo, forzar su sede asignada
+        if (str_contains(strtolower($sede->Nombre), 'gerencia') && !($user->esAdmin() || $user->puedeVerTodasLasSedes())) {
+            session(['sede_activa' => $user->SedeID]);
+            $this->redirect('/admin');
+            return;
         }
 
         session(['sede_activa' => $sedeId]);
-        
-        // Verificar si la sede seleccionada es "Gerencia General"
-        if ($sedeId) {
-            $sede = Sede::find($sedeId);
-            if ($sede && str_contains(strtolower($sede->Nombre), 'gerencia')) {
-                $this->redirect('/gerencia');
-                return;
-            }
+
+        if (str_contains(strtolower($sede->Nombre), 'gerencia')) {
+            $this->redirect('/gerencia');
+            return;
         }
-        
+
         $this->redirect('/admin');
     }
 }

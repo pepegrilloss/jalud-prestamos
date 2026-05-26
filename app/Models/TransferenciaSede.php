@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class TransferenciaSede extends Model
 {
@@ -12,6 +13,37 @@ class TransferenciaSede extends Model
     protected static function boot()
     {
         parent::boot();
+
+        static::addGlobalScope('sede', function (Builder $query) {
+            if (!auth()->check()) {
+                return;
+            }
+
+            $user = auth()->user();
+            $esPrivilegiado = $user->isPrivileged();
+            $sedeActiva = session('sede_activa');
+            $sedeUsuario = $user->SedeID;
+
+            $sedeId = null;
+
+            if ($esPrivilegiado) {
+                if ($sedeActiva) {
+                    $sedeId = $sedeActiva;
+                } else {
+                    $query->whereRaw('1 = 0');
+                    return;
+                }
+            } else {
+                $sedeId = $sedeUsuario;
+            }
+
+            if ($sedeId) {
+                $query->where(function ($q) use ($sedeId) {
+                    $q->where('SedeOrigenID', $sedeId)
+                      ->orWhere('SedeDestinoID', $sedeId);
+                });
+            }
+        });
 
         static::creating(function ($model) {
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
@@ -53,7 +85,21 @@ class TransferenciaSede extends Model
         'Observacion',
         'FechaTransferencia',
         'FechaRespuesta',
+        'VoucherImagen',
     ];
+
+    protected function setVoucherImagenAttribute($value)
+    {
+        if ($value && is_string($value) && str_contains($value, '.')) {
+            $rutaCompleta = \Illuminate\Support\Facades\Storage::disk('public')->path($value);
+            $resultado = \App\Helpers\ImageOptimizer::optimize($rutaCompleta);
+            $rutaFinal = $resultado['path'];
+            $rutaFinal = str_replace(\Illuminate\Support\Facades\Storage::disk('public')->path(''), '', $rutaFinal);
+            $this->attributes['VoucherImagen'] = str_replace('\\', '/', ltrim($rutaFinal, '\\/'));
+        } else {
+            $this->attributes['VoucherImagen'] = $value;
+        }
+    }
 
     protected $casts = [
         'Monto' => 'decimal:2',

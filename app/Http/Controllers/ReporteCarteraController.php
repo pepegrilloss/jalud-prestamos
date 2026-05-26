@@ -29,17 +29,22 @@ class ReporteCarteraController extends Controller
             abort(400, 'Debe seleccionar al menos un tipo de cartera.');
         }
 
-        // Resolver SedeID
-        $user = auth()->user();
-        $sedeId = null;
-        if ($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) {
-            $sedeId = session('sede_activa');
+        $sedeParam = request()->get('sede_id');
+        if ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '') {
+            $sedeId = null;
+        } elseif ($sedeParam) {
+            $sedeId = (int) $sedeParam;
         } else {
-            $sedeId = $user->SedeID;
+            $user = auth()->user();
+            if ($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) {
+                $sedeId = session('sede_activa');
+            } else {
+                $sedeId = $user->SedeID;
+            }
         }
 
         $sede = $sedeId ? Sede::find($sedeId) : null;
-        $sedeNombre = $sede?->Nombre ?? 'TODAS LAS SEDES';
+        $sedeNombre = $sede?->Nombre ?? 'SEDE NO ESPECIFICADA';
 
         // Obtener créditos activos con saldo pendiente
         $query = Credito::withoutGlobalScopes()

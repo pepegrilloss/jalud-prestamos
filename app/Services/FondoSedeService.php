@@ -13,13 +13,13 @@ class FondoSedeService
     /**
      * Inyectar capital a una sede específica.
      */
-    public function inyectarCapital($sedeId, $monto, $usuarioId, $observacion = 'Ingreso de Capital Manual')
+    public function inyectarCapital($sedeId, $monto, $usuarioId, $observacion = 'Ingreso de Capital Manual', $voucherImagen = null)
     {
         if ($monto <= 0) {
             throw ValidationException::withMessages(['Monto' => 'El monto debe ser mayor a 0.']);
         }
 
-        return DB::transaction(function () use ($sedeId, $monto, $usuarioId, $observacion) {
+        return DB::transaction(function () use ($sedeId, $monto, $usuarioId, $observacion, $voucherImagen) {
             $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
                 ['SedeID' => $sedeId],
                 ['Saldo' => 0, 'SaldoCajaChica' => 0]
@@ -28,12 +28,10 @@ class FondoSedeService
             $saldoAnterior = $fondo->Saldo;
             $saldoNuevo = $saldoAnterior + $monto;
 
-            // Actualizar Saldo
             $fondo->Saldo = $saldoNuevo;
             $fondo->save();
 
-            // Registrar Movimiento
-            MovimientoFondo::create([
+            $movimientoData = [
                 'SedeID' => $sedeId,
                 'Tipo' => 'INGRESO_CAPITAL',
                 'Monto' => $monto,
@@ -41,7 +39,13 @@ class FondoSedeService
                 'SaldoNuevo' => $saldoNuevo,
                 'UsuarioID' => $usuarioId,
                 'Observacion' => $observacion,
-            ]);
+            ];
+
+            if ($voucherImagen) {
+                $movimientoData['VoucherImagen'] = $voucherImagen;
+            }
+
+            MovimientoFondo::create($movimientoData);
 
             return $fondo;
         });
@@ -197,7 +201,7 @@ class FondoSedeService
      * Crear y enviar una transferencia a otra sede.
      * Soporta cuenta origen/destino: CAJA_ABIERTA o CAJA_CHICA
      */
-    public function crearTransferencia($sedeOrigenId, $sedeDestinoId, $monto, $usuarioId, $observacion, $cuentaOrigen = 'CAJA_ABIERTA', $cuentaDestino = 'CAJA_ABIERTA', $esSolicitudCapital = false, $esSolicitudGerencia = false)
+    public function crearTransferencia($sedeOrigenId, $sedeDestinoId, $monto, $usuarioId, $observacion, $cuentaOrigen = 'CAJA_ABIERTA', $cuentaDestino = 'CAJA_ABIERTA', $esSolicitudCapital = false, $esSolicitudGerencia = false, $voucherImagen = null)
     {
         if ($monto <= 0) {
             throw ValidationException::withMessages(['Monto' => 'El monto debe ser mayor a 0.']);
@@ -206,7 +210,6 @@ class FondoSedeService
             throw ValidationException::withMessages(['SedeDestinoID' => 'No puedes transferir entre la misma cuenta de la misma sede.']);
         }
 
-        // Solo validar saldo si no es una solicitud de Gerencia (la sede ejecuta después)
         if (!$esSolicitudGerencia) {
             $fondoOrigen = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->where('SedeID', $sedeOrigenId)->first();
 
@@ -221,7 +224,7 @@ class FondoSedeService
             }
         }
 
-        return TransferenciaSede::create([
+        $data = [
             'SedeOrigenID' => $sedeOrigenId,
             'SedeDestinoID' => $sedeDestinoId,
             'CuentaOrigen' => $cuentaOrigen,
@@ -233,7 +236,13 @@ class FondoSedeService
             'Estado' => 'PENDIENTE',
             'Observacion' => $observacion,
             'FechaTransferencia' => now(),
-        ]);
+        ];
+
+        if ($voucherImagen) {
+            $data['VoucherImagen'] = $voucherImagen;
+        }
+
+        return TransferenciaSede::create($data);
     }
 
     /**

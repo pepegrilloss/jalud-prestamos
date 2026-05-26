@@ -8,17 +8,6 @@
         <div class="selection-grid">
             @php $user = auth()->user(); @endphp
 
-            {{-- Opción "Todas las Sedes" solo para administradores o con permiso completo --}}
-            @if($user->esAdmin() || $user->puedeVerTodasLasSedes())
-                <div wire:click="seleccionarSede(0)" class="sede-card group">
-                    <div class="icon-circle">
-                        <x-heroicon-o-globe-americas class="sede-icon" />
-                    </div>
-                    <h3 class="sede-name">Todas las Sedes</h3>
-                    <p class="sede-desc">Acceso global a todo el sistema</p>
-                </div>
-            @endif
-
             @foreach($this->getSedes() as $sede)
                 <div wire:click="seleccionarSede({{ $sede->SedeID }})" class="sede-card group">
                     <div class="icon-circle">

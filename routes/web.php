@@ -39,8 +39,10 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         $fechaDesde = request()->get('fecha_desde');
         $fechaHasta = request()->get('fecha_hasta');
 
-        $user = auth()->user();
-        $sedeId = $user->getEffectiveSedeId();
+        $sedeParam = request()->get('sede_id');
+        $sedeId = ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '')
+            ? null
+            : (($sedeParam) ? (int) $sedeParam : auth()->user()->getEffectiveSedeId());
 
         $clientes = \Illuminate\Support\Facades\DB::table('Cliente')
             ->select('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos')
@@ -116,7 +118,10 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         $fechaDesde = request()->get('fecha_desde');
         $fechaHasta = request()->get('fecha_hasta');
         $clienteId = request()->get('cliente_id');
-        $sedeId = auth()->user()->getEffectiveSedeId();
+        $sedeParam = request()->get('sede_id');
+        $sedeId = ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '')
+            ? null
+            : (($sedeParam) ? (int) $sedeParam : auth()->user()->getEffectiveSedeId());
 
         $query = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) {
@@ -161,7 +166,9 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         $fechaCarbonDesde = $fechaDesde ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaDesde) : now();
         $fechaCarbonHasta = $fechaHasta ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaHasta) : $fechaCarbonDesde;
         
-        $sedeId = $sedeParam ?: auth()->user()->getEffectiveSedeId();
+        $sedeId = ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '')
+            ? null
+            : (($sedeParam) ? (int) $sedeParam : auth()->user()->getEffectiveSedeId());
 
         $query = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) use ($clienteId, $tipoCreditoId) {
@@ -215,7 +222,10 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
 
     Route::get('/pdf/cuentas-canceladas', function () {
         $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
-        $sedeId = auth()->user()->getEffectiveSedeId();
+        $sedeParam = request()->get('sede_id');
+        $sedeId = ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '')
+            ? null
+            : (($sedeParam) ? (int) $sedeParam : auth()->user()->getEffectiveSedeId());
 
         $proposiciones = \App\Models\ProposicionCredito::select('ProposicionCredito.*')
             ->join('Credito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
@@ -268,4 +278,18 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
 
     Route::get('/pdf/reporte-cartera', [App\Http\Controllers\ReporteCarteraController::class, 'descargar'])
         ->name('reporte-cartera.pdf');
+
+    // ─── Reportes Excel para Gerencia ───
+    Route::get('/reportes/diario/excel', [App\Http\Controllers\ReporteExportController::class, 'diarioExcel'])
+        ->name('reporte-diario.excel');
+    Route::get('/reportes/canceladas/excel', [App\Http\Controllers\ReporteExportController::class, 'canceladasExcel'])
+        ->name('reporte-canceladas.excel');
+    Route::get('/reportes/cartera/excel', [App\Http\Controllers\ReporteExportController::class, 'carteraExcel'])
+        ->name('reporte-cartera.excel');
+    Route::get('/reportes/vencidos/excel', [App\Http\Controllers\ReporteExportController::class, 'vencidosExcel'])
+        ->name('reporte-vencidos.excel');
+    Route::get('/reportes/atraso/excel', [App\Http\Controllers\ReporteExportController::class, 'atrasoExcel'])
+        ->name('reporte-atraso.excel');
+    Route::get('/reportes/inactivos/excel', [App\Http\Controllers\ReporteExportController::class, 'inactivosExcel'])
+        ->name('reporte-inactivos.excel');
 });

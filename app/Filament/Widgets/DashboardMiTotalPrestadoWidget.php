@@ -20,21 +20,43 @@ class DashboardMiTotalPrestadoWidget extends BaseWidget
     
     public static function canView(): bool
     {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
         return auth()->user()->can('widget_' . class_basename(static::class));
     }
+
+    protected function getListeners(): array
+    {
+        return ['sedeFilterChanged' => '$refresh'];
+    }
+
     protected function getStats(): array
     {
         $user = Auth::user();
-        $query = \App\Models\ProposicionCredito::whereHas('credito')
-            ->where('EsRefinanciamiento', 0);
+        $sedeIdOverride = null;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            $filter = session('gerencia_dashboard_sede', '0');
+            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+        }
 
-        $promotorCobrador = $user->promotorCobrador;
-        if ($promotorCobrador && $promotorCobrador->ZonaID) {
-            $query->where('ZonaID', $promotorCobrador->ZonaID);
-        } elseif (!$user->isPrivileged() && $user->SedeID) {
-            $query->where('SedeID', $user->SedeID);
-        } elseif ($user->isPrivileged() && $user->getEffectiveSedeId()) {
-            $query->where('SedeID', $user->getEffectiveSedeId());
+        $query = \App\Models\ProposicionCredito::whereHas('credito', function ($q) use ($sedeIdOverride) {
+            if ($sedeIdOverride !== null) {
+                $q->withoutGlobalScope('sede');
+            }
+        })->where('EsRefinanciamiento', 0);
+
+        if ($sedeIdOverride !== null) {
+            $query->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride);
+        } else {
+            $promotorCobrador = $user->promotorCobrador;
+            if ($promotorCobrador && $promotorCobrador->ZonaID) {
+                $query->where('ZonaID', $promotorCobrador->ZonaID);
+            } elseif (!$user->isPrivileged() && $user->SedeID) {
+                $query->where('SedeID', $user->SedeID);
+            } elseif ($user->isPrivileged() && $user->getEffectiveSedeId()) {
+                $query->where('SedeID', $user->getEffectiveSedeId());
+            }
         }
 
         $totalPrestado = $query->sum('MontoTotal');

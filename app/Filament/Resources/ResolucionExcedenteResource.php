@@ -460,6 +460,12 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                         'APROBADA' => 'Aprobadas',
                         'RECHAZADA' => 'Rechazadas',
                     ]),
+
+            Tables\Filters\SelectFilter::make('SedeID')
+                ->label('Sede')
+                ->options(fn() => \App\Models\Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
+                ->visible(fn() => auth()->user()->isPrivileged() && !session('sede_activa')),
+            
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()

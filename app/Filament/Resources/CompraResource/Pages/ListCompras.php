@@ -15,7 +15,7 @@ class ListCompras extends ListRecords
     public function getTitle(): string
     {
         $title = 'Compras';
-        if (!AperturaCierreDia::estaAbierto()) {
+        if (filament()->getCurrentPanel()?->getId() !== 'gerencia' && !AperturaCierreDia::estaAbierto()) {
             $title .= ' ⚠️ (Día Cerrado)';
         }
         return $title;

@@ -322,75 +322,54 @@ class EditCliente extends EditRecord
     protected function actualizarDocumentos(int $clienteID, array $documentos): void
     {
         $usuario = auth()->user()->name ?? 'Sistema';
-        
-        // Actualizar DNI
+
+        $actualizarDoc = function (string $tipo, string $rutaArchivo, ?string $nombreOriginal) use ($clienteID, $usuario) {
+            $docExistente = \App\Models\DocumentoCliente::where('ClienteID', $clienteID)
+                ->where('TipoDocumento', $tipo)
+                ->first();
+
+            if ($docExistente && $docExistente->RutaArchivo === $rutaArchivo) {
+                return;
+            }
+
+            if ($docExistente) {
+                if (Storage::disk('public')->exists($docExistente->RutaArchivo)) {
+                    Storage::disk('public')->delete($docExistente->RutaArchivo);
+                }
+                $docExistente->delete();
+            }
+
+            $rutaCompleta = Storage::disk('public')->path($rutaArchivo);
+            $resultado = \App\Helpers\ImageOptimizer::optimize($rutaCompleta);
+            $rutaFinal = $resultado['path'];
+            $rutaFinal = str_replace(Storage::disk('public')->path(''), '', $rutaFinal);
+            $rutaFinal = ltrim($rutaFinal, '\\/');
+            $resultado['path'] = $rutaFinal;
+            $rutaFinal = $resultado['path'];
+            $extension = $resultado['extension'];
+
+            $tamanio = Storage::disk('public')->exists($rutaFinal)
+                ? Storage::disk('public')->size($rutaFinal)
+                : null;
+
+            \App\Models\DocumentoCliente::create([
+                'ClienteID' => $clienteID,
+                'TipoDocumento' => $tipo,
+                'RutaArchivo' => $rutaFinal,
+                'NombreOriginal' => $nombreOriginal ?? basename($rutaArchivo),
+                'TamanioArchivo' => $tamanio,
+                'Extension' => $extension,
+                'UsuarioRegistro' => $usuario,
+                'FechaCreacion' => now(),
+            ]);
+        };
+
         if (!empty($documentos['dni'])) {
-            $docExistente = \App\Models\DocumentoCliente::where('ClienteID', $clienteID)
-                ->where('TipoDocumento', 'DNI')
-                ->first();
-            
-            // Si cambió el archivo
-            if (!$docExistente || $docExistente->RutaArchivo !== $documentos['dni']) {
-                // Eliminar documento anterior si existe
-                if ($docExistente) {
-                    if (Storage::disk('public')->exists($docExistente->RutaArchivo)) {
-                        Storage::disk('public')->delete($docExistente->RutaArchivo);
-                    }
-                    $docExistente->delete();
-                }
-                
-                // Crear nuevo documento
-                $rutaArchivo = $documentos['dni'];
-                $tamanio = Storage::disk('public')->exists($rutaArchivo) 
-                    ? Storage::disk('public')->size($rutaArchivo) 
-                    : null;
-                
-                \App\Models\DocumentoCliente::create([
-                    'ClienteID' => $clienteID,
-                    'TipoDocumento' => 'DNI',
-                    'RutaArchivo' => $rutaArchivo,
-                    'NombreOriginal' => basename($rutaArchivo),
-                    'TamanioArchivo' => $tamanio,
-                    'Extension' => pathinfo($rutaArchivo, PATHINFO_EXTENSION),
-                    'UsuarioRegistro' => $usuario,
-                    'FechaCreacion' => now(),
-                ]);
-            }
+            $actualizarDoc('DNI', $documentos['dni'], $documentos['nombre_original'] ?? null);
         }
-        
-        // Actualizar Recibo de Servicio
+
         if (!empty($documentos['recibo_servicio'])) {
-            $docExistente = \App\Models\DocumentoCliente::where('ClienteID', $clienteID)
-                ->where('TipoDocumento', 'RECIBO_SERVICIO')
-                ->first();
-            
-            // Si cambió el archivo
-            if (!$docExistente || $docExistente->RutaArchivo !== $documentos['recibo_servicio']) {
-                // Eliminar documento anterior si existe
-                if ($docExistente) {
-                    if (Storage::disk('public')->exists($docExistente->RutaArchivo)) {
-                        Storage::disk('public')->delete($docExistente->RutaArchivo);
-                    }
-                    $docExistente->delete();
-                }
-                
-                // Crear nuevo documento
-                $rutaArchivo = $documentos['recibo_servicio'];
-                $tamanio = Storage::disk('public')->exists($rutaArchivo) 
-                    ? Storage::disk('public')->size($rutaArchivo) 
-                    : null;
-                
-                \App\Models\DocumentoCliente::create([
-                    'ClienteID' => $clienteID,
-                    'TipoDocumento' => 'RECIBO_SERVICIO',
-                    'RutaArchivo' => $rutaArchivo,
-                    'NombreOriginal' => basename($rutaArchivo),
-                    'TamanioArchivo' => $tamanio,
-                    'Extension' => pathinfo($rutaArchivo, PATHINFO_EXTENSION),
-                    'UsuarioRegistro' => $usuario,
-                    'FechaCreacion' => now(),
-                ]);
-            }
+            $actualizarDoc('RECIBO_SERVICIO', $documentos['recibo_servicio'], $documentos['nombre_original_recibo'] ?? null);
         }
     }
 

@@ -29,21 +29,8 @@ class CalcularMoraAutomatica implements ShouldQueue
         $fecha = $this->fecha ? \Carbon\Carbon::parse($this->fecha) : today();
         \Log::info('[JOB] CalcularMoraAutomatica: Iniciando cálculo de moras', ['fecha' => $fecha->toDateString()]);
 
-        // Validar contra el Calendario No Moroso - NO calcular mora si la fecha está registrada
-        // Se valida por sede: un feriado local de una sede no debe bloquear la mora en otras
-        $fechaNoMorosaGlobal = CalendarioNoMoroso::withoutGlobalScope('sede')
-            ->where('Fecha', $fecha->toDateString())
-            ->where('Activo', true)
-            ->first();
-
-        if ($fechaNoMorosaGlobal) {
-            \Log::info('[JOB] No se calcula mora - Fecha está en Calendario No Moroso', [
-                'fecha' => $fecha->toDateString(),
-                'descripcion' => $fechaNoMorosaGlobal->Descripcion,
-                'sede_id' => $fechaNoMorosaGlobal->SedeID,
-            ]);
-            return;
-        }
+        // Las fechas no morosas se validan por sede más abajo (línea 80).
+        // Ya NO hay early return global para evitar que una sede bloquee a otra.
 
         try {
             // Precargar todas las fechas no morosas AGRUPADAS POR SEDE

@@ -56,15 +56,34 @@ class ViewCompra extends ViewRecord
                         Components\TextEntry::make('SubtotalBase')
                             ->label('Subtotal Base')
                             ->money('PEN'),
+                        Components\TextEntry::make('TipoIGV')
+                            ->label('Tipo IGV')
+                            ->badge()
+                            ->color(fn(string $state): string => $state === 'EXONERADO' ? 'success' : 'warning')
+                            ->formatStateUsing(fn(string $state): string => $state === 'EXONERADO' ? 'Exonerado' : 'Gravado (18%)'),
                         Components\TextEntry::make('MontoIGV')
-                            ->label('IGV (18%)')
+                            ->label('IGV')
                             ->money('PEN'),
                         Components\TextEntry::make('Total')
                             ->label('Total')
                             ->money('PEN')
                             ->size(Components\TextEntry\TextEntrySize::Large)
                             ->weight(\Filament\Support\Enums\FontWeight::Bold),
-                    ])->columns(3),
+                        Components\TextEntry::make('TipoCompra')
+                            ->label('Tipo Compra')
+                            ->badge()
+                            ->color(fn(string $state): string => $state === 'CREDITO' ? 'info' : 'gray')
+                            ->formatStateUsing(fn(string $state): string => $state === 'CREDITO' ? 'Crédito' : 'Contado'),
+                        Components\TextEntry::make('EstadoPago')
+                            ->label('Estado Pago')
+                            ->badge()
+                            ->color(fn(string $state): string => $state === 'PENDIENTE' ? 'danger' : 'success')
+                            ->formatStateUsing(fn(string $state): string => $state === 'PENDIENTE' ? 'Pendiente' : 'Pagado'),
+                        Components\TextEntry::make('FechaPago')
+                            ->label('Fecha Pago')
+                            ->date('d/m/Y H:i')
+                            ->visible(fn($record): bool => filled($record->FechaPago)),
+                    ])->columns(4),
 
                 Components\Section::make('Observaciones')
                     ->schema([

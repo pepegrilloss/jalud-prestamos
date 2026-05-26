@@ -206,7 +206,8 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                                 $data['fecha_hasta'],
                                 fn(Builder $query, $date): Builder => $query->whereDate('Fecha', '<=', $date),
                             );
-                    })
+                    }),
+
             ])
             ->persistFiltersInSession()
             ->actions([

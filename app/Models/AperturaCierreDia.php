@@ -64,18 +64,25 @@ class AperturaCierreDia extends Model
      * Solo permite UN día abierto a la vez. Puede ser hoy o un día pasado.
      * Si hay múltiples abiertos, deja solo el más reciente por sede y cierra los demás.
      */
-    public static function estaAbierto(): bool
+    public static function estaAbierto(?int $sedeId = null): bool
     {
-        $abiertos = self::where('EstadoDia', 'ABIERTO')
-            ->orderBy('Fecha', 'desc')
-            ->get();
+        if ($sedeId === null && auth()->check()) {
+            $sedeId = auth()->user()->getEffectiveSedeId();
+        }
+
+        $query = self::where('EstadoDia', 'ABIERTO');
+
+        if ($sedeId) {
+            $query->where('SedeID', $sedeId);
+        }
+
+        $abiertos = $query->orderBy('Fecha', 'desc')->get();
 
         if ($abiertos->isEmpty()) {
             return false;
         }
 
         if ($abiertos->count() > 1) {
-            // Agrupar por SedeID para no cerrar días de otras sedes
             $abiertos->groupBy('SedeID')->each(function ($grupo) {
                 $primero = $grupo->shift();
                 foreach ($grupo as $dia) {
@@ -90,7 +97,11 @@ class AperturaCierreDia extends Model
             });
         }
 
-        return self::where('EstadoDia', 'ABIERTO')->exists();
+        $existsQuery = self::where('EstadoDia', 'ABIERTO');
+        if ($sedeId) {
+            $existsQuery->where('SedeID', $sedeId);
+        }
+        return $existsQuery->exists();
     }
 
     /**

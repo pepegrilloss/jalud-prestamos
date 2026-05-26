@@ -97,43 +97,39 @@ class CreateCliente extends CreateRecord
     protected function guardarDocumentos(int $clienteID, array $documentos): void
     {
         $usuario = auth()->user()->name ?? 'Sistema';
-        
-        // Guardar DNI
+
+        $guardarDoc = function (string $tipo, string $rutaArchivo, ?string $nombreOriginal) use ($clienteID, $usuario) {
+            $rutaCompleta = Storage::disk('public')->path($rutaArchivo);
+            $resultado = \App\Helpers\ImageOptimizer::optimize($rutaCompleta);
+            $rutaFinal = $resultado['path'];
+            $rutaFinal = str_replace(Storage::disk('public')->path(''), '', $rutaFinal);
+            $rutaFinal = ltrim($rutaFinal, '\\/');
+            $resultado['path'] = $rutaFinal;
+            $rutaFinal = $resultado['path'];
+            $extension = $resultado['extension'];
+
+            $tamanio = Storage::disk('public')->exists($rutaFinal)
+                ? Storage::disk('public')->size($rutaFinal)
+                : null;
+
+            \App\Models\DocumentoCliente::create([
+                'ClienteID' => $clienteID,
+                'TipoDocumento' => $tipo,
+                'RutaArchivo' => $rutaFinal,
+                'NombreOriginal' => $nombreOriginal ?? basename($rutaArchivo),
+                'TamanioArchivo' => $tamanio,
+                'Extension' => $extension,
+                'UsuarioRegistro' => $usuario,
+                'FechaCreacion' => now(),
+            ]);
+        };
+
         if (!empty($documentos['dni'])) {
-            $rutaArchivo = $documentos['dni'];
-            $tamanio = Storage::disk('public')->exists($rutaArchivo) 
-                ? Storage::disk('public')->size($rutaArchivo) 
-                : null;
-            
-            \App\Models\DocumentoCliente::create([
-                'ClienteID' => $clienteID,
-                'TipoDocumento' => 'DNI',
-                'RutaArchivo' => $rutaArchivo,
-                'NombreOriginal' => basename($rutaArchivo),
-                'TamanioArchivo' => $tamanio,
-                'Extension' => pathinfo($rutaArchivo, PATHINFO_EXTENSION),
-                'UsuarioRegistro' => $usuario,
-                'FechaCreacion' => now(),
-            ]);
+            $guardarDoc('DNI', $documentos['dni'], $documentos['nombre_original'] ?? null);
         }
-        
-        // Guardar Recibo de Servicio
+
         if (!empty($documentos['recibo_servicio'])) {
-            $rutaArchivo = $documentos['recibo_servicio'];
-            $tamanio = Storage::disk('public')->exists($rutaArchivo) 
-                ? Storage::disk('public')->size($rutaArchivo) 
-                : null;
-            
-            \App\Models\DocumentoCliente::create([
-                'ClienteID' => $clienteID,
-                'TipoDocumento' => 'RECIBO_SERVICIO',
-                'RutaArchivo' => $rutaArchivo,
-                'NombreOriginal' => basename($rutaArchivo),
-                'TamanioArchivo' => $tamanio,
-                'Extension' => pathinfo($rutaArchivo, PATHINFO_EXTENSION),
-                'UsuarioRegistro' => $usuario,
-                'FechaCreacion' => now(),
-            ]);
+            $guardarDoc('RECIBO_SERVICIO', $documentos['recibo_servicio'], $documentos['nombre_original_recibo'] ?? null);
         }
     }
 

@@ -97,7 +97,7 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                     ->sortable(),
             ])
             ->filters([
-                // Filtro eliminado
+
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()

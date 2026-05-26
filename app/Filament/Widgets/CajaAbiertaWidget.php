@@ -26,17 +26,26 @@ class CajaAbiertaWidget extends BaseWidget
     protected function getStats(): array
     {
         $user = Auth::user();
-        $sedeId = $user->SedeID;
 
-        if ($user->isPrivileged()) {
-            $sedeActiva = session('sede_activa');
-            if ($sedeActiva) {
-                $sedeId = $sedeActiva;
+        $sedeId = null;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            $filter = session('gerencia_dashboard_sede', '0');
+            if ($filter !== '0' && $filter !== '' && $filter !== null) {
+                $sedeId = (int) $filter;
+            }
+        }
+        if (!$sedeId) {
+            $sedeId = $user->SedeID;
+            if ($user->isPrivileged()) {
+                $sedeActiva = session('sede_activa');
+                if ($sedeActiva) {
+                    $sedeId = $sedeActiva;
+                }
             }
         }
 
         if ($sedeId) {
-            $fondo = FondoSede::where('SedeID', $sedeId)->first();
+            $fondo = FondoSede::withoutGlobalScope('sede')->where('SedeID', $sedeId)->first();
             $saldoCajaAbierta = $fondo ? (float) $fondo->Saldo : 0;
             $sedeNombre = $fondo?->sede?->Nombre ?? 'Sede actual';
             $ultimaActualizacion = $fondo?->updated_at?->diffForHumans() ?? 'Sin movimientos';

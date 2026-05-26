@@ -46,6 +46,7 @@ class Gasto extends Model
         'ProveedorID',
         'MotivoID',
         'MetodoGasto',
+        'EsGasto',
         'Total',
         'Observaciones',
         'Activo',
@@ -60,6 +61,7 @@ class Gasto extends Model
         'FechaModificacion' => 'datetime',
         'Total' => 'decimal:2',
         'Activo' => 'boolean',
+        'EsGasto' => 'boolean',
     ];
 
     public function tipoComprobanteGasto(): BelongsTo

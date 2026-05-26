@@ -150,6 +150,48 @@ class DescargarActaExcelController extends Controller
         $sheet->getColumnDimension('K')->setWidth(20);
         $sheet->getColumnDimension('L')->setWidth(20);
 
+        // Totales
+        if ($proposiciones->isNotEmpty()) {
+            $totalMonto = $proposiciones->sum('MontoTotal');
+            $totalInteres = $proposiciones->sum('MontoInteres');
+            $totalGeneral = $totalMonto + $totalInteres;
+
+            $styleTotal = [
+                'font' => ['bold' => true, 'size' => 11],
+                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E8E8E8']],
+                'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            ];
+            $styleTotalRight = [
+                'font' => ['bold' => true, 'size' => 11],
+                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E8E8E8']],
+                'alignment' => ['horizontal' => 'right', 'vertical' => 'center'],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            ];
+            $styleTotalNum = [
+                'font' => ['bold' => true, 'size' => 11],
+                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E8E8E8']],
+                'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+                'numberFormat' => ['formatCode' => '#,##0.00'],
+            ];
+
+            $sheet->mergeCells('A' . $row . ':D' . $row);
+            $sheet->setCellValue('A' . $row, 'TOTALES');
+            $sheet->getStyle('A' . $row . ':D' . $row)->applyFromArray($styleTotalRight);
+            $sheet->setCellValue('E' . $row, $totalMonto);
+            $sheet->getStyle('E' . $row)->applyFromArray($styleTotalNum);
+            $sheet->setCellValue('F' . $row, '');
+            $sheet->getStyle('F' . $row)->applyFromArray($styleTotal);
+            $sheet->setCellValue('G' . $row, $totalGeneral);
+            $sheet->getStyle('G' . $row)->applyFromArray($styleTotalNum);
+            $sheet->setCellValue('H' . $row, $totalInteres);
+            $sheet->getStyle('H' . $row)->applyFromArray($styleTotalNum);
+            $sheet->setCellValue('I' . $row, '');
+            $sheet->getStyle('I' . $row . ':L' . $row)->applyFromArray($styleTotal);
+            $row++;
+        }
+
         // Firmas y Observaciones
         $row += 3;
         $sheet->mergeCells('D' . $row . ':E' . $row);

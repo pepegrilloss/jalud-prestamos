@@ -16,6 +16,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 
 use App\Models\Sede;
+use Illuminate\Support\Facades\DB;
 class CompraResource extends Resource
 {
     protected static ?string $model = Compra::class;
@@ -139,8 +140,25 @@ class CompraResource extends Resource
                             ->columnSpanFull()
                             ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
 
-                        Forms\Components\Grid::make(3)
+                        Forms\Components\Grid::make(5)
                             ->schema([
+                                Forms\Components\Select::make('TipoIGV')
+                                    ->label('Tipo IGV')
+                                    ->options([
+                                        'GRAVADO' => 'Gravado (18%)',
+                                        'EXONERADO' => 'Exonerado',
+                                    ])
+                                    ->default('GRAVADO')
+                                    ->live()
+                                    ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
+                                Forms\Components\Select::make('TipoCompra')
+                                    ->label('Tipo Compra')
+                                    ->options([
+                                        'CONTADO' => 'Contado',
+                                        'CREDITO' => 'Crédito',
+                                    ])
+                                    ->default('CONTADO')
+                                    ->live(),
                                 Forms\Components\TextInput::make('SubtotalBase')
                                     ->label('Subtotal Base')
                                     ->numeric()
@@ -151,6 +169,7 @@ class CompraResource extends Resource
                                     ->numeric()
                                     ->prefix('S/. ')
                                     ->step(0.01)
+                                    ->hidden(fn (Get $get): bool => $get('TipoIGV') === 'EXONERADO')
                                     ->live(debounce: 500)
                                     ->afterStateUpdated(function (Get $get, Set $set) {
                                         $subtotalBase = floatval($get('SubtotalBase') ?? 0);
@@ -188,9 +207,15 @@ class CompraResource extends Resource
         $subtotalBase = collect($detalles)->sum(fn($item) => floatval($item['Cantidad'] ?? 0) * floatval($item['PrecioUnitario'] ?? 0));
         $set('SubtotalBase', number_format($subtotalBase, 2, '.', ''));
 
-        $igv = $subtotalBase * 0.18;
-        $set('MontoIGV', number_format($igv, 2, '.', ''));
-        $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
+        $tipoIGV = $get('TipoIGV');
+        if ($tipoIGV === 'EXONERADO') {
+            $set('MontoIGV', number_format(0, 2, '.', ''));
+            $set('Total', number_format($subtotalBase, 2, '.', ''));
+        } else {
+            $igv = $subtotalBase * 0.18;
+            $set('MontoIGV', number_format($igv, 2, '.', ''));
+            $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
+        }
     }
 
     public static function table(Table $table): Table
@@ -231,8 +256,23 @@ class CompraResource extends Resource
                     ->numeric(2)
                     ->prefix('S/. ')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('TipoIGV')
+                    ->label('IGV')
+                    ->badge()
+                    ->color(fn(string $state): string => $state === 'EXONERADO' ? 'success' : 'warning')
+                    ->formatStateUsing(fn(string $state): string => $state === 'EXONERADO' ? 'Exonerado' : 'Grav. 18%'),
+                Tables\Columns\TextColumn::make('TipoCompra')
+                    ->label('Tipo')
+                    ->badge()
+                    ->color(fn(string $state): string => $state === 'CREDITO' ? 'info' : 'gray')
+                    ->formatStateUsing(fn(string $state): string => $state === 'CREDITO' ? 'Crédito' : 'Contado'),
+                Tables\Columns\TextColumn::make('EstadoPago')
+                    ->label('Pago')
+                    ->badge()
+                    ->color(fn(string $state): string => $state === 'PENDIENTE' ? 'danger' : 'success')
+                    ->formatStateUsing(fn(string $state): string => $state === 'PENDIENTE' ? 'Pendiente' : 'Pagado'),
                 Tables\Columns\IconColumn::make('Activo')
-                    ->label('Estado')
+                    ->label('Activo')
                     ->boolean()
                     ->sortable(),
             ])
@@ -244,6 +284,18 @@ class CompraResource extends Resource
                 Tables\Filters\SelectFilter::make('TipoComprobanteID')
                     ->label('Tipo Comprobante')
                     ->options(TipoComprobante::where('Activo', true)->pluck('Nombre', 'TipoComprobanteID')),
+                Tables\Filters\SelectFilter::make('TipoCompra')
+                    ->label('Tipo Compra')
+                    ->options([
+                        'CONTADO' => 'Contado',
+                        'CREDITO' => 'Crédito',
+                    ]),
+                Tables\Filters\SelectFilter::make('EstadoPago')
+                    ->label('Estado Pago')
+                    ->options([
+                        'PENDIENTE' => 'Pendiente',
+                        'PAGADO' => 'Pagado',
+                    ]),
                 Tables\Filters\Filter::make('FechaEmision')
                     ->form([
                         Forms\Components\DatePicker::make('fecha_desde')
@@ -275,7 +327,21 @@ class CompraResource extends Resource
                     ->modalHeading('Eliminar Compra')
                     ->modalDescription('¿Está seguro que desea eliminar esta compra?')
                     ->modalSubmitActionLabel('Sí, eliminar')
-                    ->action(fn($record) => $record->update(['Activo' => false]))
+                    ->action(function ($record) {
+                        // Si estaba pagada, revertir Caja Chica
+                        if ($record->EstadoPago === 'PAGADO' && (float) $record->Total > 0) {
+                            $sedeId = auth()->user()->getEffectiveSedeId();
+                            if ($sedeId) {
+                                app(\App\Services\FondoSedeService::class)->inyectarCapitalCajaChica(
+                                    $sedeId,
+                                    (float) $record->Total,
+                                    auth()->id(),
+                                    "Reversión por eliminación de compra #{$record->CompraID}"
+                                );
+                            }
+                        }
+                        $record->update(['Activo' => false]);
+                    })
                     ->successNotificationTitle('Compra eliminada correctamente'),
             ])
             ->bulkActions([
@@ -287,17 +353,23 @@ class CompraResource extends Resource
 
     public static function canCreate(): bool
     {
-        return parent::canCreate() && \App\Models\AperturaCierreDia::estaAbierto();
+        if (!parent::canCreate()) return false;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
-        return parent::canEdit($record) && \App\Models\AperturaCierreDia::estaAbierto();
+        if (!parent::canEdit($record)) return false;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        return parent::canDelete($record) && \App\Models\AperturaCierreDia::estaAbierto();
+        if (!parent::canDelete($record)) return false;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array
