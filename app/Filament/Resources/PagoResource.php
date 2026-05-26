@@ -668,6 +668,20 @@ class PagoResource extends Resource
     {
         if (!parent::canCreate()) { return false; }
 
+        // Si el usuario es promotor cobrador y el permiso está asignado a su rol, bloquear
+        if (auth()->user()?->hasRole('Promotor Cobrador')) {
+            $promotorRole = \Spatie\Permission\Models\Role::where('name', 'Promotor Cobrador')->first();
+            if ($promotorRole && $promotorRole->hasPermissionTo('bloquear_pago_promotor')) {
+                \Filament\Notifications\Notification::make()
+                    ->title('Pagos Bloqueados')
+                    ->body('El registro de pagos para promotores está deshabilitado. Contacte con administración.')
+                    ->danger()
+                    ->persistent()
+                    ->send();
+                return false;
+            }
+        }
+
         if (!\App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
                 ->title('Día Cerrado')
