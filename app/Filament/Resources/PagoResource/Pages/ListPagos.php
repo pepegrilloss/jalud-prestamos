@@ -27,12 +27,28 @@ class ListPagos extends ListRecords
     protected function getHeaderActions(): array
     {
         $actions = [];
-        
-        if (AperturaCierreDia::estaAbierto()) {
+
+        $bloqueado = auth()->user()?->hasRole('promotor_cobrador')
+            && \Illuminate\Support\Facades\DB::table('apertura_cierre_dia')
+                ->where('pagos_promotor_bloqueados', 1)
+                ->where('SedeID', auth()->user()->SedeID)
+                ->exists();
+
+        if (AperturaCierreDia::estaAbierto() && !$bloqueado) {
             $actions[] = Actions\CreateAction::make()
-                ->label('Registrar Pago');
+                ->label('Registrar Pago')
+                ->visible(function () use ($bloqueado) {
+                    if (auth()->user()?->hasRole('promotor_cobrador')) {
+                        $aunBloqueado = \Illuminate\Support\Facades\DB::table('apertura_cierre_dia')
+                            ->where('pagos_promotor_bloqueados', 1)
+                            ->where('SedeID', auth()->user()->SedeID)
+                            ->exists();
+                        return !$aunBloqueado;
+                    }
+                    return true;
+                });
         }
-        
+
         return $actions;
     }
 

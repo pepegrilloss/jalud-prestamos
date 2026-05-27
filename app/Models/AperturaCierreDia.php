@@ -24,12 +24,14 @@ class AperturaCierreDia extends Model
         'UsuarioCierreID',
         'Observaciones',
         'SedeID',
+        'pagos_promotor_bloqueados',
     ];
 
     protected $casts = [
         'Fecha' => 'date',
         'FechaApertura' => 'datetime',
         'FechaCierre' => 'datetime',
+        'pagos_promotor_bloqueados' => 'boolean',
     ];
 
     /**

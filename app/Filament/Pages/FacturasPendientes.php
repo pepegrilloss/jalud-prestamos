@@ -24,7 +24,15 @@ class FacturasPendientes extends Page implements Tables\Contracts\HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->check();
+        if (!auth()->check()) return false;
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        return auth()->user()?->can('page_FacturasPendientes');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        return auth()->user()?->can('page_FacturasPendientes');
     }
 
     public function table(Table $table): Table

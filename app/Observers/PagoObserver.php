@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Pago;
 use App\Models\ProposicionCredito;
 use App\Services\FondoSedeService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PagoObserver
@@ -27,6 +28,29 @@ class PagoObserver
     {
         if (!$pago->EsMora) {
             $this->actualizarSaldoPendiente($pago);
+        }
+
+        // Si el crédito estaba SALDADO pero el saldo pendiente ya no es 0, revertir estado
+        $credito = $pago->credito;
+        if ($credito && $credito->EstatusCreditoFinal === 'SALDADO') {
+            $proposicion = $credito->proposicion;
+            if ($proposicion) {
+                $saldoActual = (float) DB::table('ProposicionCredito')
+                    ->where('ProposicionCreditoID', $proposicion->ProposicionCreditoID)
+                    ->value('SaldoPendiente');
+
+                if ($saldoActual > 0) {
+                    $credito->update([
+                        'EstatusCreditoFinal' => 'ACTIVO',
+                        'FechaSaldamiento' => null,
+                    ]);
+                    Log::info('PagoObserver: Crédito revertido de SALDADO a ACTIVO por borrado de pago', [
+                        'CreditoID' => $credito->CreditoID,
+                        'PagoID' => $pago->PagoID,
+                        'NuevoSaldo' => $saldoActual,
+                    ]);
+                }
+            }
         }
 
         if ($pago->SedeID && $pago->MontoPagado > 0) {
