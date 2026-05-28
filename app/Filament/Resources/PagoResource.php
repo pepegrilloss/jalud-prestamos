@@ -475,6 +475,21 @@ class PagoResource extends Resource
                     ->label('Es Mora')
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('EsPagoAutomatico')
+                    ->label('Origen')
+                    ->sortable()
+                    ->formatStateUsing(fn($state, $record) => match (true) {
+                        $record->EsPagoAutomatico && $record->TipoConcepto === 'C' => 'Refinanciamiento',
+                        $record->EsPagoAutomatico => 'Automático',
+                        default => 'Normal',
+                    })
+                    ->badge()
+                    ->color(fn($state, $record) => match (true) {
+                        $record->EsPagoAutomatico && $record->TipoConcepto === 'C' => 'info',
+                        $record->EsPagoAutomatico => 'warning',
+                        default => 'gray',
+                    }),
+
                 Tables\Columns\IconColumn::make('EsPagoInicial')
                     ->label('Inicial')
                     ->boolean()
@@ -622,17 +637,17 @@ class PagoResource extends Resource
 
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(1)
+            ->filters([
+                Tables\Filters\SelectFilter::make('EsPagoAutomatico')
+                    ->label('Origen del Pago')
+                    ->options([
+                        '0' => 'Normal',
+                        '1' => 'Automáticos',
+                    ])
+                    ->placeholder('Todos')
+                    ->native(false),
+            ], layout: FiltersLayout::AboveContent)
             ->modifyQueryUsing(function (Builder $query) {
-                // Excluir pagos automáticos SOLO si TipoConcepto = 'C' (cuotas normales)
-                // Se muestran pagos de TODOS los tipos de crédito incluyendo Refinanciamiento
-                // Los pagos automáticos con TipoConcepto diferente a 'C' (descuentos, exoneraciones) SI se muestran
-                $query->where(function (Builder $q) {
-                    $q->whereRaw('`pago`.`EsPagoAutomatico` = 0') // Mostrar todos los pagos normales
-                        ->orWhere(function (Builder $subQ) {
-                            $subQ->whereRaw('`pago`.`EsPagoAutomatico` = 1') // Y los pagos automáticos
-                                ->whereRaw('`pago`.`TipoConcepto` != ?', ['C']); // Que NO sean de tipo cuota
-                        });
-                });
                 
                 // Join con Credito para obtener datos directamente
                 $query->leftJoin('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
