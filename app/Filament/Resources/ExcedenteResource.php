@@ -80,7 +80,8 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                             ->required()
                             ->default(fn() => \App\Services\DateFieldResolver::getFechaAbierta() ?? now())
                             ->native(false)
-                            ->displayFormat('d/m/Y'),
+                            ->displayFormat('d/m/Y')
+                            ->maxDate(now()),
 
                         Forms\Components\TimePicker::make('Hora')
                             ->label('Hora (del voucher o sobrante)')

@@ -12,6 +12,10 @@ class ResolucionExcedenteService
 {
     public function aprobar(SolicitudResolucionExcedente $solicitud, $aprobador)
     {
+        if ($solicitud->Estado !== 'PENDIENTE') {
+            throw new \Exception('Esta solicitud ya fue procesada.');
+        }
+
         DB::transaction(function () use ($solicitud, $aprobador) {
             // Marcar la solicitud como aprobada
             $solicitud->Estado = 'APROBADA';
@@ -103,6 +107,14 @@ class ResolucionExcedenteService
             return;
 
         $montoAplicar = $solicitud->MontoAplicar ?? $excedente->Monto;
+
+        if ($montoAplicar > $excedente->Monto) {
+            throw new \Exception(
+                "El excedente ya no tiene saldo suficiente. Disponible: S/ "
+                . number_format($excedente->Monto, 2)
+                . ". Monto solicitado: S/ " . number_format($montoAplicar, 2)
+            );
+        }
 
         // Propagar el Cliente Origen identificado en la solicitud al excedente
         if ($solicitud->ClienteOrigenID) {

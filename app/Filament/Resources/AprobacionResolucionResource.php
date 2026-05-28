@@ -133,9 +133,20 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
                     ->requiresConfirmation()
+                    ->modalHeading('Rechazar Extorno/Resolución')
+                    ->form([
+                        \Filament\Forms\Components\Textarea::make('motivo_rechazo')
+                            ->label('Motivo del Rechazo')
+                            ->required()
+                            ->placeholder('Indique la razón por la que rechaza esta solicitud...'),
+                    ])
                     ->visible(fn($record) => $record->Estado === 'PENDIENTE' && $record->FechaCierre === null && \App\Models\AperturaCierreDia::estaAbierto() && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
-                    ->action(function ($record) {
-                        $record->update(['Estado' => 'RECHAZADA', 'UserAprobadorID' => auth()->id()]);
+                    ->action(function ($record, array $data) {
+                        $record->update([
+                            'Estado' => 'RECHAZADA',
+                            'UserAprobadorID' => auth()->id(),
+                            'Observaciones' => ($record->Observaciones ? $record->Observaciones . "\n" : '') . "[RECHAZADO] " . ($data['motivo_rechazo'] ?? 'Sin motivo especificado'),
+                        ]);
                         Notification::make()
                             ->title('Solicitud Rechazada')
                             ->success()
