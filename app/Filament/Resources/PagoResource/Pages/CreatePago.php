@@ -148,7 +148,9 @@ class CreatePago extends CreateRecord
                     ->action(function (array $data) {
                         $this->tipoPagoAMayorSeleccionado = $data['tipo_pago_mayor'];
                         $this->pagoInicialSeleccionado = false;
-                        $this->create();
+                        try { $this->create(); } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()->danger()->title('Error')->body($e->getMessage())->send();
+                        }
                     }),
 
                 $this->getCancelFormAction(),
@@ -209,7 +211,9 @@ class CreatePago extends CreateRecord
                     ->modalCancelActionLabel('✗ Cancelar')
                     ->action(function () {
                         $this->pagoInicialSeleccionado = true;
-                        $this->create();
+                        try { $this->create(); } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()->danger()->title('Error')->body($e->getMessage())->send();
+                        }
                     }),
 
                 Actions\Action::make('registrar_normal')
@@ -264,7 +268,9 @@ class CreatePago extends CreateRecord
                     ->modalCancelActionLabel('✗ Cancelar')
                     ->action(function () {
                         $this->pagoInicialSeleccionado = false;
-                        $this->create();
+                        try { $this->create(); } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()->danger()->title('Error')->body($e->getMessage())->send();
+                        }
                     }),
 
                 $this->getCancelFormAction(),
@@ -324,7 +330,9 @@ class CreatePago extends CreateRecord
                 ->modalCancelActionLabel('✗ Cancelar')
                 ->action(function () {
                     $this->pagoInicialSeleccionado = false;
-                    $this->create();
+                    try { $this->create(); } catch (\Exception $e) {
+                        \Filament\Notifications\Notification::make()->danger()->title('Error')->body($e->getMessage())->send();
+                    }
                 }),
 
             $this->getCancelFormAction(),
