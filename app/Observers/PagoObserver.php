@@ -21,27 +21,23 @@ class PagoObserver
     {
         if (!$pago->EsMora) {
             $this->actualizarSaldoPendiente($pago);
-        }
 
-        if ($pago->wasChanged('EstadoTraslado')) {
             $credito = $pago->credito;
-            if ($credito && $credito->EstatusCreditoFinal === 'SALDADO') {
-                $proposicion = $credito->proposicion;
-                if ($proposicion) {
-                    $saldoActual = (float) DB::table('ProposicionCredito')
-                        ->where('ProposicionCreditoID', $proposicion->ProposicionCreditoID)
-                        ->value('SaldoPendiente');
-                    if ($saldoActual > 0) {
-                        $credito->update([
-                            'EstatusCreditoFinal' => 'ACTIVO',
-                            'FechaSaldamiento' => null,
-                        ]);
-                        Log::info('PagoObserver: Crédito revertido de SALDADO a ACTIVO por traslado de pago', [
-                            'CreditoID' => $credito->CreditoID,
-                            'PagoID' => $pago->PagoID,
-                            'NuevoSaldo' => $saldoActual,
-                        ]);
-                    }
+            if ($credito && $credito->proposicion) {
+                $saldoActual = (float) DB::table('ProposicionCredito')
+                    ->where('ProposicionCreditoID', $credito->proposicion->ProposicionCreditoID)
+                    ->value('SaldoPendiente');
+
+                if ($saldoActual <= 0 && $credito->EstatusCreditoFinal !== 'SALDADO') {
+                    $credito->update([
+                        'EstatusCreditoFinal' => 'SALDADO',
+                        'FechaSaldamiento' => now(),
+                    ]);
+                } elseif ($saldoActual > 0 && $credito->EstatusCreditoFinal === 'SALDADO') {
+                    $credito->update([
+                        'EstatusCreditoFinal' => 'ACTIVO',
+                        'FechaSaldamiento' => null,
+                    ]);
                 }
             }
         }
