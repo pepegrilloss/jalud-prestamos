@@ -51,7 +51,7 @@ class ReporteCuentasCanceladasResource extends Resource
                 Tables\Columns\TextColumn::make('operacion')
                     ->label('OPERACION')
                     ->getStateUsing(fn($record) => str_pad($record->ProposicionCreditoID, 11, '0', STR_PAD_LEFT))
-                    ->sortable()
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('ProposicionCreditoID', $direction))
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('cliente.NombresApellidos')
@@ -128,12 +128,12 @@ class ReporteCuentasCanceladasResource extends Resource
                     ->join('Credito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
                     ->where('ProposicionCredito.SaldoPendiente', 0)
                     ->whereNotNull('Credito.FechaSaldamiento')
-                    ->with(['cliente', 'credito', 'zona'])
-                    ->orderByDesc('Credito.FechaSaldamiento');
+                    ->with(['cliente', 'credito', 'zona']);
             })
             ->actions([])
             ->bulkActions([])
             ->recordUrl(null)
+            ->defaultSort('credito.FechaSaldamiento', 'desc')
             ->paginationPageOptions([10, 25, 50]);
     }
 
