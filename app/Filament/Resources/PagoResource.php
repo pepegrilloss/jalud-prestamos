@@ -35,9 +35,9 @@ class PagoResource extends Resource
         $user = auth()->user();
         if ($user->isPrivileged()) {
             $sedeId = session('sede_activa');
-            return $sedeId ? $query->where('SedeID', $sedeId) : $query->whereRaw('1 = 0');
+            return $sedeId ? $query->where('pago.SedeID', $sedeId) : $query->whereRaw('1 = 0');
         }
-        return $query->where('SedeID', $user->SedeID);
+        return $query->where('pago.SedeID', $user->SedeID);
     }
 
     public static function form(Form $form): Form
