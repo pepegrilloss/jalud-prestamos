@@ -61,6 +61,29 @@ class EditPago extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $this->montoOriginal = (float) $this->record->MontoPagado;
+
+        $montoNuevo = (float) ($data['MontoPagado'] ?? 0);
+        if ($montoNuevo > 0 && $this->record->CreditoID) {
+            $credito = \App\Models\Credito::with('proposicion')->find($this->record->CreditoID);
+            if ($credito && $credito->proposicion) {
+                $saldoPendiente = (float) $credito->proposicion->SaldoPendiente;
+                $saldoConPagoActual = $saldoPendiente + $this->montoOriginal;
+
+                if ($montoNuevo > $saldoConPagoActual) {
+                    $esPagoAMayor = $data['EsPagoAMayor'] ?? $this->record->EsPagoAMayor;
+                    $esPagoAMayorPorMora = $data['EsPagoAMayorPorMora'] ?? $this->record->EsPagoAMayorPorMora;
+                    $esMora = $data['EsMora'] ?? $this->record->EsMora;
+
+                    if (!$esPagoAMayor && !$esPagoAMayorPorMora && !$esMora) {
+                        throw new \Exception(
+                            "El cliente solo debe S/ " . number_format($saldoConPagoActual, 2)
+                            . ". No puede pagar más de lo que debe."
+                        );
+                    }
+                }
+            }
+        }
+
         return $data;
     }
 

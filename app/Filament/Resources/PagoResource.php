@@ -29,6 +29,17 @@ class PagoResource extends Resource
     protected static ?string $modelLabel = 'Pago';
     protected static ?string $pluralModelLabel = 'Pagos';
 
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+        if ($user->isPrivileged()) {
+            $sedeId = session('sede_activa');
+            return $sedeId ? $query->where('SedeID', $sedeId) : $query->whereRaw('1 = 0');
+        }
+        return $query->where('SedeID', $user->SedeID);
+    }
+
     public static function form(Form $form): Form
     {
         return $form

@@ -109,11 +109,15 @@ class AperturaCierreDia extends Model
     /**
      * Obtiene el día abierto (el único, o el más reciente si hubo duplicados).
      */
-    public static function getDiaAbierto(): ?self
+    public static function getDiaAbierto(?int $sedeId = null): ?self
     {
-        return self::where('EstadoDia', 'ABIERTO')
-            ->orderBy('Fecha', 'desc')
-            ->first();
+        $query = self::where('EstadoDia', 'ABIERTO');
+
+        if ($sedeId) {
+            $query->where('SedeID', $sedeId);
+        }
+
+        return $query->orderBy('Fecha', 'desc')->first();
     }
 
     /**

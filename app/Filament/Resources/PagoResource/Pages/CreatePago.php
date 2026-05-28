@@ -384,20 +384,24 @@ class CreatePago extends CreateRecord
             throw new \Exception("El monto no puede exceder S/ {$montoMaximo}. Contacta a administración.");
         }
 
-        // Validar que no sobrepase la deuda si no tiene permiso de pago a mayor
+        // Validar que no sobrepase la deuda (solo excepciones: Pago a Mayor o Mora)
         $creditoID = $data['CreditoID'] ?? null;
         if ($creditoID) {
             $credito = \App\Models\Credito::with('proposicion')->find($creditoID);
             if ($credito && $credito->proposicion) {
                 $saldoPendiente = (float) $credito->proposicion->SaldoPendiente;
-                $puedePagarMayor = auth()->user()?->can('registrar_pagos_a_mayor')
-                    || auth()->user()?->can('registrar_pagos_a_mayor_por_mora');
 
-                if (!$puedePagarMayor && $monto > $saldoPendiente) {
-                    throw new \Exception(
-                        "El cliente solo debe S/ " . number_format($saldoPendiente, 2)
-                        . ". No puede pagar más de lo que debe. Solicite el permiso 'Pago a Mayor' si desea registrar un excedente."
-                    );
+                if ($monto > $saldoPendiente) {
+                    $esPagoAMayor = $data['EsPagoAMayor'] ?? false;
+                    $esPagoAMayorPorMora = $data['EsPagoAMayorPorMora'] ?? false;
+                    $esMora = $data['EsMora'] ?? false;
+
+                    if (!$esPagoAMayor && !$esPagoAMayorPorMora && !$esMora) {
+                        throw new \Exception(
+                            "El cliente solo debe S/ " . number_format($saldoPendiente, 2)
+                            . ". No puede pagar más de lo que debe. Si es un excedente, debe registrarse como Pago a Mayor o Mora."
+                        );
+                    }
                 }
             }
         }
@@ -639,7 +643,7 @@ class CreatePago extends CreateRecord
                     $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
                         ->where('Activo', 1)
                         ->sum('MontoPagado');
-                    $nuevoSaldoPendiente = $montoCuotasTotal - $totalPagado;
+                    $nuevoSaldoPendiente = max(0, $montoCuotasTotal - $totalPagado);
 
                     $proposicion->update([
                         'SaldoPendiente' => $nuevoSaldoPendiente,

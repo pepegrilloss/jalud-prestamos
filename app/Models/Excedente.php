@@ -10,6 +10,40 @@ class Excedente extends Model
 {
     use HasFactory, BelongsToSede;
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if ($model->ClienteOrigenID && $model->SedeID) {
+                $clienteSedeID = \App\Models\Cliente::withoutGlobalScope('sede')
+                    ->where('ClienteID', $model->ClienteOrigenID)
+                    ->value('SedeID');
+                if ($clienteSedeID && $clienteSedeID != $model->SedeID) {
+                    \Illuminate\Support\Facades\Log::warning('Excedente ClienteOrigen cross-sede corregido', [
+                        'ExcedenteID' => $model->ExcedenteID ?? 'new',
+                        'Excedente.SedeID' => $model->SedeID,
+                        'Cliente.SedeID' => $clienteSedeID,
+                        'ClienteOrigenID' => $model->ClienteOrigenID,
+                    ]);
+                }
+            }
+            if ($model->PagoOrigenID && $model->SedeID) {
+                $pagoSedeID = \App\Models\Pago::withoutGlobalScope('sede')
+                    ->where('PagoID', $model->PagoOrigenID)
+                    ->value('SedeID');
+                if ($pagoSedeID && $pagoSedeID != $model->SedeID) {
+                    \Illuminate\Support\Facades\Log::warning('Excedente PagoOrigen cross-sede', [
+                        'ExcedenteID' => $model->ExcedenteID ?? 'new',
+                        'Excedente.SedeID' => $model->SedeID,
+                        'Pago.SedeID' => $pagoSedeID,
+                        'PagoOrigenID' => $model->PagoOrigenID,
+                    ]);
+                }
+            }
+        });
+    }
+
     protected $table = 'excedentes';
     protected $primaryKey = 'ExcedenteID';
 
