@@ -534,6 +534,7 @@ class PagoResource extends Resource
                                 'zona' => 'Zona/Sector',
                                 'fecha' => 'Rango de Fechas',
                                 'tipo_pago' => 'Método de Pago',
+                                'origen_pago' => 'Origen del Pago (Normal/Automático)',
                             ])
                             ->live()
                             ->columnSpanFull()
@@ -598,6 +599,17 @@ class PagoResource extends Resource
                                     ->columns(1)
                                     ->live()
                                     ->visible(fn(Get $get) => in_array('tipo_pago', $get('campos_activos') ?? [])),
+
+                                Forms\Components\Select::make('EsPagoAutomatico')
+                                    ->label('Origen del Pago')
+                                    ->options([
+                                        '0' => 'Normal',
+                                        '1' => 'Automáticos',
+                                    ])
+                                    ->placeholder('Todos')
+                                    ->native(false)
+                                    ->live()
+                                    ->visible(fn(Get $get) => in_array('origen_pago', $get('campos_activos') ?? [])),
                             ])
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -632,17 +644,12 @@ class PagoResource extends Resource
                             ->when(
                                 in_array('tipo_pago', $activos) && !empty($data['TipoPago']),
                                 fn(Builder $q) => $q->whereIn('pago.TipoPago', $data['TipoPago'])
+                            )
+                            ->when(
+                                in_array('origen_pago', $activos) && isset($data['EsPagoAutomatico']) && $data['EsPagoAutomatico'] !== '',
+                                fn(Builder $q) => $q->where('pago.EsPagoAutomatico', $data['EsPagoAutomatico'])
                             );
                     }),
-
-                Tables\Filters\SelectFilter::make('EsPagoAutomatico')
-                    ->label('Origen del Pago')
-                    ->options([
-                        '0' => 'Normal',
-                        '1' => 'Automáticos',
-                    ])
-                    ->placeholder('Todos')
-                    ->native(false),
 
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(1)
