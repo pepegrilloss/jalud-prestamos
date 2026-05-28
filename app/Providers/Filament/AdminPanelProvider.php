@@ -183,6 +183,22 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->databaseTransactions()
             ->widgets([
+                \App\Filament\Widgets\MontoPropuestoHoyStatsWidget::class,
+                \App\Filament\Widgets\DashboardMisClientesActivosWidget::class,
+                \App\Filament\Widgets\DashboardMisPrestamosActivosWidget::class,
+                \App\Filament\Widgets\DashboardMiTotalPrestadoWidget::class,
+                \App\Filament\Widgets\PagosCantidadStatsWidget::class,
+                \App\Filament\Widgets\PagosMontoStatsWidget::class,
+                \App\Filament\Widgets\PagosMontoMesStatsWidget::class,
+                \App\Filament\Widgets\ExcedenteYapeStatsWidget::class,
+                \App\Filament\Widgets\ExcedentePromotorStatsWidget::class,
+                \App\Filament\Widgets\ExcedenteOficinaStatsWidget::class,
+                \App\Filament\Widgets\ExcedenteTotalStatsWidget::class,
+                \App\Filament\Widgets\CreditoGeneradoTotalWidget::class,
+                \App\Filament\Widgets\CreditoGeneradoCantidadWidget::class,
+                \App\Filament\Widgets\GenerarCreditosTotalWidget::class,
+                \App\Filament\Widgets\GenerarCreditosCantidadWidget::class,
+                \App\Filament\Widgets\SolicitudesPendientesSedeWidget::class,
             ])
 
             ->middleware([
