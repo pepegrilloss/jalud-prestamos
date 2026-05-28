@@ -8,6 +8,7 @@ use App\Models\Credito;
 use App\Models\TipoExoneracion;
 use App\Services\ExoneracionService;
 use App\Services\DateFieldResolver;
+use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -116,10 +117,46 @@ class CreateSolicitudExoneracion extends Page implements HasForms
     {
         $this->validate();
 
+        if (!AperturaCierreDia::estaAbierto()) {
+            \Filament\Notifications\Notification::make()
+                ->title('Día Cerrado')
+                ->body('No se pueden crear solicitudes con el día cerrado.')
+                ->danger()
+                ->send();
+            return;
+        }
+
         $data = $this->form->getState();
         $creditoID = $this->credito->CreditoID;
         $tipoExoneracionID = $data['TipoExoneracionID'];
         $montoDisponible = $this->calcularMontoDisponible($tipoExoneracionID);
+        $montoExonerado = (float) ($data['MontoExonerado'] ?? 0);
+
+        // Validar que no exceda el monto disponible
+        if ($montoExonerado > $montoDisponible) {
+            \Filament\Notifications\Notification::make()
+                ->title('Monto excede lo disponible')
+                ->body("El monto a exonerar (S/ " . number_format($montoExonerado, 2) . ") no puede ser mayor al monto disponible (S/ " . number_format($montoDisponible, 2) . ").")
+                ->danger()
+                ->send();
+            return;
+        }
+
+        // Validar que no exista una solicitud pendiente para el mismo crédito y tipo
+        $existeDuplicado = SolicitudExoneracion::where('CreditoID', $creditoID)
+            ->where('TipoExoneracionID', $tipoExoneracionID)
+            ->whereIn('Estado', ['PENDIENTE', 'APROBADO'])
+            ->where('Activo', 1)
+            ->exists();
+
+        if ($existeDuplicado) {
+            \Filament\Notifications\Notification::make()
+                ->title('Solicitud duplicada')
+                ->body('Ya existe una solicitud pendiente o aprobada para este crédito y tipo de exoneración.')
+                ->danger()
+                ->send();
+            return;
+        }
 
         // Obtener la fecha del día abierto con la hora actual
         $fechaAbierta = DateFieldResolver::getFechaAbierta();
@@ -131,7 +168,7 @@ class CreateSolicitudExoneracion extends Page implements HasForms
         $solicitud->CreditoID = $creditoID;
         $solicitud->TipoExoneracionID = $tipoExoneracionID;
         $solicitud->MontoDisponible = $montoDisponible;
-        $solicitud->MontoExonerado = $data['MontoExonerado'];
+        $solicitud->MontoExonerado = $montoExonerado;
         $solicitud->Comentario = $data['Comentario'];
         $solicitud->UserSolicitanteID = auth()->id();
         $solicitud->Estado = 'PENDIENTE';

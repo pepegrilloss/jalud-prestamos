@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\Sede;
 class AprobacionExoneracionResource extends Resource
@@ -126,58 +127,87 @@ class AprobacionExoneracionResource extends Resource
                             ->placeholder('Escriba el motivo de su decisión'),
                     ])
                     ->action(function (SolicitudExoneracion $record, array $data) {
-                        $aprobacion = new AprobacionExoneracion();
-                        $aprobacion->SolicitudExoneracionID = $record->SolicitudExoneracionID;
-                        $aprobacion->NivelAprobacionID = 3;
-                        $aprobacion->UserAprobadorID = auth()->id();
-                        $aprobacion->Estado = $data['Estado'];
-                        $aprobacion->Comentario = $data['Comentario'];
-                        $fechaAbierta = DateFieldResolver::getFechaAbierta();
-                        $aprobacion->FechaAprobacion = $fechaAbierta 
-                            ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) 
-                            : now();
-                        $aprobacion->save();
+                        if ($record->Estado !== 'PENDIENTE') {
+                            throw new \Exception('Esta solicitud ya fue procesada.');
+                        }
 
-                        $record->update([
-                            'Estado' => $data['Estado'],
-                            'FechaModificacion' => $aprobacion->FechaAprobacion,
-                        ]);
+                        DB::transaction(function () use ($record, $data) {
+                            $record = $record->fresh()->lockForUpdate();
 
-                        // Si se aprueba, crear pago automático
-                        if ($data['Estado'] === 'APROBADO') {
-                            $tipoConcepto = $record->tipoExoneracion->Codigo; // I, M, P
-                            $usuarioActual = auth()->user();
-                            
-                            $pago = new Pago();
-                            $pago->CreditoID = $record->CreditoID;
-                            $pago->EsPagoAutomatico = 1;
-                            $pago->TipoConcepto = $tipoConcepto;
-                            $pago->MontoPagado = $record->MontoExonerado;
-                            $pago->Comentario = 'Exoneración aprobada - ' . $data['Comentario'];
-                            $pago->FechaPago = $aprobacion->FechaAprobacion;
-                            $pago->UsuarioRegistro = $usuarioActual?->username ?? $usuarioActual?->name ?? auth()->id();
-                            $pago->Activo = 1;
-                            $pago->save();
-
-                            // Actualizar el SaldoPendiente en proposicioncredito
-                            $proposicion = $record->credito->proposicion;
-                            if ($proposicion) {
-                                $proposicion->SaldoPendiente -= $record->MontoExonerado;
-                                $proposicion->save();
+                            if ($record->Estado !== 'PENDIENTE') {
+                                throw new \Exception('Esta solicitud ya fue procesada.');
                             }
 
-                            // Crear registro en HistorialExoneracion
-                            $historial = new HistorialExoneracion();
-                            $historial->SolicitudExoneracionID = $record->SolicitudExoneracionID;
-                            $historial->CreditoID = $record->CreditoID;
-                            $historial->ClienteID = $record->credito->proposicion->ClienteID;
-                            $historial->TipoExoneracion = $record->tipoExoneracion->Codigo;
-                            $historial->MontoExonerado = $record->MontoExonerado;
-                            $historial->UsuarioAprobador = auth()->user()->name;
-                            $historial->Comentario = $data['Comentario'];
-                            $historial->FechaExoneracion = $aprobacion->FechaAprobacion;
-                            $historial->save();
-                        }
+                            $aprobacion = new AprobacionExoneracion();
+                            $aprobacion->SolicitudExoneracionID = $record->SolicitudExoneracionID;
+                            $aprobacion->NivelAprobacionID = 3;
+                            $aprobacion->UserAprobadorID = auth()->id();
+                            $aprobacion->Estado = $data['Estado'];
+                            $aprobacion->Comentario = $data['Comentario'];
+                            $fechaAbierta = DateFieldResolver::getFechaAbierta();
+                            $aprobacion->FechaAprobacion = $fechaAbierta 
+                                ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) 
+                                : now();
+                            $aprobacion->save();
+
+                            // Si se aprueba, crear pago automático
+                            if ($data['Estado'] === 'APROBADO') {
+                                $tipoConcepto = $record->tipoExoneracion->Codigo; // I, M, P
+                                $usuarioActual = auth()->user();
+
+                                $pago = new Pago();
+                                $pago->CreditoID = $record->CreditoID;
+                                $pago->SedeID = $record->credito->SedeID;
+                                $pago->TipoPago = Pago::TIPO_EFECTIVO;
+                                $pago->EsPagoAutomatico = 1;
+                                $pago->TipoConcepto = $tipoConcepto;
+                                $pago->MontoPagado = $record->MontoExonerado;
+                                $pago->Comentario = 'Exoneración aprobada - ' . $data['Comentario'];
+                                $pago->FechaPago = $aprobacion->FechaAprobacion;
+                                $pago->UsuarioRegistro = $usuarioActual?->username ?? $usuarioActual?->name ?? auth()->id();
+                                $pago->Activo = 1;
+                                $pago->save();
+
+                                // Vincular el pago generado a la solicitud
+                                $record->update([
+                                    'Estado' => 'APROBADO',
+                                    'PagoGeneradoID' => $pago->PagoID,
+                                    'UserAprobadorID' => auth()->id(),
+                                    'FechaAprobacion' => $aprobacion->FechaAprobacion,
+                                    'ComentarioAprobacion' => $data['Comentario'],
+                                    'FechaModificacion' => $aprobacion->FechaAprobacion,
+                                ]);
+
+                                // Si el saldo llegó a 0, marcar crédito como SALDADO
+                                $proposicion = $record->credito->proposicion;
+                                if ($proposicion && $proposicion->SaldoPendiente - $record->MontoExonerado <= 0) {
+                                    $credito = $record->credito;
+                                    $credito->update([
+                                        'EstatusCreditoFinal' => 'SALDADO',
+                                        'FechaSaldamiento' => $aprobacion->FechaAprobacion,
+                                    ]);
+                                }
+
+                                // Crear registro en HistorialExoneracion
+                                $historial = new HistorialExoneracion();
+                                $historial->SolicitudExoneracionID = $record->SolicitudExoneracionID;
+                                $historial->CreditoID = $record->CreditoID;
+                                $historial->ClienteID = $record->credito->proposicion->ClienteID;
+                                $historial->TipoExoneracion = $record->tipoExoneracion->Codigo;
+                                $historial->MontoExonerado = $record->MontoExonerado;
+                                $historial->UsuarioAprobador = auth()->user()->name;
+                                $historial->Comentario = $data['Comentario'];
+                                $historial->FechaExoneracion = $aprobacion->FechaAprobacion;
+                                $historial->save();
+                            } else {
+                                $record->update([
+                                    'Estado' => 'RECHAZADO',
+                                    'UserAprobadorID' => auth()->id(),
+                                    'ComentarioAprobacion' => $data['Comentario'],
+                                    'FechaModificacion' => $aprobacion->FechaAprobacion,
+                                ]);
+                            }
+                        });
 
                         \Filament\Notifications\Notification::make()
                             ->title('Solicitud ' . ($data['Estado'] === 'APROBADO' ? 'aprobada' : 'rechazada'))
