@@ -590,7 +590,13 @@ class ReporteExportController extends Controller
         $row++;
 
         foreach ($creditos as $credito) {
-            $diasAtraso = $credito->dias_atraso_calc;
+            $ultimoPago = $credito->pagos()->where('Activo', 1)->max('FechaPago');
+            $fechaRef = $ultimoPago ?? $credito->FechaGeneracion;
+            $diasAtraso = $fechaRef
+                ? \App\Services\DiasHabilesCalculator::contarDiasHabiles(
+                    \Carbon\Carbon::parse($fechaRef)->addDay(), now()
+                )
+                : 0;
             $this->writeDataRow($sheet, $row, [
                 $credito->proposicion->CodigoCredito ?? '-',
                 $credito->proposicion->cliente->DNI ?? '-',
@@ -696,13 +702,18 @@ class ReporteExportController extends Controller
 
         $totalMonto = 0; $totalMontoTotal = 0;
         foreach ($clientes as $cliente) {
+            $diasInactivo = $cliente->fecha_saldado
+                ? \App\Services\DiasHabilesCalculator::contarDiasHabiles(
+                    \Carbon\Carbon::parse($cliente->fecha_saldado)->addDay(), now()
+                )
+                : 0;
             $this->writeDataRow($sheet, $row, [
                 $cliente->DNI ?? '-', $cliente->NombresApellidos ?? '-', $cliente->ultima_zona ?? '-',
                 $cliente->ultimo_codigo ?? '-',
                 $cliente->fecha_generado ? Carbon::parse($cliente->fecha_generado)->format('d/m/Y') : '-',
                 (float)($cliente->ultimo_monto ?? 0), (float)($cliente->ultimo_monto_total ?? 0),
                 $cliente->fecha_saldado ? Carbon::parse($cliente->fecha_saldado)->format('d/m/Y') : '-',
-                $cliente->dias_inactivo ?? 0,
+                $diasInactivo,
             ], 9);
             foreach (['F', 'G', 'I'] as $col) {
                 $sheet->getStyle($col . $row)->getAlignment()->setHorizontal('right');
