@@ -139,7 +139,7 @@ class GestionarAperturaCierre extends ManageRecords
                 ->label(fn() => self::pagosBloqueados() ? 'Desbloquear Pago Promotor' : 'Bloquear Pago Promotor')
                 ->icon(fn() => self::pagosBloqueados() ? 'heroicon-o-lock-open' : 'heroicon-o-lock-closed')
                 ->color(fn() => self::pagosBloqueados() ? 'success' : 'danger')
-                ->visible(fn() => auth()->user()->can('bloquear_pago_promotor'))
+                ->visible(fn() => filament()->getCurrentPanel()?->getId() !== 'gerencia' && auth()->user()->can('bloquear_pago_promotor'))
                 ->requiresConfirmation()
                 ->modalHeading(fn() => self::pagosBloqueados() ? 'Desbloquear pagos de promotores' : 'Bloquear pagos de promotores')
                 ->modalDescription(fn() => self::pagosBloqueados()
