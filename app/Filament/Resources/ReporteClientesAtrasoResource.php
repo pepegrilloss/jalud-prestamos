@@ -74,7 +74,7 @@ class ReporteClientesAtrasoResource extends Resource
                             now()
                         );
                     })
-                    ->sortable()
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('dias_atraso_calc', $direction))
                     ->color('danger')
                     ->badge()
                     ->icon('heroicon-m-clock'),
@@ -120,8 +120,7 @@ class ReporteClientesAtrasoResource extends Resource
                         $q->where('SaldoPendiente', '>', 0);
                     })
                     ->havingRaw('dias_atraso_calc >= 1')
-                    ->with(['proposicion.cliente', 'proposicion.zona', 'proposicion.tipoCredito'])
-                    ->orderByRaw('dias_atraso_calc DESC');
+                    ->with(['proposicion.cliente', 'proposicion.zona', 'proposicion.tipoCredito']);
             })
             ->actions([])
             ->bulkActions([])
