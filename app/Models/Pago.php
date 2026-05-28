@@ -8,6 +8,29 @@ use App\Traits\BelongsToSede;
 class Pago extends Model
 {
     use BelongsToSede;
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                $model->FechaCreacion = $fecha;
+                $model->FechaModificacion = $fecha;
+            }
+        });
+
+        static::updating(function ($model) {
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            if ($fechaAbierta) {
+                $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                $model->FechaModificacion = $fecha;
+            }
+        });
+    }
+
     protected $table = 'pago';
     protected $primaryKey = 'PagoID';
     public $timestamps = false;
@@ -40,6 +63,7 @@ class Pago extends Model
 
     protected $casts = [
         'FechaPago' => 'datetime:Y-m-d',
+        'FechaCreacion' => 'datetime',
         'FechaModificacion' => 'datetime',
         'FechaCierre' => 'datetime',
         'EsMora' => 'boolean',

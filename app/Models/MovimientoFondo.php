@@ -18,6 +18,7 @@ class MovimientoFondo extends Model
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
             if ($fechaAbierta) {
                 $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
+                $model->FechaMovimiento = $fecha;
                 $model->created_at = $fecha;
                 $model->updated_at = $fecha;
             }
@@ -35,6 +36,10 @@ class MovimientoFondo extends Model
     protected $table = 'movimientos_fondo';
     protected $primaryKey = 'MovimientoID';
 
+    protected $casts = [
+        'FechaMovimiento' => 'datetime',
+    ];
+
     protected $fillable = [
         'SedeID',
         'Tipo',
@@ -45,6 +50,7 @@ class MovimientoFondo extends Model
         'UsuarioID',
         'Observacion',
         'VoucherImagen',
+        'FechaMovimiento',
     ];
 
     protected function setVoucherImagenAttribute($value)

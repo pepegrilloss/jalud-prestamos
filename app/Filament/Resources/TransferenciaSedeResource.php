@@ -118,19 +118,6 @@ class TransferenciaSedeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(function (Builder $query) {
-                if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-                    return $query;
-                }
-                $sedeId = auth()->user()->getEffectiveSedeId();
-                if ($sedeId) {
-                    $query->where(function($q) use ($sedeId) {
-                        $q->where('SedeOrigenID', $sedeId)
-                          ->orWhere('SedeDestinoID', $sedeId);
-                    });
-                }
-                return $query;
-            })
             ->columns([
                 Tables\Columns\TextColumn::make('TransferenciaID')
                     ->label('ID')

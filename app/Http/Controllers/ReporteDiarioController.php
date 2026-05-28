@@ -297,7 +297,7 @@ class ReporteDiarioController extends Controller
 
                 // 5. Inyecciones Manuales y Traslados (desde MovimientoFondo, si existen)
                 $otrosMovimientos = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
-                    ->where('created_at', '<=', $fechaLimite)
+                    ->where('FechaMovimiento', '<=', $fechaLimite)
                     ->whereIn('Tipo', ['INGRESO_CAPITAL', 'TRASLADO_CA_A_CC', 'TRASLADO_CC_A_CA'])
                     ->get();
 
@@ -319,7 +319,7 @@ class ReporteDiarioController extends Controller
             $calcularSaldoCajaChicaHasta = function ($fechaLimite) use ($sedeId) {
                 $movimientos = \App\Models\MovimientoFondo::with('transferencia')
                     ->where('SedeID', $sedeId)
-                    ->where('created_at', '<=', $fechaLimite)
+                    ->where('FechaMovimiento', '<=', $fechaLimite)
                     ->get();
                 
                 $saldo = 0;
@@ -335,12 +335,12 @@ class ReporteDiarioController extends Controller
                     } elseif ($m->Tipo === 'RECEPCION_TRANSFERENCIA') {
                         $transferencia = $m->transferencia;
                         if ($transferencia && $transferencia->CuentaDestino === 'CAJA_CHICA') {
-                            $saldo += $m->Monto;
+                            $saldo += abs($m->Monto);
                         }
                     } elseif ($m->Tipo === 'ENVIO_TRANSFERENCIA') {
                         $transferencia = $m->transferencia;
                         if ($transferencia && $transferencia->CuentaOrigen === 'CAJA_CHICA') {
-                            $saldo += $m->Monto;
+                            $saldo -= abs($m->Monto);
                         }
                     }
                 }
@@ -364,7 +364,7 @@ class ReporteDiarioController extends Controller
                 ->sum('Monto');
                 
             $inyeccionesManualesDia = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
-                ->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia])
+                ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
                 ->where('Tipo', 'INGRESO_CAPITAL')
                 ->sum('Monto');
                 

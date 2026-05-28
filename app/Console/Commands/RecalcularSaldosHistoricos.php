@@ -30,10 +30,13 @@ class RecalcularSaldosHistoricos extends Command
         $gerenciaSedeId = $gerenciaSede->SedeID;
         $trujilloSedeId = $trujilloSede->SedeID;
 
-        // Limpiar Chiclayo (SedeID 1) si se actualizó por error en la ejecución anterior
-        $chiclayo = FondoSede::where('SedeID', 1)->first();
-        if ($chiclayo && $gerenciaSedeId != 1) {
-            $chiclayo->update(['Saldo' => 0, 'SaldoCajaChica' => 0]);
+        // Limpiar Chiclayo si se actualizó por error en la ejecución anterior
+        $chiclayoSede = \App\Models\Sede::where('Nombre', 'like', '%Chiclayo%')->first();
+        if ($chiclayoSede) {
+            $chiclayo = FondoSede::where('SedeID', $chiclayoSede->SedeID)->first();
+            if ($chiclayo && $gerenciaSedeId != $chiclayoSede->SedeID) {
+                $chiclayo->update(['Saldo' => 0, 'SaldoCajaChica' => 0]);
+            }
         }
 
         // 1. Regularizar pagos antiguos: asegurar que todos los extornos históricos sean "Cuenta a Mayor"
