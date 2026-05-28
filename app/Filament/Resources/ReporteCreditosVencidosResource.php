@@ -67,7 +67,7 @@ class ReporteCreditosVencidosResource extends Resource
                             ->where('Activo', 1)
                             ->sum('MontoPagado');
                     })
-                    ->sortable(),
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw("(SELECT COALESCE(SUM(p.MontoPagado), 0) FROM pago p JOIN cuota c ON p.CuotaID = c.CuotaID WHERE c.CreditoID = Credito.CreditoID AND p.Activo = 1) {$direction}")),
 
                 Tables\Columns\TextColumn::make('saldoPendiente')
                     ->label('Saldo')
@@ -79,7 +79,7 @@ class ReporteCreditosVencidosResource extends Resource
                             ->sum('MontoPagado');
                         return $total - $pagado;
                     })
-                    ->sortable(),
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw("(SELECT pc.SaldoPendiente FROM ProposicionCredito pc WHERE pc.ProposicionCreditoID = Credito.ProposicionCreditoID) {$direction}")),
 
                 Tables\Columns\TextColumn::make('FechaVencimiento')
                     ->label('Fecha')
