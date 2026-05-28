@@ -392,7 +392,8 @@ class PagoResource extends Resource
                             ->numeric()
                             ->required()
                             ->minValue(0.01)
-                            ->placeholder('Ingrese el monto del pago'),
+                            ->placeholder('Ingrese el monto del pago')
+                            ->extraAttributes(['onwheel' => 'return false;']),
 
                         Forms\Components\DatePicker::make('FechaPago')
                             ->label('Fecha de Pago')
