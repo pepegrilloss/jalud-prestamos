@@ -100,13 +100,8 @@ class GastoResource extends Resource
                             ->options(Motivo::where('Activo', true)->pluck('Nombre', 'MotivoID'))
                             ->required()
                             ->searchable(),
-                        Forms\Components\Select::make('MetodoGasto')
-                            ->prefixIcon('heroicon-m-credit-card')
-                            ->label('Método de Gasto')
-                            ->options([
-                                'CAJA CHICA' => 'CAJA CHICA',
-                            ])
-                            ->required(),
+                        Forms\Components\Hidden::make('MetodoGasto')
+                            ->default('CAJA CHICA'),
                         Forms\Components\Toggle::make('EsGasto')
                             ->label('¿Es gasto?')
                             ->inline(false)
@@ -190,10 +185,6 @@ class GastoResource extends Resource
                     ->label('Motivo')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('MetodoGasto')
-                    ->label('Método')
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('detalles_resumen')
                     ->label('Descripción')
                     ->getStateUsing(function ($record) {
@@ -230,19 +221,6 @@ class GastoResource extends Resource
                 Tables\Filters\SelectFilter::make('MotivoID')
                     ->label('Motivo')
                     ->options(Motivo::where('Activo', true)->pluck('Nombre', 'MotivoID')),
-                Tables\Filters\SelectFilter::make('MetodoGasto')
-                    ->label('Método de Gasto')
-                    ->options([
-                        'CAJA CHICA' => 'CAJA CHICA',
-                        'Tarjeta de crédito' => 'Tarjeta de crédito',
-                        'Tarjeta de débito' => 'Tarjeta de débito',
-                    ]),
-                Tables\Filters\SelectFilter::make('EsGasto')
-                    ->label('¿Es gasto?')
-                    ->options([
-                        '1' => 'Solo gastos',
-                        '0' => 'Solo no gastos',
-                    ]),
                 Tables\Filters\Filter::make('FechaEmision')
                     ->form([
                         Forms\Components\DatePicker::make('fecha_desde')

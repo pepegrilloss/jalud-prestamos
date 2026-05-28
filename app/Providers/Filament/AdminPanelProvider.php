@@ -181,6 +181,7 @@ class AdminPanelProvider extends PanelProvider
                 fn(): string => Blade::render('@livewire(\App\Livewire\ReporteCarteraModal::class)')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->databaseTransactions()
             ->widgets([
             ])
 

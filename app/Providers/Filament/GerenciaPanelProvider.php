@@ -36,6 +36,7 @@ use App\Filament\Widgets\DashboardMiTotalPrestadoWidget;
 use App\Filament\Widgets\DashboardPagosCerradosHoyWidget;
 use App\Filament\Widgets\DashboardProposicionesHoyWidget;
 
+
 class GerenciaPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -139,6 +140,7 @@ class GerenciaPanelProvider extends PanelProvider
                 GerenciaDashboard::class,
                 GerenciaReportes::class,
             ])
+            ->databaseTransactions()
             ->widgets([
                 CustomAccountWidget::class,
                 DashboardMisClientesActivosWidget::class,

@@ -18,4 +18,11 @@ class ListCrearProposicionCreditos extends ListRecords
         }
         return $title;
     }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\MontoPropuestoHoyStatsWidget::class,
+        ];
+    }
 }

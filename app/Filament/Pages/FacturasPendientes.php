@@ -74,7 +74,15 @@ class FacturasPendientes extends Page implements Tables\Contracts\HasTable
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Confirmar Pago')
-                    ->modalDescription(fn(Compra $record) => '¿Está seguro de pagar la factura ' . $record->Numero . ' de ' . ($record->proveedor?->Nombre ?? '') . ' por S/ ' . number_format($record->Total, 2) . '?')
+                    ->modalContent(fn(Compra $record) => view('filament.pages.factura-pago-resumen', [
+                        'subtotal' => $record->SubtotalBase,
+                        'igv' => $record->MontoIGV,
+                        'total' => $record->Total,
+                        'igvLabel' => $record->TipoIGV === 'EXONERADO' ? 'IGV (Exonerado)' : 'IGV (18%)',
+                        'proveedor' => $record->proveedor?->Nombre,
+                        'numero' => $record->Numero,
+                        'comprobante' => $record->tipoComprobante?->Nombre,
+                    ]))
                     ->modalSubmitActionLabel('Sí, pagar')
                     ->action(function (Compra $record) {
                         $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
@@ -101,7 +109,7 @@ class FacturasPendientes extends Page implements Tables\Contracts\HasTable
                                 );
                                 $record->update([
                                     'EstadoPago' => 'PAGADO',
-                                    'FechaPago' => now(),
+                                    'FechaPago' => \App\Services\DateFieldResolver::getFechaAbierta() ?? now(),
                                     'UsuarioPagoID' => auth()->id(),
                                 ]);
                             });

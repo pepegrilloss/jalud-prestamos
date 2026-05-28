@@ -258,12 +258,9 @@
     fechaCanceladas: '{{ now()->format('Y-m-d') }}',
     fechaCartera: '{{ now()->format('Y-m-d') }}',
     carteraTipos: [],
-    fechaVencidosDesde: '{{ now()->subMonth()->format('Y-m-d') }}',
-    fechaVencidosHasta: '{{ now()->format('Y-m-d') }}',
-    fechaAtrasoDesde: '{{ now()->subMonth()->format('Y-m-d') }}',
-    fechaAtrasoHasta: '{{ now()->format('Y-m-d') }}',
-    fechaInactivosDesde: '',
-    fechaInactivosHasta: '',
+    fechaVencidos: '{{ now()->format('Y-m-d') }}',
+    fechaAtraso: '{{ now()->format('Y-m-d') }}',
+    fechaInactivos: '{{ now()->format('Y-m-d') }}',
 
     toggleTipo(tipo) {
         if (this.carteraTipos.includes(tipo)) {
@@ -400,23 +397,17 @@
                     </div>
                     <h3 class="card-title">Créditos Vencidos</h3>
                 </div>
-                <p class="card-desc">Créditos con cuotas vencidas en el rango de fechas seleccionado.</p>
-                <div class="field-row">
-                    <div class="field-group">
-                        <label class="field-label">Desde</label>
-                        <input type="date" x-model="fechaVencidosDesde" class="field-input">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Hasta</label>
-                        <input type="date" x-model="fechaVencidosHasta" class="field-input">
-                    </div>
+                <p class="card-desc">Créditos con cuotas vencidas en la fecha seleccionada.</p>
+                <div class="field-group">
+                    <label class="field-label">Fecha</label>
+                    <input type="date" x-model="fechaVencidos" class="field-input">
                 </div>
                 <div class="card-actions">
-                    <button type="button" class="btn-pdf" x-on:click="openReport('{{ route('creditos-vencidos.view') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaVencidosDesde + '&fecha_hasta=' + fechaVencidosHasta)">
+                    <button type="button" class="btn-pdf" x-on:click="openReport('{{ route('creditos-vencidos.view') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaVencidos + '&fecha_hasta=' + fechaVencidos)">
                         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
                         PDF
                     </button>
-                    <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-vencidos.excel') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaVencidosDesde + '&fecha_hasta=' + fechaVencidosHasta)">
+                    <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-vencidos.excel') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaVencidos + '&fecha_hasta=' + fechaVencidos)">
                         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
                         Excel
                     </button>
@@ -434,23 +425,17 @@
                     </div>
                     <h3 class="card-title">Clientes con Atraso</h3>
                 </div>
-                <p class="card-desc">Clientes con pagos atrasados en el rango de fechas indicado.</p>
-                <div class="field-row">
-                    <div class="field-group">
-                        <label class="field-label">Desde</label>
-                        <input type="date" x-model="fechaAtrasoDesde" class="field-input">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Hasta</label>
-                        <input type="date" x-model="fechaAtrasoHasta" class="field-input">
-                    </div>
+                <p class="card-desc">Clientes con pagos atrasados en la fecha seleccionada.</p>
+                <div class="field-group">
+                    <label class="field-label">Fecha</label>
+                    <input type="date" x-model="fechaAtraso" class="field-input">
                 </div>
                 <div class="card-actions">
-                    <button type="button" class="btn-pdf" x-on:click="openReport('{{ route('clientes-atraso.view') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaAtrasoDesde + '&fecha_hasta=' + fechaAtrasoHasta)">
+                    <button type="button" class="btn-pdf" x-on:click="openReport('{{ route('clientes-atraso.view') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaAtraso + '&fecha_hasta=' + fechaAtraso)">
                         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
                         PDF
                     </button>
-                    <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-atraso.excel') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaAtrasoDesde + '&fecha_hasta=' + fechaAtrasoHasta)">
+                    <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-atraso.excel') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaAtraso + '&fecha_hasta=' + fechaAtraso)">
                         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
                         Excel
                     </button>
@@ -469,22 +454,16 @@
                     <h3 class="card-title">Clientes Inactivos</h3>
                 </div>
                 <p class="card-desc">Clientes que no han renovado crédito después de su último saldo.</p>
-                <div class="field-row">
-                    <div class="field-group">
-                        <label class="field-label">Desde</label>
-                        <input type="date" x-model="fechaInactivosDesde" class="field-input">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Hasta</label>
-                        <input type="date" x-model="fechaInactivosHasta" class="field-input">
-                    </div>
+                <div class="field-group">
+                    <label class="field-label">Fecha</label>
+                    <input type="date" x-model="fechaInactivos" class="field-input">
                 </div>
                 <div class="card-actions">
-                    <button type="button" class="btn-pdf" x-on:click="openReport('{{ route('clientes-inactivos.view') }}?sede_id=' + sedeId + (fechaInactivosDesde ? '&fecha_desde=' + fechaInactivosDesde : '') + (fechaInactivosHasta ? '&fecha_hasta=' + fechaInactivosHasta : ''))">
+                    <button type="button" class="btn-pdf" x-on:click="openReport('{{ route('clientes-inactivos.view') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaInactivos + '&fecha_hasta=' + fechaInactivos)">
                         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
                         PDF
                     </button>
-                    <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-inactivos.excel') }}?sede_id=' + sedeId + (fechaInactivosDesde ? '&fecha_desde=' + fechaInactivosDesde : '') + (fechaInactivosHasta ? '&fecha_hasta=' + fechaInactivosHasta : ''))">
+                    <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-inactivos.excel') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaInactivos + '&fecha_hasta=' + fechaInactivos)">
                         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
                         Excel
                     </button>

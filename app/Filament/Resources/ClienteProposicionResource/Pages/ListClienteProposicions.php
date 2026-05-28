@@ -115,6 +115,7 @@ class ListClienteProposicions extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
+            \App\Filament\Widgets\MontoPropuestoHoyStatsWidget::class,
             \App\Filament\Widgets\DashboardMisClientesActivosWidget::class,
             \App\Filament\Widgets\DashboardMisPrestamosActivosWidget::class,
             \App\Filament\Widgets\DashboardMiTotalPrestadoWidget::class,
@@ -125,8 +126,8 @@ class ListClienteProposicions extends ListRecords
     {
         return [
             'default' => 1,
-            'md' => 3,
-            'lg' => 3,
+            'md' => 2,
+            'lg' => 4,
         ];
     }
 }

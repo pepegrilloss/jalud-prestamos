@@ -19,6 +19,11 @@ class TransferenciaSede extends Model
                 return;
             }
 
+            // Gerencia ve TODAS las transferencias sin filtro de sede
+            if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                return;
+            }
+
             $user = auth()->user();
             $esPrivilegiado = $user->isPrivileged();
             $sedeActiva = session('sede_activa');

@@ -46,13 +46,16 @@ class CreateCompra extends CreateRecord
         if (($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO') {
             $totalCompra = floatval($data['Total']);
 
-            // Validar saldo en Caja Chica ANTES de crear la compra
+            // Validar saldo en Caja Chica ANTES de crear la compra (con lockForUpdate)
             if ($totalCompra > 0) {
                 $sedeId = auth()->user()->getEffectiveSedeId();
 
                 if ($sedeId) {
-                    $fondo = \App\Models\FondoSede::where('SedeID', $sedeId)->first();
-                    $saldoDisponible = $fondo ? $fondo->SaldoCajaChica : 0;
+                    $fondo = \App\Models\FondoSede::withoutGlobalScope('sede')
+                        ->lockForUpdate()
+                        ->where('SedeID', $sedeId)
+                        ->first();
+                    $saldoDisponible = $fondo ? (float) $fondo->SaldoCajaChica : 0;
 
                     if ($saldoDisponible < $totalCompra) {
                         Notification::make()
@@ -81,12 +84,22 @@ class CreateCompra extends CreateRecord
             $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
-                app(FondoSedeService::class)->registrarEgresoCajaChica(
-                    $sedeId,
-                    $total,
-                    $record->CompraID,
-                    auth()->id()
-                );
+                try {
+                    app(FondoSedeService::class)->registrarEgresoCajaChica(
+                        $sedeId,
+                        $total,
+                        $record->CompraID,
+                        auth()->id()
+                    );
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Saldo insuficiente en Caja Chica')
+                        ->body($e->getMessage())
+                        ->persistent()
+                        ->send();
+                    throw $e;
+                }
             }
         }
 

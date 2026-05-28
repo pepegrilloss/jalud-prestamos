@@ -32,14 +32,12 @@ class ViewGasto extends ViewRecord
                             ->label('Proveedor'),
                         Components\TextEntry::make('motivo.Nombre')
                             ->label('Motivo'),
-                        Components\TextEntry::make('MetodoGasto')
-                            ->label('Método de Gasto'),
                         Components\IconEntry::make('EsGasto')
                             ->label('¿Es gasto?')
                             ->boolean()
                             ->trueIcon('heroicon-o-check-badge')
                             ->falseIcon('heroicon-o-x-circle'),
-                    ])->columns(4),
+                    ])->columns(3),
 
                 Components\Section::make('Detalle del Gasto')
                     ->schema([

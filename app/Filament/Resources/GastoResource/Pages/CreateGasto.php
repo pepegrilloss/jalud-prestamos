@@ -21,13 +21,16 @@ class CreateGasto extends CreateRecord
         $detalles = $data['detalles'] ?? [];
         $totalAnticipado = collect($detalles)->sum(fn($item) => floatval($item['Monto'] ?? 0));
 
-        // Si el método de gasto es CAJA CHICA, validar saldo ANTES de crear
+        // Si el método de gasto es CAJA CHICA, validar saldo ANTES de crear (con lockForUpdate)
         if (($data['MetodoGasto'] ?? '') === 'CAJA CHICA' && $totalAnticipado > 0) {
             $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
-                $fondo = \App\Models\FondoSede::where('SedeID', $sedeId)->first();
-                $saldoDisponible = $fondo ? $fondo->SaldoCajaChica : 0;
+                $fondo = \App\Models\FondoSede::withoutGlobalScope('sede')
+                    ->lockForUpdate()
+                    ->where('SedeID', $sedeId)
+                    ->first();
+                $saldoDisponible = $fondo ? (float) $fondo->SaldoCajaChica : 0;
 
                 if ($saldoDisponible < $totalAnticipado) {
                     Notification::make()
@@ -57,12 +60,22 @@ class CreateGasto extends CreateRecord
             $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
-                app(FondoSedeService::class)->registrarEgresoCajaChica(
-                    $sedeId,
-                    $total,
-                    $record->GastoID,
-                    auth()->id()
-                );
+                try {
+                    app(FondoSedeService::class)->registrarEgresoCajaChica(
+                        $sedeId,
+                        $total,
+                        $record->GastoID,
+                        auth()->id()
+                    );
+                } catch (\Illuminate\Validation\ValidationException $e) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Saldo insuficiente en Caja Chica')
+                        ->body($e->getMessage())
+                        ->persistent()
+                        ->send();
+                    throw $e;
+                }
             }
         }
 

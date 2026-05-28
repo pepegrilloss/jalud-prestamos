@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\CompraResource\Pages;
 
 use App\Filament\Resources\CompraResource;
+use App\Models\FondoSede;
 use App\Services\FondoSedeService;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Validation\ValidationException;
 
 class EditCompra extends EditRecord
 {
@@ -45,6 +48,30 @@ class EditCompra extends EditRecord
             $data['EstadoPago'] = $data['EstadoPago'] ?? 'PENDIENTE';
         }
 
+        // Validar saldo si es CONTADO y el total sube
+        $totalNuevo = (float) ($data['Total'] ?? 0);
+        $totalViejo = (float) ($this->record->Total ?? 0);
+        $delta = $totalNuevo - $totalViejo;
+        if (($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO' && $delta > 0) {
+            $sedeId = auth()->user()->getEffectiveSedeId();
+            if ($sedeId) {
+                $fondo = FondoSede::withoutGlobalScope('sede')
+                    ->lockForUpdate()
+                    ->where('SedeID', $sedeId)
+                    ->first();
+                $saldo = $fondo ? (float) $fondo->SaldoCajaChica : 0;
+                if ($saldo < $delta) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Saldo insuficiente en Caja Chica')
+                        ->body("Saldo disponible: S/ " . number_format($saldo, 2) . ". Incremento requerido: S/ " . number_format($delta, 2))
+                        ->persistent()
+                        ->send();
+                    $this->halt();
+                }
+            }
+        }
+
         $data['UsuarioModificacion'] = auth()->id();
         return $data;
     }
@@ -61,10 +88,20 @@ class EditCompra extends EditRecord
             $sedeId = auth()->user()->getEffectiveSedeId();
             if ($sedeId) {
                 $service = app(FondoSedeService::class);
-                if ($delta > 0) {
-                    $service->registrarEgresoCajaChica($sedeId, $delta, $record->CompraID, auth()->id());
-                } else {
-                    $service->inyectarCapitalCajaChica($sedeId, abs($delta), auth()->id(), "Ajuste por edición de compra #{$record->CompraID}");
+                try {
+                    if ($delta > 0) {
+                        $service->registrarEgresoCajaChica($sedeId, $delta, $record->CompraID, auth()->id());
+                    } else {
+                        $service->inyectarCapitalCajaChica($sedeId, abs($delta), auth()->id(), "Ajuste por edición de compra #{$record->CompraID}");
+                    }
+                } catch (ValidationException $e) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Saldo insuficiente')
+                        ->body($e->getMessage())
+                        ->persistent()
+                        ->send();
+                    throw $e;
                 }
             }
         }
