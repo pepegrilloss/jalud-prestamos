@@ -52,13 +52,17 @@ class ReporteDiarioController extends Controller
                 ->find($aperturaCierreDiaId);
         }
 
-        if ($sedeIdParam === '0' || $sedeIdParam === 'todas' || $sedeIdParam === '') {
-            $sedeId = null;
-        } elseif ($sedeIdParam) {
-            $sedeId = (int) $sedeIdParam;
+        $user = auth()->user();
+        if ($user && $user->isPrivileged()) {
+            if ($sedeIdParam === '0' || $sedeIdParam === 'todas' || $sedeIdParam === '') {
+                $sedeId = null;
+            } elseif ($sedeIdParam) {
+                $sedeId = (int) $sedeIdParam;
+            } else {
+                $sedeId = $aperturaCierre?->SedeID ?? $user->getEffectiveSedeId();
+            }
         } else {
-            $sedeId = $aperturaCierre?->SedeID
-                ?? (auth()->check() ? auth()->user()->getEffectiveSedeId() : null);
+            $sedeId = $user?->getEffectiveSedeId() ?? $aperturaCierre?->SedeID;
         }
 
         $sede = $sedeId ? Sede::find($sedeId) : null;

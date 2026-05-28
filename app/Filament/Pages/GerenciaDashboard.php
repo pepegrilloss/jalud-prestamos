@@ -81,7 +81,8 @@ class GerenciaDashboard extends Page
         if (filament()->getCurrentPanel()?->getId() !== 'gerencia') {
             return false;
         }
-        return auth()->check();
+        $user = auth()->user();
+        return $user && ($user->esAdmin() || $user->puedeVerTodasLasSedes());
     }
 
     public function getColumns(): int | string | array

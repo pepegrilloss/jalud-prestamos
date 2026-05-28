@@ -80,7 +80,9 @@ class ResolucionExcedenteService
             'Comentario' => "Recibido por traslado de {$clienteOrigenNombre}\nSolicitud #{$solicitud->SolicitudID}.\nMonto: S/ " . number_format($montoAplicar, 2),
             'UsuarioRegistro' => $aprobador->name,
             'Activo' => true,
-            'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,
+            'SedeID' => optional(\App\Models\Credito::withoutGlobalScope('sede')->find($solicitud->CreditoDestinoID))->SedeID
+                ?? $solicitud->SedeID
+                ?? $aprobador->SedeID,
             'SolicitudResolucionID' => $solicitud->SolicitudID,
         ]);
         
@@ -187,7 +189,9 @@ class ResolucionExcedenteService
             'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}.\nTipo: {$solicitud->TipoResolucion}.\nMonto aplicado: S/ " . number_format($montoAplicar, 2),
             'UsuarioRegistro' => $aprobador->name,
             'Activo' => true,
-            'SedeID' => $solicitud->SedeID ?? $aprobador->SedeID,
+            'SedeID' => optional(\App\Models\Credito::withoutGlobalScope('sede')->find($solicitud->CreditoDestinoID))->SedeID
+                ?? $solicitud->SedeID
+                ?? $aprobador->SedeID,
             'SolicitudResolucionID' => $solicitud->SolicitudID,
         ]);
 

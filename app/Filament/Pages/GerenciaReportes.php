@@ -30,6 +30,7 @@ class GerenciaReportes extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->check();
+        $user = auth()->user();
+        return $user && ($user->esAdmin() || $user->puedeVerTodasLasSedes());
     }
 }

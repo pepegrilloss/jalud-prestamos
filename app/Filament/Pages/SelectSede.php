@@ -44,11 +44,14 @@ class SelectSede extends Page
     public function seleccionarSede(int $sedeId): void
     {
         $user = auth()->user();
-        $sede = Sede::find($sedeId);
 
-        if (!$sede) {
+        // Validar que la sede esté en las permitidas para el usuario
+        $allowedIds = $this->getSedes()->pluck('SedeID')->toArray();
+        if (!in_array($sedeId, $allowedIds)) {
             return;
         }
+
+        $sede = Sede::find($sedeId);
 
         // Si la sede es Gerencia y el usuario no tiene acceso directo, forzar su sede asignada
         if (str_contains(strtolower($sede->Nombre), 'gerencia') && !($user->esAdmin() || $user->puedeVerTodasLasSedes())) {

@@ -20,6 +20,20 @@ class Pago extends Model
                 $model->FechaCreacion = $fecha;
                 $model->FechaModificacion = $fecha;
             }
+
+            if ($model->CreditoID && $model->SedeID) {
+                $creditoSedeID = \App\Models\Credito::withoutGlobalScope('sede')
+                    ->where('CreditoID', $model->CreditoID)
+                    ->value('SedeID');
+                if ($creditoSedeID && $creditoSedeID != $model->SedeID) {
+                    \Illuminate\Support\Facades\Log::warning('Pago SedeID auto-corregido', [
+                        'CreditoID' => $model->CreditoID,
+                        'Pago.SedeID_asignado' => $model->SedeID,
+                        'Credito.SedeID' => $creditoSedeID,
+                    ]);
+                    $model->SedeID = $creditoSedeID;
+                }
+            }
         });
 
         static::updating(function ($model) {

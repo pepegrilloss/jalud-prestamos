@@ -112,7 +112,8 @@ class CreditoObserver
             'FechaPago' => null,
             'FechaCreacion' => $fechaCreacion,
             'FechaModificacion' => null,
-            'Activo' => 1
+            'Activo' => 1,
+            'SedeID' => $credito->SedeID
         ]);
 
         $fechaActual = $fechaGeneracion->copy()->addDay();
@@ -142,7 +143,8 @@ class CreditoObserver
                     'FechaPago' => null,
                     'FechaCreacion' => $fechaCreacion,
                     'FechaModificacion' => null,
-                    'Activo' => 1
+                    'Activo' => 1,
+                    'SedeID' => $credito->SedeID
                 ]);
             } else {
                 // Es un día normal - es una cuota real
@@ -161,7 +163,8 @@ class CreditoObserver
                     'FechaPago' => null,
                     'FechaCreacion' => $fechaCreacion,
                     'FechaModificacion' => null,
-                    'Activo' => 1
+                    'Activo' => 1,
+                    'SedeID' => $credito->SedeID
                 ]);
 
                 $cuotasGeneradas++;

@@ -25,14 +25,20 @@ class ReporteExportController extends Controller
 {
     private function resolveSedeId(): ?int
     {
+        $user = auth()->user();
         $sedeParam = request()->get('sede_id');
-        if ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '') {
-            return null;
+
+        if ($user->isPrivileged()) {
+            if ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '') {
+                return null;
+            }
+            if ($sedeParam) {
+                return (int) $sedeParam;
+            }
+            return $user->getEffectiveSedeId();
         }
-        if ($sedeParam) {
-            return (int) $sedeParam;
-        }
-        return auth()->user()->getEffectiveSedeId();
+
+        return $user->getEffectiveSedeId();
     }
 
     private function getStyles(): array

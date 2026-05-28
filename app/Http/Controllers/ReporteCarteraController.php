@@ -29,18 +29,18 @@ class ReporteCarteraController extends Controller
             abort(400, 'Debe seleccionar al menos un tipo de cartera.');
         }
 
-        $sedeParam = request()->get('sede_id');
-        if ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '') {
-            $sedeId = null;
-        } elseif ($sedeParam) {
-            $sedeId = (int) $sedeParam;
-        } else {
-            $user = auth()->user();
-            if ($user->esAdmin() || $user->puedeVerTodasLasSedes() || $user->puedeSeleccionarSedesOperativas()) {
-                $sedeId = session('sede_activa');
+        $user = auth()->user();
+        if ($user->isPrivileged()) {
+            $sedeParam = request()->get('sede_id');
+            if ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '') {
+                $sedeId = null;
+            } elseif ($sedeParam) {
+                $sedeId = (int) $sedeParam;
             } else {
-                $sedeId = $user->SedeID;
+                $sedeId = session('sede_activa');
             }
+        } else {
+            $sedeId = $user->SedeID;
         }
 
         $sede = $sedeId ? Sede::find($sedeId) : null;

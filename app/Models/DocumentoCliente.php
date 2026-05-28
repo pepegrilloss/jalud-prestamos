@@ -10,6 +10,8 @@ use App\Helpers\EncryptionHelper;
 
 class DocumentoCliente extends Model
 {
+    use \App\Traits\BelongsToSede;
+
     protected $table = 'DocumentoCliente';
     protected $primaryKey = 'DocumentoClienteID';
     public $timestamps = false;
@@ -24,6 +26,7 @@ class DocumentoCliente extends Model
         'Observaciones',
         'Activo',
         'UsuarioRegistro',
+        'SedeID',
     ];
 
     protected $casts = [

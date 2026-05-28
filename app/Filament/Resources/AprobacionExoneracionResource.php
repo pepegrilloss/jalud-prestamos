@@ -42,7 +42,7 @@ class AprobacionExoneracionResource extends Resource
 
         // Si no tiene el nivel de gerencia, eliminar registros
         if (!$tieneNivelGerencia) {
-            // return $query->whereRaw('0 = 1'); // Sin resultados
+            return $query->whereRaw('0 = 1');
         }
 
         // Solo mostrar solicitudes PENDIENTES que requieren nivel de aprobación 3 (Gerencia)
