@@ -570,27 +570,6 @@ class GenerarCreditoResource extends Resource
                 'Activo' => true,
             ]);
 
-            // Si el monto refinanciado es mayor al saldo pendiente, crear PAGO 2 como pago a mayor
-            if ($montoRefinanciamiento > $saldoTotalPendiente) {
-                $montoAMayor = $montoRefinanciamiento - $saldoTotalPendiente;
-
-                Pago::create([
-                    'CreditoID' => $creditoAnterior->CreditoID,
-                    'CuotaID' => $cuotasPendientes->first()->CuotaID,
-                    'PromotorCobradorID' => $promotorCobradorID,
-                    'MontoPagado' => $montoAMayor,
-                    'FechaPago' => $fechaPago,
-                    'SedeID' => $creditoAnterior->SedeID,
-                    'EsMora' => false,
-                    'EsPagoAMayor' => true,
-                    'EsPagoForzado' => false,
-                    'EsPagoAutomatico' => 1,
-                    'Comentario' => "Pago a mayor automático por refinanciamiento. Proposición #{$record->ProposicionCreditoID}. Monto adicional: S/ " . number_format($montoAMayor, 2),
-                    'UsuarioRegistro' => Auth::user()?->name ?? 'Sistema',
-                    'Activo' => true,
-                ]);
-            }
-
             // Actualizar todas las cuotas pendientes como pagadas
             foreach ($cuotasPendientes as $cuota) {
                 $cuota->update([
@@ -611,10 +590,6 @@ class GenerarCreditoResource extends Resource
             ]);
 
             $mensaje = "Pago automático de S/ " . number_format($saldoTotalPendiente, 2) . " para cerrar el crédito anterior.";
-            if ($montoRefinanciamiento > $saldoTotalPendiente) {
-                $montoAMayor = $montoRefinanciamiento - $saldoTotalPendiente;
-                $mensaje .= " + Pago a mayor de S/ " . number_format($montoAMayor, 2);
-            }
 
             Notification::make()
                 ->success()
