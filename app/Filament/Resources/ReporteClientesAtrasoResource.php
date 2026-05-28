@@ -60,7 +60,7 @@ class ReporteClientesAtrasoResource extends Resource
                     ->sortable()
                     ->color('danger'),
 
-                Tables\Columns\TextColumn::make('dias_atraso')
+                Tables\Columns\TextColumn::make('dias_atraso_calc')
                     ->label('Días de Atraso')
                     ->getStateUsing(function ($record) {
                         $ultimoPago = $record->pagos()
@@ -74,7 +74,7 @@ class ReporteClientesAtrasoResource extends Resource
                             now()
                         );
                     })
-                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('dias_atraso_calc', $direction))
+                    ->sortable()
                     ->color('danger')
                     ->badge()
                     ->icon('heroicon-m-clock'),
@@ -125,7 +125,7 @@ class ReporteClientesAtrasoResource extends Resource
             ->actions([])
             ->bulkActions([])
             ->recordUrl(null)
-            ->defaultSort('FechaVencimiento', 'asc')
+            ->defaultSort('dias_atraso_calc', 'desc')
             ->paginationPageOptions([10, 25, 50]);
     }
 

@@ -134,12 +134,12 @@ class ReporteCreditosVencidosResource extends Resource
                     ->whereHas('proposicion', function ($q) {
                         $q->where('SaldoPendiente', '>', 0);
                     })
-                    ->with(['proposicion.cliente', 'proposicion.tipoCredito', 'proposicion.zona'])
-                    ->orderBy('FechaVencimiento', 'asc');
+                    ->with(['proposicion.cliente', 'proposicion.tipoCredito', 'proposicion.zona']);
             })
             ->actions([])
             ->bulkActions([])
             ->recordUrl(null)
+            ->defaultSort('FechaVencimiento', 'asc')
             ->paginationPageOptions([10, 25, 50]);
     }
 
