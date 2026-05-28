@@ -635,9 +635,6 @@ class PagoResource extends Resource
                             );
                     }),
 
-            ], layout: FiltersLayout::AboveContent)
-            ->filtersFormColumns(1)
-            ->filters([
                 Tables\Filters\SelectFilter::make('EsPagoAutomatico')
                     ->label('Origen del Pago')
                     ->options([
@@ -646,7 +643,9 @@ class PagoResource extends Resource
                     ])
                     ->placeholder('Todos')
                     ->native(false),
+
             ], layout: FiltersLayout::AboveContent)
+            ->filtersFormColumns(1)
             ->modifyQueryUsing(function (Builder $query) {
                 
                 // Join con Credito para obtener datos directamente
