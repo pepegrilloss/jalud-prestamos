@@ -61,6 +61,44 @@ class ListReporteCuentasCanceladas extends ListRecords
                     $this->js("window.open('" . addslashes($url) . "', '_blank')");
                 })
                 ->color('danger'),
+
+            Actions\Action::make('descargar_excel')
+                ->label('Descargar Excel Cuentas Canceladas')
+                ->icon('heroicon-o-table-cells')
+                ->color('success')
+                ->form([
+                    Forms\Components\DatePicker::make('fecha')
+                        ->label('Seleccionar Fecha')
+                        ->default(now())
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    if (!isset($data['fecha'])) {
+                        return;
+                    }
+
+                    $fecha = is_string($data['fecha']) ? $data['fecha'] : $data['fecha']->format('Y-m-d');
+
+                    $canceladas = \App\Models\ProposicionCredito::where('SaldoPendiente', 0)
+                        ->whereHas('credito', function ($q) use ($fecha) {
+                            $q->whereDate('FechaSaldamiento', '=', $fecha);
+                        })
+                        ->count();
+
+                    if ($canceladas === 0) {
+                        Notification::make()
+                            ->title('Sin cuentas canceladas')
+                            ->body('No hay cuentas canceladas registradas para la fecha seleccionada.')
+                            ->warning()
+                            ->send();
+                        return;
+                    }
+
+                    $url = route('reporte-canceladas.excel', ['fecha' => $fecha]);
+                    $this->js("window.open('" . addslashes($url) . "', '_blank')");
+                }),
         ];
     }
 }
