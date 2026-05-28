@@ -35,18 +35,25 @@ class DashboardMiTotalPrestadoWidget extends BaseWidget
     {
         $user = Auth::user();
         $sedeIdOverride = null;
+        $esTodas = false;
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             $filter = session('gerencia_dashboard_sede', '0');
-            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+            if ($filter === '0' || $filter === '' || $filter === null) {
+                $esTodas = true;
+            } else {
+                $sedeIdOverride = (int) $filter;
+            }
         }
 
-        $query = \App\Models\ProposicionCredito::whereHas('credito', function ($q) use ($sedeIdOverride) {
-            if ($sedeIdOverride !== null) {
+        $query = \App\Models\ProposicionCredito::whereHas('credito', function ($q) use ($sedeIdOverride, $esTodas) {
+            if ($sedeIdOverride !== null || $esTodas) {
                 $q->withoutGlobalScope('sede');
             }
         })->where('EsRefinanciamiento', 0);
 
-        if ($sedeIdOverride !== null) {
+        if ($esTodas) {
+            $query->withoutGlobalScope('sede');
+        } elseif ($sedeIdOverride !== null) {
             $query->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride);
         } else {
             $promotorCobrador = $user->promotorCobrador;

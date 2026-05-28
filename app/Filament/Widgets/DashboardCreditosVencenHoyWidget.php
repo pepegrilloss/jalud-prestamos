@@ -35,9 +35,14 @@ class DashboardCreditosVencenHoyWidget extends BaseWidget
     {
         $user = Auth::user();
         $sedeIdOverride = null;
+        $esTodas = false;
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             $filter = session('gerencia_dashboard_sede', '0');
-            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+            if ($filter === '0' || $filter === '' || $filter === null) {
+                $esTodas = true;
+            } else {
+                $sedeIdOverride = (int) $filter;
+            }
         }
 
         $fechaReferencia = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
@@ -45,15 +50,17 @@ class DashboardCreditosVencenHoyWidget extends BaseWidget
         $creditosQuery = \App\Models\Credito::where('Activo', true)
             ->whereDate('FechaVencimiento', $fechaReferencia->toDateString())
             ->where('EstatusCreditoFinal', '!=', 'SALDADO')
-            ->whereHas('proposicion', function ($q) use ($sedeIdOverride) {
-                if ($sedeIdOverride !== null) {
+            ->whereHas('proposicion', function ($q) use ($sedeIdOverride, $esTodas) {
+                if ($sedeIdOverride !== null || $esTodas) {
                     $q->withoutGlobalScope('sede');
                 }
                 $q->where('FueRefinanciada', 0)
                   ->where('SaldoPendiente', '>', 0);
             });
 
-        if ($sedeIdOverride !== null) {
+        if ($esTodas) {
+            $creditosQuery->withoutGlobalScope('sede');
+        } elseif ($sedeIdOverride !== null) {
             $creditosQuery->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride);
         } elseif (!$user->isPrivileged() || $user->getEffectiveSedeId()) {
             $creditosQuery->where('SedeID', $user->getEffectiveSedeId());

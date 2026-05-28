@@ -33,18 +33,24 @@ class DashboardMisPrestamosActivosWidget extends BaseWidget
     {
         $user = Auth::user();
         $sedeIdOverride = null;
+        $esTodas = false;
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             $filter = session('gerencia_dashboard_sede', '0');
-            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+            if ($filter === '0' || $filter === '' || $filter === null) {
+                $esTodas = true;
+            } else {
+                $sedeIdOverride = (int) $filter;
+            }
         }
 
         $promotorCobrador = $user->promotorCobrador;
-        $zonaID = $sedeIdOverride ? null : ($promotorCobrador?->ZonaID ?? null);
+        $zonaID = ($sedeIdOverride || $esTodas) ? null : ($promotorCobrador?->ZonaID ?? null);
 
         $creditosQuery = \App\Models\Credito::where('Activo', true)
             ->when($sedeIdOverride, fn($q) => $q->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride))
-            ->whereHas('proposicion', function ($q) use ($zonaID, $sedeIdOverride) {
-                if ($sedeIdOverride) {
+            ->when($esTodas, fn($q) => $q->withoutGlobalScope('sede'))
+            ->whereHas('proposicion', function ($q) use ($zonaID, $sedeIdOverride, $esTodas) {
+                if ($sedeIdOverride || $esTodas) {
                     $q->withoutGlobalScope('sede');
                 }
                 $q->where('FueRefinanciada', 0);

@@ -28,13 +28,16 @@ class CajaChicaWidget extends BaseWidget
         $user = Auth::user();
 
         $sedeId = null;
+        $esTodas = false;
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             $filter = session('gerencia_dashboard_sede', '0');
-            if ($filter !== '0' && $filter !== '' && $filter !== null) {
+            if ($filter === '0' || $filter === '' || $filter === null) {
+                $esTodas = true;
+            } else {
                 $sedeId = (int) $filter;
             }
         }
-        if (!$sedeId) {
+        if (!$sedeId && !$esTodas) {
             $sedeId = $user->SedeID;
             if ($user->isPrivileged()) {
                 $sedeActiva = session('sede_activa');
@@ -44,7 +47,16 @@ class CajaChicaWidget extends BaseWidget
             }
         }
 
-        if ($sedeId) {
+        if ($esTodas) {
+            $saldoCajaChica = (float) FondoSede::withoutGlobalScope('sede')->sum('SaldoCajaChica');
+            $sedeNombre = 'Todas las Sedes';
+            return [
+                Stat::make("Caja Chica - {$sedeNombre}", 'S/ ' . number_format($saldoCajaChica, 2))
+                    ->description('Suma total de todas las sedes')
+                    ->descriptionIcon('heroicon-m-wallet')
+                    ->color($saldoCajaChica > 0 ? 'info' : 'gray'),
+            ];
+        } elseif ($sedeId) {
             $fondo = FondoSede::withoutGlobalScope('sede')->where('SedeID', $sedeId)->first();
             $saldoCajaChica = $fondo ? $fondo->SaldoCajaChica : 0;
             $sedeNombre = $fondo?->sede?->Nombre ?? 'Sede actual';

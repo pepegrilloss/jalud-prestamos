@@ -33,13 +33,18 @@ class DashboardCobradoDiarioWidget extends BaseWidget
     {
         $user = Auth::user();
         $sedeIdOverride = null;
+        $esTodas = false;
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             $filter = session('gerencia_dashboard_sede', '0');
-            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+            if ($filter === '0' || $filter === '' || $filter === null) {
+                $esTodas = true;
+            } else {
+                $sedeIdOverride = (int) $filter;
+            }
         }
 
         $promotorCobrador = $user->promotorCobrador;
-        $zonaID = $sedeIdOverride ? null : ($promotorCobrador?->ZonaID ?? null);
+        $zonaID = ($sedeIdOverride || $esTodas) ? null : ($promotorCobrador?->ZonaID ?? null);
 
         $fecha = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
 
@@ -47,7 +52,9 @@ class DashboardCobradoDiarioWidget extends BaseWidget
             ->where('EsPagoAutomatico', 0)
             ->whereDate('FechaPago', $fecha);
 
-        if ($sedeIdOverride) {
+        if ($esTodas) {
+            $pagosQuery->withoutGlobalScope('sede');
+        } elseif ($sedeIdOverride) {
             $pagosQuery->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride);
         } elseif ($zonaID) {
             $pagosQuery->whereHas('cuota.credito.proposicion', function ($q) use ($zonaID) {

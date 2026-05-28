@@ -33,15 +33,22 @@ class MontoPropuestoHoyStatsWidget extends BaseWidget
     {
         $user = Auth::user();
         $sedeIdOverride = null;
+        $esTodas = false;
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             $filter = session('gerencia_dashboard_sede', '0');
-            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+            if ($filter === '0' || $filter === '' || $filter === null) {
+                $esTodas = true;
+            } else {
+                $sedeIdOverride = (int) $filter;
+            }
         }
 
         $promotorID = $user->PromotorCobradorID ?? null;
 
         $query = ProposicionCredito::query();
-        if ($sedeIdOverride) {
+        if ($esTodas) {
+            $query->withoutGlobalScope('sede');
+        } elseif ($sedeIdOverride) {
             $query->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride);
         } elseif ($promotorID) {
             $query->whereHas('cliente', function ($q) use ($promotorID) {

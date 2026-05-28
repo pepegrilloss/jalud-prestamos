@@ -35,9 +35,14 @@ class DashboardPagosCerradosHoyWidget extends BaseWidget
     {
         $user = Auth::user();
         $sedeIdOverride = null;
+        $esTodas = false;
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             $filter = session('gerencia_dashboard_sede', '0');
-            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+            if ($filter === '0' || $filter === '' || $filter === null) {
+                $esTodas = true;
+            } else {
+                $sedeIdOverride = (int) $filter;
+            }
         }
 
         $fecha = \App\Services\DateFieldResolver::getFechaAbierta() ?? now();
@@ -46,7 +51,9 @@ class DashboardPagosCerradosHoyWidget extends BaseWidget
             ->where('EsPagoAutomatico', 0)
             ->whereDate('FechaPago', $fecha);
 
-        if ($sedeIdOverride !== null) {
+        if ($esTodas) {
+            $pagosQuery->withoutGlobalScope('sede');
+        } elseif ($sedeIdOverride !== null) {
             $pagosQuery->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride);
         } elseif (!$user->isPrivileged() || $user->getEffectiveSedeId()) {
             $pagosQuery->where('SedeID', $user->getEffectiveSedeId());

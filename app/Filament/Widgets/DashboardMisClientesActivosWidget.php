@@ -33,16 +33,23 @@ class DashboardMisClientesActivosWidget extends BaseWidget
     {
         $user = Auth::user();
         $sedeIdOverride = null;
+        $esTodas = false;
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
             $filter = session('gerencia_dashboard_sede', '0');
-            $sedeIdOverride = ($filter === '0' || $filter === '' || $filter === null) ? null : (int) $filter;
+            if ($filter === '0' || $filter === '' || $filter === null) {
+                $esTodas = true;
+            } else {
+                $sedeIdOverride = (int) $filter;
+            }
         }
 
         $promotorCobrador = $user->promotorCobrador;
-        $zonaID = $sedeIdOverride ? null : ($promotorCobrador?->ZonaID ?? null);
+        $zonaID = ($sedeIdOverride || $esTodas) ? null : ($promotorCobrador?->ZonaID ?? null);
 
         $clientesQuery = \App\Models\Cliente::where('Activo', true);
-        if ($sedeIdOverride) {
+        if ($esTodas) {
+            $clientesQuery->withoutGlobalScope('sede');
+        } elseif ($sedeIdOverride) {
             $clientesQuery->withoutGlobalScope('sede')->where('SedeID', $sedeIdOverride);
         } elseif ($zonaID) {
             $clientesQuery->whereHas('proposiciones', function ($q) use ($zonaID) {
