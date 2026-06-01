@@ -5,7 +5,7 @@ namespace App\Filament\Resources\GastoResource\Pages;
 use App\Filament\Resources\GastoResource;
 use App\Models\AperturaCierreDia;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Actions\Action;
+use Filament\Actions;
 use Filament\Forms\Components\DatePicker;
 
 class ListGastos extends ListRecords
@@ -25,67 +25,57 @@ class ListGastos extends ListRecords
     {
         return [
             \Filament\Actions\CreateAction::make(),
-            Action::make('descargar_excel')
+            Actions\Action::make('descargar_excel')
                 ->label('Descargar Excel')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('success')
                 ->form([
-                    DatePicker::make('fecha')
-                        ->label('Fecha')
+                    DatePicker::make('fecha_desde')
+                        ->label('Fecha Desde')
                         ->native(false)
                         ->displayFormat('d/m/Y')
-                        ->placeholder('dd/mm/yyyy')
+                        ->required(),
+                    DatePicker::make('fecha_hasta')
+                        ->label('Fecha Hasta')
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    $fecha = \Carbon\Carbon::parse($data['fecha'])->format('Y-m-d');
+                    $fechaDesde = \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
+                    $fechaHasta = \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
 
-                    $hasData = \App\Models\Gasto::activos()
-                        ->whereDate('FechaEmision', '=', $fecha)
-                        ->exists();
-
-                    if (!$hasData) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Sin registros')
-                            ->body('No hay gastos en la fecha seleccionada.')
-                            ->warning()
-                            ->send();
-                        return;
-                    }
-
-                    return $this->redirect(route('gastos.excel', ['fecha' => $fecha]));
+                    return $this->redirect(route('gastos.excel', [
+                        'fecha_desde' => $fechaDesde,
+                        'fecha_hasta' => $fechaHasta,
+                    ]));
                 })
                 ->modalHeading('Descargar Excel')
                 ->modalSubmitActionLabel('Descargar'),
-            Action::make('descargar_pdf')
+            Actions\Action::make('descargar_pdf')
                 ->label('Descargar PDF')
                 ->icon('heroicon-o-eye')
                 ->color('danger')
                 ->form([
-                    DatePicker::make('fecha')
-                        ->label('Fecha')
+                    DatePicker::make('fecha_desde')
+                        ->label('Fecha Desde')
                         ->native(false)
                         ->displayFormat('d/m/Y')
-                        ->placeholder('dd/mm/yyyy')
+                        ->required(),
+                    DatePicker::make('fecha_hasta')
+                        ->label('Fecha Hasta')
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    $fecha = \Carbon\Carbon::parse($data['fecha'])->format('Y-m-d');
+                    $fechaDesde = \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
+                    $fechaHasta = \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
 
-                    $hasData = \App\Models\Gasto::activos()
-                        ->whereDate('FechaEmision', '=', $fecha)
-                        ->exists();
-
-                    if (!$hasData) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Sin registros')
-                            ->body('No hay gastos en la fecha seleccionada.')
-                            ->warning()
-                            ->send();
-                        return;
-                    }
-
-                    $url = route('gastos.pdf', ['fecha' => $fecha]);
+                    $url = route('gastos.pdf', [
+                        'fecha_desde' => $fechaDesde,
+                        'fecha_hasta' => $fechaHasta,
+                    ]);
                     $this->js("window.open('{$url}', '_blank')");
                 })
                 ->modalHeading('Previsualizar PDF')

@@ -31,8 +31,12 @@
 
     <div class="title">REPORTE DE COMPRAS</div>
     <div class="subtitle">
-        @if($fecha)
-            Fecha: {{ $fecha }}
+        @if($fecha_desde && $fecha_hasta)
+            Período: {{ $fecha_desde }} al {{ $fecha_hasta }}
+        @elseif($fecha_desde)
+            Desde: {{ $fecha_desde }}
+        @elseif($fecha_hasta)
+            Hasta: {{ $fecha_hasta }}
         @else
             Todos los registros
         @endif

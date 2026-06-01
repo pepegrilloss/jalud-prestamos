@@ -16,7 +16,8 @@ class ComprasReporteController extends Controller
 {
     public function descargarExcel()
     {
-        $fecha = request()->query('fecha');
+        $fechaDesde = request()->query('fecha_desde');
+        $fechaHasta = request()->query('fecha_hasta');
         $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = Compra::query()
@@ -25,9 +26,16 @@ class ComprasReporteController extends Controller
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('FechaEmision', 'desc');
 
-        if (!empty($fecha) && $fecha !== 'null') {
+        if (!empty($fechaDesde) && $fechaDesde !== 'null') {
             try {
-                $query->whereDate('FechaEmision', '=', \Carbon\Carbon::parse($fecha)->toDateString());
+                $query->whereDate('FechaEmision', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
+            } catch (\Exception $e) {
+            }
+        }
+
+        if (!empty($fechaHasta) && $fechaHasta !== 'null') {
+            try {
+                $query->whereDate('FechaEmision', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
             } catch (\Exception $e) {
             }
         }
@@ -78,8 +86,12 @@ class ComprasReporteController extends Controller
         $sheet->setCellValue('A' . $row, 'Fecha de Reporte: ' . $fechaReporte);
         $row++;
 
-        if ($fecha) {
-            $sheet->setCellValue('A' . $row, 'Fecha: ' . $fecha);
+        if ($fechaDesde && $fechaHasta) {
+            $sheet->setCellValue('A' . $row, 'Período: ' . $fechaDesde . ' al ' . $fechaHasta);
+        } elseif ($fechaDesde) {
+            $sheet->setCellValue('A' . $row, 'Desde: ' . $fechaDesde);
+        } elseif ($fechaHasta) {
+            $sheet->setCellValue('A' . $row, 'Hasta: ' . $fechaHasta);
         }
         $row += 2;
 
@@ -177,7 +189,8 @@ class ComprasReporteController extends Controller
 
     public function descargarPdf()
     {
-        $fecha = request()->query('fecha');
+        $fechaDesde = request()->query('fecha_desde');
+        $fechaHasta = request()->query('fecha_hasta');
         $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = Compra::query()
@@ -186,9 +199,16 @@ class ComprasReporteController extends Controller
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('FechaEmision', 'desc');
 
-        if (!empty($fecha) && $fecha !== 'null') {
+        if (!empty($fechaDesde) && $fechaDesde !== 'null') {
             try {
-                $query->whereDate('FechaEmision', '=', \Carbon\Carbon::parse($fecha)->toDateString());
+                $query->whereDate('FechaEmision', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
+            } catch (\Exception $e) {
+            }
+        }
+
+        if (!empty($fechaHasta) && $fechaHasta !== 'null') {
+            try {
+                $query->whereDate('FechaEmision', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
             } catch (\Exception $e) {
             }
         }
@@ -201,7 +221,8 @@ class ComprasReporteController extends Controller
             'compras' => $compras,
             'total_general' => $totalGeneral,
             'total_igv' => $totalIgv,
-            'fecha' => $fecha,
+            'fecha_desde' => $fechaDesde,
+            'fecha_hasta' => $fechaHasta,
             'fecha_reporte' => now()->format('d/m/Y H:i'),
         ]);
 
