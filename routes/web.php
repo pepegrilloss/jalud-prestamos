@@ -292,4 +292,9 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         ->name('reporte-atraso.excel');
     Route::get('/reportes/inactivos/excel', [App\Http\Controllers\ReporteExportController::class, 'inactivosExcel'])
         ->name('reporte-inactivos.excel');
+
+    Route::get('/reportes/clientes/excel', [App\Http\Controllers\ClienteReporteController::class, 'descargarExcel'])
+        ->name('clientes.excel');
+    Route::get('/reportes/clientes/pdf', [App\Http\Controllers\ClienteReporteController::class, 'descargarPdf'])
+        ->name('clientes.pdf');
 });
