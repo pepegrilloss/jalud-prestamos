@@ -121,15 +121,11 @@ class CreateCrearProposicionCredito extends CreateRecord
         $data['Estado'] = 'PENDIENTE';
         $data['Activo'] = true;
 
-        // Asegurar que MontoTotalPagar esté calculado (Monto + Interés)
-        if (empty($data['MontoTotalPagar']) && !empty($data['MontoTotal']) && !empty($data['MontoInteres'])) {
-            $data['MontoTotalPagar'] = (float) $data['MontoTotal'] + (float) $data['MontoInteres'];
-        }
-
-        // Asegurar que SaldoPendiente = MontoTotalPagar al crear (sin pagos)
-        if (empty($data['SaldoPendiente']) && !empty($data['MontoTotalPagar'])) {
-            $data['SaldoPendiente'] = $data['MontoTotalPagar'];
-        }
+        // SIEMPRE recalcular MontoTotalPagar y SaldoPendiente en servidor
+        $montoTotal = (float) ($data['MontoTotal'] ?? 0);
+        $montoInteres = (float) ($data['MontoInteres'] ?? 0);
+        $data['MontoTotalPagar'] = $montoTotal + $montoInteres;
+        $data['SaldoPendiente'] = $data['MontoTotalPagar'];
 
         return $data;
     }

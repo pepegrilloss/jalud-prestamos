@@ -370,13 +370,13 @@ class GenerarCreditoResource extends Resource
                         $totalCalculado = $monto + $interesCalculado;
 
                         $record->update([
-                            'MontoTotal' => $data['MontoTotal'] ?? $record->MontoTotal,
+                            'MontoTotal' => $monto,
                             'TasaID' => $data['TasaID'] ?? $record->TasaID,
-                            'TasaInteres' => $data['TasaInteres'] ?? $record->TasaInteres,
+                            'TasaInteres' => $tasa,
                             'Plazo' => $data['Plazo'] ?? $record->Plazo,
                             'NumeroCuotas' => $data['NumeroCuotas'] ?? $record->NumeroCuotas,
-                            'MontoInteres' => $data['MontoInteres'] ?? $interesCalculado,
-                            'MontoTotalPagar' => $data['MontoTotalPagar'] ?? $totalCalculado,
+                            'MontoInteres' => $interesCalculado,
+                            'MontoTotalPagar' => $totalCalculado,
                             'MontoCuota' => $data['MontoCuota'] ?? $record->MontoCuota,
                         ]);
 
