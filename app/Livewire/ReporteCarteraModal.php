@@ -10,6 +10,7 @@ use Filament\Actions\Contracts\HasActions;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
 
 class ReporteCarteraModal extends Component implements HasForms, HasActions
 {
@@ -30,7 +31,7 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
     {
         return Action::make('generarReporte')
             ->modalHeading('REPORTE DE CARTERA')
-            ->modalDescription('Seleccione la fecha y los tipos de cartera a incluir en el reporte.')
+            ->modalDescription('Seleccione la fecha, tipos de cartera y formato.')
             ->form([
                 DatePicker::make('fecha')
                     ->label('Fecha')
@@ -41,30 +42,31 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
                     ->displayFormat('d/m/Y'),
                 CheckboxList::make('tipos')
                     ->label('Tipos de Cartera')
-                    ->extraAttributes(['class' => 'cartera-checkbox-list'])
                     ->options([
-                        'no_vencida' => 'Cartera NO VENCIDA — Créditos que aún no vencen',
-                        'vencida'    => 'Cartera VENCIDA — Hasta 7 días de vencimiento',
-                        'morosa'     => 'Cartera MOROSA — De 8 a 180 días de vencimiento',
-                        'pesada'     => 'Cartera PESADA / PÉRDIDA — Más de 180 días',
+                        'no_vencida' => 'Cartera NO VENCIDA',
+                        'vencida'    => 'Cartera VENCIDA',
+                        'morosa'     => 'Cartera MOROSA',
+                        'pesada'     => 'Cartera PESADA / PÉRDIDA',
                     ])
                     ->default(['no_vencida', 'vencida', 'morosa', 'pesada'])
                     ->required()
-                    ->columns(1)
-                    ->descriptions([
-                        'no_vencida' => 'Fecha de vencimiento en el futuro (hoy, mañana, etc.)',
-                        'vencida'    => 'Máximo 7 días desde su vencimiento',
-                        'morosa'     => 'De 8 hasta 180 días desde su vencimiento',
-                        'pesada'     => 'De 181 días a más desde su vencimiento',
-                    ]),
+                    ->columns(1),
+                Select::make('formato')
+                    ->label('Formato')
+                    ->options([
+                        'pdf' => 'PDF',
+                        'excel' => 'Excel',
+                    ])
+                    ->default('pdf')
+                    ->required()
+                    ->native(false),
             ])
-            ->modalSubmitActionLabel('Generar PDF')
+            ->modalSubmitActionLabel('Descargar')
             ->modalCancelActionLabel('Salir')
             ->action(function (array $data) {
-                $fecha = $data['fecha'];
-                $tipos = implode(',', $data['tipos'] ?? []);
+                $tipos = $data['tipos'] ?? [];
 
-                if (empty($data['tipos'])) {
+                if (empty($tipos)) {
                     \Filament\Notifications\Notification::make()
                         ->title('Debe seleccionar al menos un tipo de cartera')
                         ->danger()
@@ -72,9 +74,13 @@ class ReporteCarteraModal extends Component implements HasForms, HasActions
                     return;
                 }
 
-                $url = route('reporte-cartera.pdf', [
+                $fecha = \Carbon\Carbon::parse($data['fecha'])->format('Y-m-d');
+                $formato = $data['formato'] ?? 'pdf';
+
+                $route = $formato === 'pdf' ? 'reporte-cartera.pdf' : 'reporte-cartera.excel';
+                $url = route($route, [
                     'fecha' => $fecha,
-                    'tipos' => $tipos,
+                    'tipos' => implode(',', $tipos),
                 ]);
 
                 $this->js("window.open('{$url}', '_blank')");

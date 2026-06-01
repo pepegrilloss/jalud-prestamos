@@ -144,10 +144,9 @@ class CompraResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('TipoIGV')
                                     ->label('Tipo IGV')
-                                    ->options([
-                                        'GRAVADO' => 'Gravado (18%)',
-                                        'EXONERADO' => 'Exonerado',
-                                    ])
+                                    ->options(fn () => \App\Models\TipoIgv::where('Activo', true)
+                                        ->get()
+                                        ->mapWithKeys(fn ($t) => [$t->Codigo => $t->Nombre . ' (' . number_format($t->Porcentaje, 1) . '%)']))
                                     ->default('GRAVADO')
                                     ->live()
                                     ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
@@ -207,12 +206,13 @@ class CompraResource extends Resource
         $subtotalBase = collect($detalles)->sum(fn($item) => floatval($item['Cantidad'] ?? 0) * floatval($item['PrecioUnitario'] ?? 0));
         $set('SubtotalBase', number_format($subtotalBase, 2, '.', ''));
 
-        $tipoIGV = $get('TipoIGV');
-        if ($tipoIGV === 'EXONERADO') {
+        $tipoIGV = \App\Models\TipoIgv::where('Codigo', $get('TipoIGV'))->first();
+        $tasa = $tipoIGV?->Porcentaje ?? 0;
+        if ($tasa <= 0) {
             $set('MontoIGV', number_format(0, 2, '.', ''));
             $set('Total', number_format($subtotalBase, 2, '.', ''));
         } else {
-            $igv = $subtotalBase * 0.18;
+            $igv = $subtotalBase * ($tasa / 100);
             $set('MontoIGV', number_format($igv, 2, '.', ''));
             $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
         }
@@ -260,7 +260,10 @@ class CompraResource extends Resource
                     ->label('IGV')
                     ->badge()
                     ->color(fn(string $state): string => $state === 'EXONERADO' ? 'success' : 'warning')
-                    ->formatStateUsing(fn(string $state): string => $state === 'EXONERADO' ? 'Exonerado' : 'Grav. 18%'),
+                    ->formatStateUsing(function (string $state): string {
+                        $tipo = \App\Models\TipoIgv::where('Codigo', $state)->first();
+                        return $tipo ? $tipo->Nombre . ' (' . number_format($tipo->Porcentaje, 1) . '%)' : $state;
+                    }),
                 Tables\Columns\TextColumn::make('TipoCompra')
                     ->label('Tipo')
                     ->badge()

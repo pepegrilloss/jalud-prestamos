@@ -37,7 +37,7 @@ class ReporteCarteraController extends Controller
             } elseif ($sedeParam) {
                 $sedeId = (int) $sedeParam;
             } else {
-                $sedeId = session('sede_activa');
+                $sedeId = $user->getEffectiveSedeId();
             }
         } else {
             $sedeId = $user->SedeID;

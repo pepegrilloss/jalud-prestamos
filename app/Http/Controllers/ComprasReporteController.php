@@ -16,8 +16,7 @@ class ComprasReporteController extends Controller
 {
     public function descargarExcel()
     {
-        $fechaDesde = request()->query('fecha_desde');
-        $fechaHasta = request()->query('fecha_hasta');
+        $fecha = request()->query('fecha');
         $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = Compra::query()
@@ -26,22 +25,16 @@ class ComprasReporteController extends Controller
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('FechaEmision', 'desc');
 
-        if (!empty($fechaDesde) && $fechaDesde !== 'null') {
+        if (!empty($fecha) && $fecha !== 'null') {
             try {
-                $query->whereDate('FechaEmision', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
-            } catch (\Exception $e) {
-            }
-        }
-
-        if (!empty($fechaHasta) && $fechaHasta !== 'null') {
-            try {
-                $query->whereDate('FechaEmision', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
+                $query->whereDate('FechaEmision', '=', \Carbon\Carbon::parse($fecha)->toDateString());
             } catch (\Exception $e) {
             }
         }
 
         $compras = $query->get();
         $totalGeneral = $compras->sum('Total');
+        $totalIgv = $compras->sum('MontoIGV');
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -74,7 +67,7 @@ class ComprasReporteController extends Controller
         ];
 
         // Título
-        $sheet->mergeCells('A1:I1');
+        $sheet->mergeCells('A1:J1');
         $sheet->setCellValue('A1', 'REPORTE DE COMPRAS');
         $sheet->getStyle('A1')->applyFromArray($styleTitle);
         $sheet->getRowDimension(1)->setRowHeight(25);
@@ -85,17 +78,14 @@ class ComprasReporteController extends Controller
         $sheet->setCellValue('A' . $row, 'Fecha de Reporte: ' . $fechaReporte);
         $row++;
 
-        if ($fechaDesde && $fechaHasta) {
-            $sheet->setCellValue('A' . $row, 'Período: ' . $fechaDesde . ' al ' . $fechaHasta);
-        } elseif ($fechaDesde) {
-            $sheet->setCellValue('A' . $row, 'Desde: ' . $fechaDesde);
-        } elseif ($fechaHasta) {
-            $sheet->setCellValue('A' . $row, 'Hasta: ' . $fechaHasta);
+        if ($fecha) {
+            $sheet->setCellValue('A' . $row, 'Fecha: ' . $fecha);
         }
         $row += 2;
 
         // Encabezados
-        $headers = ['Fecha', 'Tipo Comprobante', 'Serie / Número', 'Proveedor', 'Producto/Servicio', 'Cantidad', 'Precio Unitario', 'Subtotal'];
+        $headers = ['Fecha Emisión', 'Tipo Comprobante', 'Serie / Número', 'Proveedor', 'Productos', 'Ítems', 'Total', 'IGV', 'Tipo', 'Pago'];
+        $colCount = count($headers);
         foreach ($headers as $col => $header) {
             $colLetter = chr(65 + $col);
             $sheet->setCellValue($colLetter . $row, $header);
@@ -104,71 +94,71 @@ class ComprasReporteController extends Controller
 
         $row++;
 
-        // Datos - una fila por cada detalle
+        // Datos
         foreach ($compras as $compra) {
             $detalles = $compra->detalles;
-            $isFirst = true;
+            $itemsCount = $detalles->count();
 
             if ($detalles->isEmpty()) {
-                // Compra sin detalles (datos antiguos)
                 $sheet->setCellValue('A' . $row, $compra->FechaEmision->format('d/m/Y'));
                 $sheet->setCellValue('B' . $row, $compra->tipoComprobante->Nombre);
                 $sheet->setCellValue('C' . $row, $compra->Numero);
                 $sheet->setCellValue('D' . $row, $compra->proveedor?->Nombre);
-                $sheet->setCellValue('E' . $row, $compra->ProductoServicio ?? '');
-                $sheet->setCellValue('F' . $row, $compra->Cantidad ?? '');
-                $sheet->setCellValue('G' . $row, $compra->PrecioUnitario ?? '');
-                $sheet->setCellValue('H' . $row, $compra->Total);
+                $sheet->setCellValue('E' . $row, $compra->ProductoServicio ?? '-');
+                $sheet->setCellValue('F' . $row, 1);
+                $sheet->setCellValue('G' . $row, $compra->Total);
+                $sheet->setCellValue('H' . $row, $compra->MontoIGV ?? 0);
+                $sheet->setCellValue('I' . $row, $compra->TipoCompra);
+                $sheet->setCellValue('J' . $row, $compra->EstadoPago);
 
-                for ($col = 0; $col < 8; $col++) {
+                for ($col = 0; $col < $colCount; $col++) {
                     $sheet->getStyle(chr(65 + $col) . $row)->applyFromArray($styleData);
                 }
-                $sheet->getStyle('F' . $row)->getAlignment()->setHorizontal('right');
                 $sheet->getStyle('G' . $row)->getAlignment()->setHorizontal('right');
                 $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
                 $row++;
             } else {
-                foreach ($detalles as $detalle) {
-                    if ($isFirst) {
-                        $sheet->setCellValue('A' . $row, $compra->FechaEmision->format('d/m/Y'));
-                        $sheet->setCellValue('B' . $row, $compra->tipoComprobante->Nombre);
-                        $sheet->setCellValue('C' . $row, $compra->Numero);
-                        $sheet->setCellValue('D' . $row, $compra->proveedor?->Nombre);
-                        $isFirst = false;
-                    }
+                $productos = $detalles->pluck('ProductoServicio')->implode(', ');
+                $sheet->setCellValue('A' . $row, $compra->FechaEmision->format('d/m/Y'));
+                $sheet->setCellValue('B' . $row, $compra->tipoComprobante->Nombre);
+                $sheet->setCellValue('C' . $row, $compra->Numero);
+                $sheet->setCellValue('D' . $row, $compra->proveedor?->Nombre);
+                $sheet->setCellValue('E' . $row, $productos);
+                $sheet->setCellValue('F' . $row, $itemsCount);
+                $sheet->setCellValue('G' . $row, $compra->Total);
+                $sheet->setCellValue('H' . $row, $compra->MontoIGV ?? 0);
+                $sheet->setCellValue('I' . $row, $compra->TipoCompra);
+                $sheet->setCellValue('J' . $row, $compra->EstadoPago);
 
-                    $sheet->setCellValue('E' . $row, $detalle->ProductoServicio);
-                    $sheet->setCellValue('F' . $row, $detalle->Cantidad);
-                    $sheet->setCellValue('G' . $row, $detalle->PrecioUnitario);
-                    $sheet->setCellValue('H' . $row, $detalle->Subtotal);
-
-                    for ($col = 0; $col < 8; $col++) {
-                        $sheet->getStyle(chr(65 + $col) . $row)->applyFromArray($styleData);
-                    }
-                    $sheet->getStyle('F' . $row)->getAlignment()->setHorizontal('right');
-                    $sheet->getStyle('G' . $row)->getAlignment()->setHorizontal('right');
-                    $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
-                    $row++;
+                for ($col = 0; $col < $colCount; $col++) {
+                    $sheet->getStyle(chr(65 + $col) . $row)->applyFromArray($styleData);
                 }
+                $sheet->getStyle('G' . $row)->getAlignment()->setHorizontal('right');
+                $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
+                $row++;
             }
         }
 
         // Total
-        $sheet->setCellValue('G' . $row, 'TOTAL:');
-        $sheet->setCellValue('H' . $row, $totalGeneral);
-        $sheet->getStyle('G' . $row . ':H' . $row)->applyFromArray($styleTotal);
+        $sheet->setCellValue('E' . $row, 'TOTAL GENERAL:');
+        $sheet->setCellValue('F' . $row, $compras->sum(fn($c) => $c->detalles->count()));
+        $sheet->setCellValue('G' . $row, $totalGeneral);
+        $sheet->setCellValue('H' . $row, $totalIgv);
+        $sheet->getStyle('E' . $row . ':H' . $row)->applyFromArray($styleTotal);
+        $sheet->getStyle('G' . $row)->getAlignment()->setHorizontal('right');
         $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
 
         // Ajustar ancho de columnas
-        $sheet->getColumnDimension('A')->setWidth(12);
+        $sheet->getColumnDimension('A')->setWidth(14);
         $sheet->getColumnDimension('B')->setWidth(18);
-        $sheet->getColumnDimension('C')->setWidth(10);
-        $sheet->getColumnDimension('D')->setWidth(12);
-        $sheet->getColumnDimension('E')->setWidth(20);
-        $sheet->getColumnDimension('F')->setWidth(25);
+        $sheet->getColumnDimension('C')->setWidth(15);
+        $sheet->getColumnDimension('D')->setWidth(22);
+        $sheet->getColumnDimension('E')->setWidth(30);
+        $sheet->getColumnDimension('F')->setWidth(8);
         $sheet->getColumnDimension('G')->setWidth(12);
-        $sheet->getColumnDimension('H')->setWidth(15);
-        $sheet->getColumnDimension('I')->setWidth(15);
+        $sheet->getColumnDimension('H')->setWidth(12);
+        $sheet->getColumnDimension('I')->setWidth(14);
+        $sheet->getColumnDimension('J')->setWidth(10);
 
         // Descargar
         $writer = new Xlsx($spreadsheet);
@@ -187,8 +177,7 @@ class ComprasReporteController extends Controller
 
     public function descargarPdf()
     {
-        $fechaDesde = request()->query('fecha_desde');
-        $fechaHasta = request()->query('fecha_hasta');
+        $fecha = request()->query('fecha');
         $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = Compra::query()
@@ -197,28 +186,22 @@ class ComprasReporteController extends Controller
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('FechaEmision', 'desc');
 
-        if (!empty($fechaDesde) && $fechaDesde !== 'null') {
+        if (!empty($fecha) && $fecha !== 'null') {
             try {
-                $query->whereDate('FechaEmision', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
-            } catch (\Exception $e) {
-            }
-        }
-
-        if (!empty($fechaHasta) && $fechaHasta !== 'null') {
-            try {
-                $query->whereDate('FechaEmision', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
+                $query->whereDate('FechaEmision', '=', \Carbon\Carbon::parse($fecha)->toDateString());
             } catch (\Exception $e) {
             }
         }
 
         $compras = $query->get();
         $totalGeneral = $compras->sum('Total');
+        $totalIgv = $compras->sum('MontoIGV');
 
         $pdf = Pdf::loadView('reportes.compras', [
             'compras' => $compras,
             'total_general' => $totalGeneral,
-            'fecha_desde' => $fechaDesde,
-            'fecha_hasta' => $fechaHasta,
+            'total_igv' => $totalIgv,
+            'fecha' => $fecha,
             'fecha_reporte' => now()->format('d/m/Y H:i'),
         ]);
 

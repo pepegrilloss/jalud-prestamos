@@ -23,6 +23,13 @@ class CreatePago extends CreateRecord
     // Guardar el tipo de pago a mayor ('MAYOR' o 'MAYOR_MORA')
     public ?string $tipoPagoAMayorSeleccionado = null;
 
+    public function create(bool $another = false): void
+    {
+        DB::transaction(function () use ($another) {
+            parent::create($another);
+        });
+    }
+
     // Deshabilitar la notificación por defecto de Filament
     protected function getCreatedNotification(): ?\Filament\Notifications\Notification
     {

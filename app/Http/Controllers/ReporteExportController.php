@@ -103,49 +103,24 @@ class ReporteExportController extends Controller
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->with('proveedor', 'detalles')->orderBy('CompraID')->get();
 
-        // Ingresos Remesas
-        $ingresosRemesas = TransferenciaSede::withoutGlobalScopes()
-            ->where('Estado', 'ACEPTADO')
-            ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
-                $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
-                  ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
-                      $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
-                  });
-            })
-            ->when($sedeId, fn($q) => $q->where('SedeDestinoID', $sedeId))
+        // Exoneraciones
+        $exoneraciones = \App\Models\SolicitudExoneracion::withoutGlobalScopes()
+            ->where('Estado', 'APROBADO')
+            ->where('Activo', true)
+            ->whereBetween('FechaAprobacion', [$fechaInicioDia, $fechaFinDia])
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
+            ->with(['credito.proposicion.cliente', 'tipoExoneracion'])
+            ->orderBy('SolicitudExoneracionID', 'asc')
             ->get();
 
-        // Salidas Remesas
-        $salidasRemesas = TransferenciaSede::withoutGlobalScopes()
-            ->where('Estado', 'ACEPTADO')
-            ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
-                $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
-                  ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
-                      $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
-                  });
-            })
-            ->when($sedeId, fn($q) => $q->where('SedeOrigenID', $sedeId))
+        // Extornos
+        $extornos = \App\Models\SolicitudResolucionExcedente::withoutGlobalScopes()
+            ->where('Estado', 'APROBADA')
+            ->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia])
+            ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
+            ->with(['clienteOrigen', 'clienteDestino', 'excedente', 'creditoDestino.proposicion.cliente'])
+            ->orderBy('SolicitudID', 'asc')
             ->get();
-
-        // Amortizaciones
-        $pagos = Pago::withoutGlobalScopes()
-            ->where('pago.Activo', true)->where('pago.EsPagoAMayor', false)
-            ->whereDate('pago.FechaPago', $fecha)
-            ->when($sedeId, fn($q) => $q->where('pago.SedeID', $sedeId))
-            ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
-            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
-            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
-            ->select('ProposicionCredito.CodigoCredito', 'Cliente.NombresApellidos', 'pago.MontoPagado')
-            ->orderBy('pago.PagoID')->get();
-
-        // Créditos emitidos
-        $creditos = Credito::withoutGlobalScopes()
-            ->where('Credito.Activo', true)->whereDate('Credito.FechaGeneracion', $fecha)
-            ->when($sedeId, fn($q) => $q->where('Credito.SedeID', $sedeId))
-            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
-            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
-            ->select('ProposicionCredito.CodigoCredito', 'Cliente.NombresApellidos', 'ProposicionCredito.MontoTotal', 'ProposicionCredito.MontoInteres', 'ProposicionCredito.MontoTotalPagar')
-            ->orderBy('Credito.CreditoID')->get();
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -274,8 +249,93 @@ class ReporteExportController extends Controller
         $sheet->setCellValue('A' . $row, 'TOTAL COMPRAS:');
         $sheet->setCellValue('C' . $row, $totalCompras);
         $sheet->getStyle('A' . $row . ':C' . $row)->applyFromArray($styles['total']);
+        $row += 2;
 
-        $sheet->getColumnDimension('A')->setWidth(20);
+        // Exoneraciones
+        $sheet->setCellValue('A' . $row, 'EXONERACIONES');
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        $headersEx = ['Operación', 'Cliente', 'Tipo', 'Monto'];
+        foreach ($headersEx as $i => $h) {
+            $sheet->setCellValue(chr(65 + $i) . $row, $h);
+            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
+        }
+        $row++;
+        $totalExo = 0;
+        foreach ($exoneraciones as $e) {
+            $cliente = $e->credito?->proposicion?->cliente?->NombresApellidos ?? '-';
+            $this->writeDataRow($sheet, $row, [$e->SolicitudExoneracionID, $cliente, $e->tipoExoneracion?->Nombre, $e->MontoExonerado], 4);
+            $sheet->getStyle('D' . $row)->getAlignment()->setHorizontal('right');
+            $totalExo += $e->MontoExonerado;
+            $row++;
+        }
+        $sheet->setCellValue('A' . $row, 'TOTAL EXONERACIONES:');
+        $sheet->setCellValue('D' . $row, $totalExo);
+        $sheet->getStyle('A' . $row . ':D' . $row)->applyFromArray($styles['total']);
+        $row += 2;
+
+        // Extornos
+        $sheet->setCellValue('A' . $row, 'EXTORNOS Y DEVOLUCIONES');
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        $headersExt = ['# Solicitud', 'Cliente Origen', 'Cliente Destino', 'Monto'];
+        foreach ($headersExt as $i => $h) {
+            $sheet->setCellValue(chr(65 + $i) . $row, $h);
+            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
+        }
+        $row++;
+        $totalExt = 0;
+        foreach ($extornos as $e) {
+            $this->writeDataRow($sheet, $row, [$e->SolicitudID, $e->clienteOrigen?->NombresApellidos, $e->clienteDestino?->NombresApellidos, $e->MontoAplicar], 4);
+            $sheet->getStyle('D' . $row)->getAlignment()->setHorizontal('right');
+            $totalExt += $e->MontoAplicar;
+            $row++;
+        }
+        $sheet->setCellValue('A' . $row, 'TOTAL EXTORNOS:');
+        $sheet->setCellValue('D' . $row, $totalExt);
+        $sheet->getStyle('A' . $row . ':D' . $row)->applyFromArray($styles['total']);
+        $row += 2;
+
+        // Saldo Inicial y Cierre
+        $sheet->setCellValue('A' . $row, 'RESUMEN DE CAJA');
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        $headersRes = ['Concepto', 'Monto'];
+        foreach ($headersRes as $i => $h) {
+            $sheet->setCellValue(chr(65 + $i) . $row, $h);
+            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
+        }
+        $row++;
+
+        $totalAmortizaciones = $pagos->sum('MontoPagado');
+        $totalCreditosEmitidos = $creditos->sum('MontoTotal');
+        $totalIngresosRemesas = $ingresosRemesas->sum('Monto');
+        $totalSalidasRemesas = 0;
+
+        $entradas = $totalAmortizaciones + $totalIngresosRemesas + $totalExo;
+        $salidas = $totalCreditosEmitidos + $totalGastos + $totalCompras;
+        $saldoFinal = $entradas - $salidas;
+
+        $this->writeDataRow($sheet, $row, ['Total Amortizaciones (+)', $totalAmortizaciones], 2);
+        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
+        $this->writeDataRow($sheet, $row, ['Total Ingresos Remesas (+)', $totalIngresosRemesas], 2);
+        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
+        $this->writeDataRow($sheet, $row, ['Total Exoneraciones (+)', $totalExo], 2);
+        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
+        $this->writeDataRow($sheet, $row, ['Total Créditos Emitidos (-)', $totalCreditosEmitidos], 2);
+        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
+        $this->writeDataRow($sheet, $row, ['Total Gastos (-)', $totalGastos], 2);
+        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
+        $this->writeDataRow($sheet, $row, ['Total Compras (-)', $totalCompras], 2);
+        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
+
+        $sheet->setCellValue('A' . $row, 'SALDO DEL DÍA:');
+        $sheet->setCellValue('B' . $row, $saldoFinal);
+        $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray($styles['total']);
+        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right');
+        $row += 2;
+
+        $sheet->getColumnDimension('A')->setWidth(28);
         $sheet->getColumnDimension('B')->setWidth(30);
         $sheet->getColumnDimension('C')->setWidth(15);
         $sheet->getColumnDimension('D')->setWidth(15);

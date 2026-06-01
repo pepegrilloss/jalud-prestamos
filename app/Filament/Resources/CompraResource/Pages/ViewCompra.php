@@ -60,7 +60,10 @@ class ViewCompra extends ViewRecord
                             ->label('Tipo IGV')
                             ->badge()
                             ->color(fn(string $state): string => $state === 'EXONERADO' ? 'success' : 'warning')
-                            ->formatStateUsing(fn(string $state): string => $state === 'EXONERADO' ? 'Exonerado' : 'Gravado (18%)'),
+                            ->formatStateUsing(function (string $state): string {
+                                $tipo = \App\Models\TipoIgv::where('Codigo', $state)->first();
+                                return $tipo ? $tipo->Nombre . ' (' . number_format($tipo->Porcentaje, 1) . '%)' : $state;
+                            }),
                         Components\TextEntry::make('MontoIGV')
                             ->label('IGV')
                             ->money('PEN'),

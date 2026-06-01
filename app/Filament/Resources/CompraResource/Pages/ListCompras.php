@@ -28,43 +28,32 @@ class ListCompras extends ListRecords
             Actions\Action::make('descargar_excel')
                 ->label('Descargar Excel')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->color('danger')
+                ->color('success')
                 ->form([
-                    Forms\Components\DatePicker::make('fecha_desde')
-                        ->label('Fecha Desde')
-                        ->native(false)
-                        ->displayFormat('d/m/Y')
-                        ->placeholder('dd/mm/yyyy')
-                        ->required(),
-                    Forms\Components\DatePicker::make('fecha_hasta')
-                        ->label('Fecha Hasta')
+                    Forms\Components\DatePicker::make('fecha')
+                        ->label('Fecha')
                         ->native(false)
                         ->displayFormat('d/m/Y')
                         ->placeholder('dd/mm/yyyy')
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    $fechaDesde = \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
-                    $fechaHasta = \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
+                    $fecha = \Carbon\Carbon::parse($data['fecha'])->format('Y-m-d');
 
                     $hasData = \App\Models\Compra::activos()
-                        ->whereDate('FechaEmision', '>=', $fechaDesde)
-                        ->whereDate('FechaEmision', '<=', $fechaHasta)
+                        ->whereDate('FechaEmision', '=', $fecha)
                         ->exists();
 
                     if (!$hasData) {
                         \Filament\Notifications\Notification::make()
                             ->title('Sin registros')
-                            ->body('No hay compras en el rango de fechas seleccionado.')
-                            ->danger()
+                            ->body('No hay compras en la fecha seleccionada.')
+                            ->warning()
                             ->send();
                         return;
                     }
 
-                    return $this->redirect(route('compras.excel', [
-                        'fecha_desde' => $fechaDesde,
-                        'fecha_hasta' => $fechaHasta
-                    ]));
+                    return $this->redirect(route('compras.excel', ['fecha' => $fecha]));
                 })
                 ->modalHeading('Descargar Excel')
                 ->modalSubmitActionLabel('Descargar'),
@@ -73,41 +62,30 @@ class ListCompras extends ListRecords
                 ->icon('heroicon-o-eye')
                 ->color('danger')
                 ->form([
-                    Forms\Components\DatePicker::make('fecha_desde')
-                        ->label('Fecha Desde')
-                        ->native(false)
-                        ->displayFormat('d/m/Y')
-                        ->placeholder('dd/mm/yyyy')
-                        ->required(),
-                    Forms\Components\DatePicker::make('fecha_hasta')
-                        ->label('Fecha Hasta')
+                    Forms\Components\DatePicker::make('fecha')
+                        ->label('Fecha')
                         ->native(false)
                         ->displayFormat('d/m/Y')
                         ->placeholder('dd/mm/yyyy')
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    $fechaDesde = \Carbon\Carbon::parse($data['fecha_desde'])->format('Y-m-d');
-                    $fechaHasta = \Carbon\Carbon::parse($data['fecha_hasta'])->format('Y-m-d');
+                    $fecha = \Carbon\Carbon::parse($data['fecha'])->format('Y-m-d');
 
                     $hasData = \App\Models\Compra::activos()
-                        ->whereDate('FechaEmision', '>=', $fechaDesde)
-                        ->whereDate('FechaEmision', '<=', $fechaHasta)
+                        ->whereDate('FechaEmision', '=', $fecha)
                         ->exists();
 
                     if (!$hasData) {
                         \Filament\Notifications\Notification::make()
                             ->title('Sin registros')
-                            ->body('No hay compras en el rango de fechas seleccionado.')
-                            ->danger()
+                            ->body('No hay compras en la fecha seleccionada.')
+                            ->warning()
                             ->send();
                         return;
                     }
 
-                    $url = route('compras.pdf', [
-                        'fecha_desde' => $fechaDesde,
-                        'fecha_hasta' => $fechaHasta
-                    ]);
+                    $url = route('compras.pdf', ['fecha' => $fecha]);
                     $this->js("window.open('{$url}', '_blank')");
                 })
                 ->modalHeading('Previsualizar PDF')

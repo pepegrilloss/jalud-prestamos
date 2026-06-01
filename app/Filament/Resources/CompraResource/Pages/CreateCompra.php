@@ -31,12 +31,13 @@ class CreateCompra extends CreateRecord
             $data['SubtotalBase'] = $subtotalBase;
         }
 
-        $tipoIGV = $data['TipoIGV'] ?? 'GRAVADO';
-        if ($tipoIGV === 'EXONERADO') {
+        $tipoIGV = \App\Models\TipoIgv::where('Codigo', $data['TipoIGV'] ?? 'GRAVADO')->first();
+        $tasa = $tipoIGV?->Porcentaje ?? 0;
+        if ($tasa <= 0) {
             $data['MontoIGV'] = 0;
             $data['Total'] = floatval($data['SubtotalBase']);
         } else {
-            $data['MontoIGV'] = round($subtotalBase * 0.18, 2);
+            $data['MontoIGV'] = round($subtotalBase * ($tasa / 100), 2);
             $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
         }
 

@@ -20,73 +20,76 @@ class PagoObserver
     public function updated(Pago $pago): void
     {
         if (!$pago->EsMora) {
-            $this->actualizarSaldoPendiente($pago);
+            DB::transaction(function () use ($pago) {
+                $this->actualizarSaldoPendiente($pago);
 
-            $credito = $pago->credito;
-            if ($credito && $credito->proposicion) {
-                $saldoActual = (float) DB::table('ProposicionCredito')
-                    ->where('ProposicionCreditoID', $credito->proposicion->ProposicionCreditoID)
-                    ->value('SaldoPendiente');
+                $credito = $pago->credito;
+                if ($credito && $credito->proposicion) {
+                    $saldoActual = (float) DB::table('ProposicionCredito')
+                        ->where('ProposicionCreditoID', $credito->proposicion->ProposicionCreditoID)
+                        ->value('SaldoPendiente');
 
-                if ($saldoActual <= 0 && $credito->EstatusCreditoFinal !== 'SALDADO') {
-                    $credito->update([
-                        'EstatusCreditoFinal' => 'SALDADO',
-                        'FechaSaldamiento' => now(),
-                    ]);
-                } elseif ($saldoActual > 0 && $credito->EstatusCreditoFinal === 'SALDADO') {
-                    $credito->update([
-                        'EstatusCreditoFinal' => 'ACTIVO',
-                        'FechaSaldamiento' => null,
-                    ]);
+                    if ($saldoActual <= 0 && $credito->EstatusCreditoFinal !== 'SALDADO') {
+                        $credito->update([
+                            'EstatusCreditoFinal' => 'SALDADO',
+                            'FechaSaldamiento' => now(),
+                        ]);
+                    } elseif ($saldoActual > 0 && $credito->EstatusCreditoFinal === 'SALDADO') {
+                        $credito->update([
+                            'EstatusCreditoFinal' => 'ACTIVO',
+                            'FechaSaldamiento' => null,
+                        ]);
+                    }
                 }
-            }
+            });
         }
     }
 
     public function deleted(Pago $pago): void
     {
-        if (!$pago->EsMora) {
-            $this->actualizarSaldoPendiente($pago);
-        }
+        DB::transaction(function () use ($pago) {
+            if (!$pago->EsMora) {
+                $this->actualizarSaldoPendiente($pago);
+            }
 
-        // Si el crédito estaba SALDADO pero el saldo pendiente ya no es 0, revertir estado
-        $credito = $pago->credito;
-        if ($credito && $credito->EstatusCreditoFinal === 'SALDADO') {
-            $proposicion = $credito->proposicion;
-            if ($proposicion) {
-                $saldoActual = (float) DB::table('ProposicionCredito')
-                    ->where('ProposicionCreditoID', $proposicion->ProposicionCreditoID)
-                    ->value('SaldoPendiente');
+            $credito = $pago->credito;
+            if ($credito && $credito->EstatusCreditoFinal === 'SALDADO') {
+                $proposicion = $credito->proposicion;
+                if ($proposicion) {
+                    $saldoActual = (float) DB::table('ProposicionCredito')
+                        ->where('ProposicionCreditoID', $proposicion->ProposicionCreditoID)
+                        ->value('SaldoPendiente');
 
-                if ($saldoActual > 0) {
-                    $credito->update([
-                        'EstatusCreditoFinal' => 'ACTIVO',
-                        'FechaSaldamiento' => null,
-                    ]);
-                    Log::info('PagoObserver: Crédito revertido de SALDADO a ACTIVO por borrado de pago', [
-                        'CreditoID' => $credito->CreditoID,
+                    if ($saldoActual > 0) {
+                        $credito->update([
+                            'EstatusCreditoFinal' => 'ACTIVO',
+                            'FechaSaldamiento' => null,
+                        ]);
+                        Log::info('PagoObserver: Crédito revertido de SALDADO a ACTIVO por borrado de pago', [
+                            'CreditoID' => $credito->CreditoID,
+                            'PagoID' => $pago->PagoID,
+                            'NuevoSaldo' => $saldoActual,
+                        ]);
+                    }
+                }
+            }
+
+            if ($pago->SedeID && $pago->MontoPagado > 0) {
+                try {
+                    app(FondoSedeService::class)->registrarReversionRecaudo(
+                        $pago->SedeID,
+                        $pago->MontoPagado,
+                        $pago->PagoID,
+                        auth()->id()
+                    );
+                } catch (\Exception $e) {
+                    Log::warning('FondoSede: No se pudo revertir ingreso por borrado de pago', [
                         'PagoID' => $pago->PagoID,
-                        'NuevoSaldo' => $saldoActual,
+                        'error' => $e->getMessage()
                     ]);
                 }
             }
-        }
-
-        if ($pago->SedeID && $pago->MontoPagado > 0) {
-            try {
-                app(FondoSedeService::class)->registrarReversionRecaudo(
-                    $pago->SedeID,
-                    $pago->MontoPagado,
-                    $pago->PagoID,
-                    auth()->id()
-                );
-            } catch (\Exception $e) {
-                Log::warning('FondoSede: No se pudo revertir ingreso por borrado de pago', [
-                    'PagoID' => $pago->PagoID,
-                    'error' => $e->getMessage()
-                ]);
-            }
-        }
+        });
     }
 
     private function actualizarSaldoPendiente(Pago $pago): void

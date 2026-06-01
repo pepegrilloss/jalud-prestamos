@@ -78,7 +78,10 @@ class FacturasPendientes extends Page implements Tables\Contracts\HasTable
                         'subtotal' => $record->SubtotalBase,
                         'igv' => $record->MontoIGV,
                         'total' => $record->Total,
-                        'igvLabel' => $record->TipoIGV === 'EXONERADO' ? 'IGV (Exonerado)' : 'IGV (18%)',
+                        'igvLabel' => (function () use ($record) {
+                            $tipo = \App\Models\TipoIgv::where('Codigo', $record->TipoIGV)->first();
+                            return $tipo ? 'IGV (' . number_format($tipo->Porcentaje, 1) . '%)' : 'IGV (0%)';
+                        })(),
                         'proveedor' => $record->proveedor?->Nombre,
                         'numero' => $record->Numero,
                         'comprobante' => $record->tipoComprobante?->Nombre,

@@ -103,12 +103,8 @@
 
     <div class="title">REPORTE DE GASTOS</div>
     <div class="subtitle">
-        @if($fecha_desde && $fecha_hasta)
-            Período: {{ $fecha_desde }} al {{ $fecha_hasta }}
-        @elseif($fecha_desde)
-            Desde: {{ $fecha_desde }}
-        @elseif($fecha_hasta)
-            Hasta: {{ $fecha_hasta }}
+        @if($fecha)
+            Fecha: {{ $fecha }}
         @else
             Todos los registros
         @endif
@@ -124,7 +120,7 @@
                 <th class="centro">NÚMERO</th>
                 <th>PROVEEDOR</th>
                 <th>MOTIVO</th>
-                <th>MÉTODO</th>
+                <th class="centro">¿GASTO?</th>
                 <th>DESCRIPCIÓN</th>
                 <th class="numero">MONTO</th>
             </tr>
@@ -141,7 +137,7 @@
                                 <td class="centro" rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->Numero }}</td>
                                  <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->proveedor?->Nombre }}</td>
                                 <td rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->motivo->Nombre }}</td>
-                                <td class="centro" rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->MetodoGasto }}</td>
+                                <td class="centro" rowspan="{{ $gasto->detalles->count() }}">{{ $gasto->EsGasto ? 'Sí' : 'No' }}</td>
                             @endif
                             <td>{{ $detalle->Descripcion }}</td>
                             <td class="numero">S/. {{ number_format($detalle->Monto, 2) }}</td>
@@ -155,7 +151,7 @@
                         <td class="centro">{{ $gasto->Numero }}</td>
                         <td>{{ $gasto->proveedor?->Nombre }}</td>
                         <td>{{ $gasto->motivo->Nombre }}</td>
-                        <td class="centro">{{ $gasto->MetodoGasto }}</td>
+                        <td class="centro">{{ $gasto->EsGasto ? 'Sí' : 'No' }}</td>
                         <td>{{ $gasto->Descripcion ?? '-' }}</td>
                         <td class="numero">S/. {{ number_format($gasto->Total, 2) }}</td>
                     </tr>

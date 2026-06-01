@@ -204,7 +204,7 @@ class ReporteDiarioController extends Controller
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
             ->leftJoin('Zona', 'ProposicionCredito.ZonaID', '=', 'Zona.ZonaID')
             ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
-            ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+            ->leftJoin('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
             ->select(
                 'pago.PagoID',
                 'ProposicionCredito.CodigoCredito',
@@ -230,7 +230,7 @@ class ReporteDiarioController extends Controller
         $creditos = $creditosQuery
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
             ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
-            ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+            ->leftJoin('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
             ->select(
                 'ProposicionCredito.CodigoCredito',
                 'TipoCredito.Codigo as TipoCreditoCodigo',

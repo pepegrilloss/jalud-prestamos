@@ -11,6 +11,7 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\DB;
 
 class CreateCredito extends CreateRecord
 {
@@ -171,45 +172,43 @@ class CreateCredito extends CreateRecord
 
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
     {
-        $montoDesembolso = $this->proposicion->MontoTotal;
+        return DB::transaction(function () use ($data) {
+            $montoDesembolso = $this->proposicion->MontoTotal;
 
-        // Resolver sede correctamente (admin usa sede_activa de sesión)
-        $user = auth()->user();
-        $sedeId = $user->getEffectiveSedeId();
+            $user = auth()->user();
+            $sedeId = $user->getEffectiveSedeId();
 
-        $fondoService = app(FondoSedeService::class);
+            $fondoService = app(FondoSedeService::class);
 
-        // SIEMPRE validar saldo - si no hay sede, bloquear
-        if (!$sedeId) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'Sede' => 'No se puede generar crédito: no tienes una sede asignada. Selecciona una sede activa.'
+            if (!$sedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'Sede' => 'No se puede generar crédito: no tienes una sede asignada. Selecciona una sede activa.'
+                ]);
+            }
+
+            $fondoService->verificarSaldo($sedeId, $montoDesembolso);
+
+            $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
+            $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
+            
+            $credito = Credito::create([
+                'ProposicionCreditoID' => $data['proposicion_id'],
+                'TipoPagoID' => $data['tipo_pago_id'],
+                'ComentarioGeneracion' => $data['comentario_generacion'] ?? null,
+                'FechaGeneracion' => $fechaGeneracion,
+                'UserGeneracionID' => auth()->id(),
+                'Activo' => true,
             ]);
-        }
 
-        $fondoService->verificarSaldo($sedeId, $montoDesembolso);
+            $fondoService->registrarEgresoColocacion(
+                $sedeId,
+                $montoDesembolso,
+                $credito->CreditoID,
+                auth()->id()
+            );
 
-        // Obtener la fecha abierta para la generación del crédito (con hora actual)
-        $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-        $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-        
-        // Crear el registro de Credito
-        $credito = Credito::create([
-            'ProposicionCreditoID' => $data['proposicion_id'],
-            'TipoPagoID' => $data['tipo_pago_id'],
-            'ComentarioGeneracion' => $data['comentario_generacion'] ?? null,
-            'FechaGeneracion' => $fechaGeneracion,
-            'UserGeneracionID' => auth()->id(),
-            'Activo' => true,
-        ]);
-
-        $fondoService->registrarEgresoColocacion(
-            $sedeId,
-            $montoDesembolso,
-            $credito->CreditoID,
-            auth()->id()
-        );
-
-        return $credito;
+            return $credito;
+        });
     }
 
     protected function getRedirectUrl(): string

@@ -49,10 +49,6 @@ class AdminPanelProvider extends PanelProvider
                 Css::make('custom-scrollbar-css', public_path('css/custom-scrollbar.css')),
             ])
             ->renderHook(
-                PanelsRenderHook::BODY_END,
-                fn(): string => Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
-            )
-            ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn(): string => Blade::render('
                     @php

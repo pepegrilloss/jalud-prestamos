@@ -16,8 +16,7 @@ class GastoReporteController extends Controller
 {
     public function descargarExcel()
     {
-        $fechaDesde = request()->query('fecha_desde');
-        $fechaHasta = request()->query('fecha_hasta');
+        $fecha = request()->query('fecha');
         $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = Gasto::query()
@@ -26,16 +25,9 @@ class GastoReporteController extends Controller
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('FechaEmision', 'desc');
 
-        if (!empty($fechaDesde) && $fechaDesde !== 'null') {
+        if (!empty($fecha) && $fecha !== 'null') {
             try {
-                $query->whereDate('FechaEmision', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
-            } catch (\Exception $e) {
-            }
-        }
-
-        if (!empty($fechaHasta) && $fechaHasta !== 'null') {
-            try {
-                $query->whereDate('FechaEmision', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
+                $query->whereDate('FechaEmision', '=', \Carbon\Carbon::parse($fecha)->toDateString());
             } catch (\Exception $e) {
             }
         }
@@ -85,17 +77,13 @@ class GastoReporteController extends Controller
         $sheet->setCellValue('A' . $row, 'Fecha de Reporte: ' . $fechaReporte);
         $row++;
 
-        if ($fechaDesde && $fechaHasta) {
-            $sheet->setCellValue('A' . $row, 'Período: ' . $fechaDesde . ' al ' . $fechaHasta);
-        } elseif ($fechaDesde) {
-            $sheet->setCellValue('A' . $row, 'Desde: ' . $fechaDesde);
-        } elseif ($fechaHasta) {
-            $sheet->setCellValue('A' . $row, 'Hasta: ' . $fechaHasta);
+        if ($fecha) {
+            $sheet->setCellValue('A' . $row, 'Fecha: ' . $fecha);
         }
         $row += 2;
 
         // Encabezados
-        $headers = ['Fecha', 'Tipo Comprobante', 'Número', 'Proveedor', 'Motivo', 'Método Gasto', 'Descripción', 'Monto', 'Observaciones'];
+        $headers = ['Fecha', 'Tipo Comprobante', 'Número', 'Proveedor', 'Motivo', '¿Gasto?', 'Descripción', 'Monto', 'Observaciones'];
         foreach ($headers as $col => $header) {
             $colLetter = chr(65 + $col);
             $sheet->setCellValue($colLetter . $row, $header);
@@ -116,7 +104,7 @@ class GastoReporteController extends Controller
                 $sheet->setCellValue('C' . $row, $gasto->Numero);
                 $sheet->setCellValue('D' . $row, $gasto->proveedor?->Nombre);
                 $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
-                $sheet->setCellValue('F' . $row, $gasto->MetodoGasto);
+                $sheet->setCellValue('F' . $row, $gasto->EsGasto ? 'Sí' : 'No');
                 $sheet->setCellValue('G' . $row, $gasto->Descripcion ?? '');
                 $sheet->setCellValue('H' . $row, $gasto->Total);
                 $sheet->setCellValue('I' . $row, $gasto->Observaciones);
@@ -134,7 +122,7 @@ class GastoReporteController extends Controller
                         $sheet->setCellValue('C' . $row, $gasto->Numero);
                         $sheet->setCellValue('D' . $row, $gasto->proveedor?->Nombre);
                         $sheet->setCellValue('E' . $row, $gasto->motivo->Nombre);
-                        $sheet->setCellValue('F' . $row, $gasto->MetodoGasto);
+                        $sheet->setCellValue('F' . $row, $gasto->EsGasto ? 'Sí' : 'No');
                         $sheet->setCellValue('I' . $row, $gasto->Observaciones);
                         $isFirst = false;
                     }
@@ -163,7 +151,7 @@ class GastoReporteController extends Controller
         $sheet->getColumnDimension('C')->setWidth(12);
         $sheet->getColumnDimension('D')->setWidth(20);
         $sheet->getColumnDimension('E')->setWidth(15);
-        $sheet->getColumnDimension('F')->setWidth(18);
+        $sheet->getColumnDimension('F')->setWidth(10);
         $sheet->getColumnDimension('G')->setWidth(30);
         $sheet->getColumnDimension('H')->setWidth(12);
         $sheet->getColumnDimension('I')->setWidth(20);
@@ -185,8 +173,7 @@ class GastoReporteController extends Controller
 
     public function descargarPdf()
     {
-        $fechaDesde = request()->query('fecha_desde');
-        $fechaHasta = request()->query('fecha_hasta');
+        $fecha = request()->query('fecha');
         $sedeId = auth()->user()->getEffectiveSedeId();
 
         $query = Gasto::query()
@@ -195,16 +182,9 @@ class GastoReporteController extends Controller
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
             ->orderBy('FechaEmision', 'desc');
 
-        if (!empty($fechaDesde) && $fechaDesde !== 'null') {
+        if (!empty($fecha) && $fecha !== 'null') {
             try {
-                $query->whereDate('FechaEmision', '>=', \Carbon\Carbon::parse($fechaDesde)->toDateString());
-            } catch (\Exception $e) {
-            }
-        }
-
-        if (!empty($fechaHasta) && $fechaHasta !== 'null') {
-            try {
-                $query->whereDate('FechaEmision', '<=', \Carbon\Carbon::parse($fechaHasta)->toDateString());
+                $query->whereDate('FechaEmision', '=', \Carbon\Carbon::parse($fecha)->toDateString());
             } catch (\Exception $e) {
             }
         }
@@ -215,8 +195,7 @@ class GastoReporteController extends Controller
         $pdf = Pdf::loadView('reportes.gastos', [
             'gastos' => $gastos,
             'total_general' => $totalGeneral,
-            'fecha_desde' => $fechaDesde,
-            'fecha_hasta' => $fechaHasta,
+            'fecha' => $fecha,
             'fecha_reporte' => now()->format('d/m/Y H:i'),
         ]);
 
