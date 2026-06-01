@@ -3,139 +3,118 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    private function safeIndex(string $table, array|string $columns, string $name): void
+    {
+        $columns = (array) $columns;
+        $cols = implode(', ', array_map(fn($c) => "`{$c}`", $columns));
+
+        DB::statement("ALTER TABLE `{$table}` DROP INDEX IF EXISTS `{$name}`");
+        DB::statement("ALTER TABLE `{$table}` ADD INDEX `{$name}` ({$cols})");
+    }
+
     public function up(): void
     {
-        // === excedentes ===
-        Schema::table('excedentes', function (Blueprint $table) {
-            $table->index('SedeID', 'idx_exc_sede');
-            $table->index('Fecha', 'idx_exc_fecha');
-            $table->index('ZonaID', 'idx_exc_zona');
-            $table->index('ClienteOrigenID', 'idx_exc_cliente_origen');
-            $table->index('PagoOrigenID', 'idx_exc_pago_origen');
-            $table->index('Activo', 'idx_exc_activo');
-        });
+        // excedentes
+        $this->safeIndex('excedentes', 'SedeID', 'idx_exc_sede');
+        $this->safeIndex('excedentes', 'Fecha', 'idx_exc_fecha');
+        $this->safeIndex('excedentes', 'ZonaID', 'idx_exc_zona');
+        $this->safeIndex('excedentes', 'ClienteOrigenID', 'idx_exc_cliente_origen');
+        $this->safeIndex('excedentes', 'PagoOrigenID', 'idx_exc_pago_origen');
+        $this->safeIndex('excedentes', 'Activo', 'idx_exc_activo');
 
-        // === solicitudes_resolucion_excedente ===
-        Schema::table('solicitudes_resolucion_excedente', function (Blueprint $table) {
-            $table->index('SedeID', 'idx_sre_sede');
-            $table->index(['Estado', 'created_at'], 'idx_sre_estado_created');
-            $table->index('ExcedenteID', 'idx_sre_excedente');
-            $table->index('ClienteDestinoID', 'idx_sre_cliente_destino');
-            $table->index('CreditoDestinoID', 'idx_sre_credito_destino');
-            $table->index('UserSolicitanteID', 'idx_sre_user_solicitante');
-            $table->index('UserAprobadorID', 'idx_sre_user_aprobador');
-            $table->index('PagoOrigenID', 'idx_sre_pago_origen');
-            $table->index('CreditoOrigenID', 'idx_sre_credito_origen');
-            $table->index('ClienteOrigenID', 'idx_sre_cliente_origen');
-        });
+        // solicitudes_resolucion_excedente
+        $this->safeIndex('solicitudes_resolucion_excedente', 'SedeID', 'idx_sre_sede');
+        $this->safeIndex('solicitudes_resolucion_excedente', ['Estado', 'created_at'], 'idx_sre_estado_created');
+        $this->safeIndex('solicitudes_resolucion_excedente', 'ExcedenteID', 'idx_sre_excedente');
+        $this->safeIndex('solicitudes_resolucion_excedente', 'ClienteDestinoID', 'idx_sre_cliente_destino');
+        $this->safeIndex('solicitudes_resolucion_excedente', 'CreditoDestinoID', 'idx_sre_credito_destino');
+        $this->safeIndex('solicitudes_resolucion_excedente', 'UserSolicitanteID', 'idx_sre_user_solicitante');
+        $this->safeIndex('solicitudes_resolucion_excedente', 'UserAprobadorID', 'idx_sre_user_aprobador');
+        $this->safeIndex('solicitudes_resolucion_excedente', 'PagoOrigenID', 'idx_sre_pago_origen');
+        $this->safeIndex('solicitudes_resolucion_excedente', 'CreditoOrigenID', 'idx_sre_credito_origen');
+        $this->safeIndex('solicitudes_resolucion_excedente', 'ClienteOrigenID', 'idx_sre_cliente_origen');
 
-        // === transferencia_sedes ===
-        Schema::table('transferencia_sedes', function (Blueprint $table) {
-            $table->index('SedeOrigenID', 'idx_ts_origen');
-            $table->index('SedeDestinoID', 'idx_ts_destino');
-            $table->index(['Estado', 'FechaRespuesta'], 'idx_ts_estado_resp');
-            $table->index(['Estado', 'FechaTransferencia'], 'idx_ts_estado_trans');
-            $table->index('UsuarioOrigenID', 'idx_ts_usuario_origen');
-            $table->index('UsuarioRespondeID', 'idx_ts_usuario_responde');
-        });
+        // transferencia_sedes
+        $this->safeIndex('transferencia_sedes', 'SedeOrigenID', 'idx_ts_origen');
+        $this->safeIndex('transferencia_sedes', 'SedeDestinoID', 'idx_ts_destino');
+        $this->safeIndex('transferencia_sedes', ['Estado', 'FechaRespuesta'], 'idx_ts_estado_resp');
+        $this->safeIndex('transferencia_sedes', ['Estado', 'FechaTransferencia'], 'idx_ts_estado_trans');
+        $this->safeIndex('transferencia_sedes', 'UsuarioOrigenID', 'idx_ts_usuario_origen');
+        $this->safeIndex('transferencia_sedes', 'UsuarioRespondeID', 'idx_ts_usuario_responde');
 
-        // === movimientos_fondo ===
-        Schema::table('movimientos_fondo', function (Blueprint $table) {
-            $table->index(['SedeID', 'FechaMovimiento'], 'idx_mf_sede_fecha');
-            $table->index(['SedeID', 'Tipo'], 'idx_mf_sede_tipo');
-            $table->index('TransferenciaID', 'idx_mf_transferencia');
-            $table->index('UsuarioID', 'idx_mf_usuario');
-        });
+        // movimientos_fondo
+        $this->safeIndex('movimientos_fondo', ['SedeID', 'FechaMovimiento'], 'idx_mf_sede_fecha');
+        $this->safeIndex('movimientos_fondo', ['SedeID', 'Tipo'], 'idx_mf_sede_tipo');
+        $this->safeIndex('movimientos_fondo', 'TransferenciaID', 'idx_mf_transferencia');
+        $this->safeIndex('movimientos_fondo', 'UsuarioID', 'idx_mf_usuario');
 
-        // === pago ===
-        Schema::table('pago', function (Blueprint $table) {
-            $table->index(['Activo', 'FechaPago'], 'idx_pgo_activo_fecha');
-            $table->index(['Activo', 'EsPagoAMayor', 'FechaPago'], 'idx_pgo_activo_mayor_fecha');
-        });
+        // pago
+        $this->safeIndex('pago', ['Activo', 'FechaPago'], 'idx_pgo_activo_fecha');
+        $this->safeIndex('pago', ['Activo', 'EsPagoAMayor', 'FechaPago'], 'idx_pgo_activo_mayor_fecha');
 
-        // === cliente ===
-        Schema::table('Cliente', function (Blueprint $table) {
-            $table->index('Activo', 'idx_cli_activo');
-            $table->index('NombresApellidos', 'idx_cli_nombres');
-        });
+        // Cliente
+        $this->safeIndex('Cliente', 'Activo', 'idx_cli_activo');
+        $this->safeIndex('Cliente', 'NombresApellidos', 'idx_cli_nombres');
 
-        // === Compra ===
-        Schema::table('Compra', function (Blueprint $table) {
-            $table->index(['Activo', 'FechaEmision'], 'idx_com_activo_fecha');
-        });
+        // Compra
+        $this->safeIndex('Compra', ['Activo', 'FechaEmision'], 'idx_com_activo_fecha');
 
-        // === Gasto ===
-        Schema::table('Gasto', function (Blueprint $table) {
-            $table->index(['Activo', 'FechaEmision'], 'idx_gas_activo_fecha');
-        });
+        // Gasto
+        $this->safeIndex('Gasto', ['Activo', 'FechaEmision'], 'idx_gas_activo_fecha');
 
-        // === Credito ===
-        Schema::table('Credito', function (Blueprint $table) {
-            $table->index('FechaSaldamiento', 'idx_cre_saldamiento');
-            $table->index(['EstatusCreditoFinal', 'FechaSaldamiento'], 'idx_cre_estatus_sald');
-        });
+        // Credito
+        $this->safeIndex('Credito', 'FechaSaldamiento', 'idx_cre_saldamiento');
+        $this->safeIndex('Credito', ['EstatusCreditoFinal', 'FechaSaldamiento'], 'idx_cre_estatus_sald');
 
-        // === ProposicionCredito ===
-        Schema::table('ProposicionCredito', function (Blueprint $table) {
-            $table->index('ClienteID', 'idx_prop_cliente');
-        });
+        // ProposicionCredito
+        $this->safeIndex('ProposicionCredito', 'ClienteID', 'idx_prop_cliente');
 
-        // === Zona ===
-        Schema::table('Zona', function (Blueprint $table) {
-            $table->index('Nombre', 'idx_zna_nombre');
-        });
+        // Zona
+        $this->safeIndex('Zona', 'Nombre', 'idx_zna_nombre');
 
-        // === TipoCredito ===
-        Schema::table('TipoCredito', function (Blueprint $table) {
-            $table->index('Descripcion', 'idx_tcr_descripcion');
-        });
+        // TipoCredito
+        $this->safeIndex('TipoCredito', 'Descripcion', 'idx_tcr_descripcion');
 
-        // === apertura_cierre_dia ===
-        Schema::table('apertura_cierre_dia', function (Blueprint $table) {
-            $table->index('Fecha', 'idx_acd_fecha');
-        });
+        // apertura_cierre_dia
+        $this->safeIndex('apertura_cierre_dia', 'Fecha', 'idx_acd_fecha');
     }
 
     public function down(): void
     {
-        Schema::table('excedentes', function (Blueprint $t) {
-            $t->dropIndex('idx_exc_sede'); $t->dropIndex('idx_exc_fecha');
-            $t->dropIndex('idx_exc_zona'); $t->dropIndex('idx_exc_cliente_origen');
-            $t->dropIndex('idx_exc_pago_origen'); $t->dropIndex('idx_exc_activo');
-        });
-        Schema::table('solicitudes_resolucion_excedente', function (Blueprint $t) {
-            $t->dropIndex('idx_sre_sede'); $t->dropIndex('idx_sre_estado_created');
-            $t->dropIndex('idx_sre_excedente'); $t->dropIndex('idx_sre_cliente_destino');
-            $t->dropIndex('idx_sre_credito_destino'); $t->dropIndex('idx_sre_user_solicitante');
-            $t->dropIndex('idx_sre_user_aprobador'); $t->dropIndex('idx_sre_pago_origen');
-            $t->dropIndex('idx_sre_credito_origen'); $t->dropIndex('idx_sre_cliente_origen');
-        });
-        Schema::table('transferencia_sedes', function (Blueprint $t) {
-            $t->dropIndex('idx_ts_origen'); $t->dropIndex('idx_ts_destino');
-            $t->dropIndex('idx_ts_estado_resp'); $t->dropIndex('idx_ts_estado_trans');
-            $t->dropIndex('idx_ts_usuario_origen'); $t->dropIndex('idx_ts_usuario_responde');
-        });
-        Schema::table('movimientos_fondo', function (Blueprint $t) {
-            $t->dropIndex('idx_mf_sede_fecha'); $t->dropIndex('idx_mf_sede_tipo');
-            $t->dropIndex('idx_mf_transferencia'); $t->dropIndex('idx_mf_usuario');
-        });
-        Schema::table('pago', function (Blueprint $t) {
-            $t->dropIndex('idx_pgo_activo_fecha'); $t->dropIndex('idx_pgo_activo_mayor_fecha');
-        });
-        Schema::table('Cliente', function (Blueprint $t) {
-            $t->dropIndex('idx_cli_activo'); $t->dropIndex('idx_cli_nombres');
-        });
-        Schema::table('Compra', function (Blueprint $t) { $t->dropIndex('idx_com_activo_fecha'); });
-        Schema::table('Gasto', function (Blueprint $t) { $t->dropIndex('idx_gas_activo_fecha'); });
-        Schema::table('Credito', function (Blueprint $t) {
-            $t->dropIndex('idx_cre_saldamiento'); $t->dropIndex('idx_cre_estatus_sald');
-        });
-        Schema::table('ProposicionCredito', function (Blueprint $t) { $t->dropIndex('idx_prop_cliente'); });
-        Schema::table('Zona', function (Blueprint $t) { $t->dropIndex('idx_zna_nombre'); });
-        Schema::table('TipoCredito', function (Blueprint $t) { $t->dropIndex('idx_tcr_descripcion'); });
-        Schema::table('apertura_cierre_dia', function (Blueprint $t) { $t->dropIndex('idx_acd_fecha'); });
+        $indexes = [
+            ['excedentes', 'idx_exc_sede'], ['excedentes', 'idx_exc_fecha'],
+            ['excedentes', 'idx_exc_zona'], ['excedentes', 'idx_exc_cliente_origen'],
+            ['excedentes', 'idx_exc_pago_origen'], ['excedentes', 'idx_exc_activo'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_sede'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_estado_created'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_excedente'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_cliente_destino'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_credito_destino'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_user_solicitante'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_user_aprobador'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_pago_origen'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_credito_origen'],
+            ['solicitudes_resolucion_excedente', 'idx_sre_cliente_origen'],
+            ['transferencia_sedes', 'idx_ts_origen'], ['transferencia_sedes', 'idx_ts_destino'],
+            ['transferencia_sedes', 'idx_ts_estado_resp'], ['transferencia_sedes', 'idx_ts_estado_trans'],
+            ['transferencia_sedes', 'idx_ts_usuario_origen'], ['transferencia_sedes', 'idx_ts_usuario_responde'],
+            ['movimientos_fondo', 'idx_mf_sede_fecha'], ['movimientos_fondo', 'idx_mf_sede_tipo'],
+            ['movimientos_fondo', 'idx_mf_transferencia'], ['movimientos_fondo', 'idx_mf_usuario'],
+            ['pago', 'idx_pgo_activo_fecha'], ['pago', 'idx_pgo_activo_mayor_fecha'],
+            ['Cliente', 'idx_cli_activo'], ['Cliente', 'idx_cli_nombres'],
+            ['Compra', 'idx_com_activo_fecha'], ['Gasto', 'idx_gas_activo_fecha'],
+            ['Credito', 'idx_cre_saldamiento'], ['Credito', 'idx_cre_estatus_sald'],
+            ['ProposicionCredito', 'idx_prop_cliente'],
+            ['Zona', 'idx_zna_nombre'], ['TipoCredito', 'idx_tcr_descripcion'],
+            ['apertura_cierre_dia', 'idx_acd_fecha'],
+        ];
+
+        foreach ($indexes as [$table, $name]) {
+            DB::statement("ALTER TABLE `{$table}` DROP INDEX IF EXISTS `{$name}`");
+        }
     }
 };
