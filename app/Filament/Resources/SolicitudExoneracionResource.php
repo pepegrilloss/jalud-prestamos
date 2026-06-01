@@ -152,7 +152,7 @@ class SolicitudExoneracionResource extends Resource
                     ->native(false),
             ])
             ->modifyQueryUsing(function ($query) {
-                return $query->with(['proposicion', 'tipoPago'])
+                return $query->with(['proposicion' => fn($q) => $q->with('cliente', 'tipoCredito', 'zona'), 'tipoPago'])
                     ->where('Activo', 1)
                     ->whereHas('proposicion', function (Builder $q) {
                         $q->where('SaldoPendiente', '>', 0)

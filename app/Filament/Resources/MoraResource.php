@@ -65,6 +65,7 @@ class MoraResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['credito.proposicion.cliente']))
             ->columns([
                 Tables\Columns\TextColumn::make('credito.proposicion.cliente.DNI')
                     ->label('DNI Cliente')

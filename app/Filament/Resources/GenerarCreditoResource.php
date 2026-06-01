@@ -253,7 +253,7 @@ class GenerarCreditoResource extends Resource
             ])
             // CORRECCIÓN: Se cambió $q por $query para evitar el error de resolución
             ->modifyQueryUsing(function (Builder $query) {
-                return $query->where('Estado', 'APROBADO')
+                return $query->with('cliente')->where('Estado', 'APROBADO')
                     ->whereDoesntHave('credito');
             })
             ->filters([

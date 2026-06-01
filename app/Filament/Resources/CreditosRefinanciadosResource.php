@@ -174,10 +174,9 @@ class CreditosRefinanciadosResource extends Resource
                     ->native(false),
             ])
             ->modifyQueryUsing(function ($query) {
-                // Mostrar SOLO créditos de proposiciones refinanciadas
                 return $query->whereHas('proposicion', function (Builder $q) {
                     $q->where('FueRefinanciada', 1);
-                });
+                })->with(['proposicion' => fn($q) => $q->with('cliente', 'tipoCredito')]);
             })
             ->actions([
                 Tables\Actions\ViewAction::make(),

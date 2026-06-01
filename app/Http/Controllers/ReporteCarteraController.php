@@ -95,6 +95,15 @@ class ReporteCarteraController extends Controller
             ];
         }
 
+        // Pre-agregar todos los pagos en UNA sola query (evita N+1)
+        $creditoIds = $creditos->pluck('CreditoID')->toArray();
+        $pagosSums = Pago::withoutGlobalScopes()
+            ->whereIn('CreditoID', $creditoIds)
+            ->where('Activo', 1)
+            ->selectRaw('CreditoID, SUM(MontoPagado) as total_pagado')
+            ->groupBy('CreditoID')
+            ->pluck('total_pagado', 'CreditoID');
+
         foreach ($creditos as $credito) {
             $fechaVenc = $credito->FechaVencimiento ? Carbon::parse($credito->FechaVencimiento) : null;
 
@@ -105,11 +114,8 @@ class ReporteCarteraController extends Controller
             // Calcular días de vencimiento
             $diasVencimiento = $hoy->diffInDays($fechaVenc, false); // negativo si ya venció
 
-            // Calcular pagado real
-            $pagado = Pago::withoutGlobalScopes()
-                ->whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
-                ->where('Activo', 1)
-                ->sum('MontoPagado');
+            // Pagado pre-agregado (sin N+1)
+            $pagado = $pagosSums[$credito->CreditoID] ?? 0;
 
             $total = (float) $credito->MontoTotalPagar;
             $saldo = max(0, $total - $pagado);

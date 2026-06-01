@@ -314,7 +314,11 @@ class CreditoResource extends Resource
             ->filtersFormColumns(1)
             ->filtersLayout(\Filament\Tables\Enums\FiltersLayout::AboveContent)
             ->modifyQueryUsing(function (Builder $query, \Livewire\Component $livewire) {
-                $query->with(['proposicion', 'tipoPago'])
+                $query->with([
+                    'proposicion' => fn($q) => $q->with(['cliente', 'zona', 'tipoCredito']),
+                    'tipoPago',
+                    'pagos' => fn($q) => $q->where('Activo', 1),
+                ])
                     // Excluir créditos de proposiciones refinanciadas
                     ->whereHas('proposicion', function (Builder $q) {
                         $q->where('FueRefinanciada', 0);

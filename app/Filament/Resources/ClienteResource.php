@@ -753,8 +753,8 @@ class ClienteResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                // Solo mostrar clientes activos
-                return $query->where('Activo', true);
+                return $query->where('Activo', true)
+                    ->with(['negocio' => fn($q) => $q->with(['ciudad', 'zona', 'telefonos'])]);
             })
             ->actions([
                 Tables\Actions\ActionGroup::make([

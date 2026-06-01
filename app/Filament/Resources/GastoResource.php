@@ -163,7 +163,7 @@ class GastoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn($query) => $query->activos()->with('proveedor', 'detalles'))
+            ->modifyQueryUsing(fn($query) => $query->activos()->with('proveedor', 'detalles', 'tipoComprobanteGasto', 'motivo'))
             ->columns([
                 Tables\Columns\TextColumn::make('FechaEmision')
                     ->label('Fecha Emisión')

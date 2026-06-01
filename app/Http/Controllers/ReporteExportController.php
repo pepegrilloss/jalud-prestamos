@@ -443,6 +443,15 @@ class ReporteExportController extends Controller
             ->orderBy('Credito.FechaVencimiento')
             ->get();
 
+        // Pre-agregar pagos en UNA sola query (evita N+1)
+        $creditoIds = $query->pluck('CreditoID')->toArray();
+        $pagosSums = Pago::withoutGlobalScopes()
+            ->whereIn('CreditoID', $creditoIds)
+            ->where('Activo', 1)
+            ->selectRaw('CreditoID, SUM(MontoPagado) as total_pagado')
+            ->groupBy('CreditoID')
+            ->pluck('total_pagado', 'CreditoID');
+
         $titulos = [
             'no_vencida' => 'CARTERA NO VENCIDA',
             'vencida' => 'CARTERA VENCIDA (1-7 días)',
@@ -460,9 +469,7 @@ class ReporteExportController extends Controller
             if (!$fechaVenc) continue;
 
             $diasVencimiento = $hoy->diffInDays($fechaVenc, false);
-            $pagado = Pago::withoutGlobalScopes()
-                ->whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
-                ->where('Activo', 1)->sum('MontoPagado');
+            $pagado = $pagosSums[$credito->CreditoID] ?? 0;
             $total = (float) $credito->MontoTotalPagar;
             $saldo = max(0, $total - $pagado);
             if ($saldo <= 0) continue;
