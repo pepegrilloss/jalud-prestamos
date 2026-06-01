@@ -49,11 +49,13 @@
             <tr>
                 <th class="centro">Fecha Emisión</th>
                 <th>Tipo Comp.</th>
-                <th class="centro">Serie / Número</th>
+                <th class="centro">Serie / Correlativo</th>
+                <th>RUC</th>
                 <th>Proveedor</th>
-                <th>Productos</th>
+                <th>Descripción</th>
                 <th class="numero">Ítems</th>
                 <th class="numero">Total</th>
+                <th class="numero">Base IGV</th>
                 <th class="numero">IGV</th>
                 <th>Tipo</th>
                 <th class="centro">Pago</th>
@@ -69,10 +71,12 @@
                                 <td class="centro" rowspan="{{ $itemsCount }}">{{ $compra->FechaEmision->format('d/m/Y') }}</td>
                                 <td rowspan="{{ $itemsCount }}">{{ $compra->tipoComprobante->Nombre }}</td>
                                 <td class="centro" rowspan="{{ $itemsCount }}">{{ $compra->Numero }}</td>
+                                <td rowspan="{{ $itemsCount }}">{{ $compra->proveedor?->RUC }}</td>
                                 <td rowspan="{{ $itemsCount }}">{{ $compra->proveedor?->Nombre }}</td>
                                 <td rowspan="{{ $itemsCount }}">{{ $compra->detalles->pluck('ProductoServicio')->implode(', ') }}</td>
                                 <td class="centro" rowspan="{{ $itemsCount }}">{{ $itemsCount }}</td>
                                 <td class="numero" rowspan="{{ $itemsCount }}">S/. {{ number_format($compra->Total, 2) }}</td>
+                                <td class="numero" rowspan="{{ $itemsCount }}">S/. {{ number_format($compra->SubtotalBase, 2) }}</td>
                                 <td class="numero" rowspan="{{ $itemsCount }}">S/. {{ number_format($compra->MontoIGV, 2) }}</td>
                                 <td rowspan="{{ $itemsCount }}">{{ $compra->TipoCompra }}</td>
                                 <td class="centro" rowspan="{{ $itemsCount }}">{{ $compra->EstadoPago }}</td>
@@ -84,22 +88,25 @@
                         <td class="centro">{{ $compra->FechaEmision->format('d/m/Y') }}</td>
                         <td>{{ $compra->tipoComprobante->Nombre }}</td>
                         <td class="centro">{{ $compra->Numero }}</td>
+                        <td>{{ $compra->proveedor?->RUC }}</td>
                         <td>{{ $compra->proveedor?->Nombre }}</td>
                         <td>{{ $compra->ProductoServicio ?? '-' }}</td>
                         <td class="centro">1</td>
                         <td class="numero">S/. {{ number_format($compra->Total, 2) }}</td>
+                        <td class="numero">S/. {{ number_format($compra->SubtotalBase, 2) }}</td>
                         <td class="numero">S/. {{ number_format($compra->MontoIGV, 2) }}</td>
                         <td>{{ $compra->TipoCompra }}</td>
                         <td class="centro">{{ $compra->EstadoPago }}</td>
                     </tr>
                 @endif
             @empty
-                <tr><td colspan="10" style="text-align: center;">No hay datos disponibles</td></tr>
+                <tr><td colspan="12" style="text-align: center;">No hay datos disponibles</td></tr>
             @endforelse
             @if($compras->count() > 0)
                 <tr class="total-row">
-                    <td colspan="6" style="text-align: right;">TOTAL GENERAL:</td>
+                    <td colspan="7" style="text-align: right;">TOTAL GENERAL:</td>
                     <td class="numero">S/. {{ number_format($total_general, 2) }}</td>
+                    <td class="numero">S/. {{ number_format($total_subtotal, 2) }}</td>
                     <td class="numero">S/. {{ number_format($total_igv, 2) }}</td>
                     <td colspan="2"></td>
                 </tr>
