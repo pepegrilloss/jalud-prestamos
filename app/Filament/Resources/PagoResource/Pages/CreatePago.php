@@ -650,28 +650,22 @@ class CreatePago extends CreateRecord
                     'TotalPagado' => $totalPagadoEnCuota
                 ]);
 
-                // Actualizar la proposición con el saldo pendiente total (calculado desde pagos)
+                // El PagoObserver ya calculó SaldoPendiente correctamente (excluye Traslados y Mora).
+                // Leer valor fresco de la BD en vez de recalcular y pisar al observer.
                 $proposicion = $credito->proposicion;
                 if ($proposicion) {
-                    // La deuda real es MontoTotalPagar, no SUM(cuota.MontoCuota)
-                    $montoCuotasTotal = (float)($credito->proposicion->MontoTotalPagar ?? 0);
-                    $totalPagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
-                        ->where('Activo', 1)
-                        ->sum('MontoPagado');
-                    $nuevoSaldoPendiente = max(0, $montoCuotasTotal - $totalPagado);
+                    $saldoFresco = (float) \Illuminate\Support\Facades\DB::table('ProposicionCredito')
+                        ->where('ProposicionCreditoID', $proposicion->ProposicionCreditoID)
+                        ->value('SaldoPendiente');
 
-                    $proposicion->update([
-                        'SaldoPendiente' => $nuevoSaldoPendiente,
-                    ]);
-                    \Log::info('SEGURIDAD - CreatePago::afterCreate - Proposición actualizada', [
+                    \Log::info('SEGURIDAD - CreatePago::afterCreate - Saldo leído de BD (calculado por observer)', [
                         'ProposicionID' => $proposicion->ProposicionCreditoID,
                         'ClienteID' => $credito->proposicion->ClienteID,
-                        'TotalPagado' => $totalPagado,
-                        'SaldoPendiente' => $nuevoSaldoPendiente
+                        'SaldoPendiente' => $saldoFresco
                     ]);
 
                     // Si el saldo llegó a 0, actualizar el estatus del crédito a SALDADO
-                    if ($nuevoSaldoPendiente <= 0) {
+                    if ($saldoFresco <= 0) {
                         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                         $fechaSaldamiento = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
 
@@ -685,21 +679,6 @@ class CreatePago extends CreateRecord
                             'FechaSaldamiento' => $fechaSaldamiento,
                             'UsuarioID' => auth()->id()
                         ]);
-
-                        /* 
-                        try {
-                            $cliente = $credito->proposicion->cliente;
-                            $nombre = $cliente?->NombresApellidos ?? 'N/A';
-                            $codigo = $credito->proposicion->CodigoCredito ?? 'N/A';
-                            \App\Models\User::notificarAdmin(
-                                'Crédito saldado',
-                                "{$codigo} — {$nombre}",
-                                'heroicon-o-check-circle',
-                                $credito->proposicion->SedeID
-                            );
-                        } catch (\Exception $e) {
-                        }
-                        */
                     }
                 }
                 } // fin if (!$pagoOriginal->EsMora)
