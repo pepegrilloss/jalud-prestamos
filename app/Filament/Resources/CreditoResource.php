@@ -491,12 +491,6 @@ class CreditoResource extends Resource
                                 ->size(\Filament\Infolists\Components\TextEntry\TextEntrySize::Large)
                                 ->weight(\Filament\Support\Enums\FontWeight::Bold),
 
-                            Infolists\Components\TextEntry::make('FechaGeneracion')
-                                ->label('Fecha de Generación')
-                                ->icon('heroicon-m-calendar')
-                                ->dateTime('d/m/Y')
-                                ->weight(\Filament\Support\Enums\FontWeight::SemiBold),
-
                             Infolists\Components\TextEntry::make('proposicion.MontoInteres')
                                 ->label('Interés Generado')
                                 ->money('PEN')
@@ -528,6 +522,12 @@ class CreditoResource extends Resource
                                 ->icon('heroicon-m-check-circle')
                                 ->badge()
                                 ->color('success'),
+
+                            Infolists\Components\TextEntry::make('FechaGeneracion')
+                                ->label('Fecha de Generación')
+                                ->icon('heroicon-m-calendar')
+                                ->dateTime('d/m/Y')
+                                ->weight(\Filament\Support\Enums\FontWeight::SemiBold),
 
                             Infolists\Components\TextEntry::make('FechaVencimiento')
                                 ->label('Fecha de Vencimiento')
