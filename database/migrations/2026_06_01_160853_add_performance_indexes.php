@@ -83,13 +83,13 @@ return new class extends Migration
             $table->index('ClienteID', 'idx_prop_cliente');
         });
 
-        // === zona ===
-        Schema::table('zona', function (Blueprint $table) {
+        // === Zona ===
+        Schema::table('Zona', function (Blueprint $table) {
             $table->index('Nombre', 'idx_zna_nombre');
         });
 
-        // === tipocredito ===
-        Schema::table('tipocredito', function (Blueprint $table) {
+        // === TipoCredito ===
+        Schema::table('TipoCredito', function (Blueprint $table) {
             $table->index('Descripcion', 'idx_tcr_descripcion');
         });
 
@@ -134,8 +134,8 @@ return new class extends Migration
             $t->dropIndex('idx_cre_saldamiento'); $t->dropIndex('idx_cre_estatus_sald');
         });
         Schema::table('ProposicionCredito', function (Blueprint $t) { $t->dropIndex('idx_prop_cliente'); });
-        Schema::table('zona', function (Blueprint $t) { $t->dropIndex('idx_zna_nombre'); });
-        Schema::table('tipocredito', function (Blueprint $t) { $t->dropIndex('idx_tcr_descripcion'); });
+        Schema::table('Zona', function (Blueprint $t) { $t->dropIndex('idx_zna_nombre'); });
+        Schema::table('TipoCredito', function (Blueprint $t) { $t->dropIndex('idx_tcr_descripcion'); });
         Schema::table('apertura_cierre_dia', function (Blueprint $t) { $t->dropIndex('idx_acd_fecha'); });
     }
 };
