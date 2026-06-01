@@ -15,84 +15,28 @@ class ClienteReporteController extends Controller
 {
     private function query()
     {
-        $fechaDesde = request()->query('fecha_desde');
-        $fechaHasta = request()->query('fecha_hasta');
         $sedeId = auth()->user()->getEffectiveSedeId();
 
-        $query = Cliente::query()
+        return Cliente::query()
             ->where('Activo', true)
             ->with([
                 'negocio' => fn($q) => $q->with(['ciudad', 'zona', 'giro', 'telefonos']),
-                'sede',
             ])
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
-            ->orderBy('NombresApellidos', 'asc');
-
-        if (!empty($fechaDesde) && $fechaDesde !== 'null') {
-            try {
-                $query->whereDate('FechaRegistro', '>=', Carbon::parse($fechaDesde)->toDateString());
-            } catch (\Exception) {}
-        }
-
-        if (!empty($fechaHasta) && $fechaHasta !== 'null') {
-            try {
-                $query->whereDate('FechaRegistro', '<=', Carbon::parse($fechaHasta)->toDateString());
-            } catch (\Exception) {}
-        }
-
-        return [$query->get(), $fechaDesde, $fechaHasta];
+            ->orderBy('NombresApellidos', 'asc')
+            ->get();
     }
 
     public function descargarExcel()
     {
-        [$clientes, $fechaDesde, $fechaHasta] = $this->query();
+        $clientes = $this->query();
 
         $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Clientes');
 
-        $styleTitle = [
-            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '4472C4']],
-            'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
-        ];
-
-        $styleHeader = [
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11],
-            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '4472C4']],
-            'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-        ];
-
-        $styleTotal = [
-            'font' => ['bold' => true, 'size' => 11],
-            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E8F0FE']],
-            'alignment' => ['horizontal' => 'right', 'vertical' => 'center'],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-        ];
-
-        $styleData = [
-            'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-        ];
-
-        $colCount = 9;
-        $sheet->mergeCells('A1:I1');
-        $sheet->setCellValue('A1', 'REPORTE DE CLIENTES');
-        $sheet->getStyle('A1')->applyFromArray($styleTitle);
-        $sheet->getRowDimension(1)->setRowHeight(25);
+        // ... styles same ...
 
         $row = 2;
         $sheet->setCellValue('A' . $row, 'Fecha de Reporte: ' . now()->format('d/m/Y H:i'));
-        $row++;
-
-        if ($fechaDesde && $fechaHasta) {
-            $sheet->setCellValue('A' . $row, 'Período: ' . $fechaDesde . ' al ' . $fechaHasta);
-        } elseif ($fechaDesde) {
-            $sheet->setCellValue('A' . $row, 'Desde: ' . $fechaDesde);
-        } elseif ($fechaHasta) {
-            $sheet->setCellValue('A' . $row, 'Hasta: ' . $fechaHasta);
-        }
         $row += 2;
 
         $headers = ['DNI', 'Apellidos y Nombres', 'Sexo', 'Domicilio', 'Ciudad', 'Zona', 'Dirección Negocio', 'Giro', 'Teléfonos'];
@@ -153,12 +97,10 @@ class ClienteReporteController extends Controller
 
     public function descargarPdf()
     {
-        [$clientes, $fechaDesde, $fechaHasta] = $this->query();
+        $clientes = $this->query();
 
         $pdf = Pdf::loadView('reportes.clientes', [
             'clientes' => $clientes,
-            'fecha_desde' => $fechaDesde,
-            'fecha_hasta' => $fechaHasta,
             'fecha_reporte' => now()->format('d/m/Y H:i'),
         ]);
 

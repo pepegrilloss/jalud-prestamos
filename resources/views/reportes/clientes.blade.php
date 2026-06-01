@@ -29,17 +29,7 @@
     </div>
 
     <div class="title">REPORTE DE CLIENTES</div>
-    <div class="subtitle">
-        @if($fecha_desde && $fecha_hasta)
-            Período: {{ $fecha_desde }} al {{ $fecha_hasta }}
-        @elseif($fecha_desde)
-            Desde: {{ $fecha_desde }}
-        @elseif($fecha_hasta)
-            Hasta: {{ $fecha_hasta }}
-        @else
-            Todos los registros
-        @endif
-    </div>
+    <div class="subtitle">Reporte General de Clientes</div>
 
     <div class="line"></div>
 
