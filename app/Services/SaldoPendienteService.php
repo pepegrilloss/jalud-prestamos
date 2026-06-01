@@ -57,11 +57,22 @@ class SaldoPendienteService
             ->first();
 
         $saldo = max(0, (float)($proposicion->MontoTotalPagar ?? 0) - $totalPagado);
+        $saldoAnterior = (float) ($proposicion->SaldoPendiente ?? 0);
 
         // Actualización directa sin disparar model events (evita recursión)
         DB::table('ProposicionCredito')
             ->where('ProposicionCreditoID', $proposicionCreditoID)
             ->update(['SaldoPendiente' => $saldo]);
+
+        if ($saldoAnterior != $saldo) {
+            \App\Models\Log::registrar(
+                'ACTUALIZAR',
+                'ProposicionCredito',
+                $proposicionCreditoID,
+                ['SaldoPendiente' => $saldoAnterior],
+                ['SaldoPendiente' => $saldo]
+            );
+        }
 
         return (float) $saldo;
     }

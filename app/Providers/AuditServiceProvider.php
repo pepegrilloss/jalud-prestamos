@@ -21,6 +21,8 @@ use App\Models\Compra;
 use App\Models\Cuota;
 use App\Models\Negocio;
 use App\Models\DocumentoCliente;
+use App\Models\Mora;
+use App\Models\AprobacionProposicion;
 use App\Observers\AuditObserver;
 
 class AuditServiceProvider extends ServiceProvider
@@ -45,6 +47,8 @@ class AuditServiceProvider extends ServiceProvider
         Cuota::observe(AuditObserver::class);
         Negocio::observe(AuditObserver::class);
         DocumentoCliente::observe(AuditObserver::class);
+        Mora::observe(AuditObserver::class);
+        AprobacionProposicion::observe(AuditObserver::class);
     }
 
     public function register()
