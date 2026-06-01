@@ -168,13 +168,8 @@ class CompraResource extends Resource
                                     ->numeric()
                                     ->prefix('S/. ')
                                     ->step(0.01)
-                                    ->hidden(fn (Get $get): bool => $get('TipoIGV') === 'EXONERADO')
-                                    ->live(debounce: 500)
-                                    ->afterStateUpdated(function (Get $get, Set $set) {
-                                        $subtotalBase = floatval($get('SubtotalBase') ?? 0);
-                                        $igv = floatval($get('MontoIGV') ?? 0);
-                                        $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
-                                    }),
+                                    ->disabled()
+                                    ->visible(fn (Get $get): bool => $get('TipoIGV') !== 'EXONERADO'),
                                 Forms\Components\TextInput::make('Total')
                                     ->label('Total')
                                     ->numeric()
@@ -208,14 +203,9 @@ class CompraResource extends Resource
 
         $tipoIGV = \App\Models\TipoIgv::where('Codigo', $get('TipoIGV'))->first();
         $tasa = $tipoIGV?->Porcentaje ?? 0;
-        if ($tasa <= 0) {
-            $set('MontoIGV', number_format(0, 2, '.', ''));
-            $set('Total', number_format($subtotalBase, 2, '.', ''));
-        } else {
-            $igv = $subtotalBase * ($tasa / 100);
-            $set('MontoIGV', number_format($igv, 2, '.', ''));
-            $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
-        }
+        $igv = $tasa > 0 ? $subtotalBase * ($tasa / 100) : 0;
+        $set('MontoIGV', number_format($igv, 2, '.', ''));
+        $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
     }
 
     public static function table(Table $table): Table

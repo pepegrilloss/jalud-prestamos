@@ -33,13 +33,9 @@ class CreateCompra extends CreateRecord
 
         $tipoIGV = \App\Models\TipoIgv::where('Codigo', $data['TipoIGV'] ?? 'GRAVADO')->first();
         $tasa = $tipoIGV?->Porcentaje ?? 0;
-        if ($tasa <= 0) {
-            $data['MontoIGV'] = 0;
-            $data['Total'] = floatval($data['SubtotalBase']);
-        } else {
-            $data['MontoIGV'] = round($subtotalBase * ($tasa / 100), 2);
-            $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
-        }
+        $montoIGVCalculado = $tasa > 0 ? round($subtotalBase * ($tasa / 100), 2) : 0;
+        $data['MontoIGV'] = $montoIGVCalculado;
+        $data['Total'] = floatval($data['SubtotalBase']) + $montoIGVCalculado;
 
         // Si es CRÉDITO, no validar ni descontar de Caja Chica
         $data['EstadoPago'] = ($data['TipoCompra'] ?? 'CONTADO') === 'CREDITO' ? 'PENDIENTE' : 'PAGADO';
