@@ -242,7 +242,7 @@ class ResolucionExcedenteService
     {
         $credito = \App\Models\Credito::find($creditoID);
         if (!$credito) return;
-        
+
         $montoCuotasTotal = $credito->cuotas()->where('Activo', 1)->sum('MontoCuota');
         $totalPagado = Pago::where('Activo', 1)
             ->where(function ($q) {
@@ -250,14 +250,17 @@ class ResolucionExcedenteService
             })
             ->whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
             ->sum('MontoPagado');
-            
+
         if ($totalPagado >= $montoCuotasTotal) {
-            $credito->update(['Estado' => 'CANCELADO']);
-        } else {
-            // Revertir a NORMAL si estaba CANCELADO pero ya no lo está
-            if ($credito->Estado === 'CANCELADO') {
-                $credito->update(['Estado' => 'NORMAL']);
-            }
+            $credito->update([
+                'EstatusCreditoFinal' => 'SALDADO',
+                'FechaSaldamiento' => now(),
+            ]);
+        } elseif ($credito->EstatusCreditoFinal === 'SALDADO') {
+            $credito->update([
+                'EstatusCreditoFinal' => 'ACTIVO',
+                'FechaSaldamiento' => null,
+            ]);
         }
     }
 }
