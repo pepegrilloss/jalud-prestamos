@@ -48,6 +48,7 @@
         <thead>
             <tr>
                 <th class="centro">Fecha Emisión</th>
+                <th class="centro">Fecha Registro</th>
                 <th>Tipo Comp.</th>
                 <th class="centro">Serie / Correlativo</th>
                 <th>RUC</th>
@@ -69,6 +70,7 @@
                         <tr class="detalle-row">
                             @if($index === 0)
                                 <td class="centro" rowspan="{{ $itemsCount }}">{{ $compra->FechaEmision->format('d/m/Y') }}</td>
+                                <td class="centro" rowspan="{{ $itemsCount }}">{{ $compra->FechaCreacion?->format('d/m/Y') ?? '-' }}</td>
                                 <td rowspan="{{ $itemsCount }}">{{ $compra->tipoComprobante->Nombre }}</td>
                                 <td class="centro" rowspan="{{ $itemsCount }}">{{ $compra->Numero }}</td>
                                 <td rowspan="{{ $itemsCount }}">{{ $compra->proveedor?->RUC }}</td>
@@ -86,6 +88,7 @@
                 @else
                     <tr class="detalle-row">
                         <td class="centro">{{ $compra->FechaEmision->format('d/m/Y') }}</td>
+                        <td class="centro">{{ $compra->FechaCreacion?->format('d/m/Y') ?? '-' }}</td>
                         <td>{{ $compra->tipoComprobante->Nombre }}</td>
                         <td class="centro">{{ $compra->Numero }}</td>
                         <td>{{ $compra->proveedor?->RUC }}</td>
@@ -100,11 +103,11 @@
                     </tr>
                 @endif
             @empty
-                <tr><td colspan="12" style="text-align: center;">No hay datos disponibles</td></tr>
+                <tr><td colspan="13" style="text-align: center;">No hay datos disponibles</td></tr>
             @endforelse
             @if($compras->count() > 0)
                 <tr class="total-row">
-                    <td colspan="7" style="text-align: right;">TOTAL GENERAL:</td>
+                    <td colspan="8" style="text-align: right;">TOTAL GENERAL:</td>
                     <td class="numero">S/. {{ number_format($total_general, 2) }}</td>
                     <td class="numero">S/. {{ number_format($total_subtotal, 2) }}</td>
                     <td class="numero">S/. {{ number_format($total_igv, 2) }}</td>

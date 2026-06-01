@@ -76,7 +76,7 @@ class ComprasReporteController extends Controller
         ];
 
         // Título
-        $sheet->mergeCells('A1:L1');
+        $sheet->mergeCells('A1:M1');
         $sheet->setCellValue('A1', 'REPORTE DE COMPRAS');
         $sheet->getStyle('A1')->applyFromArray($styleTitle);
         $sheet->getRowDimension(1)->setRowHeight(25);
@@ -97,7 +97,7 @@ class ComprasReporteController extends Controller
         $row += 2;
 
         // Encabezados
-        $headers = ['Fecha Emisión', 'Tipo Comprobante', 'Serie / Correlativo', 'RUC', 'Proveedor', 'Descripción', 'Ítems', 'Total', 'Base IGV', 'IGV', 'Tipo', 'Pago'];
+        $headers = ['Fecha Emisión', 'Fecha Registro', 'Tipo Comprobante', 'Serie / Correlativo', 'RUC', 'Proveedor', 'Descripción', 'Ítems', 'Total', 'Base IGV', 'IGV', 'Tipo', 'Pago'];
         $colCount = count($headers);
         foreach ($headers as $col => $header) {
             $colLetter = chr(65 + $col);
@@ -114,46 +114,48 @@ class ComprasReporteController extends Controller
 
             if ($detalles->isEmpty()) {
                 $sheet->setCellValue('A' . $row, $compra->FechaEmision->format('d/m/Y'));
-                $sheet->setCellValue('B' . $row, $compra->tipoComprobante->Nombre);
-                $sheet->setCellValue('C' . $row, $compra->Numero);
-                $sheet->setCellValue('D' . $row, $compra->proveedor?->RUC);
-                $sheet->setCellValue('E' . $row, $compra->proveedor?->Nombre);
-                $sheet->setCellValue('F' . $row, $compra->ProductoServicio ?? '-');
-                $sheet->setCellValue('G' . $row, 1);
-                $sheet->setCellValue('H' . $row, $compra->Total);
-                $sheet->setCellValue('I' . $row, $compra->SubtotalBase ?? 0);
-                $sheet->setCellValue('J' . $row, $compra->MontoIGV ?? 0);
-                $sheet->setCellValue('K' . $row, $compra->TipoCompra);
-                $sheet->setCellValue('L' . $row, $compra->EstadoPago);
+                $sheet->setCellValue('B' . $row, $compra->FechaCreacion?->format('d/m/Y') ?? '-');
+                $sheet->setCellValue('C' . $row, $compra->tipoComprobante->Nombre);
+                $sheet->setCellValue('D' . $row, $compra->Numero);
+                $sheet->setCellValue('E' . $row, $compra->proveedor?->RUC);
+                $sheet->setCellValue('F' . $row, $compra->proveedor?->Nombre);
+                $sheet->setCellValue('G' . $row, $compra->ProductoServicio ?? '-');
+                $sheet->setCellValue('H' . $row, 1);
+                $sheet->setCellValue('I' . $row, $compra->Total);
+                $sheet->setCellValue('J' . $row, $compra->SubtotalBase ?? 0);
+                $sheet->setCellValue('K' . $row, $compra->MontoIGV ?? 0);
+                $sheet->setCellValue('L' . $row, $compra->TipoCompra);
+                $sheet->setCellValue('M' . $row, $compra->EstadoPago);
 
                 for ($col = 0; $col < $colCount; $col++) {
                     $sheet->getStyle(chr(65 + $col) . $row)->applyFromArray($styleData);
                 }
-                $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
                 $sheet->getStyle('I' . $row)->getAlignment()->setHorizontal('right');
                 $sheet->getStyle('J' . $row)->getAlignment()->setHorizontal('right');
+                $sheet->getStyle('K' . $row)->getAlignment()->setHorizontal('right');
                 $row++;
             } else {
                 $productos = $detalles->pluck('ProductoServicio')->implode(', ');
                 $sheet->setCellValue('A' . $row, $compra->FechaEmision->format('d/m/Y'));
-                $sheet->setCellValue('B' . $row, $compra->tipoComprobante->Nombre);
-                $sheet->setCellValue('C' . $row, $compra->Numero);
-                $sheet->setCellValue('D' . $row, $compra->proveedor?->RUC);
-                $sheet->setCellValue('E' . $row, $compra->proveedor?->Nombre);
-                $sheet->setCellValue('F' . $row, $productos);
-                $sheet->setCellValue('G' . $row, $itemsCount);
-                $sheet->setCellValue('H' . $row, $compra->Total);
-                $sheet->setCellValue('I' . $row, $compra->SubtotalBase ?? 0);
-                $sheet->setCellValue('J' . $row, $compra->MontoIGV ?? 0);
-                $sheet->setCellValue('K' . $row, $compra->TipoCompra);
-                $sheet->setCellValue('L' . $row, $compra->EstadoPago);
+                $sheet->setCellValue('B' . $row, $compra->FechaCreacion?->format('d/m/Y') ?? '-');
+                $sheet->setCellValue('C' . $row, $compra->tipoComprobante->Nombre);
+                $sheet->setCellValue('D' . $row, $compra->Numero);
+                $sheet->setCellValue('E' . $row, $compra->proveedor?->RUC);
+                $sheet->setCellValue('F' . $row, $compra->proveedor?->Nombre);
+                $sheet->setCellValue('G' . $row, $productos);
+                $sheet->setCellValue('H' . $row, $itemsCount);
+                $sheet->setCellValue('I' . $row, $compra->Total);
+                $sheet->setCellValue('J' . $row, $compra->SubtotalBase ?? 0);
+                $sheet->setCellValue('K' . $row, $compra->MontoIGV ?? 0);
+                $sheet->setCellValue('L' . $row, $compra->TipoCompra);
+                $sheet->setCellValue('M' . $row, $compra->EstadoPago);
 
                 for ($col = 0; $col < $colCount; $col++) {
                     $sheet->getStyle(chr(65 + $col) . $row)->applyFromArray($styleData);
                 }
-                $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
                 $sheet->getStyle('I' . $row)->getAlignment()->setHorizontal('right');
                 $sheet->getStyle('J' . $row)->getAlignment()->setHorizontal('right');
+                $sheet->getStyle('K' . $row)->getAlignment()->setHorizontal('right');
                 $row++;
             }
         }
@@ -161,29 +163,30 @@ class ComprasReporteController extends Controller
         // Total
         $totalItems = $compras->sum(fn($c) => $c->detalles->count());
         $totalSubtotal = $compras->sum('SubtotalBase');
-        $sheet->setCellValue('F' . $row, 'TOTAL GENERAL:');
-        $sheet->setCellValue('G' . $row, $totalItems);
-        $sheet->setCellValue('H' . $row, $totalGeneral);
-        $sheet->setCellValue('I' . $row, $totalSubtotal);
-        $sheet->setCellValue('J' . $row, $totalIgv);
-        $sheet->getStyle('F' . $row . ':J' . $row)->applyFromArray($styleTotal);
-        $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
+        $sheet->setCellValue('G' . $row, 'TOTAL GENERAL:');
+        $sheet->setCellValue('H' . $row, $totalItems);
+        $sheet->setCellValue('I' . $row, $totalGeneral);
+        $sheet->setCellValue('J' . $row, $totalSubtotal);
+        $sheet->setCellValue('K' . $row, $totalIgv);
+        $sheet->getStyle('G' . $row . ':K' . $row)->applyFromArray($styleTotal);
         $sheet->getStyle('I' . $row)->getAlignment()->setHorizontal('right');
         $sheet->getStyle('J' . $row)->getAlignment()->setHorizontal('right');
+        $sheet->getStyle('K' . $row)->getAlignment()->setHorizontal('right');
 
         // Ajustar ancho de columnas
         $sheet->getColumnDimension('A')->setWidth(14);
-        $sheet->getColumnDimension('B')->setWidth(18);
-        $sheet->getColumnDimension('C')->setWidth(15);
+        $sheet->getColumnDimension('B')->setWidth(14);
+        $sheet->getColumnDimension('C')->setWidth(18);
         $sheet->getColumnDimension('D')->setWidth(15);
-        $sheet->getColumnDimension('E')->setWidth(22);
-        $sheet->getColumnDimension('F')->setWidth(30);
-        $sheet->getColumnDimension('G')->setWidth(8);
-        $sheet->getColumnDimension('H')->setWidth(12);
+        $sheet->getColumnDimension('E')->setWidth(15);
+        $sheet->getColumnDimension('F')->setWidth(22);
+        $sheet->getColumnDimension('G')->setWidth(30);
+        $sheet->getColumnDimension('H')->setWidth(8);
         $sheet->getColumnDimension('I')->setWidth(12);
         $sheet->getColumnDimension('J')->setWidth(12);
-        $sheet->getColumnDimension('K')->setWidth(14);
-        $sheet->getColumnDimension('L')->setWidth(10);
+        $sheet->getColumnDimension('K')->setWidth(12);
+        $sheet->getColumnDimension('L')->setWidth(14);
+        $sheet->getColumnDimension('M')->setWidth(10);
 
         // Descargar
         $writer = new Xlsx($spreadsheet);
