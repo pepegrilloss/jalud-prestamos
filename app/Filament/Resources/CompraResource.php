@@ -168,8 +168,12 @@ class CompraResource extends Resource
                                     ->numeric()
                                     ->prefix('S/. ')
                                     ->step(0.01)
-                                    ->disabled()
-                                    ->visible(fn (Get $get): bool => $get('TipoIGV') !== 'EXONERADO'),
+                                    ->live(debounce: 500)
+                                    ->afterStateUpdated(function (Get $get, Set $set) {
+                                        $subtotalBase = floatval($get('SubtotalBase') ?? 0);
+                                        $igv = floatval($get('MontoIGV') ?? 0);
+                                        $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
+                                    }),
                                 Forms\Components\TextInput::make('Total')
                                     ->label('Total')
                                     ->numeric()

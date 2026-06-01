@@ -34,11 +34,8 @@ class EditCompra extends EditRecord
             $data['SubtotalBase'] = $subtotalBase;
         }
 
-        $tipoIGV = \App\Models\TipoIgv::where('Codigo', $data['TipoIGV'] ?? 'GRAVADO')->first();
-        $tasa = $tipoIGV?->Porcentaje ?? 0;
-        $montoIGVCalculado = $tasa > 0 ? round($subtotalBase * ($tasa / 100), 2) : 0;
-        $data['MontoIGV'] = $montoIGVCalculado;
-        $data['Total'] = floatval($data['SubtotalBase']) + $montoIGVCalculado;
+        $data['MontoIGV'] = floatval($data['MontoIGV'] ?? 0);
+        $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
 
         // Si es CRÉDITO, poner como pendiente
         if (($data['TipoCompra'] ?? 'CONTADO') === 'CREDITO') {
