@@ -47,7 +47,7 @@ class EditCompra extends EditRecord
         $totalViejo = (float) ($this->record->Total ?? 0);
         $delta = $totalNuevo - $totalViejo;
         if (($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO' && $delta > 0) {
-            $sedeId = auth()->user()->getEffectiveSedeId();
+            $sedeId = $this->record->SedeID ?? auth()->user()->getEffectiveSedeId();
             if ($sedeId) {
                 $fondo = FondoSede::withoutGlobalScope('sede')
                     ->lockForUpdate()
@@ -79,7 +79,7 @@ class EditCompra extends EditRecord
 
         // Solo ajusta Caja Chica si es CONTADO
         if ($record->TipoCompra === 'CONTADO' && $delta != 0) {
-            $sedeId = auth()->user()->getEffectiveSedeId();
+            $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
             if ($sedeId) {
                 $service = app(FondoSedeService::class);
                 try {
@@ -110,7 +110,7 @@ class EditCompra extends EditRecord
 
                     $totalCompra = (float) ($record->Total ?? 0);
                     if ($totalCompra > 0) {
-                        $sedeId = auth()->user()->getEffectiveSedeId();
+                        $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
                         if ($sedeId) {
                             app(FondoSedeService::class)->inyectarCapitalCajaChica(
                                 $sedeId,

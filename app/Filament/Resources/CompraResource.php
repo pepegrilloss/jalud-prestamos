@@ -327,7 +327,7 @@ class CompraResource extends Resource
                     ->action(function ($record) {
                         // Si estaba pagada, revertir Caja Chica
                         if ($record->EstadoPago === 'PAGADO' && (float) $record->Total > 0) {
-                            $sedeId = auth()->user()->getEffectiveSedeId();
+                            $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
                             if ($sedeId) {
                                 app(\App\Services\FondoSedeService::class)->inyectarCapitalCajaChica(
                                     $sedeId,

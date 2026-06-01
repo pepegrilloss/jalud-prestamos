@@ -27,7 +27,7 @@ class EditGasto extends EditRecord
             $nuevoTotal = collect($detalles)->sum(fn($item) => floatval($item['Monto'] ?? 0));
             $delta = $nuevoTotal - $this->totalAnterior;
             if ($delta > 0) {
-                $sedeId = auth()->user()->getEffectiveSedeId();
+                $sedeId = $this->record->SedeID ?? auth()->user()->getEffectiveSedeId();
                 if ($sedeId) {
                     $fondo = FondoSede::withoutGlobalScope('sede')
                         ->lockForUpdate()
@@ -67,7 +67,7 @@ class EditGasto extends EditRecord
 
         if ($delta == 0) return;
 
-        $sedeId = auth()->user()->getEffectiveSedeId();
+        $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
         if (!$sedeId) return;
 
         $service = app(FondoSedeService::class);
@@ -96,7 +96,7 @@ class EditGasto extends EditRecord
                     $record->update(['Activo' => false]);
 
                     if ($record->MetodoGasto === 'CAJA CHICA' && (float) $record->Total > 0) {
-                        $sedeId = auth()->user()->getEffectiveSedeId();
+                        $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
                         if ($sedeId) {
                             app(FondoSedeService::class)->inyectarCapitalCajaChica(
                                 $sedeId,
