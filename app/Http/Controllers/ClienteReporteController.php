@@ -5,11 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use Barryvdh\DomPDF\Facade\Pdf;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Carbon\Carbon;
 
 class ClienteReporteController extends Controller
 {
@@ -32,8 +29,36 @@ class ClienteReporteController extends Controller
         $clientes = $this->query();
 
         $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Clientes');
 
-        // ... styles same ...
+        $styleTitle = [
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '4472C4']],
+            'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
+        ];
+        $styleHeader = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11],
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '4472C4']],
+            'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ];
+        $styleTotal = [
+            'font' => ['bold' => true, 'size' => 11],
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E8F0FE']],
+            'alignment' => ['horizontal' => 'right', 'vertical' => 'center'],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ];
+        $styleData = [
+            'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ];
+
+        $colCount = 9;
+        $sheet->mergeCells('A1:I1');
+        $sheet->setCellValue('A1', 'REPORTE DE CLIENTES');
+        $sheet->getStyle('A1')->applyFromArray($styleTitle);
+        $sheet->getRowDimension(1)->setRowHeight(25);
 
         $row = 2;
         $sheet->setCellValue('A' . $row, 'Fecha de Reporte: ' . now()->format('d/m/Y H:i'));
@@ -52,7 +77,7 @@ class ClienteReporteController extends Controller
 
             $sheet->setCellValue('A' . $row, $cliente->DNI);
             $sheet->setCellValue('B' . $row, $cliente->NombresApellidos);
-            $sheet->setCellValue('C' . $row, $cliente->Sexo === 'M' ? 'Masculino' : ($cliente->Sexo === 'F' ? 'Femenino' : ($cliente->Sexo ?? '-')));
+            $sheet->setCellValue('C' . $row, $cliente->Sexo === 'M' ? 'Masculino' : ($cliente->Sexo === 'F' ? 'Femenino' : '-'));
             $sheet->setCellValue('D' . $row, $cliente->Domicilio ?? '-');
             $sheet->setCellValue('E' . $row, $negocio?->ciudad?->Nombre ?? '-');
             $sheet->setCellValue('F' . $row, $negocio?->zona?->Nombre ?? '-');
