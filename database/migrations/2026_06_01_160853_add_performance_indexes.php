@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
@@ -12,7 +11,7 @@ return new class extends Migration
         $columns = (array) $columns;
         $cols = implode(', ', array_map(fn($c) => "`{$c}`", $columns));
 
-        DB::statement("ALTER TABLE `{$table}` DROP INDEX IF EXISTS `{$name}`");
+        try { DB::statement("DROP INDEX `{$name}` ON `{$table}`"); } catch (\Exception) {}
         DB::statement("ALTER TABLE `{$table}` ADD INDEX `{$name}` ({$cols})");
     }
 
@@ -114,7 +113,7 @@ return new class extends Migration
         ];
 
         foreach ($indexes as [$table, $name]) {
-            DB::statement("ALTER TABLE `{$table}` DROP INDEX IF EXISTS `{$name}`");
+            try { DB::statement("DROP INDEX `{$name}` ON `{$table}`"); } catch (\Exception) {}
         }
     }
 };
