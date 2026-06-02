@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Resources\TipoComprobanteResource\Pages;
 use App\Models\TipoComprobante;
 use App\Models\AperturaCierreDia;
@@ -13,9 +14,14 @@ use Filament\Tables;
 use Filament\Tables\Table;
 
 use App\Models\Sede;
-class TipoComprobanteResource extends Resource
+class TipoComprobanteResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = TipoComprobante::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

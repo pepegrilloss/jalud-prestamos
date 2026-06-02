@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Resources\NivelAprobacionResource\Pages;
 use App\Models\NivelAprobacion;
 use App\Models\AperturaCierreDia;
@@ -14,9 +15,14 @@ use Filament\Tables;
 use Filament\Tables\Table;
 
 use App\Models\Sede;
-class NivelAprobacionResource extends Resource
+class NivelAprobacionResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = NivelAprobacion::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

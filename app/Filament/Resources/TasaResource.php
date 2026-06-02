@@ -4,21 +4,23 @@ namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TasaResource\Pages;
-use App\Filament\Resources\TasaResource\RelationManagers;
 use App\Models\Tasa;
-use App\Models\AperturaCierreDia;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-use App\Models\Sede;
-class TasaResource extends Resource
+class TasaResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Tasa::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

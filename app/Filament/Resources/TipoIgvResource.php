@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TipoIgvResource\Pages;
 use App\Models\TipoIgv;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -12,9 +13,14 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class TipoIgvResource extends Resource
+class TipoIgvResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = TipoIgv::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $cluster = Mantenimiento::class;
     protected static ?string $navigationGroup = 'Mantenimiento';

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Resources\TipoPagoResource\Pages;
 use App\Models\TipoPago;
 use App\Models\AperturaCierreDia;
@@ -13,9 +14,14 @@ use Filament\Tables;
 use Filament\Tables\Table;
 
 use App\Models\Sede;
-class TipoPagoResource extends Resource
+class TipoPagoResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = TipoPago::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

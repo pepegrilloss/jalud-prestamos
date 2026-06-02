@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Resources\MotivoResource\Pages;
 use App\Models\Motivo;
 use App\Models\AperturaCierreDia;
@@ -13,9 +14,14 @@ use Filament\Tables;
 use Filament\Tables\Table;
 
 use App\Models\Sede;
-class MotivoResource extends Resource
+class MotivoResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Motivo::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

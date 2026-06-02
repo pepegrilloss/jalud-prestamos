@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TasaMoraResource\Pages;
 use App\Models\TasaMora;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -12,10 +13,14 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-use App\Models\Sede;
-class TasaMoraResource extends Resource
+class TasaMoraResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = TasaMora::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
     protected static ?string $navigationIcon = 'heroicon-o-percent-badge';

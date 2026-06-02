@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Resources\PromotorCobradorResource\Pages;
 use App\Filament\Resources\PromotorCobradorResource\RelationManagers;
 use App\Models\PromotorCobrador;
@@ -18,9 +19,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 use App\Models\Sede;
-class PromotorCobradorResource extends Resource
+class PromotorCobradorResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = PromotorCobrador::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

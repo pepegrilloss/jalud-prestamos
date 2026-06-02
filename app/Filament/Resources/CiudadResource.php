@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Resources\CiudadResource\Pages;
 use App\Filament\Resources\CiudadResource\RelationManagers;
 use App\Models\Ciudad;
@@ -17,9 +18,14 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 
 use App\Models\Sede;
-class CiudadResource extends Resource
+class CiudadResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Ciudad::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

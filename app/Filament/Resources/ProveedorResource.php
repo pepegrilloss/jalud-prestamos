@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Resources\ProveedorResource\Pages;
 use App\Models\Proveedor;
 use App\Models\AperturaCierreDia;
@@ -13,9 +14,14 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class ProveedorResource extends Resource
+class ProveedorResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Proveedor::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
     protected static ?string $navigationIcon = 'heroicon-o-truck';

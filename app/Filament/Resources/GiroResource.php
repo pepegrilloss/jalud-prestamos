@@ -7,6 +7,7 @@ use App\Filament\Resources\GiroResource\Pages;
 use App\Filament\Resources\GiroResource\RelationManagers;
 use App\Models\Giro;
 use App\Models\AperturaCierreDia;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -16,9 +17,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 use App\Models\Sede;
-class GiroResource extends Resource
+class GiroResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Giro::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';

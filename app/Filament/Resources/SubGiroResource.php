@@ -4,10 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\SubGiroResource\Pages;
-use App\Filament\Resources\SubGiroResource\RelationManagers;
 use App\Models\SubGiro;
-use App\Models\Giro;
-use App\Models\AperturaCierreDia;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -17,9 +15,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 use App\Models\Sede;
-class SubGiroResource extends Resource
+class SubGiroResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = SubGiro::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

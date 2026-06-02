@@ -5,17 +5,22 @@ namespace App\Filament\Resources;
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TipoCreditoResource\Pages;
 use App\Models\TipoCredito;
-use App\Models\AperturaCierreDia;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
-use App\Models\Sede;
-class TipoCreditoResource extends Resource
+class TipoCreditoResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = TipoCredito::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 

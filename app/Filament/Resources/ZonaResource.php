@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
+use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use App\Filament\Resources\ZonaResource\Pages;
 use App\Filament\Resources\ZonaResource\RelationManagers;
 use App\Models\Zona;
@@ -17,9 +18,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 use App\Models\Sede;
-class ZonaResource extends Resource
+class ZonaResource extends Resource implements HasShieldPermissions
 {
     protected static ?string $model = Zona::class;
+
+    public static function getPermissionPrefixes(): array
+    {
+        return ['view', 'view_any', 'create', 'update', 'delete'];
+    }
 
     protected static ?string $navigationGroup = 'Mantenimiento';
 
