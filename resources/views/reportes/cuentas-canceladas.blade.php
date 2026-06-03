@@ -92,7 +92,10 @@
                 <th>CLIENTE</th>
                 <th>ZONA</th>
                 <th>CUENTA</th>
+                <th class="numero">MONTO ENTREGADO</th>
+                <th class="numero">INTERÉS</th>
                 <th class="numero">TOTAL</th>
+                <th>FECHA ENTREGA</th>
                 <th>FECHA SALDADO</th>
                 <th>VENCIMIENTO</th>
             </tr>
@@ -100,31 +103,40 @@
         <tbody>
             @php
                 $totalCancelado = 0;
+                $totalMonto = 0;
+                $totalInteres = 0;
             @endphp
             @forelse($proposiciones as $prop)
                 @php
                     $totalCancelado += $prop->MontoTotalPagar ?? 0;
+                    $totalMonto += $prop->MontoTotal ?? 0;
+                    $totalInteres += $prop->MontoInteres ?? 0;
                 @endphp
                 <tr>
                     <td>{{ str_pad($prop->ProposicionCreditoID, 11, '0', STR_PAD_LEFT) }}</td>
                     <td>{{ $prop->cliente?->NombresApellidos ?? '-' }}</td>
                     <td>{{ $prop->zona?->Nombre ?? '-' }}</td>
                     <td>{{ $prop->CodigoCredito }}</td>
-                    <td class="numero">{{ number_format($prop->MontoTotalPagar, 2) }}</td>
+                    <td class="numero">S/. {{ number_format($prop->MontoTotal ?? 0, 2) }}</td>
+                    <td class="numero">S/. {{ number_format($prop->MontoInteres ?? 0, 2) }}</td>
+                    <td class="numero">S/. {{ number_format($prop->MontoTotalPagar, 2) }}</td>
+                    <td>{{ $prop->credito?->FechaGeneracion?->format('d/m/Y') ?? '-' }}</td>
                     <td>{{ $prop->credito?->FechaSaldamiento?->format('d/m/Y') ?? '-' }}</td>
                     <td>{{ $prop->credito?->FechaVencimiento?->format('d/m/Y') ?? '-' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" style="text-align: center;">No hay datos disponibles</td>
+                    <td colspan="10" style="text-align: center;">No hay datos disponibles</td>
                 </tr>
             @endforelse
 
             @if(count($proposiciones) > 0)
                 <tr style="border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; font-weight: bold;">
                     <td colspan="4" style="text-align: right; font-weight: bold; padding: 6px 8px;">TOTAL GENERAL:</td>
-                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">{{ number_format($totalCancelado, 2) }}</td>
-                    <td colspan="2"></td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">S/. {{ number_format($totalMonto, 2) }}</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">S/. {{ number_format($totalInteres, 2) }}</td>
+                    <td class="numero" style="font-weight: bold; padding: 6px 8px;">S/. {{ number_format($totalCancelado, 2) }}</td>
+                    <td colspan="3"></td>
                 </tr>
             @endif
         </tbody>

@@ -366,45 +366,61 @@ class ReporteExportController extends Controller
         $styles = $this->getStyles();
         $row = 1;
 
-        $sheet->mergeCells('A1:G1');
+        $sheet->mergeCells('A1:J1');
         $sheet->setCellValue('A1', "CUENTAS CANCELADAS - {$fecha->format('d/m/Y')}");
         $sheet->getStyle('A1')->applyFromArray($styles['title']);
         $row = 3;
 
-        $headers = ['Operación', 'Cliente', 'Zona', 'Cuenta', 'Total', 'F. Saldado', 'Vencimiento'];
+        $headers = ['Operación', 'Cliente', 'Zona', 'Cuenta', 'Monto Entregado', 'Interés', 'Total', 'F. Entrega', 'F. Saldado', 'Vencimiento'];
+        $colCount = count($headers);
         foreach ($headers as $i => $h) {
             $sheet->setCellValue(chr(65 + $i) . $row, $h);
             $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
         }
         $row++;
 
-        $total = 0;
+        $total = 0; $totalMonto = 0; $totalInteres = 0;
         foreach ($proposiciones as $prop) {
             $this->writeDataRow($sheet, $row, [
                 str_pad($prop->ProposicionCreditoID, 11, '0', STR_PAD_LEFT),
                 $prop->cliente?->NombresApellidos ?? '-',
                 $prop->zona?->Nombre ?? '-',
                 $prop->CodigoCredito,
+                $prop->MontoTotal ?? 0,
+                $prop->MontoInteres ?? 0,
                 $prop->MontoTotalPagar,
+                $prop->credito?->FechaGeneracion?->format('d/m/Y') ?? '-',
                 $prop->credito?->FechaSaldamiento?->format('d/m/Y') ?? '-',
                 $prop->credito?->FechaVencimiento?->format('d/m/Y') ?? '-',
-            ], 7);
+            ], $colCount);
             $sheet->getStyle('E' . $row)->getAlignment()->setHorizontal('right');
+            $sheet->getStyle('F' . $row)->getAlignment()->setHorizontal('right');
+            $sheet->getStyle('G' . $row)->getAlignment()->setHorizontal('right');
             $total += $prop->MontoTotalPagar;
+            $totalMonto += $prop->MontoTotal ?? 0;
+            $totalInteres += $prop->MontoInteres ?? 0;
             $row++;
         }
 
         $sheet->setCellValue('D' . $row, 'TOTAL GENERAL:');
-        $sheet->setCellValue('E' . $row, $total);
-        $sheet->getStyle('D' . $row . ':E' . $row)->applyFromArray($styles['total']);
+        $sheet->setCellValue('E' . $row, $totalMonto);
+        $sheet->setCellValue('F' . $row, $totalInteres);
+        $sheet->setCellValue('G' . $row, $total);
+        $sheet->getStyle('D' . $row . ':G' . $row)->applyFromArray($styles['total']);
+        $sheet->getStyle('E' . $row)->getAlignment()->setHorizontal('right');
+        $sheet->getStyle('F' . $row)->getAlignment()->setHorizontal('right');
+        $sheet->getStyle('G' . $row)->getAlignment()->setHorizontal('right');
 
         $sheet->getColumnDimension('A')->setWidth(15);
-        $sheet->getColumnDimension('B')->setWidth(30);
-        $sheet->getColumnDimension('C')->setWidth(15);
-        $sheet->getColumnDimension('D')->setWidth(15);
+        $sheet->getColumnDimension('B')->setWidth(28);
+        $sheet->getColumnDimension('C')->setWidth(14);
+        $sheet->getColumnDimension('D')->setWidth(14);
         $sheet->getColumnDimension('E')->setWidth(15);
-        $sheet->getColumnDimension('F')->setWidth(15);
-        $sheet->getColumnDimension('G')->setWidth(15);
+        $sheet->getColumnDimension('F')->setWidth(12);
+        $sheet->getColumnDimension('G')->setWidth(12);
+        $sheet->getColumnDimension('H')->setWidth(14);
+        $sheet->getColumnDimension('I')->setWidth(14);
+        $sheet->getColumnDimension('J')->setWidth(14);
 
         return $this->downloadSpreadsheet($spreadsheet, "Cuentas_Canceladas_{$fecha->format('d-m-Y')}");
     }
