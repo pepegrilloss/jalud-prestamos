@@ -159,42 +159,31 @@ class CreateCrearProposicionCredito extends CreateRecord
     protected function clienteEstaAlDiaEnSusCuotas($clienteID): bool
     {
         try {
-            $hoy = \Carbon\Carbon::now();
-
             // Obtener todos los créditos activos del cliente
             $creditos = Credito::whereHas('proposicion', function ($query) use ($clienteID) {
                 $query->where('ClienteID', $clienteID)->where('Activo', true);
             })->where('Activo', true)->get();
 
             foreach ($creditos as $credito) {
-                // Obtener cuotas vencidas (FechaVencimiento <= hoy)
-                $cuotasVencidas = $credito->cuotas()
-                    ->where('FechaVencimiento', '<=', $hoy)
-                    ->where('Estado', '!=', 'PAGADO')
-                    ->get();
+                // Usar SaldoPendiente como fuente de verdad (no cuotas, que son referenciales)
+                $saldo = (float) ($credito->proposicion->SaldoPendiente ?? 0);
 
-                if ($cuotasVencidas->isEmpty()) {
-                    continue; // Sin cuotas vencidas, cliente está al día en este crédito
+                // Si el saldo pendiente es 0, este crédito ya está pagado → al día
+                if ($saldo <= 0) {
+                    continue;
                 }
 
-                // Calcular el monto total de cuotas que deberían estar pagadas
-                $montoCuotasEsperadas = $cuotasVencidas->sum('MontoCuota');
-
-                // Calcular el total de pagos realizados en este crédito
-                $totalPagos = $credito->pagos()
-                    ->where('Activo', true)
-                    ->where('FechaPago', '<=', $hoy)
-                    ->sum('MontoPagado');
-
-                // Si el total de pagos es menor a lo esperado, el cliente NO está al día
-                if ($totalPagos < $montoCuotasEsperadas) {
-                    return false;
+                // Si el crédito vence en el futuro, el cliente tiene tiempo de pagar → al día
+                if ($credito->FechaVencimiento && \Carbon\Carbon::parse($credito->FechaVencimiento)->isFuture()) {
+                    continue;
                 }
+
+                // Crédito vencido con saldo > 0 → el cliente NO está al día
+                return false;
             }
 
             return true;
         } catch (\Exception $e) {
-            // En caso de error, permitir (no bloquear)
             return true;
         }
     }
