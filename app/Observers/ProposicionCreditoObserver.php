@@ -42,7 +42,7 @@ class ProposicionCreditoObserver
      */
     public function updated(ProposicionCredito $proposicionCredito): void
     {
-        if ($proposicionCredito->isDirty('MontoTotal')) {
+        if ($proposicionCredito->wasChanged('MontoTotal')) {
             DB::transaction(function () use ($proposicionCredito) {
                 $proposicionCredito->refresh();
                 $proposicionCredito->crearAprobacionesRequeridas();
