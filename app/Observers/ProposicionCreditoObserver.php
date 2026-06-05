@@ -42,7 +42,12 @@ class ProposicionCreditoObserver
      */
     public function updated(ProposicionCredito $proposicionCredito): void
     {
-        // Sin lógica adicional en actualización
+        if ($proposicionCredito->isDirty('MontoTotal')) {
+            DB::transaction(function () use ($proposicionCredito) {
+                $proposicionCredito->refresh();
+                $proposicionCredito->crearAprobacionesRequeridas();
+            }, attempts: 3);
+        }
     }
 
     /**

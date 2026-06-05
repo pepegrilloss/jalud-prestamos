@@ -13,7 +13,7 @@ class NivelAprobacionSeeder extends Seeder
         $niveles = [
             [
                 'Nombre'      => 'Gerencia',
-                'MontoMinimo' => 30000,
+                'MontoMinimo' => 0,
                 'MontoMaximo' => 99999999,
                 'Orden'       => 1,
             ],

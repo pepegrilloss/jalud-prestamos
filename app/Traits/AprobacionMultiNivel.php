@@ -20,38 +20,71 @@ trait AprobacionMultiNivel
     }
 
     /**
-     * Verifica si el usuario puede aprobar una proposición
+     * Verifica si el usuario es Gerencia (nivel con Orden 1)
+     */
+    public function esGerencia(): bool
+    {
+        $nivelUsuario = $this->getNivelAprobacionActivo();
+        if (!$nivelUsuario || !$nivelUsuario->nivelAprobacion) {
+            return false;
+        }
+        return $nivelUsuario->nivelAprobacion->Orden === 1;
+    }
+
+    /**
+     * Verifica si el rango del nivel activo del usuario cubre el monto indicado.
+     * Regla: cualquier nivel cuyo rango contenga el monto puede aprobar.
+     */
+    public function puedeAprobarPorMonto(float $monto): bool
+    {
+        $nivelUsuario = $this->getNivelAprobacionActivo();
+        if (!$nivelUsuario || !$nivelUsuario->nivelAprobacion) {
+            return false;
+        }
+
+        $nivel = $nivelUsuario->nivelAprobacion;
+        return (float) $nivel->MontoMinimo <= $monto
+            && (float) $nivel->MontoMaximo >= $monto;
+    }
+
+    /**
+     * Verifica si el usuario puede aprobar una aprobación pendiente.
+     * Se basa en que el rango del nivel del usuario cubra el monto de la proposición.
      */
     public function puedeAprobareAprobacion(AprobacionProposicion $aprobacion): bool
     {
-        // Super admin puede aprobar todo
         if ($this->hasRole(\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName())) {
             return true;
         }
 
-        // Obtener el nivel de aprobación del usuario
-        $nivelUsuario = $this->getNivelAprobacionActivo();
-        if (!$nivelUsuario) {
+        if ($aprobacion->Estado !== 'PENDIENTE') {
             return false;
         }
 
-        // El nivel debe coincidir exactamente con el de la aprobación
-        return $nivelUsuario->NivelAprobacionID === $aprobacion->NivelAprobacionID;
+        $monto = (float) ($aprobacion->proposicion?->MontoTotal ?? 0);
+        return $this->puedeAprobarPorMonto($monto);
     }
 
     /**
-     * Obtiene todas las aprobaciones pendientes que puede realizar
+     * Obtiene las aprobaciones pendientes cuyo monto está dentro del rango del nivel del usuario
      */
     public function aprobacionesPendientes()
     {
         $nivelUsuario = $this->getNivelAprobacionActivo();
-        
-        if (!$nivelUsuario) {
+
+        if (!$nivelUsuario || !$nivelUsuario->nivelAprobacion) {
             return collect([]);
         }
 
-        return AprobacionProposicion::where('NivelAprobacionID', $nivelUsuario->NivelAprobacionID)
-            ->where('Estado', 'PENDIENTE')
+        $nivel = $nivelUsuario->nivelAprobacion;
+        $montoMin = (float) $nivel->MontoMinimo;
+        $montoMax = (float) $nivel->MontoMaximo;
+
+        return AprobacionProposicion::where('Estado', 'PENDIENTE')
+            ->whereHas('proposicion', function ($q) use ($montoMin, $montoMax) {
+                $q->where('MontoTotal', '>=', $montoMin)
+                  ->where('MontoTotal', '<=', $montoMax);
+            })
             ->with(['proposicion', 'nivel'])
             ->get();
     }
@@ -65,19 +98,19 @@ trait AprobacionMultiNivel
     }
 
     /**
-     * Aprueba una proposición en su nivel
+     * Aprueba una proposición. Cualquier usuario cuyo nivel cubra el monto puede aprobarla.
      */
     public function aprobarProposicion(ProposicionCredito $proposicion, ?string $comentario = null): bool
     {
-        $nivelActivo = $this->getNivelAprobacionActivo();
-        if (!$nivelActivo) return false;
+        if (!$this->puedeAprobarPorMonto((float) $proposicion->MontoTotal)) {
+            return false;
+        }
 
         $aprobacion = $proposicion->aprobaciones()
-            ->where('NivelAprobacionID', $nivelActivo->NivelAprobacionID)
             ->where('Estado', 'PENDIENTE')
             ->first();
 
-        if (!$aprobacion || !$this->puedeAprobareAprobacion($aprobacion)) {
+        if (!$aprobacion) {
             return false;
         }
 
@@ -91,19 +124,19 @@ trait AprobacionMultiNivel
     }
 
     /**
-     * Rechaza una proposición en su nivel
+     * Rechaza una proposición. Cualquier usuario cuyo nivel cubra el monto puede rechazarla.
      */
     public function rechazarProposicion(ProposicionCredito $proposicion, string $comentario): bool
     {
-        $nivelActivo = $this->getNivelAprobacionActivo();
-        if (!$nivelActivo) return false;
+        if (!$this->puedeAprobarPorMonto((float) $proposicion->MontoTotal)) {
+            return false;
+        }
 
         $aprobacion = $proposicion->aprobaciones()
-            ->where('NivelAprobacionID', $nivelActivo->NivelAprobacionID)
             ->where('Estado', 'PENDIENTE')
             ->first();
 
-        if (!$aprobacion || !$this->puedeAprobareAprobacion($aprobacion)) {
+        if (!$aprobacion) {
             return false;
         }
 

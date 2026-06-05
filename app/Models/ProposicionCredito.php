@@ -194,13 +194,22 @@ class ProposicionCredito extends Model
             return;
         }
 
-        AprobacionProposicion::firstOrCreate(
-            [
+        $aprobacionPendiente = $this->aprobaciones()
+            ->where('Estado', 'PENDIENTE')
+            ->first();
+
+        if ($aprobacionPendiente) {
+            if ($aprobacionPendiente->NivelAprobacionID !== $nivel->NivelAprobacionID) {
+                $aprobacionPendiente->NivelAprobacionID = $nivel->NivelAprobacionID;
+                $aprobacionPendiente->save();
+            }
+        } elseif (!$this->aprobaciones()->exists()) {
+            AprobacionProposicion::create([
                 'ProposicionCreditoID' => $this->ProposicionCreditoID,
                 'NivelAprobacionID' => $nivel->NivelAprobacionID,
-            ],
-            ['Estado' => 'PENDIENTE']
-        );
+                'Estado' => 'PENDIENTE',
+            ]);
+        }
 
         $this->NivelAprobacionRequerido = $nivel->NivelAprobacionID;
         $this->save();

@@ -278,7 +278,7 @@ class AprobacionProposicionResource extends Resource
     }
 
     /**
-     * Verifica si el usuario puede aprobar la proposición
+     * Verifica si el usuario puede aprobar la proposición según su nivel y el monto
      */
     private static function puedeAprobarProposicion(ProposicionCredito $proposicion): bool
     {
@@ -287,17 +287,11 @@ class AprobacionProposicionResource extends Resource
             return false;
         }
 
-        $nivelUsuario = $nivelActivo->NivelAprobacionID;
-
-        $aprobacionNivel = $proposicion->aprobaciones()
-            ->where('NivelAprobacionID', $nivelUsuario)
-            ->first();
-
-        if (!$aprobacionNivel) {
+        if (!$proposicion->aprobaciones()->where('Estado', 'PENDIENTE')->exists()) {
             return false;
         }
 
-        return $proposicion->puedeAprobarEstaNivel($aprobacionNivel);
+        return auth()->user()->puedeAprobarPorMonto((float) $proposicion->MontoTotal);
     }
 
     public static function getPages(): array
