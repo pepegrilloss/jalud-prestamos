@@ -92,7 +92,50 @@ class ClienteProposicionResource extends Resource
                             ->prefix('S/')
                             ->columnSpan(4)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn(Set $set, Get $get, $state) => static::calcularTotales($set, $get, $state)),
+                            ->afterStateUpdated(function (Set $set, Get $get, $state, $livewire) {
+                                static::calcularTotales($set, $get, $state);
+                                static::validarMontoMaximo($get, $state, $livewire);
+                            })
+                            ->helperText(function (Get $get, $state, $livewire) {
+                                if (!$state || !$get('ClienteID')) {
+                                    return '';
+                                }
+                                $exclusionID = static::obtenerExclusionMMR($get);
+                                $disponible = \App\Services\ProposicionValidatorService::calcularMontoDisponible((int) $get('ClienteID'), $exclusionID);
+                                $montoActual = (float) $state;
+
+                                if ($disponible['montoDisponible'] <= 0) {
+                                    return "No hay monto disponible. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
+                                }
+                                if ($montoActual > $disponible['montoDisponible']) {
+                                    return "Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
+                                }
+                                return "Disponible: S/ {$disponible['montoDisponible']} (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
+                            })
+                            ->suffixIcon(function (Get $get, $state) {
+                                if (!$state || !$get('ClienteID')) {
+                                    return null;
+                                }
+                                $exclusionID = static::obtenerExclusionMMR($get);
+                                $disponible = \App\Services\ProposicionValidatorService::calcularMontoDisponible((int) $get('ClienteID'), $exclusionID);
+                                return (float) $state > $disponible['montoDisponible']
+                                    ? 'heroicon-s-exclamation-circle'
+                                    : 'heroicon-s-check-circle';
+                            })
+                            ->rules([
+                                function (Get $get) {
+                                    return function ($attribute, $value, $fail) use ($get) {
+                                        $clienteID = $get('ClienteID');
+                                        if ($clienteID) {
+                                            $exclusionID = static::obtenerExclusionMMR($get);
+                                            $disponible = \App\Services\ProposicionValidatorService::calcularMontoDisponible((int) $clienteID, $exclusionID);
+                                            if ((float) $value > (float) $disponible['montoDisponible']) {
+                                                $fail("Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo recomendado: S/ {$disponible['montoMaximoRecomendado']}, Ya utilizado: S/ {$disponible['montoUtilizado']})");
+                                            }
+                                        }
+                                    };
+                                }
+                            ]),
 
                         Forms\Components\Select::make('TasaID')
                             ->label('Tasa de Interés')
@@ -210,6 +253,39 @@ class ClienteProposicionResource extends Resource
             $set('MontoInteres', round($interes, 2));
             $set('MontoTotalPagar', round($total, 2));
             $set('MontoCuota', round($total / $cuotasVal, 2));
+        }
+    }
+
+    protected static function obtenerExclusionMMR(Get $get): ?int
+    {
+        return \App\Services\ProposicionValidatorService::obtenerExclusionMMR(
+            (int) $get('TipoCreditoID'),
+            $get('ProposicionCreditoAnteriorID') ? (int) $get('ProposicionCreditoAnteriorID') : null
+        );
+    }
+
+    protected static function validarMontoMaximo(Get $get, $monto, $livewire = null): void
+    {
+        $clienteID = $get('ClienteID');
+        if (!$clienteID) {
+            return;
+        }
+
+        $cliente = \App\Models\Cliente::find($clienteID);
+        if (!$cliente || !$cliente->analisisEconomico) {
+            return;
+        }
+
+        $exclusionID = static::obtenerExclusionMMR($get);
+        $disponible = \App\Services\ProposicionValidatorService::calcularMontoDisponible((int) $clienteID, $exclusionID);
+        $montoTotal = (float) $monto;
+
+        if ($montoTotal > $disponible['montoDisponible']) {
+            \Filament\Notifications\Notification::make()
+                ->warning()
+                ->title('Monto Excede el Límite Disponible')
+                ->body("El monto de S/ {$montoTotal} excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']}).")
+                ->send();
         }
     }
 

@@ -53,7 +53,7 @@ class CreateCrearProposicionCredito extends CreateRecord
             }
 
             // NUEVA VALIDACIÓN: Verificar si el cliente está al día en sus cuotas
-            if (!$esRefinanciamiento && !$this->clienteEstaAlDiaEnSusCuotas($clienteID)) {
+            if (!$esRefinanciamiento && !\App\Services\ProposicionValidatorService::clienteEstaAlDiaEnSusCuotas($clienteID)) {
                 $cliente = Cliente::find($clienteID);
                 Notification::make()
                     ->title('❌ Cliente no está al día')
@@ -150,41 +150,5 @@ class CreateCrearProposicionCredito extends CreateRecord
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Proposición de crédito creada exitosamente';
-    }
-
-    /**
-     * Verifica si un cliente está al día en el pago de sus cuotas
-     * Calcula las cuotas que deberían estar pagadas hasta hoy y compara con lo pagado
-     */
-    protected function clienteEstaAlDiaEnSusCuotas($clienteID): bool
-    {
-        try {
-            // Obtener todos los créditos activos del cliente
-            $creditos = Credito::whereHas('proposicion', function ($query) use ($clienteID) {
-                $query->where('ClienteID', $clienteID)->where('Activo', true);
-            })->where('Activo', true)->get();
-
-            foreach ($creditos as $credito) {
-                // Usar SaldoPendiente como fuente de verdad (no cuotas, que son referenciales)
-                $saldo = (float) ($credito->proposicion->SaldoPendiente ?? 0);
-
-                // Si el saldo pendiente es 0, este crédito ya está pagado → al día
-                if ($saldo <= 0) {
-                    continue;
-                }
-
-                // Si el crédito vence en el futuro, el cliente tiene tiempo de pagar → al día
-                if ($credito->FechaVencimiento && \Carbon\Carbon::parse($credito->FechaVencimiento)->isFuture()) {
-                    continue;
-                }
-
-                // Crédito vencido con saldo > 0 → el cliente NO está al día
-                return false;
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            return true;
-        }
     }
 }

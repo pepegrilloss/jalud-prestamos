@@ -507,59 +507,18 @@ class CrearProposicionCreditoResource extends Resource
      */
     protected static function obtenerExclusionMMR(Get $get): ?int
     {
-        $tipoID = $get('TipoCreditoID');
-        if (!$tipoID) {
-            return null;
-        }
-        $tipoCredito = TipoCredito::find($tipoID);
-        if (!$tipoCredito || strtolower($tipoCredito->Descripcion) !== 'refinanciamiento') {
-            return null;
-        }
-        $anteriorID = $get('ProposicionCreditoAnteriorID');
-        return $anteriorID ? (int) $anteriorID : null;
+        return \App\Services\ProposicionValidatorService::obtenerExclusionMMR(
+            (int) $get('TipoCreditoID'),
+            $get('ProposicionCreditoAnteriorID') ? (int) $get('ProposicionCreditoAnteriorID') : null
+        );
     }
 
     protected static function calcularMontoDisponible($clienteID, $excluirProposicionID = null): array
     {
-        $cliente = Cliente::find($clienteID);
-        if (!$cliente || !$cliente->analisisEconomico) {
-            return [
-                'montoMaximoRecomendado' => 0,
-                'montoUtilizado' => 0,
-                'montoDisponible' => 0,
-            ];
-        }
-
-        $montoMaximoRecomendado = (float) $cliente->analisisEconomico->MontoMaxRecomendado;
-
-        $proposiciones = ProposicionCredito::where('ClienteID', $clienteID)
-            ->where('Activo', true)
-            ->where('FueRefinanciada', 0)
-            ->where('EsRefinanciamiento', 0)
-            ->whereHas('credito', function ($query) {
-                $query->where('Activo', true);
-            })
-            ->get();
-
-        $montoUtilizado = 0;
-        foreach ($proposiciones as $proposicion) {
-            if ($excluirProposicionID && $proposicion->ProposicionCreditoID == $excluirProposicionID) {
-                continue;
-            }
-            // OPTIMIZADO: Leer columna SaldoPendiente directamente
-            $saldoPendiente = (float) ($proposicion->SaldoPendiente ?? 0);
-            if ($saldoPendiente > 0) {
-                $montoUtilizado += (float) $proposicion->MontoTotal;
-            }
-        }
-
-        $montoDisponible = max(0, $montoMaximoRecomendado - $montoUtilizado);
-
-        return [
-            'montoMaximoRecomendado' => $montoMaximoRecomendado,
-            'montoUtilizado' => $montoUtilizado,
-            'montoDisponible' => $montoDisponible,
-        ];
+        return \App\Services\ProposicionValidatorService::calcularMontoDisponible(
+            (int) $clienteID,
+            $excluirProposicionID ? (int) $excluirProposicionID : null
+        );
     }
 
     protected static function validarMontoMaximo(Set $set, Get $get, $monto): void
