@@ -269,6 +269,8 @@ class PagoResource extends Resource
                                 });
                             })
                             ->required(function (Forms\Get $get) {
+                                // OPTIMIZACIÓN: usar el mismo cache key de Cache::remember
+                                // (mismo TTL) para evitar 3 invocaciones idénticas por render.
                                 $clienteID = $get('ClienteID');
                                 if (!$clienteID) { return false; }
 
@@ -277,12 +279,18 @@ class PagoResource extends Resource
                                 $user = auth()->user();
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                                // OPTIMIZADO: Usa servicio centralizado
-                                return \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count() >= 2;
+                                $count = \Illuminate\Support\Facades\Cache::remember(
+                                    "pago_saldo_count_{$clienteID}_{$zonaID}_" . ($puedePagarMayor ? '1' : '0'),
+                                    5,
+                                    fn () => \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count()
+                                );
+
+                                return $count >= 2;
                             })
                             ->searchable()
                             ->native(false)
                             ->visible(function (Forms\Get $get) {
+                                // OPTIMIZACIÓN: reutilizar el conteo cacheado (5s TTL).
                                 $clienteID = $get('ClienteID');
                                 if (!$clienteID) { return false; }
 
@@ -291,8 +299,13 @@ class PagoResource extends Resource
                                 $user = auth()->user();
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                                // OPTIMIZADO: Usa servicio centralizado
-                                return \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count() >= 2;
+                                $count = \Illuminate\Support\Facades\Cache::remember(
+                                    "pago_saldo_count_{$clienteID}_{$zonaID}_" . ($puedePagarMayor ? '1' : '0'),
+                                    5,
+                                    fn () => \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count()
+                                );
+
+                                return $count >= 2;
                             })
                             ->disabled(fn(Forms\Get $get) => !$get('ClienteID'))
                             ->dehydrated()
@@ -318,8 +331,14 @@ class PagoResource extends Resource
                                 $user = auth()->user();
                                 $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
 
-                                // OPTIMIZADO: Usa servicio centralizado
-                                return \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count() < 2;
+                                // OPTIMIZACIÓN: reutilizar el conteo cacheado.
+                                $count = \Illuminate\Support\Facades\Cache::remember(
+                                    "pago_saldo_count_{$clienteID}_{$zonaID}_" . ($puedePagarMayor ? '1' : '0'),
+                                    5,
+                                    fn () => \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor)->count()
+                                );
+
+                                return $count < 2;
                             }),
 
                         Forms\Components\Placeholder::make('tipo_credito_view')

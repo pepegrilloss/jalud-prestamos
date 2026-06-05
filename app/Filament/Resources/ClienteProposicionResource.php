@@ -217,7 +217,9 @@ class ClienteProposicionResource extends Resource
     {
         return $table
             ->recordUrl(null)
-            ->modifyQueryUsing(fn($query) => $query->whereDoesntHave('credito'))
+            ->modifyQueryUsing(fn($query) => $query->whereDoesntHave('credito')
+                // OPTIMIZACIÓN N+1: eager load cliente (DNI/Nombres) y zona para las columnas.
+                ->with(['cliente', 'zona']))
             ->columns([
                 Tables\Columns\TextColumn::make('CodigoCredito')
                     ->label('Código Proposición')

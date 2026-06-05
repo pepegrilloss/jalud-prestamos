@@ -29,9 +29,9 @@ class GenerarCreditosTotalWidget extends BaseWidget
             $query->where('SedeID', $user->SedeID);
         }
 
-        $totalMonto = (clone $query)->get()->sum(function ($record) {
-            return (float) ($record->MontoTotal ?? 0) + ((float) ($record->MontoTotal ?? 0) * ((float) ($record->TasaInteres ?? 0) / 100));
-        });
+        // OPTIMIZACIÓN: calcular el total en SQL en lugar de cargar todos los registros.
+        // Fórmula equivalente a MontoTotal + (MontoTotal * TasaInteres/100).
+        $totalMonto = (clone $query)->sum(\Illuminate\Support\Facades\DB::raw('ProposicionCredito.MontoTotal * (1 + ProposicionCredito.TasaInteres / 100.0)'));
         
         $cantidad = (clone $query)->count();
 

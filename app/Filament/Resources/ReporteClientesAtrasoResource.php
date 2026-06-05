@@ -62,11 +62,10 @@ class ReporteClientesAtrasoResource extends Resource
 
                 Tables\Columns\TextColumn::make('dias_atraso_calc')
                     ->label('Días de Atraso')
+                    // OPTIMIZACIÓN N+1: lee ultimo_pago de la subquery en modifyQueryUsing
+                    // en vez de ejecutar pagos()->max('FechaPago') por cada fila.
                     ->getStateUsing(function ($record) {
-                        $ultimoPago = $record->pagos()
-                            ->where('Activo', 1)
-                            ->max('FechaPago');
-                        $fechaReferencia = $ultimoPago ?? $record->FechaGeneracion;
+                        $fechaReferencia = $record->ultimo_pago ?? $record->FechaGeneracion;
                         if (!$fechaReferencia) return 0;
 
                         return \App\Services\DiasHabilesCalculator::contarDiasHabiles(
@@ -115,6 +114,16 @@ class ReporteClientesAtrasoResource extends Resource
             ->modifyQueryUsing(function (Builder $query) {
                 $query->select('Credito.*')
                     ->selectRaw("DATEDIFF(NOW(), COALESCE((SELECT MAX(FechaPago) FROM pago WHERE pago.CreditoID = Credito.CreditoID AND pago.Activo = 1), FechaGeneracion)) as dias_atraso_calc")
+                    // OPTIMIZACIÓN N+1: Precalcular ultimo_pago en una subquery por página
+                    // para evitar pagos()->max('FechaPago') por cada fila.
+                    ->addSelect([
+                        'ultimo_pago' => \App\Models\Pago::select('pago.FechaPago')
+                            ->join('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
+                            ->whereColumn('cuota.CreditoID', '=', 'Credito.CreditoID')
+                            ->where('pago.Activo', 1)
+                            ->orderByDesc('pago.FechaPago')
+                            ->limit(1),
+                    ])
                     ->where('Activo', 1)
                     ->whereHas('proposicion', function ($q) {
                         $q->where('SaldoPendiente', '>', 0);

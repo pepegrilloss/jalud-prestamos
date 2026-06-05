@@ -135,7 +135,9 @@ class AprobacionProposicionResource extends Resource
 
                 Tables\Columns\TextColumn::make('MMR')
                     ->label('MMR')
-                    ->state(fn ($record) => $record->cliente?->analisisEconomico?->MontoMaxRecomendado ?? 0)
+                    // OPTIMIZACIÓN N+1: leer del eager load (cliente.analisisEconomico)
+                    // añadido en modifyQueryUsing, sin consultas adicionales por fila.
+                    ->state(fn ($record) => (float) ($record->cliente?->analisisEconomico?->MontoMaxRecomendado ?? 0))
                     ->money('PEN')
                     ->sortable(
                         query: fn(\Illuminate\Database\Eloquent\Builder $query, string $direction) => $query
@@ -193,7 +195,10 @@ class AprobacionProposicionResource extends Resource
             ])
             ->modifyQueryUsing(function ($query) {
                 // Mostrar proposiciones que aún no tienen crédito generado
-                return $query->whereDoesntHave('credito');
+                return $query->whereDoesntHave('credito')
+                    // OPTIMIZACIÓN N+1: eager load cliente (para columnas DNI/Nombres) y
+                    // cliente.analisisEconomico (para columna MMR).
+                    ->with(['cliente' => fn ($q) => $q->with('analisisEconomico')]);
             })
             ->actions([
                 Tables\Actions\Action::make('aprobar')
@@ -273,7 +278,7 @@ class AprobacionProposicionResource extends Resource
     }
 
     /**
-     * Verifica si el usuario puede aprobar la proposición (logística secuencial)
+     * Verifica si el usuario puede aprobar la proposición
      */
     private static function puedeAprobarProposicion(ProposicionCredito $proposicion): bool
     {
@@ -282,17 +287,8 @@ class AprobacionProposicionResource extends Resource
             return false;
         }
 
-        // Validar si es el nivel con Orden 1 (Gerencia o nivel principal)
-        $esGerencia = $nivelActivo->nivelAprobacion && $nivelActivo->nivelAprobacion->Orden === 1;
-
-        if ($esGerencia) {
-            // El nivel 1 puede aprobar todo lo que esté pendiente, saltándose la secuencia
-            return $proposicion->aprobaciones()->where('Estado', 'PENDIENTE')->exists();
-        }
-
         $nivelUsuario = $nivelActivo->NivelAprobacionID;
 
-        // Obtener la aprobación de este nivel (para niveles normales)
         $aprobacionNivel = $proposicion->aprobaciones()
             ->where('NivelAprobacionID', $nivelUsuario)
             ->first();
@@ -301,7 +297,6 @@ class AprobacionProposicionResource extends Resource
             return false;
         }
 
-        // Verificar que es la siguiente en la secuencia
         return $proposicion->puedeAprobarEstaNivel($aprobacionNivel);
     }
 

@@ -158,6 +158,7 @@ class ProposicionCredito extends Model
         return NivelAprobacion::where('Activo', true)
             ->where('MontoMinimo', '<=', $monto)
             ->where('MontoMaximo', '>=', $monto)
+            ->orderBy('Orden', 'desc')
             ->first();
     }
 
@@ -181,35 +182,27 @@ class ProposicionCredito extends Model
 
     public function crearAprobacionesRequeridas(): void
     {
-        $nivelesACrear = [];
-        $nivelMasAlto = null;
+        $nivel = self::obtenerNivelAprobacionRequerido($this->MontoTotal);
 
-        if ($this->MontoTotal <= 5000) {
-            $nivelesACrear = [3]; // Jefe de Oficina
-        } elseif ($this->MontoTotal <= 30000) {
-            $nivelesACrear = [3, 2]; // Jefe de Oficina + Supervisor Operativo
-        } else {
-            $nivelesACrear = [3, 2, 1]; // Jefe de Oficina + Supervisor Operativo + Gerencia
+        if (!$nivel) {
+            $nivel = NivelAprobacion::where('Activo', true)
+                ->orderBy('Orden', 'asc')
+                ->first();
         }
 
-        $niveles = NivelAprobacion::where('Activo', true)
-            ->whereIn('Orden', $nivelesACrear)
-            ->orderBy('Orden', 'asc')
-            ->get();
-
-        foreach ($niveles as $nivel) {
-            AprobacionProposicion::firstOrCreate(
-                [
-                    'ProposicionCreditoID' => $this->ProposicionCreditoID,
-                    'NivelAprobacionID' => $nivel->NivelAprobacionID,
-                ],
-                ['Estado' => 'PENDIENTE']
-            );
-            $nivelMasAlto = $nivel->NivelAprobacionID;
+        if (!$nivel) {
+            return;
         }
 
-        // Al usar el boot anterior, este save() ya no fallará
-        $this->NivelAprobacionRequerido = $nivelMasAlto;
+        AprobacionProposicion::firstOrCreate(
+            [
+                'ProposicionCreditoID' => $this->ProposicionCreditoID,
+                'NivelAprobacionID' => $nivel->NivelAprobacionID,
+            ],
+            ['Estado' => 'PENDIENTE']
+        );
+
+        $this->NivelAprobacionRequerido = $nivel->NivelAprobacionID;
         $this->save();
     }
 

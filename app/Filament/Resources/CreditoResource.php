@@ -204,9 +204,9 @@ class CreditoResource extends Resource
                 Tables\Columns\TextColumn::make('mora_acumulada')
                     ->label('Mora Acumulada')
                     ->money('PEN')
-                    ->getStateUsing(function ($record) {
-                        return $record->moras()?->latest('FechaMora')?->first()?->MoraAcumulada ?? 0;
-                    })
+                    // OPTIMIZACIÓN N+1: leer el atributo precalculado por la subquery
+                    // en modifyQueryUsing en vez de moras()->latest()->first() por fila.
+                    ->getStateUsing(fn ($record) => (float) ($record->ultima_mora_acumulada ?? 0))
                     ->color(function ($state) {
                         return $state > 0 ? 'danger' : 'success';
                     })
@@ -319,6 +319,14 @@ class CreditoResource extends Resource
                     'tipoPago',
                     'pagos' => fn($q) => $q->where('Activo', 1),
                 ])
+                    // OPTIMIZACIÓN N+1: precalcular la última MoraAcumulada por crédito
+                    // en una subquery (replica el latest('FechaMora')->first() original).
+                    ->addSelect([
+                        'ultima_mora_acumulada' => \App\Models\Mora::select('MoraAcumulada')
+                            ->whereColumn('mora.CreditoID', '=', 'Credito.CreditoID')
+                            ->orderByDesc('FechaMora')
+                            ->limit(1),
+                    ])
                     // Excluir créditos de proposiciones refinanciadas
                     ->whereHas('proposicion', function (Builder $q) {
                         $q->where('FueRefinanciada', 0);

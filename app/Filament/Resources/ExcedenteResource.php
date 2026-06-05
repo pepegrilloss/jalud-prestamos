@@ -125,6 +125,8 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
     {
         return $table
             ->recordUrl(null)
+            // OPTIMIZACIÓN N+1: eager load zona para la columna zona.Nombre.
+            ->modifyQueryUsing(fn ($query) => $query->with('zona'))
             ->columns([
                 Tables\Columns\TextColumn::make('TipoExcedente')
                     ->label('Tipo')

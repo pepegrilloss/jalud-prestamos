@@ -754,7 +754,13 @@ class ClienteResource extends Resource
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 return $query->where('Activo', true)
-                    ->with(['negocio' => fn($q) => $q->with(['ciudad', 'zona', 'telefonos'])]);
+                    ->with([
+                        'negocio' => fn($q) => $q->with(['ciudad', 'zona', 'telefonos']),
+                        // OPTIMIZACIÓN N+1: eager load garante y promotorCobrador
+                        // para sus columnas (antes eran lazy load por fila).
+                        'garante',
+                        'promotorCobrador',
+                    ]);
             })
             ->actions([
                 Tables\Actions\ActionGroup::make([

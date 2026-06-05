@@ -62,21 +62,17 @@ class ReporteCreditosVencidosResource extends Resource
                 Tables\Columns\TextColumn::make('totalPagado')
                     ->label('Pagado')
                     ->money('PEN')
-                    ->getStateUsing(function ($record) {
-                        return \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $record->CreditoID))
-                            ->where('Activo', 1)
-                            ->sum('MontoPagado');
-                    })
+                    // OPTIMIZACIÓN N+1: lee el atributo precalculado por la subquery en modifyQueryUsing.
+                    ->getStateUsing(fn ($record) => (float) ($record->total_pagado ?? 0))
                     ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw("(SELECT COALESCE(SUM(p.MontoPagado), 0) FROM pago p JOIN cuota c ON p.CuotaID = c.CuotaID WHERE c.CreditoID = Credito.CreditoID AND p.Activo = 1) {$direction}")),
 
                 Tables\Columns\TextColumn::make('saldoPendiente')
                     ->label('Saldo')
                     ->money('PEN')
+                    // OPTIMIZACIÓN N+1: usa total_pagado (subquery) y proposicion (eager loaded).
                     ->getStateUsing(function ($record) {
-                        $total = $record->proposicion->MontoTotalPagar ?? 0;
-                        $pagado = \App\Models\Pago::whereHas('cuota', fn($q) => $q->where('CreditoID', $record->CreditoID))
-                            ->where('Activo', 1)
-                            ->sum('MontoPagado');
+                        $total = (float) ($record->proposicion->MontoTotalPagar ?? 0);
+                        $pagado = (float) ($record->total_pagado ?? 0);
                         return $total - $pagado;
                     })
                     ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw("(SELECT pc.SaldoPendiente FROM ProposicionCredito pc WHERE pc.ProposicionCreditoID = Credito.ProposicionCreditoID) {$direction}")),
@@ -134,7 +130,15 @@ class ReporteCreditosVencidosResource extends Resource
                     ->whereHas('proposicion', function ($q) {
                         $q->where('SaldoPendiente', '>', 0);
                     })
-                    ->with(['proposicion.cliente', 'proposicion.tipoCredito', 'proposicion.zona']);
+                    ->with(['proposicion.cliente', 'proposicion.tipoCredito', 'proposicion.zona'])
+                    // OPTIMIZACIÓN N+1: Precalcular total_pagado en una sola subquery por página,
+                    // en vez de ejecutar Pago::sum() por cada fila en getStateUsing.
+                    ->addSelect([
+                        'total_pagado' => \App\Models\Pago::selectRaw('COALESCE(SUM(pago.MontoPagado), 0)')
+                            ->join('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
+                            ->whereColumn('cuota.CreditoID', '=', 'Credito.CreditoID')
+                            ->where('pago.Activo', 1),
+                    ]);
             })
             ->actions([])
             ->bulkActions([])
