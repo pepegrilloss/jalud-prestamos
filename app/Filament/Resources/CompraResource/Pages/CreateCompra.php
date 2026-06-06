@@ -33,7 +33,15 @@ class CreateCompra extends CreateRecord
 
         // Tomar MontoIGV del formulario (calculado por calcularTotales)
         $data['MontoIGV'] = floatval($data['MontoIGV'] ?? 0);
-        $data['Total'] = floatval($data['SubtotalBase']) + floatval($data['MontoIGV']);
+        
+        // Si el usuario proporcionó un Total manualmente, respetarlo
+        // Solo recalcular si viene vacío o es 0
+        $totalManual = floatval($data['Total'] ?? 0);
+        if ($totalManual > 0) {
+            // El usuario ya definió el total manualmente, usarlo
+        } else {
+            $data['Total'] = $subtotalBase + $data['MontoIGV'];
+        }
 
         // Si es CRÉDITO, no validar ni descontar de Caja Chica
         $data['EstadoPago'] = ($data['TipoCompra'] ?? 'CONTADO') === 'CREDITO' ? 'PENDIENTE' : 'PAGADO';
