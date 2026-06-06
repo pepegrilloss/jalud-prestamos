@@ -138,7 +138,7 @@ class CompraResource extends Resource
                              ->required()
                              ->minItems(1)
                              ->columnSpanFull()
-                             ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularSubtotales($get, $set)),
+                             ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
 
                         Forms\Components\Grid::make(5)
                             ->schema([
@@ -192,7 +192,7 @@ class CompraResource extends Resource
             ]);
     }
 
-    public static function calcularSubtotales(Get $get, Set $set): void
+    public static function calcularTotales(Get $get, Set $set): void
     {
         $detalles = $get('detalles') ?? [];
 
@@ -204,23 +204,12 @@ class CompraResource extends Resource
 
         $subtotalBase = collect($detalles)->sum(fn($item) => floatval($item['Cantidad'] ?? 0) * floatval($item['PrecioUnitario'] ?? 0));
         $set('SubtotalBase', number_format($subtotalBase, 2, '.', ''));
-    }
 
-    public static function calcularTotales(Get $get, Set $set): void
-    {
-        // Primero calcular subtotales
-        static::calcularSubtotales($get, $set);
-
-        // Solo calcular Total automáticamente si viene vacío (0)
-        $totalActual = floatval($get('Total') ?? 0);
-        if ($totalActual == 0.00) {
-            $tipoIGV = \App\Models\TipoIgv::where('Codigo', $get('TipoIGV'))->first();
-            $tasa = $tipoIGV?->Porcentaje ?? 0;
-            $subtotalBase = floatval($get('SubtotalBase') ?? 0);
-            $igv = $tasa > 0 ? $subtotalBase * ($tasa / 100) : 0;
-            $set('MontoIGV', number_format($igv, 2, '.', ''));
-            $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
-        }
+        $tipoIGV = \App\Models\TipoIgv::where('Codigo', $get('TipoIGV'))->first();
+        $tasa = $tipoIGV?->Porcentaje ?? 0;
+        $igv = $tasa > 0 ? $subtotalBase * ($tasa / 100) : 0;
+        $set('MontoIGV', number_format($igv, 2, '.', ''));
+        $set('Total', number_format($subtotalBase + $igv, 2, '.', ''));
     }
 
     public static function table(Table $table): Table
