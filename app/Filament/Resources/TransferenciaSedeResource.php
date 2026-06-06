@@ -229,7 +229,8 @@ class TransferenciaSedeResource extends Resource
                     })
                     ->visible(function (TransferenciaSede $record) {
                         if ($record->Estado !== 'PENDIENTE') return false;
-                        return self::esGerencia();
+                        if (!self::esGerencia()) return false;
+                        return \App\Models\AperturaCierreDia::estaAbierto();
                     })
                     ->action(function (TransferenciaSede $record, FondoSedeService $service, array $data = []) {
                         try {
@@ -268,7 +269,8 @@ class TransferenciaSedeResource extends Resource
                         if ($record->Estado !== 'PENDIENTE') return false;
                         if (!$record->EsSolicitudGerencia) return false;
                         $sedeId = auth()->user()->getEffectiveSedeId();
-                        return $sedeId === $record->SedeDestinoID;
+                        if ($sedeId !== $record->SedeDestinoID) return false;
+                        return \App\Models\AperturaCierreDia::estaAbierto();
                     })
                     ->action(function (TransferenciaSede $record, FondoSedeService $service) {
                         try {
@@ -300,7 +302,8 @@ class TransferenciaSedeResource extends Resource
                     ->requiresConfirmation()
                     ->visible(function (TransferenciaSede $record) {
                         if ($record->Estado !== 'PENDIENTE') return false;
-                        return self::esGerencia();
+                        if (!self::esGerencia()) return false;
+                        return \App\Models\AperturaCierreDia::estaAbierto();
                     })
                     ->action(function (TransferenciaSede $record, FondoSedeService $service) {
                         try {

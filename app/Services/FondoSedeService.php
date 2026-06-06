@@ -264,6 +264,21 @@ class FondoSedeService
             throw ValidationException::withMessages(['Monto' => 'El monto aprobado no puede exceder el monto solicitado.']);
         }
 
+        $diaAbierto = \App\Models\AperturaCierreDia::getDiaAbierto();
+        if (!$diaAbierto) {
+            throw ValidationException::withMessages([
+                'fecha' => 'No hay un día abierto. Debe aperturar el día antes de aceptar transferencias.',
+            ]);
+        }
+
+        $fechaEnvio = \Carbon\Carbon::parse($transferencia->FechaTransferencia)->toDateString();
+        $fechaAbierta = \Carbon\Carbon::parse($diaAbierto->Fecha)->toDateString();
+        if ($fechaEnvio !== $fechaAbierta) {
+            throw ValidationException::withMessages([
+                'fecha' => "La fecha de envío ({$fechaEnvio}) no coincide con la fecha del día abierto ({$fechaAbierta}). Solo se pueden aceptar transferencias del mismo día.",
+            ]);
+        }
+
         if ($transferencia->EsSolicitudCapital) {
             return $this->aceptarSolicitudCapital($transferencia, $usuarioId, $montoEfectivo);
         }

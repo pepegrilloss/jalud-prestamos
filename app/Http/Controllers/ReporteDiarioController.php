@@ -71,6 +71,7 @@ class ReporteDiarioController extends Controller
         $fondo = $sedeId ? FondoSede::where('SedeID', $sedeId)->first() : null;
         $saldoCajaAbierta = $fondo ? $fondo->Saldo : 0;
         $saldoCajaChica = 0; // Se calculará dinámicamente más abajo
+        $saldoInicialCajaChica = 0; // Se calculará dinámicamente más abajo
 
         $saldoCuentaAMayor = 0;
         if ($sedeId) {
@@ -251,6 +252,7 @@ class ReporteDiarioController extends Controller
         $saldoCierreCajaAbierta = 0;
         $totalInyeccionesDia = 0;
         $totalOtrasOperacionesDia = 0;
+        $totalIngresosCajaChica = 0;
 
         if ($sedeId) {
             // Función auxiliar para calcular el saldo real hasta un momento dado
@@ -319,11 +321,16 @@ class ReporteDiarioController extends Controller
             // Calcular saldo al terminar el día
             $saldoCierreCajaAbierta = $calcularSaldoHasta($fechaFinDia);
 
-            // Calcular saldo de Caja Chica históricamente
+            // ─── CÁLCULO DE SALDO DE CAJA CHICA POR DÍA ───
             $calcularSaldoCajaChicaHasta = function ($fechaLimite) use ($sedeId) {
                 $movimientos = \App\Models\MovimientoFondo::with('transferencia')
                     ->where('SedeID', $sedeId)
-                    ->where('FechaMovimiento', '<=', $fechaLimite)
+                    ->where(function($q) use ($fechaLimite) {
+                        $q->where('FechaMovimiento', '<=', $fechaLimite)
+                          ->orWhere(function($q2) use ($fechaLimite) {
+                              $q2->whereNull('FechaMovimiento')->where('created_at', '<=', $fechaLimite);
+                          });
+                    })
                     ->get();
                 
                 $saldo = 0;
@@ -331,11 +338,11 @@ class ReporteDiarioController extends Controller
                     if ($m->Tipo === 'INGRESO_CAJA_CHICA') {
                         $saldo += $m->Monto;
                     } elseif ($m->Tipo === 'EGRESO_CAJA_CHICA') {
-                        $saldo += $m->Monto;
+                        $saldo += $m->Monto; // El monto es negativo, resta automáticamente
                     } elseif ($m->Tipo === 'TRASLADO_CA_A_CC') {
-                        $saldo += abs($m->Monto);
+                        $saldo += abs($m->Monto); // Entrada a CC
                     } elseif ($m->Tipo === 'TRASLADO_CC_A_CA') {
-                        $saldo -= abs($m->Monto);
+                        $saldo -= abs($m->Monto); // Salida de CC
                     } elseif ($m->Tipo === 'RECEPCION_TRANSFERENCIA') {
                         $transferencia = $m->transferencia;
                         if ($transferencia && $transferencia->CuentaDestino === 'CAJA_CHICA') {
@@ -352,7 +359,34 @@ class ReporteDiarioController extends Controller
                 return $saldo;
             };
 
-            $saldoCajaChica = $calcularSaldoCajaChicaHasta($fechaFinDia);
+            // SALDO INICIAL DE CAJA CHICA: el saldo justo antes de iniciar el día
+            $saldoInicialCajaChica = $calcularSaldoCajaChicaHasta($fechaInicioDia->copy()->subSecond());
+            
+            // SALDO FINAL DE CAJA CHICA: al final del día
+            $saldoCierreCajaChica = $calcularSaldoCajaChicaHasta($fechaFinDia);
+            
+            // Para compatibilidad, el saldo mostrado es el final del día
+            $saldoCajaChica = $saldoCierreCajaChica;
+
+            // Ingresos a Caja Chica del DÍA
+            $ingresosCCManuales = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
+                ->where('Tipo', 'INGRESO_CAJA_CHICA')
+                ->sum('Monto');
+
+            $trasladosACC = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
+                ->where('Tipo', 'TRASLADO_CA_A_CC')
+                ->sum(\DB::raw('ABS(Monto)'));
+
+            $transferenciasCC = \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)
+                ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
+                ->where('movimientos_fondo.Tipo', 'RECEPCION_TRANSFERENCIA')
+                ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
+                ->where('transferencia_sedes.CuentaDestino', 'CAJA_CHICA')
+                ->sum('movimientos_fondo.Monto');
+
+            $totalIngresosCajaChica = $ingresosCCManuales + $trasladosACC + $transferenciasCC;
 
             // Inyecciones o transferencias recibidas DEL DÍA (para mostrar en reporte)
             $transferenciasRecibidasDia = \App\Models\TransferenciaSede::withoutGlobalScopes()
@@ -389,6 +423,8 @@ class ReporteDiarioController extends Controller
             'saldoCajaAbierta'      => $saldoCierreCajaAbierta, // REEMPLAZADO por el saldo de cierre del día, no el live
             'saldoLiveCajaAbierta'  => $saldoCajaAbierta, // Pasamos el live por si acaso
             'saldoCajaChica'        => $saldoCajaChica,
+            'saldoInicialCajaChica' => $saldoInicialCajaChica,
+            'totalIngresosCajaChica' => $totalIngresosCajaChica ?? 0,
             'saldoCuentaAMayor'     => $saldoCuentaAMayor,
             'totalInyeccionesDia'   => $totalInyeccionesDia,
             'totalOtrasOperacionesDia' => $totalOtrasOperacionesDia,

@@ -365,9 +365,28 @@
                     {{ number_format($saldoCuentaAMayor, 2) }}</td>
             </tr>
             <tr>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px; color: #555;">SALDO INICIAL DEL DIA (CAJA CHICA):</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; color: #555;">
+                    {{ number_format($saldoInicialCajaChica ?? 0, 2) }}</td>
+            </tr>
+            @if(isset($totalIngresosCajaChica) && $totalIngresosCajaChica > 0)
+            <tr>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px; color: #28a745;">INGRESOS DEL DÍA (CAJA CHICA):</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; color: #28a745;">
+                    +{{ number_format($totalIngresosCajaChica, 2) }}</td>
+            </tr>
+            @endif
+            @if(isset($totalGastos) && $totalGastos > 0 || isset($totalCompras) && $totalCompras > 0)
+            <tr>
+                <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px; color: #c00;">GASTOS DEL DÍA (Compras + Gastos):</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; color: #c00;">
+                    -{{ number_format(($totalGastos ?? 0) + ($totalCompras ?? 0), 2) }}</td>
+            </tr>
+            @endif
+            <tr>
                 <td style="width: 65%; text-align: right; font-weight: bold; font-size: 9px;">SALDO CAJA CHICA:</td>
-                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px;">
-                    {{ number_format($saldoCajaChica, 2) }}</td>
+                <td class="monto" style="width: 35%; font-weight: bold; font-size: 9px; border-top: 1px solid #000;">
+                    {{ number_format($saldoCajaChica ?? 0, 2) }}</td>
             </tr>
             <tr>
                 <td colspan="2">&nbsp;</td>

@@ -164,6 +164,7 @@ class GerenciaPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 \Hasnayeen\Themes\Http\Middleware\SetTheme::class,
                 \App\Http\Middleware\EnsureGerenciaSedeSession::class,
+                \App\Http\Middleware\ValidarDiaAperturado::class,
                 DispatchServingFilamentEvent::class,
             ])
             ->plugins([
