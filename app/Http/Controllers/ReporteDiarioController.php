@@ -369,9 +369,12 @@ class ReporteDiarioController extends Controller
             $saldoCajaChica = $saldoCierreCajaChica;
 
             // Ingresos a Caja Chica del DÍA
+            // NOTA: Se excluyen los INGRESO_CAJA_CHICA por 'Ajuste' (correcciones de edición)
+            // porque no son dinero nuevo, son devoluciones que ya netean contra los egresos.
             $ingresosCCManuales = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
                 ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
                 ->where('Tipo', 'INGRESO_CAJA_CHICA')
+                ->where('Observacion', 'NOT LIKE', '%Ajuste%')
                 ->sum('Monto');
 
             $trasladosACC = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
