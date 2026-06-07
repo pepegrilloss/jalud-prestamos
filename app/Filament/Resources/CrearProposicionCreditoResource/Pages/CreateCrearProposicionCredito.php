@@ -63,6 +63,17 @@ class CreateCrearProposicionCredito extends CreateRecord
 
                 $this->halt();
             }
+
+            // NUEVA VALIDACIÓN: Bloquear si el cliente está OBSERVADO
+            if (!$esRefinanciamiento && $cliente && $cliente->Estado === 'OBSERVADO') {
+                Notification::make()
+                    ->title('❌ Cliente Observado')
+                    ->body("El cliente '{$cliente->NombresApellidos}' se encuentra OBSERVADO. No se puede crear una nueva proposición de crédito.")
+                    ->danger()
+                    ->send();
+
+                $this->halt();
+            }
         }
 
         // Manejar Refinanciamiento

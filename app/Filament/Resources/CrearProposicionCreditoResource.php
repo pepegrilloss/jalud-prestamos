@@ -62,6 +62,15 @@ class CrearProposicionCreditoResource extends Resource
                         'class' => 'text-danger-600 font-bold text-center p-4 bg-danger-50 rounded-lg border-2 border-danger-600'
                     ]),
 
+                // Banner de alerta si el cliente está OBSERVADO
+                Forms\Components\Placeholder::make('alerta_cliente_observado')
+                    ->label('')
+                    ->content('CLIENTE OBSERVADO — No se puede proponer un crédito.')
+                    ->visible(fn(Get $get) => $get('ClienteID') && self::clienteEstaObservado($get('ClienteID')))
+                    ->extraAttributes([
+                        'class' => 'text-danger-600 font-bold text-center p-4 bg-danger-50 rounded-lg border-2 border-danger-600'
+                    ]),
+
                 // Banner de verificación de cuotas al día
                 Forms\Components\Placeholder::make('estado_cuotas')
                     ->label('')
@@ -436,6 +445,16 @@ class CrearProposicionCreditoResource extends Resource
 
         $cliente = Cliente::find($clienteID);
         return $cliente && $cliente->tieneCreditoCorriendo();
+    }
+
+    protected static function clienteEstaObservado($clienteID): bool
+    {
+        if (!$clienteID) {
+            return false;
+        }
+
+        $cliente = Cliente::find($clienteID);
+        return $cliente && $cliente->Estado === 'OBSERVADO';
     }
 
     protected static function verificarEstadoCuotas(Get $get): string
