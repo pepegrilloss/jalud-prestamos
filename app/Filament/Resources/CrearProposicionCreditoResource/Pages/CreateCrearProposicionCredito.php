@@ -65,6 +65,7 @@ class CreateCrearProposicionCredito extends CreateRecord
             }
 
             // NUEVA VALIDACIÓN: Bloquear si el cliente está OBSERVADO
+            $cliente = Cliente::find($clienteID);
             if (!$esRefinanciamiento && $cliente && $cliente->Estado === 'OBSERVADO') {
                 Notification::make()
                     ->title('❌ Cliente Observado')
