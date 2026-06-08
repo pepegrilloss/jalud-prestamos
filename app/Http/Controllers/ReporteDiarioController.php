@@ -364,9 +364,6 @@ class ReporteDiarioController extends Controller
             
             // SALDO FINAL DE CAJA CHICA: al final del día
             $saldoCierreCajaChica = $calcularSaldoCajaChicaHasta($fechaFinDia);
-            
-            // Para compatibilidad, el saldo mostrado es el final del día
-            $saldoCajaChica = $saldoCierreCajaChica;
 
             // Ingresos a Caja Chica del DÍA
             // NOTA: Se excluyen los INGRESO_CAJA_CHICA por 'Ajuste' (correcciones de edición)
@@ -390,6 +387,10 @@ class ReporteDiarioController extends Controller
                 ->sum('movimientos_fondo.Monto');
 
             $totalIngresosCajaChica = $ingresosCCManuales + $trasladosACC + $transferenciasCC;
+
+            // El saldo final de CC se calcula como Inicial + Ingresos - Gastos
+            // para que el reporte cuadre matemáticamente sin centavos de diferencia
+            $saldoCajaChica = $saldoInicialCajaChica + $totalIngresosCajaChica - ($totalGastos + $totalCompras);
 
             // Inyecciones o transferencias recibidas DEL DÍA (para mostrar en reporte)
             $transferenciasRecibidasDia = \App\Models\TransferenciaSede::withoutGlobalScopes()
