@@ -53,12 +53,14 @@ class Gasto extends Model
         'SedeID',
         'UsuarioRegistro',
         'UsuarioModificacion',
+        'FechaCierre',
     ];
 
     protected $casts = [
         'FechaEmision' => 'datetime',
         'FechaCreacion' => 'datetime',
         'FechaModificacion' => 'datetime',
+        'FechaCierre' => 'datetime',
         'Total' => 'decimal:2',
         'Activo' => 'boolean',
         'EsGasto' => 'boolean',

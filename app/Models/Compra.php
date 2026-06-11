@@ -57,12 +57,14 @@ class Compra extends Model
         'SedeID',
         'UsuarioRegistro',
         'UsuarioModificacion',
+        'FechaCierre',
     ];
 
     protected $casts = [
         'FechaEmision' => 'datetime',
         'FechaCreacion' => 'datetime',
         'FechaModificacion' => 'datetime',
+        'FechaCierre' => 'datetime',
         'SubtotalBase' => 'decimal:2',
         'MontoIGV' => 'decimal:2',
         'Total' => 'decimal:2',

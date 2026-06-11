@@ -189,6 +189,13 @@ class AperturaCierreDiaResource extends Resource
                                 'fecha' => $record->Fecha->format('d/m/Y'),
                             ]);
 
+                            // Verificar que no haya registros pendientes de aprobar
+                            $pendientes = $record->verificarPendientes();
+                            if (!empty($pendientes)) {
+                                $mensaje = "No se puede cerrar el día. Pendientes por resolver:\n\n" . implode("\n", $pendientes);
+                                throw new \Exception($mensaje);
+                            }
+
                             DB::transaction(function () use ($record, $logger) {
                                 $recordLocked = AperturaCierreDia::lockForUpdate()
                                     ->find($record->AperturaCierreDiaID);

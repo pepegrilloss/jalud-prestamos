@@ -8,6 +8,11 @@ use App\Observers\AperturaCierreDiaObserver;
 use App\Traits\BelongsToSede;
 use App\Models\Excedente;
 use App\Models\SolicitudResolucionExcedente;
+use App\Models\Gasto;
+use App\Models\Compra;
+use App\Models\TransferenciaSede;
+use App\Models\ProposicionCredito;
+use App\Models\SolicitudExoneracion;
 
 class AperturaCierreDia extends Model
 {
@@ -130,6 +135,90 @@ class AperturaCierreDia extends Model
     }
 
     /**
+     * Verifica que no haya registros pendientes de aprobar para este día y sede.
+     * Retorna array vacío si todo está en orden, o array con descripciones de cada pendiente.
+     */
+    public function verificarPendientes(): array
+    {
+        $fecha = $this->Fecha->toDateString();
+        $pendientes = [];
+
+        // 1. Transferencias pendientes de aprobar (origen o destino en esta sede)
+        $transferenciasPendientes = TransferenciaSede::withoutGlobalScope('sede')
+            ->where('Estado', 'PENDIENTE')
+            ->where(function($q) {
+                $q->where('SedeOrigenID', $this->SedeID)
+                  ->orWhere('SedeDestinoID', $this->SedeID);
+            })
+            ->whereDate('FechaTransferencia', $fecha)
+            ->count();
+
+        if ($transferenciasPendientes > 0) {
+            $pendientes[] = "{$transferenciasPendientes} transferencia(s) pendiente(s) de aprobar.";
+        }
+
+        // 2. Proposiciones de crédito pendientes
+        $proposicionesPendientes = ProposicionCredito::withoutGlobalScope('sede')
+            ->where('SedeID', $this->SedeID)
+            ->where('Estado', 'PENDIENTE')
+            ->whereDate('FechaPropuesta', $fecha)
+            ->count();
+
+        if ($proposicionesPendientes > 0) {
+            $pendientes[] = "{$proposicionesPendientes} proposición(es) de crédito pendiente(s) de aprobar.";
+        }
+
+        // 3. Solicitudes de exoneración pendientes
+        $exoneracionesPendientes = SolicitudExoneracion::withoutGlobalScope('sede')
+            ->where('SedeID', $this->SedeID)
+            ->where('Estado', 'PENDIENTE')
+            ->where('Activo', true)
+            ->whereDate('FechaSolicitud', $fecha)
+            ->count();
+
+        if ($exoneracionesPendientes > 0) {
+            $pendientes[] = "{$exoneracionesPendientes} exoneración(es) pendiente(s) de aprobar.";
+        }
+
+        // 4. Extornos / resoluciones de excedente pendientes
+        $extornosPendientes = SolicitudResolucionExcedente::withoutGlobalScope('sede')
+            ->where('SedeID', $this->SedeID)
+            ->where('Estado', 'PENDIENTE')
+            ->whereDate('created_at', $fecha)
+            ->count();
+
+        if ($extornosPendientes > 0) {
+            $pendientes[] = "{$extornosPendientes} extorno(s) / resolución(es) de excedente pendiente(s).";
+        }
+
+        // 5. Excedentes sin resolver
+        $excedentesPendientes = Excedente::withoutGlobalScope('sede')
+            ->where('SedeID', $this->SedeID)
+            ->where('EstadoResolucion', 'PENDIENTE')
+            ->whereDate('Fecha', $fecha)
+            ->count();
+
+        if ($excedentesPendientes > 0) {
+            $pendientes[] = "{$excedentesPendientes} excedente(s) pendiente(s) de resolver.";
+        }
+
+        // 6. Facturas pendientes de pago (compras a crédito sin pagar)
+        $facturasPendientes = Compra::withoutGlobalScope('sede')
+            ->where('SedeID', $this->SedeID)
+            ->where('TipoCompra', 'CREDITO')
+            ->where('EstadoPago', 'PENDIENTE')
+            ->where('Activo', true)
+            ->whereDate('FechaEmision', $fecha)
+            ->count();
+
+        if ($facturasPendientes > 0) {
+            $pendientes[] = "{$facturasPendientes} factura(s) pendiente(s) de pago.";
+        }
+
+        return $pendientes;
+    }
+
+    /**
      * Cierra el día: marca con FechaCierre todos los registros sin cerrar DEL DÍA ESPECÍFICO
      */
     public function cerrarDia(): void
@@ -210,9 +299,36 @@ class AperturaCierreDia extends Model
                 ->update(['FechaCierre' => $fechaCarbon]);
             \Illuminate\Support\Facades\Log::info("Solicitudes de resolución de excedentes cerradas en {$fecha} (sede {$this->SedeID}): {$solicitudesActualizadas}");
 
+            // Cerrar gastos SIN CERRAR emitidos ese día (SOLO esta sede)
+            $gastosActualizados = Gasto::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
+                ->whereDate('FechaEmision', $fecha)
+                ->update(['FechaCierre' => $fechaCarbon]);
+            \Illuminate\Support\Facades\Log::info("Gastos cerrados en {$fecha} (sede {$this->SedeID}): {$gastosActualizados}");
+
+            // Cerrar compras SIN CERRAR emitidas ese día (SOLO esta sede)
+            $comprasActualizadas = Compra::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereNull('FechaCierre')
+                ->whereDate('FechaEmision', $fecha)
+                ->update(['FechaCierre' => $fechaCarbon]);
+            \Illuminate\Support\Facades\Log::info("Compras cerradas en {$fecha} (sede {$this->SedeID}): {$comprasActualizadas}");
+
+            // Cerrar transferencias/remesas SIN CERRAR de ese día (origen O destino en esta sede)
+            $transferenciasActualizadas = TransferenciaSede::withoutGlobalScope('sede')
+                ->whereNull('FechaCierre')
+                ->where(function($q) {
+                    $q->where('SedeOrigenID', $this->SedeID)
+                      ->orWhere('SedeDestinoID', $this->SedeID);
+                })
+                ->whereDate('FechaTransferencia', $fecha)
+                ->update(['FechaCierre' => $fechaCarbon]);
+            \Illuminate\Support\Facades\Log::info("Transferencias cerradas en {$fecha} (sede {$this->SedeID}): {$transferenciasActualizadas}");
+
             \Illuminate\Support\Facades\Log::info("Día cerrado exitosamente: {$fecha}");
 
-            $this->registrarHistorial('CERRAR', $clientesActualizados + $proposicionesActualizadas + $creditosActualizados + $pagosActualizados + $cuotasActualizadas + $analisisActualizados + $evaluacionesActualizadas + $excedentesActualizados + $solicitudesActualizadas);
+            $this->registrarHistorial('CERRAR', $clientesActualizados + $proposicionesActualizadas + $creditosActualizados + $pagosActualizados + $cuotasActualizadas + $analisisActualizados + $evaluacionesActualizadas + $excedentesActualizados + $solicitudesActualizadas + $gastosActualizados + $comprasActualizadas + $transferenciasActualizadas);
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Error generando cierre de día: ' . $e->getMessage(), [
@@ -322,6 +438,33 @@ class AperturaCierreDia extends Model
                 ->update(['FechaCierre' => null]);
             file_put_contents($logFile, "Solicitudes de resolución actualizadas: {$solicitudesActualizadas}\n", FILE_APPEND);
 
+            // Reabrir gastos emitidos ese día (SOLO esta sede)
+            $gastosReabiertos = Gasto::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
+                ->whereDate('FechaEmision', $fecha)
+                ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Gastos reabiertos (sede {$this->SedeID}): {$gastosReabiertos}\n", FILE_APPEND);
+
+            // Reabrir compras emitidas ese día (SOLO esta sede)
+            $comprasReabiertas = Compra::withoutGlobalScope('sede')
+                ->where('SedeID', $this->SedeID)
+                ->whereDate('FechaCierre', $fecha)
+                ->whereDate('FechaEmision', $fecha)
+                ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Compras reabiertas (sede {$this->SedeID}): {$comprasReabiertas}\n", FILE_APPEND);
+
+            // Reabrir transferencias de ese día (origen O destino en esta sede)
+            $transferenciasReabiertas = TransferenciaSede::withoutGlobalScope('sede')
+                ->whereDate('FechaCierre', $fecha)
+                ->where(function($q) {
+                    $q->where('SedeOrigenID', $this->SedeID)
+                      ->orWhere('SedeDestinoID', $this->SedeID);
+                })
+                ->whereDate('FechaTransferencia', $fecha)
+                ->update(['FechaCierre' => null]);
+            file_put_contents($logFile, "Transferencias reabiertas (sede {$this->SedeID}): {$transferenciasReabiertas}\n", FILE_APPEND);
+
             file_put_contents($logFile, "\n========== REABRIRDIA COMPLETADO ==========\n", FILE_APPEND);
 
             \Illuminate\Support\Facades\Log::info("Día reabierto: {$fecha}", [
@@ -329,7 +472,7 @@ class AperturaCierreDia extends Model
                 'timestamp' => now()
             ]);
 
-            $this->registrarHistorial('REABRIR', $clientesActualizados + $proposicionesActualizadas + $creditosActualizados + $pagosActualizados + $cuotasActualizadas + $analisisActualizados + $evaluacionesActualizadas + $excedentesActualizados + $solicitudesActualizadas);
+            $this->registrarHistorial('REABRIR', $clientesActualizados + $proposicionesActualizadas + $creditosActualizados + $pagosActualizados + $cuotasActualizadas + $analisisActualizados + $evaluacionesActualizadas + $excedentesActualizados + $solicitudesActualizadas + $gastosReabiertos + $comprasReabiertas + $transferenciasReabiertas);
 
         } catch (\Exception $e) {
             $logFile = storage_path('logs/reopening-debug.log');

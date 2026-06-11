@@ -114,6 +114,18 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'ccartera' => [
+            'driver' => 'sqlsrv',
+            'host' => env('DB_CCARTERA_HOST', 'localhost'),
+            'port' => env('DB_CCARTERA_PORT', '1433'),
+            'database' => env('DB_CCARTERA_DATABASE', 'MLP_MEDLOG'),
+            'username' => env('DB_CCARTERA_USERNAME', 'sa'),
+            'password' => env('DB_CCARTERA_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+        ],
+
     ],
 
     /*

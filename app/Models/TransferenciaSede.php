@@ -91,6 +91,7 @@ class TransferenciaSede extends Model
         'FechaTransferencia',
         'FechaRespuesta',
         'VoucherImagen',
+        'FechaCierre',
     ];
 
     protected function setVoucherImagenAttribute($value)
@@ -113,6 +114,7 @@ class TransferenciaSede extends Model
         'EsSolicitudGerencia' => 'boolean',
         'FechaTransferencia' => 'datetime',
         'FechaRespuesta' => 'datetime',
+        'FechaCierre' => 'datetime',
     ];
 
     public function sedeOrigen()

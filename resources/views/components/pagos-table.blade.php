@@ -25,6 +25,10 @@
             if ($pago->EsPagoAMayor || $pago->EsPagoAMayorPorMora) {
                 $key = $fechaStr . '_amayor_' . $pago->PagoID;
                 $pagosAgrupados[$key] = [$pago];
+            // Los pagos trasladados también van como filas independientes
+            } elseif ($pago->EstadoTraslado === 'TRASLADADO') {
+                $key = $fechaStr . '_trasladado_' . $pago->PagoID;
+                $pagosAgrupados[$key] = [$pago];
             } else {
                 $key = $fechaStr . '_normal';
                 if (!isset($pagosAgrupados[$key])) {
@@ -49,7 +53,7 @@
 
             foreach ($pagosDelDia as $p) {
                 $esTrasladado = $p->EstadoTraslado === 'TRASLADADO';
-                $montoReal = ($esTrasladado || $p->EsMora || $p->EsPagoAMayor || $p->EsPagoAMayorPorMora) ? 0 : $p->MontoPagado;
+                $montoReal = $esTrasladado ? -$p->MontoPagado : (($p->EsMora || $p->EsPagoAMayor || $p->EsPagoAMayorPorMora) ? 0 : $p->MontoPagado);
                 $montoTotalDia += $montoReal;
                 $montoVisualSum += $p->MontoPagado;
 
