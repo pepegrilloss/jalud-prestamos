@@ -498,12 +498,16 @@ class PagoResource extends Resource
                     ->label('Origen')
                     ->sortable()
                     ->formatStateUsing(fn($state, $record) => match (true) {
+                        $record->PagoOrigenID !== null => 'Traslado',
+                        $record->solicitudResolucion !== null => 'Excedente',
                         $record->EsPagoAutomatico && $record->TipoConcepto === 'C' => 'Refinanciamiento',
                         $record->EsPagoAutomatico => 'Automático',
                         default => 'Normal',
                     })
                     ->badge()
                     ->color(fn($state, $record) => match (true) {
+                        $record->PagoOrigenID !== null => 'danger',
+                        $record->solicitudResolucion !== null => 'success',
                         $record->EsPagoAutomatico && $record->TipoConcepto === 'C' => 'info',
                         $record->EsPagoAutomatico => 'warning',
                         default => 'gray',

@@ -68,7 +68,8 @@ class ResolucionExcedenteService
             ->first();
 
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
-        $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now();
+        // Usar la fecha del pago ORIGINAL, no la del día abierto
+        $fechaPago = $pagoOriginal->FechaPago ?? ($fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now());
 
         $nuevoPago = Pago::create([
             'CreditoID' => $solicitud->CreditoDestinoID,
