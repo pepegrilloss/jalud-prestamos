@@ -34,14 +34,16 @@ class ListClientes extends ListRecords
             ->label('Descargar Excel')
             ->icon('heroicon-o-arrow-down-tray')
             ->color('success')
-            ->url(route('clientes.excel'));
+            ->url(route('clientes.excel'))
+            ->visible(fn() => auth()->user()?->can('descargar_excel_clientes') ?? false);
 
         $actions[] = Actions\Action::make('descargar_pdf')
             ->label('Descargar PDF')
             ->icon('heroicon-o-eye')
             ->color('danger')
             ->url(route('clientes.pdf'))
-            ->openUrlInNewTab();
+            ->openUrlInNewTab()
+            ->visible(fn() => auth()->user()?->can('descargar_pdf_clientes') ?? false);
         
         return $actions;
     }

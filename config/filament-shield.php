@@ -61,6 +61,8 @@ return [
         'abrir_dia_apertura',
         'cerrar_dia_apertura',
         'balance_diario',
+        'descargar_excel_clientes',
+        'descargar_pdf_clientes',
         'view_any_reporte::clientes::atraso',
         'view_any_reporte::clientes::inactivos',
         'registrar_pago_mora',
