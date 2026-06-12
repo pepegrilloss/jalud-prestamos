@@ -31,7 +31,8 @@ class PagoResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        $query = parent::getEloquentQuery()
+            ->with('solicitudResolucion');
         $user = auth()->user();
         if ($user->isPrivileged()) {
             $sedeId = session('sede_activa');
@@ -357,6 +358,7 @@ class PagoResource extends Resource
                                 return \App\Models\Cuota::where('CreditoID', $creditoID)
                                     ->where('Activo', 1)
                                     ->where('NumeroCuota', '>', 0)
+                                    ->with(['pagos' => fn($q) => $q->where('Activo', 1)])
                                     ->orderBy('NumeroCuota')
                                     ->get()
                                     ->mapWithKeys(fn($cuota) => [
@@ -658,11 +660,11 @@ class PagoResource extends Resource
                             )
                             ->when(
                                 in_array('fecha', $activos) && isset($data['FechaDesde']) && $data['FechaDesde'],
-                                fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) >= ?', [$data['FechaDesde']])
+                                fn(Builder $q) => $q->whereDate('pago.FechaPago', '>=', $data['FechaDesde'])
                             )
                             ->when(
                                 in_array('fecha', $activos) && isset($data['FechaHasta']) && $data['FechaHasta'],
-                                fn(Builder $q) => $q->whereRaw('DATE(`pago`.`FechaPago`) <= ?', [$data['FechaHasta']])
+                                fn(Builder $q) => $q->whereDate('pago.FechaPago', '<=', $data['FechaHasta'])
                             )
                             ->when(
                                 in_array('tipo_pago', $activos) && !empty($data['TipoPago']),
@@ -694,6 +696,7 @@ class PagoResource extends Resource
                 
                 return $query;
             })
+            ->defaultSort('pago.FechaPago', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
