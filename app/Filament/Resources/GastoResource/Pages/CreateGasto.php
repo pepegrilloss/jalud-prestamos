@@ -4,6 +4,7 @@ namespace App\Filament\Resources\GastoResource\Pages;
 
 use App\Filament\Resources\GastoResource;
 use App\Services\FondoSedeService;
+use App\Models\Sede;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 
