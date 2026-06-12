@@ -321,53 +321,65 @@ class ReporteDiarioController extends Controller
             // Calcular saldo al terminar el día
             $saldoCierreCajaAbierta = $calcularSaldoHasta($fechaFinDia);
 
-            // ─── CÁLCULO DE SALDO DE CAJA CHICA POR DÍA ───
-            $calcularSaldoCajaChicaHasta = function ($fechaLimite) use ($sedeId) {
-                $movimientos = \App\Models\MovimientoFondo::with('transferencia')
-                    ->where('SedeID', $sedeId)
-                    ->where(function($q) use ($fechaLimite) {
-                        $q->where('FechaMovimiento', '<=', $fechaLimite)
-                          ->orWhere(function($q2) use ($fechaLimite) {
-                              $q2->whereNull('FechaMovimiento')->where('created_at', '<=', $fechaLimite);
-                          });
-                    })
-                    ->get();
-                
-                $saldo = 0;
-                foreach ($movimientos as $m) {
-                    if ($m->Tipo === 'INGRESO_CAJA_CHICA') {
-                        $saldo += $m->Monto;
-                    } elseif ($m->Tipo === 'EGRESO_CAJA_CHICA') {
-                        $saldo += $m->Monto; // El monto es negativo, resta automáticamente
-                    } elseif ($m->Tipo === 'TRASLADO_CA_A_CC') {
-                        $saldo += abs($m->Monto); // Entrada a CC
-                    } elseif ($m->Tipo === 'TRASLADO_CC_A_CA') {
-                        $saldo -= abs($m->Monto); // Salida de CC
-                    } elseif ($m->Tipo === 'RECEPCION_TRANSFERENCIA') {
-                        $transferencia = $m->transferencia;
-                        if ($transferencia && $transferencia->CuentaDestino === 'CAJA_CHICA') {
-                            $saldo += abs($m->Monto);
-                        }
-                    } elseif ($m->Tipo === 'ENVIO_TRANSFERENCIA') {
-                        $transferencia = $m->transferencia;
-                        if ($transferencia && $transferencia->CuentaOrigen === 'CAJA_CHICA') {
-                            $saldo -= abs($m->Monto);
-                        }
-                    }
-                }
-                
-                return $saldo;
-            };
+            // ─── CÁLCULO DE SALDO DE CAJA CHICA (basado en Gasto/Compra, no MovimientoFondo) ───
+            // Ingresos totales a CC hasta el inicio del día (transferencias, inyecciones)
+            // NOTA: Se excluyen movimientos con 'Ajuste' o 'Reversión' para mantener consistencia
+            //       con el reporte diario que no los muestra como ingresos del día.
+            $ingresosCCHistoricos = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                ->where('FechaMovimiento', '<=', $fechaInicioDia->copy()->subSecond())
+                ->where(function($q) {
+                    $q->where('Tipo', 'INGRESO_CAJA_CHICA')
+                      ->orWhere('Tipo', 'TRASLADO_CA_A_CC');
+                })
+                ->where('Observacion', 'NOT LIKE', '%Ajuste%')
+                ->where('Observacion', 'NOT LIKE', '%Reversión%')
+                ->get()
+                ->sum(function($m) {
+                    return $m->Tipo === 'TRASLADO_CA_A_CC' ? abs($m->Monto) : $m->Monto;
+                });
 
-            // SALDO INICIAL DE CAJA CHICA: el saldo justo antes de iniciar el día
-            $saldoInicialCajaChica = $calcularSaldoCajaChicaHasta($fechaInicioDia->copy()->subSecond());
-            
-            // SALDO FINAL DE CAJA CHICA: al final del día
-            $saldoCierreCajaChica = $calcularSaldoCajaChicaHasta($fechaFinDia);
+            $ingresosCCHistoricos += \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)
+                ->where('FechaMovimiento', '<=', $fechaInicioDia->copy()->subSecond())
+                ->where('movimientos_fondo.Tipo', 'RECEPCION_TRANSFERENCIA')
+                ->where('movimientos_fondo.Observacion', 'NOT LIKE', '%Ajuste%')
+                ->where('movimientos_fondo.Observacion', 'NOT LIKE', '%Reversión%')
+                ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
+                ->where('transferencia_sedes.CuentaDestino', 'CAJA_CHICA')
+                ->sum('movimientos_fondo.Monto');
+
+            // Deducciones totales de CC hasta el inicio del día (desde Gasto/Compra)
+            $deduccionesCCHistoricas = \App\Models\Gasto::withoutGlobalScopes()
+                ->where('SedeID', $sedeId)
+                ->where('Activo', true)
+                ->where('MetodoGasto', 'CAJA CHICA')
+                ->whereDate('FechaEmision', '<', $fecha)
+                ->sum('Total');
+
+            $deduccionesCCHistoricas += \App\Models\Compra::withoutGlobalScopes()
+                ->where('SedeID', $sedeId)
+                ->where('Activo', true)
+                ->where('TipoCompra', 'CONTADO')
+                ->whereDate('FechaEmision', '<', $fecha)
+                ->sum('Total');
+
+            // Traslados de CC → CA (dinero que salió de CC, no son gastos)
+            $deduccionesCCHistoricas += \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                ->where('Tipo', 'TRASLADO_CC_A_CA')
+                ->where('FechaMovimiento', '<', $fechaInicioDia)
+                ->sum(\DB::raw('ABS(Monto)'));
+
+            // Envíos de transferencia desde CC
+            $deduccionesCCHistoricas += \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)
+                ->where('FechaMovimiento', '<', $fechaInicioDia)
+                ->where('movimientos_fondo.Tipo', 'ENVIO_TRANSFERENCIA')
+                ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
+                ->where('transferencia_sedes.CuentaOrigen', 'CAJA_CHICA')
+                ->sum(\DB::raw('ABS(movimientos_fondo.Monto)'));
+
+            // SALDO INICIAL DE CAJA CHICA = Ingresos totales - Deducciones totales (hasta ayer)
+            $saldoInicialCajaChica = $ingresosCCHistoricos - $deduccionesCCHistoricas;
 
             // Ingresos a Caja Chica del DÍA
-            // NOTA: Se excluyen los INGRESO_CAJA_CHICA por 'Ajuste' (correcciones de edición)
-            // porque no son dinero nuevo, son devoluciones que ya netean contra los egresos.
             $ingresosCCManuales = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
                 ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
                 ->where('Tipo', 'INGRESO_CAJA_CHICA')
@@ -388,8 +400,7 @@ class ReporteDiarioController extends Controller
 
             $totalIngresosCajaChica = $ingresosCCManuales + $trasladosACC + $transferenciasCC;
 
-            // El saldo final de CC se calcula como Inicial + Ingresos - Gastos
-            // para que el reporte cuadre matemáticamente sin centavos de diferencia
+            // SALDO CAJA CHICA = Inicial + Ingresos - Gastos/Compras del día (SOLO Gasto/Compra)
             $saldoCajaChica = $saldoInicialCajaChica + $totalIngresosCajaChica - ($totalGastos + $totalCompras);
 
             // Inyecciones o transferencias recibidas DEL DÍA (para mostrar en reporte)
