@@ -180,16 +180,16 @@ class AperturaCierreDia extends Model
             $pendientes[] = "{$exoneracionesPendientes} exoneración(es) pendiente(s) de aprobar.";
         }
 
-        // 4. Extornos / resoluciones de excedente pendientes
-        $extornosPendientes = SolicitudResolucionExcedente::withoutGlobalScope('sede')
-            ->where('SedeID', $this->SedeID)
-            ->where('Estado', 'PENDIENTE')
-            ->whereDate('created_at', $fecha)
-            ->count();
+        // 4. Extornos / resoluciones de excedente pendientes — DESHABILITADO: ya no bloquea el cierre del día
+        // $extornosPendientes = SolicitudResolucionExcedente::withoutGlobalScope('sede')
+        //     ->where('SedeID', $this->SedeID)
+        //     ->where('Estado', 'PENDIENTE')
+        //     ->whereDate('created_at', $fecha)
+        //     ->count();
 
-        if ($extornosPendientes > 0) {
-            $pendientes[] = "{$extornosPendientes} extorno(s) / resolución(es) de excedente pendiente(s).";
-        }
+        // if ($extornosPendientes > 0) {
+        //     $pendientes[] = "{$extornosPendientes} extorno(s) / resolución(es) de excedente pendiente(s).";
+        // }
 
         // 5. Excedentes sin resolver
         $excedentesPendientes = Excedente::withoutGlobalScope('sede')
