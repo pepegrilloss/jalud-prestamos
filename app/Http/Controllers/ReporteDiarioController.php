@@ -288,9 +288,7 @@ class ReporteDiarioController extends Controller
                     ->where('Activo', true)
                     ->where('EsPagoAMayor', false)
                     ->where('FechaPago', '<=', $fechaLimite)
-                    ->whereHas('cuota.credito', function($q) use ($sedeId) {
-                        $q->where('SedeID', $sedeId);
-                    })
+                    ->where('SedeID', $sedeId)
                     ->sum('MontoPagado');
 
                 // 4. Créditos Emitidos (Salida)
