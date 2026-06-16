@@ -80,6 +80,9 @@ class ReporteDiarioController extends Controller
                 ->where('Activo', true)
                 ->where('EsPagoAMayor', true)
                 ->where('FechaPago', '<=', $fechaFinDia)
+                ->whereHas('solicitudResolucion', function($q) {
+                    $q->where('TipoResolucion', '!=', 'TRASLADO_DE_PAGO');
+                })
                 ->sum('MontoPagado');
         }
 
@@ -190,10 +193,28 @@ class ReporteDiarioController extends Controller
 
         $totalExtornos = $extornos->sum('MontoAplicar');
 
-        // ─── 4c. CAJA ABIERTA - AMORTIZACIONES (Pagos Físicos) ───
+        // ─── 4c. CAJA ABIERTA - EXCEDENTES DEL DÍA ───
+        $excedentesDiaParaTabla = \App\Models\Excedente::withoutGlobalScopes()
+            ->where('SedeID', $sedeId)
+            ->where('Activo', true)
+            ->where('Cuenta', 'Caja Abierta')
+            ->whereBetween('Fecha', [$fechaInicioDia, $fechaFinDia])
+            ->with(['resoluciones' => function($q) {
+                $q->where('Estado', 'APROBADA')
+                  ->with(['creditoDestino.proposicion.cliente', 'clienteDestino']);
+            }])
+            ->orderBy('ExcedenteID', 'asc')
+            ->get();
+
+        // ─── 4d. CAJA ABIERTA - AMORTIZACIONES (Pagos Físicos) ───
         $pagosQuery = Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)
-            ->where('pago.EsPagoAMayor', false) // Excluir dinero virtual (Cuenta a Mayor)
+            ->where('pago.EsPagoAMayor', false)
+            ->where('pago.EsPagoAMayorPorMora', false)
+            ->where(function($q) {
+                $q->whereNull('pago.EstadoTraslado')
+                  ->orWhere('pago.EstadoTraslado', '!=', 'TRASLADADO');
+            })
             ->whereDate('pago.FechaPago', $fecha);
 
         if ($sedeId) {
@@ -212,12 +233,23 @@ class ReporteDiarioController extends Controller
                 'Zona.Nombre as ZonaNombre',
                 'TipoCredito.Codigo as TipoCreditoCodigo',
                 'Cliente.NombresApellidos',
-                'pago.MontoPagado'
+                'pago.MontoPagado',
+                'pago.Comentario',
+                'pago.TipoPago'
             )
             ->orderBy('pago.PagoID', 'asc')
-            ->get();
+            ->get()
+            ->each(function($p) {
+                if ($p->Comentario && preg_match('/Pago original:\s*S\/\s*([\d,]+(?:\.\d{2})?)/', $p->Comentario, $m)) {
+                    $p->MontoOriginal = (float) str_replace(',', '', $m[1]);
+                } else {
+                    $p->MontoOriginal = (float)$p->MontoPagado;
+                }
+            });
 
-        $totalAmortizaciones = $pagos->sum('MontoPagado');
+        $totalAmortizaciones = $pagos->sum(function($p) {
+            return $p->MontoOriginal;
+        });
 
         // ─── 5. CREDITOS EMITIDOS ───
         $creditosQuery = Credito::withoutGlobalScopes()
@@ -283,13 +315,26 @@ class ReporteDiarioController extends Controller
                     })
                     ->sum('Monto');
 
-                // 3. Pagos / Amortizaciones (Entrada física)
-                $pagos = \App\Models\Pago::withoutGlobalScopes()
+                // 3. Pagos / Amortizaciones (Entrada física) — descontando porciones aplicadas por excedentes
+                $pagosRaw = \App\Models\Pago::withoutGlobalScopes()
                     ->where('Activo', true)
                     ->where('EsPagoAMayor', false)
+                    ->where('EsPagoAMayorPorMora', false)
+                    ->where(function($q) {
+                        $q->whereNull('EstadoTraslado')
+                          ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+                    })
                     ->where('FechaPago', '<=', $fechaLimite)
                     ->where('SedeID', $sedeId)
-                    ->sum('MontoPagado');
+                    ->select('MontoPagado', 'Comentario')
+                    ->get();
+
+                $pagos = $pagosRaw->sum(function($p) {
+                    if ($p->Comentario && preg_match('/Pago original:\s*S\/\s*([\d,]+(?:\.\d{2})?)/', $p->Comentario, $m)) {
+                        return (float) str_replace(',', '', $m[1]);
+                    }
+                    return (float)$p->MontoPagado;
+                });
 
                 // 4. Créditos Emitidos (Salida)
                 $creditos = \App\Models\Credito::withoutGlobalScopes()
@@ -309,7 +354,21 @@ class ReporteDiarioController extends Controller
                 $trasladosEntrada = $otrosMovimientos->where('Tipo', 'TRASLADO_CC_A_CA')->sum(function($m) { return abs($m->Monto); });
                 $trasladosSalida = $otrosMovimientos->where('Tipo', 'TRASLADO_CA_A_CC')->sum(function($m) { return abs($m->Monto); });
 
-                return $transferenciasRecibidas + $pagos + $inyecciones + $trasladosEntrada 
+                // 6. Excedentes (sobrantes registrados que entran a Caja Abierta)
+                $excedentes = \App\Models\Excedente::withoutGlobalScopes()
+                    ->where('SedeID', $sedeId)
+                    ->where('Activo', true)
+                    ->where('Cuenta', 'Caja Abierta')
+                    ->where('Fecha', '<=', $fechaLimite)
+                    ->withSum(['resoluciones as monto_aplicado' => function($q) {
+                        $q->where('Estado', 'APROBADA');
+                    }], 'MontoAplicar')
+                    ->get()
+                    ->sum(function($e) {
+                        return (float)$e->Monto + (float)($e->monto_aplicado ?? 0);
+                    });
+
+                return $transferenciasRecibidas + $pagos + $inyecciones + $trasladosEntrada + $excedentes
                      - $transferenciasEnviadas - $creditos - $trasladosSalida;
             };
 
@@ -421,11 +480,91 @@ class ReporteDiarioController extends Controller
                 
             $totalInyeccionesDia = $transferenciasRecibidasDia + $inyeccionesManualesDia;
 
+            // Excedentes del día (monto original = Monto actual + resoluciones aprobadas)
+            $excedentesDia = \App\Models\Excedente::withoutGlobalScopes()
+                ->where('SedeID', $sedeId)
+                ->where('Activo', true)
+                ->where('Cuenta', 'Caja Abierta')
+                ->whereBetween('Fecha', [$fechaInicioDia, $fechaFinDia])
+                ->withSum(['resoluciones as monto_aplicado' => function($q) {
+                    $q->where('Estado', 'APROBADA');
+                }], 'MontoAplicar')
+                ->get();
+            $totalExcedentesDia = $excedentesDia->sum(function($e) {
+                return (float)$e->Monto + (float)($e->monto_aplicado ?? 0);
+            });
+
+            // Remesas netas del día para Caja Abierta
+            $ingresosRemesasCA = \App\Models\TransferenciaSede::withoutGlobalScopes()
+                ->where('SedeDestinoID', $sedeId)
+                ->where('Estado', 'ACEPTADO')
+                ->where('CuentaDestino', 'CAJA_ABIERTA')
+                ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                    $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                      ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
+                          $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
+                      });
+                })
+                ->sum('Monto');
+            $salidasRemesasCA = \App\Models\TransferenciaSede::withoutGlobalScopes()
+                ->where('SedeOrigenID', $sedeId)
+                ->where('Estado', 'ACEPTADO')
+                ->where('CuentaOrigen', 'CAJA_ABIERTA')
+                ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                    $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                      ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
+                          $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
+                      });
+                })
+                ->sum('Monto');
+            $remesasNetCajaAbierta = $ingresosRemesasCA - $salidasRemesasCA;
+
+            // Remesas netas del día para Caja Chica
+            $ingresosRemesasCC = \App\Models\TransferenciaSede::withoutGlobalScopes()
+                ->where('SedeDestinoID', $sedeId)
+                ->where('Estado', 'ACEPTADO')
+                ->where('CuentaDestino', 'CAJA_CHICA')
+                ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                    $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                      ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
+                          $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
+                      });
+                })
+                ->sum('Monto');
+            $salidasRemesasCC = \App\Models\TransferenciaSede::withoutGlobalScopes()
+                ->where('SedeOrigenID', $sedeId)
+                ->where('Estado', 'ACEPTADO')
+                ->where('CuentaOrigen', 'CAJA_CHICA')
+                ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                    $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                      ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
+                          $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
+                      });
+                })
+                ->sum('Monto');
+            $remesasNetCajaChica = $ingresosRemesasCC - $salidasRemesasCC;
+
+            // Devoluciones en efectivo del día (dinero que sale de caja abierta)
+            $devolucionesDia = \App\Models\SolicitudResolucionExcedente::withoutGlobalScopes()
+                ->where('SedeID', $sedeId)
+                ->where('Estado', 'APROBADA')
+                ->where('TipoResolucion', 'DEVOLUCION_EFECTIVO')
+                ->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia])
+                ->sum('MontoAplicar');
+
+            // Totales finales
+            $totalCajaAbierta = $saldoInicialCajaAbierta + $totalAmortizaciones - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
+            $totalCajaChica = $saldoInicialCajaChica - ($totalGastos + $totalCompras) + $remesasNetCajaChica;
+
             // Otras operaciones (para cuadrar el reporte matemáticamente)
             $variacionCaja = $saldoCierreCajaAbierta - $saldoInicialCajaAbierta;
-            $operacionesConocidas = $totalAmortizaciones - $totalCreditosEmitidos + $totalInyeccionesDia;
+            $operacionesConocidas = $totalAmortizaciones - $totalCreditosEmitidos + $totalInyeccionesDia + $totalExcedentesDia;
             $totalOtrasOperacionesDia = $variacionCaja - $operacionesConocidas;
         }
+
+        $saldoRealAjustado = $saldoCierreCajaAbierta - 150000;
+        $saldoInicialReal = $saldoInicialCajaAbierta - 150000;
+        $totalCajaAbiertaReal = $saldoInicialReal + $totalAmortizaciones - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
 
         $data = [
             'fecha'                 => $fechaCarbon,
@@ -433,14 +572,22 @@ class ReporteDiarioController extends Controller
             'emision'               => $ahora,
             // Saldos
             'saldoInicialCajaAbierta' => $saldoInicialCajaAbierta,
+            'saldoInicialReal'      => $saldoInicialReal,
             'saldoCajaAbierta'      => $saldoCierreCajaAbierta, // REEMPLAZADO por el saldo de cierre del día, no el live
             'saldoLiveCajaAbierta'  => $saldoCajaAbierta, // Pasamos el live por si acaso
+            'saldoRealAjustado'     => $saldoRealAjustado,
             'saldoCajaChica'        => $saldoCajaChica,
             'saldoInicialCajaChica' => $saldoInicialCajaChica,
             'totalIngresosCajaChica' => $totalIngresosCajaChica ?? 0,
             'saldoCuentaAMayor'     => $saldoCuentaAMayor,
             'totalInyeccionesDia'   => $totalInyeccionesDia,
+            'totalExcedentesDia'    => $totalExcedentesDia,
             'totalOtrasOperacionesDia' => $totalOtrasOperacionesDia,
+            'remesasNetCajaAbierta' => $remesasNetCajaAbierta,
+            'remesasNetCajaChica'   => $remesasNetCajaChica,
+            'totalCajaAbierta'      => $totalCajaAbiertaReal,
+            'totalCajaChica'        => $totalCajaChica,
+            'devolucionesDia'       => $devolucionesDia,
             // 1. Caja Chica - Gastos
             'gastos'                => $gastos,
             'totalGastos'           => $totalGastos,
@@ -459,7 +606,9 @@ class ReporteDiarioController extends Controller
             // 4b. Extornos
             'extornos'              => $extornos,
             'totalExtornos'         => $totalExtornos,
-            // 4c. Amortizaciones
+            // 4c. Excedentes del día
+            'excedentesDia'         => $excedentesDiaParaTabla,
+            // 4d. Amortizaciones
             'pagos'                 => $pagos,
             'totalAmortizaciones'   => $totalAmortizaciones,
             // 5. Créditos Emitidos

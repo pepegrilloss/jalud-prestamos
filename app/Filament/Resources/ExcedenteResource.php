@@ -125,8 +125,9 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
     {
         return $table
             ->recordUrl(null)
-            // OPTIMIZACIÓN N+1: eager load zona para la columna zona.Nombre.
-            ->modifyQueryUsing(fn ($query) => $query->with('zona'))
+            ->defaultSort('Fecha', 'desc')
+            // OPTIMIZACIÓN N+1: eager load zona y resoluciones.
+            ->modifyQueryUsing(fn ($query) => $query->with(['zona', 'resoluciones']))
             ->columns([
                 Tables\Columns\TextColumn::make('TipoExcedente')
                     ->label('Tipo')
@@ -165,7 +166,16 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                     ->label('Nro. Operación')
                     ->searchable()
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('MontoOriginal')
+                    ->label('Monto Original')
+                    ->money('PEN')
+                    ->state(fn($record): float =>
+                        (float)$record->Monto + (float)$record->resoluciones
+                            ->where('Estado', 'APROBADA')
+                            ->sum('MontoAplicar')
+                    ),
                 Tables\Columns\TextColumn::make('Monto')
+                    ->label('Saldo Disponible')
                     ->money('PEN')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('Observaciones')
