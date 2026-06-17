@@ -474,12 +474,11 @@
     <table class="datos-table">
         <thead>
             <tr>
-                <th style="width: 10%;">OPERACION</th>
-                <th style="width: 8%;">FECHA</th>
-                <th style="width: 27%;">CTA. ORIGEN</th>
-                <th style="width: 27%;">CTA. DESTINO</th>
-                <th style="width: 16%; text-align: center;">TIPO</th>
-                <th style="width: 12%; text-align: right;">MONTO</th>
+                <th style="width: 12%;">OPERACION</th>
+                <th style="width: 10%;">FECHA</th>
+                <th style="width: 38%;">CTA CLIENTE</th>
+                <th style="width: 14%; text-align: center;">TIPO</th>
+                <th style="width: 26%; text-align: right;">MONTO</th>
             </tr>
         </thead>
         <tbody>
@@ -496,23 +495,13 @@
                         ?? $extorno->clienteDestino?->NombresApellidos
                         ?? $extorno->clienteOrigen?->NombresApellidos
                         ?? 'N/A';
-                    $ctaCliente = mb_strtoupper($clienteNombre);
-
-                    if ($extorno->TipoResolucion === 'TRASLADO_DE_PAGO') {
-                        $clienteOrigenNombre = $extorno->creditoOrigen?->proposicion?->cliente?->NombresApellidos
-                            ?? $extorno->clienteOrigen?->NombresApellidos ?? '';
-                        $ctaOrigen = mb_strtoupper($clienteOrigenNombre);
-                    }
+                    $codigoCredito = $extorno->creditoDestino?->proposicion?->CodigoCredito ?? '';
+                    $ctaCliente = $codigoCredito ? "{$codigoCredito} - " . mb_strtoupper($clienteNombre) : mb_strtoupper($clienteNombre);
                 @endphp
                 <tr>
                     <td>{{ $extorno->excedente?->NroOperacion ?? '' }}</td>
                     <td>{{ \Carbon\Carbon::parse($extorno->created_at)->format('d/m/Y') }}</td>
-                    @if($extorno->TipoResolucion === 'TRASLADO_DE_PAGO')
-                    <td>{{ $ctaOrigen ?? '' }}</td>
                     <td>{{ $ctaCliente }}</td>
-                    @else
-                    <td colspan="2">{{ $ctaCliente }}</td>
-                    @endif
                     <td style="text-align: center;">{{ $extorno->TipoResolucion === 'TRASLADO_DE_PAGO' ? 'TRAS' : 'EXT' }}</td>
                     <td class="monto">{{ number_format($extorno->MontoAplicar, 2) }}</td>
                 </tr>
@@ -530,7 +519,7 @@
                     <td>{{ $codigoCreditoExo }}</td>
                     <td>{{ $exoneracion->FechaAprobacion ? \Carbon\Carbon::parse($exoneracion->FechaAprobacion)->format('d/m/Y') : '' }}
                     </td>
-                    <td colspan="2">{{ $ctaClienteExo }}</td>
+                    <td>{{ $ctaClienteExo }}</td>
                     <td style="text-align: center;">EXO</td>
                     <td class="monto">{{ number_format($exoneracion->MontoExonerado, 2) }}</td>
                 </tr>
@@ -538,13 +527,12 @@
 
             @if($filaNum === 0)
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 5px;">Sin extornos / devoluciones</td>
+                    <td colspan="5" style="text-align: center; padding: 5px;">Sin extornos / devoluciones</td>
                 </tr>
             @endif
 
             @if($filaNum > 0)
                 <tr class="total-row">
-                    <td></td>
                     <td></td>
                     <td></td>
                     <td></td>
