@@ -81,265 +81,297 @@ class ReporteExportController extends Controller
     public function diarioExcel(Request $request)
     {
         $fecha = $request->get('fecha');
-        if (!$fecha) {
-            abort(400, 'Fecha no proporcionada');
-        }
+        if (!$fecha) { abort(400, 'Fecha no proporcionada'); }
         $sedeId = $this->resolveSedeId();
         $fechaCarbon = Carbon::createFromFormat('Y-m-d', $fecha);
         $fechaInicioDia = $fechaCarbon->copy()->startOfDay();
         $fechaFinDia = $fechaCarbon->copy()->endOfDay();
-
         $sedeNombre = $sedeId ? (Sede::find($sedeId)?->Nombre ?? 'SEDE NO ESPECIFICADA') : 'TODAS LAS SEDES';
 
-        // Gastos
-        $gastos = Gasto::withoutGlobalScopes()
-            ->where('Activo', true)->whereDate('FechaEmision', $fecha)
+        // ─── Datos ───
+        $gastos = Gasto::withoutGlobalScopes()->where('Activo', true)->whereDate('FechaEmision', $fecha)
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
-            ->with('proveedor', 'motivo', 'detalles')->orderBy('GastoID')->get();
-
-        // Compras
-        $compras = Compra::withoutGlobalScopes()
-            ->where('Activo', true)->whereDate('FechaEmision', $fecha)
+            ->with('proveedor', 'motivo')->orderBy('GastoID')->get();
+        $compras = Compra::withoutGlobalScopes()->where('Activo', true)->whereDate('FechaEmision', $fecha)
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
-            ->with('proveedor', 'detalles')->orderBy('CompraID')->get();
+            ->with('proveedor')->orderBy('CompraID')->get();
 
-        // Exoneraciones
         $exoneraciones = \App\Models\SolicitudExoneracion::withoutGlobalScopes()
-            ->where('Estado', 'APROBADO')
-            ->where('Activo', true)
+            ->where('Estado', 'APROBADO')->where('Activo', true)
             ->whereBetween('FechaAprobacion', [$fechaInicioDia, $fechaFinDia])
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
-            ->with(['credito.proposicion.cliente', 'tipoExoneracion'])
-            ->orderBy('SolicitudExoneracionID', 'asc')
-            ->get();
+            ->with(['credito.proposicion.cliente', 'tipoExoneracion'])->orderBy('SolicitudExoneracionID')->get();
 
-        // Extornos
         $extornos = \App\Models\SolicitudResolucionExcedente::withoutGlobalScopes()
-            ->where('Estado', 'APROBADA')
-            ->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia])
+            ->where('Estado', 'APROBADA')->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia])
             ->when($sedeId, fn($q) => $q->where('SedeID', $sedeId))
-            ->with(['clienteOrigen', 'clienteDestino', 'excedente', 'creditoDestino.proposicion.cliente'])
-            ->orderBy('SolicitudID', 'asc')
-            ->get();
+            ->with(['clienteOrigen', 'clienteDestino', 'excedente', 'creditoDestino.proposicion.cliente', 'creditoOrigen.proposicion.cliente'])
+            ->orderBy('SolicitudID')->get();
 
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Balance Diario');
-        $styles = $this->getStyles();
-        $row = 1;
+        $pagos = \App\Models\Pago::withoutGlobalScopes()
+            ->where('pago.Activo', true)->where('pago.EsPagoAMayor', false)->where('pago.EsPagoAMayorPorMora', false)
+            ->whereDate('pago.FechaPago', $fecha)->when($sedeId, fn($q) => $q->where('pago.SedeID', $sedeId))
+            ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->leftJoin('Zona', 'ProposicionCredito.ZonaID', '=', 'Zona.ZonaID')
+            ->leftJoin('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+            ->select('pago.PagoID', 'pago.MontoPagado', 'pago.Comentario', 'pago.TipoPago', 'ProposicionCredito.CodigoCredito', 'Cliente.NombresApellidos', 'Zona.Nombre as ZonaNombre', 'TipoCredito.Codigo as TipoCreditoCodigo')
+            ->orderBy('pago.PagoID')->get()
+            ->each(function($p) {
+                if ($p->Comentario && preg_match('/Pago original:\s*S\/\s*([\d,]+(?:\.\d{2})?)/', $p->Comentario, $m)) {
+                    $p->MontoOriginal = (float) str_replace(',', '', $m[1]);
+                } else {
+                    $p->MontoOriginal = (float)$p->MontoPagado;
+                }
+            });
+        $totalAmortizaciones = $pagos->sum('MontoOriginal');
 
-        // Título
-        $sheet->mergeCells('A1:E1');
-        $sheet->setCellValue('A1', "BALANCE DIARIO - {$fecha}");
-        $sheet->getStyle('A1')->applyFromArray($styles['title']);
-        $sheet->getRowDimension(1)->setRowHeight(25);
-        $row = 2;
-        $sheet->setCellValue('A' . $row, "Sede: {$sedeNombre}");
-        $row += 2;
+        $moras = \App\Models\Pago::withoutGlobalScopes()
+            ->where('pago.Activo', true)->where('pago.EsPagoAMayorPorMora', true)
+            ->whereDate('pago.FechaPago', $fecha)->when($sedeId, fn($q) => $q->where('pago.SedeID', $sedeId))
+            ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->select('ProposicionCredito.CodigoCredito', 'Cliente.NombresApellidos', 'pago.MontoPagado')
+            ->orderBy('pago.PagoID')->get();
+        $totalMoras = $moras->sum('MontoPagado');
 
-        // Amortizaciones
-        $sheet->setCellValue('A' . $row, 'AMORTIZACIONES');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-        $row++;
-        $headers = ['Operación', 'Cliente', 'Monto'];
-        foreach ($headers as $i => $h) {
-            $sheet->setCellValue(chr(65 + $i) . $row, $h);
-            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
-        }
-        $row++;
-        $totalAmort = 0;
-        foreach ($pagos as $p) {
-            $this->writeDataRow($sheet, $row, [$p->CodigoCredito, $p->NombresApellidos, $p->MontoPagado], 3);
-            $sheet->getStyle('C' . $row)->getAlignment()->setHorizontal('right');
-            $totalAmort += $p->MontoPagado;
-            $row++;
-        }
-        $sheet->setCellValue('A' . $row, 'TOTAL AMORTIZACIONES:');
-        $sheet->setCellValue('C' . $row, $totalAmort);
-        $sheet->getStyle('A' . $row . ':C' . $row)->applyFromArray($styles['total']);
-        $row += 2;
-
-        // Créditos Emitidos
-        $sheet->setCellValue('A' . $row, 'CREDITOS EMITIDOS');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-        $row++;
-        $headers = ['Operación', 'Cliente', 'Capital', 'Interés', 'Total'];
-        foreach ($headers as $i => $h) {
-            $sheet->setCellValue(chr(65 + $i) . $row, $h);
-            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
-        }
-        $row++;
-        $totalCap = 0; $totalInt = 0; $totalPag = 0;
-        foreach ($creditos as $c) {
-            $this->writeDataRow($sheet, $row, [$c->CodigoCredito, $c->NombresApellidos, $c->MontoTotal, $c->MontoInteres, $c->MontoTotalPagar], 5);
-            foreach (['C', 'D', 'E'] as $col) {
-                $sheet->getStyle($col . $row)->getAlignment()->setHorizontal('right');
-            }
-            $totalCap += $c->MontoTotal; $totalInt += $c->MontoInteres; $totalPag += $c->MontoTotalPagar;
-            $row++;
-        }
-        $sheet->setCellValue('A' . $row, 'TOTAL CREDITOS:');
-        $sheet->setCellValue('C' . $row, $totalCap);
-        $sheet->setCellValue('D' . $row, $totalInt);
-        $sheet->setCellValue('E' . $row, $totalPag);
-        $sheet->getStyle('A' . $row . ':E' . $row)->applyFromArray($styles['total']);
-        $row += 2;
-
-        // Ingresos Remesas
-        $sheet->setCellValue('A' . $row, 'INGRESO DE REMESAS');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-        $row++;
-        $headers = ['Origen', 'Monto', 'Fecha'];
-        foreach ($headers as $i => $h) {
-            $sheet->setCellValue(chr(65 + $i) . $row, $h);
-            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
-        }
-        $row++;
-        $totalIng = 0;
-        foreach ($ingresosRemesas as $t) {
-            $this->writeDataRow($sheet, $row, [$t->sedeOrigen?->Nombre, $t->Monto, $t->FechaRespuesta?->format('d/m/Y')], 3);
-            $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right');
-            $totalIng += $t->Monto;
-            $row++;
-        }
-        $sheet->setCellValue('A' . $row, 'TOTAL INGRESOS:');
-        $sheet->setCellValue('B' . $row, $totalIng);
-        $sheet->getStyle('A' . $row . ':C' . $row)->applyFromArray($styles['total']);
-        $row += 2;
-
-        // Gastos
-        $sheet->setCellValue('A' . $row, 'CAJA CHICA - GASTOS');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-        $row++;
-        $headers = ['Comprobante', 'Proveedor', 'Motivo', 'Total'];
-        foreach ($headers as $i => $h) {
-            $sheet->setCellValue(chr(65 + $i) . $row, $h);
-            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
-        }
-        $row++;
-        $totalGastos = 0;
-        foreach ($gastos as $g) {
-            $this->writeDataRow($sheet, $row, [$g->tipoComprobanteGasto?->Nombre, $g->proveedor?->Nombre, $g->motivo?->Nombre, $g->Total], 4);
-            $sheet->getStyle('D' . $row)->getAlignment()->setHorizontal('right');
-            $totalGastos += $g->Total;
-            $row++;
-        }
-        $sheet->setCellValue('A' . $row, 'TOTAL GASTOS:');
-        $sheet->setCellValue('D' . $row, $totalGastos);
-        $sheet->getStyle('A' . $row . ':D' . $row)->applyFromArray($styles['total']);
-        $row += 2;
-
-        // Compras
-        $sheet->setCellValue('A' . $row, 'CAJA CHICA - COMPRAS');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-        $row++;
-        $headers = ['Comprobante', 'Proveedor', 'Total'];
-        foreach ($headers as $i => $h) {
-            $sheet->setCellValue(chr(65 + $i) . $row, $h);
-            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
-        }
-        $row++;
-        $totalCompras = 0;
-        foreach ($compras as $c) {
-            $this->writeDataRow($sheet, $row, [$c->tipoComprobante?->Nombre, $c->proveedor?->Nombre, $c->Total], 3);
-            $sheet->getStyle('C' . $row)->getAlignment()->setHorizontal('right');
-            $totalCompras += $c->Total;
-            $row++;
-        }
-        $sheet->setCellValue('A' . $row, 'TOTAL COMPRAS:');
-        $sheet->setCellValue('C' . $row, $totalCompras);
-        $sheet->getStyle('A' . $row . ':C' . $row)->applyFromArray($styles['total']);
-        $row += 2;
-
-        // Exoneraciones
-        $sheet->setCellValue('A' . $row, 'EXONERACIONES');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-        $row++;
-        $headersEx = ['Operación', 'Cliente', 'Tipo', 'Monto'];
-        foreach ($headersEx as $i => $h) {
-            $sheet->setCellValue(chr(65 + $i) . $row, $h);
-            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
-        }
-        $row++;
-        $totalExo = 0;
-        foreach ($exoneraciones as $e) {
-            $cliente = $e->credito?->proposicion?->cliente?->NombresApellidos ?? '-';
-            $this->writeDataRow($sheet, $row, [$e->SolicitudExoneracionID, $cliente, $e->tipoExoneracion?->Nombre, $e->MontoExonerado], 4);
-            $sheet->getStyle('D' . $row)->getAlignment()->setHorizontal('right');
-            $totalExo += $e->MontoExonerado;
-            $row++;
-        }
-        $sheet->setCellValue('A' . $row, 'TOTAL EXONERACIONES:');
-        $sheet->setCellValue('D' . $row, $totalExo);
-        $sheet->getStyle('A' . $row . ':D' . $row)->applyFromArray($styles['total']);
-        $row += 2;
-
-        // Extornos
-        $sheet->setCellValue('A' . $row, 'EXTORNOS Y DEVOLUCIONES');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-        $row++;
-        $headersExt = ['# Solicitud', 'Cliente Origen', 'Cliente Destino', 'Monto'];
-        foreach ($headersExt as $i => $h) {
-            $sheet->setCellValue(chr(65 + $i) . $row, $h);
-            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
-        }
-        $row++;
-        $totalExt = 0;
-        foreach ($extornos as $e) {
-            $this->writeDataRow($sheet, $row, [$e->SolicitudID, $e->clienteOrigen?->NombresApellidos, $e->clienteDestino?->NombresApellidos, $e->MontoAplicar], 4);
-            $sheet->getStyle('D' . $row)->getAlignment()->setHorizontal('right');
-            $totalExt += $e->MontoAplicar;
-            $row++;
-        }
-        $sheet->setCellValue('A' . $row, 'TOTAL EXTORNOS:');
-        $sheet->setCellValue('D' . $row, $totalExt);
-        $sheet->getStyle('A' . $row . ':D' . $row)->applyFromArray($styles['total']);
-        $row += 2;
-
-        // Saldo Inicial y Cierre
-        $sheet->setCellValue('A' . $row, 'RESUMEN DE CAJA');
-        $sheet->getStyle('A' . $row)->getFont()->setBold(true);
-        $row++;
-        $headersRes = ['Concepto', 'Monto'];
-        foreach ($headersRes as $i => $h) {
-            $sheet->setCellValue(chr(65 + $i) . $row, $h);
-            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
-        }
-        $row++;
-
-        $totalAmortizaciones = $pagos->sum('MontoPagado');
+        $creditos = Credito::withoutGlobalScopes()->where('Credito.Activo', true)->whereDate('Credito.FechaGeneracion', $fecha)
+            ->when($sedeId, fn($q) => $q->where('Credito.SedeID', $sedeId))
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->select('ProposicionCredito.CodigoCredito', 'Cliente.NombresApellidos', 'ProposicionCredito.MontoTotal', 'ProposicionCredito.MontoInteres', 'ProposicionCredito.MontoTotalPagar')
+            ->orderBy('Credito.CreditoID')->get();
         $totalCreditosEmitidos = $creditos->sum('MontoTotal');
-        $totalIngresosRemesas = $ingresosRemesas->sum('Monto');
-        $totalSalidasRemesas = 0;
 
-        $entradas = $totalAmortizaciones + $totalIngresosRemesas + $totalExo;
-        $salidas = $totalCreditosEmitidos + $totalGastos + $totalCompras;
-        $saldoFinal = $entradas - $salidas;
+        $excedentesDia = \App\Models\Excedente::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)
+            ->where(function($q) { $q->where('Cuenta', 'Caja Abierta')->orWhereNull('Cuenta'); })
+            ->whereBetween('Fecha', [$fechaInicioDia, $fechaFinDia])
+            ->with(['resoluciones' => fn($q) => $q->where('Estado', 'APROBADA')->with('creditoDestino.proposicion.cliente')])
+            ->withSum(['resoluciones as monto_aplicado' => function($q) { $q->where('Estado', 'APROBADA'); }], 'MontoAplicar')
+            ->orderBy('ExcedenteID')->get();
+        $totalExcedentesDia = $excedentesDia->sum(fn($e) => (float)$e->Monto + (float)($e->monto_aplicado ?? 0));
 
-        $this->writeDataRow($sheet, $row, ['Total Amortizaciones (+)', $totalAmortizaciones], 2);
-        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
-        $this->writeDataRow($sheet, $row, ['Total Ingresos Remesas (+)', $totalIngresosRemesas], 2);
-        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
-        $this->writeDataRow($sheet, $row, ['Total Exoneraciones (+)', $totalExo], 2);
-        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
-        $this->writeDataRow($sheet, $row, ['Total Créditos Emitidos (-)', $totalCreditosEmitidos], 2);
-        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
-        $this->writeDataRow($sheet, $row, ['Total Gastos (-)', $totalGastos], 2);
-        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
-        $this->writeDataRow($sheet, $row, ['Total Compras (-)', $totalCompras], 2);
-        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right'); $row++;
+        $ingresosRemesas = TransferenciaSede::withoutGlobalScopes()->where('Estado', 'ACEPTADO')
+            ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                  ->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]));
+            })->when($sedeId, fn($q) => $q->where('SedeDestinoID', $sedeId))->with('sedeOrigen')->orderBy('TransferenciaID')->get();
 
-        $sheet->setCellValue('A' . $row, 'SALDO DEL DÍA:');
-        $sheet->setCellValue('B' . $row, $saldoFinal);
-        $sheet->getStyle('A' . $row . ':B' . $row)->applyFromArray($styles['total']);
-        $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right');
-        $row += 2;
+        $salidasRemesas = TransferenciaSede::withoutGlobalScopes()->where('Estado', 'ACEPTADO')
+            ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
+                $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
+                  ->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]));
+            })->when($sedeId, fn($q) => $q->where('SedeOrigenID', $sedeId))->with('sedeDestino')->orderBy('TransferenciaID')->get();
 
-        $sheet->getColumnDimension('A')->setWidth(28);
-        $sheet->getColumnDimension('B')->setWidth(30);
-        $sheet->getColumnDimension('C')->setWidth(15);
-        $sheet->getColumnDimension('D')->setWidth(15);
-        $sheet->getColumnDimension('E')->setWidth(15);
+        $devolucionesDia = \App\Models\SolicitudResolucionExcedente::withoutGlobalScopes()
+            ->where('SedeID', $sedeId)->where('Estado', 'APROBADA')->where('TipoResolucion', 'DEVOLUCION_EFECTIVO')
+            ->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia])->sum('MontoAplicar');
+
+        // Remesas netas CA
+        $ingRemCA = TransferenciaSede::withoutGlobalScopes()->where('SedeDestinoID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_ABIERTA')
+            ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
+            ->sum('Monto');
+        $salRemCA = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_ABIERTA')
+            ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
+            ->sum('Monto');
+        $remesasNetCajaAbierta = $ingRemCA - $salRemCA;
+
+        $ingRemCC = TransferenciaSede::withoutGlobalScopes()->where('SedeDestinoID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_CHICA')
+            ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
+            ->sum('Monto');
+        $salRemCC = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_CHICA')
+            ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
+            ->sum('Monto');
+        $remesasNetCajaChica = $ingRemCC - $salRemCC;
+
+        // Saldos Caja Chica
+        $saldoInicialCajaChica = 0; $totalGastosCC = $gastos->sum('Total') + $compras->sum('Total');
+        if ($sedeId) {
+            $ingCC = \App\Models\MovimientoFondo::where('SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
+                ->where(fn($q) => $q->where('Tipo', 'INGRESO_CAJA_CHICA')->orWhere('Tipo', 'TRASLADO_CA_A_CC'))
+                ->where('Observacion', 'NOT LIKE', '%Ajuste%')->where('Observacion', 'NOT LIKE', '%Reversión%')
+                ->get()->sum(fn($m) => $m->Tipo === 'TRASLADO_CA_A_CC' ? abs($m->Monto) : $m->Monto);
+            $ingCC += \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
+                ->where('movimientos_fondo.Tipo', 'RECEPCION_TRANSFERENCIA')
+                ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
+                ->where('transferencia_sedes.CuentaDestino', 'CAJA_CHICA')->sum('movimientos_fondo.Monto');
+            $dedCC = Gasto::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)->where('MetodoGasto', 'CAJA CHICA')->whereDate('FechaEmision', '<', $fecha)->sum('Total');
+            $dedCC += Compra::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)->where('TipoCompra', 'CONTADO')->whereDate('FechaEmision', '<', $fecha)->sum('Total');
+            $dedCC += \App\Models\MovimientoFondo::where('SedeID', $sedeId)->where('Tipo', 'TRASLADO_CC_A_CA')->where('FechaMovimiento', '<', $fechaInicioDia)->sum(\DB::raw('ABS(Monto)'));
+            $dedCC += \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
+                ->where('movimientos_fondo.Tipo', 'ENVIO_TRANSFERENCIA')
+                ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
+                ->where('transferencia_sedes.CuentaOrigen', 'CAJA_CHICA')->sum(\DB::raw('ABS(movimientos_fondo.Monto)'));
+            $saldoInicialCajaChica = $ingCC - $dedCC;
+        }
+        $totalCajaChica = $saldoInicialCajaChica - $totalGastosCC + $remesasNetCajaChica;
+
+        // Saldo Inicial Caja Abierta
+        $saldoInicialCajaAbierta = 0;
+        if ($sedeId) {
+            $calcularSaldo = function($limite) use ($sedeId) {
+                $tr = TransferenciaSede::withoutGlobalScopes()->where('SedeDestinoID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_ABIERTA')
+                    ->where(fn($q) => $q->where('FechaRespuesta', '<=', $limite)->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite)))->sum('Monto');
+                $te = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_ABIERTA')
+                    ->where(fn($q) => $q->where('FechaRespuesta', '<=', $limite)->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite)))->sum('Monto');
+                $pg = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayor', false)->where('EsPagoAMayorPorMora', false)
+                    ->where('FechaPago', '<=', $limite)->where('SedeID', $sedeId)->sum('MontoPagado');
+                $cr = Credito::withoutGlobalScopes()->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+                    ->where('Credito.Activo', true)->where('Credito.SedeID', $sedeId)->where('Credito.FechaGeneracion', '<=', $limite)->sum('ProposicionCredito.MontoTotal');
+                $ot = \App\Models\MovimientoFondo::where('SedeID', $sedeId)->where('FechaMovimiento', '<=', $limite)
+                    ->whereIn('Tipo', ['INGRESO_CAPITAL', 'TRASLADO_CA_A_CC', 'TRASLADO_CC_A_CA'])->get();
+                $in = $ot->where('Tipo', 'INGRESO_CAPITAL')->sum('Monto');
+                $teCc = $ot->where('Tipo', 'TRASLADO_CC_A_CA')->sum(fn($m) => abs($m->Monto));
+                $tsCc = $ot->where('Tipo', 'TRASLADO_CA_A_CC')->sum(fn($m) => abs($m->Monto));
+                $ex = \App\Models\Excedente::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)
+                    ->where(fn($q) => $q->where('Cuenta', 'Caja Abierta')->orWhereNull('Cuenta'))->where('Fecha', '<=', $limite)
+                    ->withSum(['resoluciones as ma' => fn($q) => $q->where('Estado', 'APROBADA')], 'MontoAplicar')->get()
+                    ->sum(fn($e) => (float)$e->Monto + (float)($e->ma ?? 0));
+                $mo = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayorPorMora', true)
+                    ->where('FechaPago', '<=', $limite)->where('SedeID', $sedeId)->sum('MontoPagado');
+                return $tr + $pg + $in + $teCc + $ex + $mo - $te - $cr - $tsCc;
+            };
+            $saldoInicialCajaAbierta = $calcularSaldo($fechaInicioDia->copy()->subSecond());
+        }
+        $totalCajaAbierta = $saldoInicialCajaAbierta + $totalAmortizaciones + $totalMoras - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
+        $saldoInicialReal = $saldoInicialCajaAbierta - 150000;
+        $totalCajaAbiertaReal = $saldoInicialReal + $totalAmortizaciones + $totalMoras - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
+        $saldoCuentaAMayor = \App\Models\Pago::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)->where('EsPagoAMayor', true)
+            ->where('FechaPago', '<=', $fechaFinDia)->whereHas('solicitudResolucion', fn($q) => $q->where('TipoResolucion', '!=', 'TRASLADO_DE_PAGO'))->sum('MontoPagado');
+
+        // ─── Excel ───
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet(); $sheet->setTitle('Balance Diario');
+        $styles = $this->getStyles(); $row = 1;
+        $sheet->mergeCells('A1:F1'); $sheet->setCellValue('A1', "BALANCE DIARIO - {$fecha}"); $sheet->getStyle('A1')->applyFromArray($styles['title']); $sheet->getRowDimension(1)->setRowHeight(25);
+        $row = 2; $sheet->setCellValue('A'.$row, "Sede: {$sedeNombre}"); $row += 2;
+
+        // 1. PAGOS REALIZADOS
+        $sheet->setCellValue('A'.$row, 'PAGOS REALIZADOS'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Operación','Zona','Cred.','Cliente','Tipo','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        foreach ($pagos as $p) {
+            $tipo = match($p->TipoPago ?? '') { 'EFECTIVO'=>'Efectivo', 'YAPE_PLIN'=>'Yape/Plin', 'TRANSFERENCIA','TRANSFERENCIA_BANCARIA'=>'Transferencia', default=>$p->TipoPago??'-' };
+            $this->writeDataRow($sheet, $row, [$p->CodigoCredito, $p->ZonaNombre, $p->TipoCreditoCodigo?:'001', $p->NombresApellidos, $tipo, $p->MontoOriginal], 6);
+            $sheet->getStyle('F'.$row)->getAlignment()->setHorizontal('right'); $row++;
+        }
+        $sheet->setCellValue('E'.$row, 'TOTAL DE PAGOS:'); $sheet->setCellValue('F'.$row, $totalAmortizaciones);
+        $sheet->getStyle('E'.$row.':F'.$row)->applyFromArray($styles['total']); $row += 2;
+
+        // 2. MORAS
+        $sheet->setCellValue('A'.$row, 'MORAS'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Operación','Cliente','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        foreach ($moras as $m) { $this->writeDataRow($sheet, $row, [$m->CodigoCredito, $m->NombresApellidos, $m->MontoPagado], 3); $sheet->getStyle('C'.$row)->getAlignment()->setHorizontal('right'); $row++; }
+        $sheet->setCellValue('A'.$row, 'TOTAL MORAS:'); $sheet->setCellValue('C'.$row, $totalMoras);
+        $sheet->getStyle('A'.$row.':C'.$row)->applyFromArray($styles['total']); $row += 2;
+
+        // 3. CREDITOS EMITIDOS
+        $sheet->setCellValue('A'.$row, 'CREDITOS EMITIDOS'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Operación','Cliente','Capital','Interés','Total'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        $tCap=$tInt=$tPag=0;
+        foreach ($creditos as $c) { $this->writeDataRow($sheet, $row, [$c->CodigoCredito, $c->NombresApellidos, $c->MontoTotal, $c->MontoInteres, $c->MontoTotalPagar], 5); foreach(['C','D','E'] as $col) $sheet->getStyle($col.$row)->getAlignment()->setHorizontal('right'); $tCap+=$c->MontoTotal; $tInt+=$c->MontoInteres; $tPag+=$c->MontoTotalPagar; $row++; }
+        $sheet->setCellValue('A'.$row, 'TOTAL CREDITOS:'); $sheet->setCellValue('C'.$row, $tCap); $sheet->setCellValue('D'.$row, $tInt); $sheet->setCellValue('E'.$row, $tPag);
+        $sheet->getStyle('A'.$row.':E'.$row)->applyFromArray($styles['total']); $row += 2;
+
+        // 4. EXCEDENTES
+        $sheet->setCellValue('A'.$row, 'EXCEDENTES'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Nro. Op.','Fecha','Tipo','Regularizado A','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        foreach ($excedentesDia as $exc) {
+            $montoO = (float)$exc->Monto + (float)($exc->monto_aplicado ?? 0);
+            $reg = ''; $res = $exc->resoluciones->first();
+            if ($res && $res->creditoDestino && $res->creditoDestino->proposicion) $reg = $res->creditoDestino->proposicion->CodigoCredito.' - '.$res->creditoDestino->proposicion->cliente->NombresApellidos;
+            $tipoE = match($exc->TipoExcedente){'YAPE_TRANSFERENCIA'=>'Yape/Transfer.','SOBRANTE_PROMOTOR'=>'Sobr. Promotor','SOBRANTE_CAJERO'=>'Exced. Oficina',default=>$exc->TipoExcedente};
+            $this->writeDataRow($sheet, $row, [$exc->NroOperacion?:'-', $exc->Fecha->format('d/m/Y'), $tipoE, $reg?:'—', $montoO], 5);
+            $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $row++;
+        }
+        $sheet->setCellValue('D'.$row, 'TOTAL EXCEDENTES:'); $sheet->setCellValue('E'.$row, $totalExcedentesDia);
+        $sheet->getStyle('D'.$row.':E'.$row)->applyFromArray($styles['total']); $row += 2;
+
+        // 5. INGRESO DE REMESAS
+        $sheet->setCellValue('A'.$row, 'INGRESO DE REMESAS'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Nro.','Fecha','Sede Origen','Cuenta','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        $tIng=0; foreach ($ingresosRemesas as $r) { $this->writeDataRow($sheet, $row, [$r->TransferenciaID, ($r->FechaRespuesta??$r->FechaTransferencia)?->format('d/m/Y'), $r->sedeOrigen?->Nombre, $r->CuentaDestino?:'CAJA_ABIERTA', $r->Monto], 5); $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $tIng+=$r->Monto; $row++; }
+        $sheet->setCellValue('D'.$row, 'TOTAL INGRESOS:'); $sheet->setCellValue('E'.$row, $tIng); $sheet->getStyle('D'.$row.':E'.$row)->applyFromArray($styles['total']); $row += 2;
+
+        // 6. SALIDA DE REMESAS
+        $sheet->setCellValue('A'.$row, 'SALIDA DE REMESAS'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Nro.','Fecha','Sede Destino','Cuenta','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        $tSal=0; foreach ($salidasRemesas as $r) { $this->writeDataRow($sheet, $row, [$r->TransferenciaID, ($r->FechaRespuesta??$r->FechaTransferencia)?->format('d/m/Y'), $r->sedeDestino?->Nombre, $r->CuentaOrigen?:'CAJA_ABIERTA', $r->Monto], 5); $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $tSal+=$r->Monto; $row++; }
+        $sheet->setCellValue('D'.$row, 'TOTAL SALIDAS:'); $sheet->setCellValue('E'.$row, $tSal); $sheet->getStyle('D'.$row.':E'.$row)->applyFromArray($styles['total']); $row += 2;
+
+        // 7. EXTORNOS Y DEVOLUCIONES
+        $sheet->setCellValue('A'.$row, 'EXTORNOS Y DEVOLUCIONES'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Operación','Fecha','CTA Cliente','Tipo','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        $tExt=0;
+        foreach ($extornos as $e) {
+            $clienteNombre = $e->creditoDestino?->proposicion?->cliente?->NombresApellidos ?? $e->clienteDestino?->NombresApellidos ?? $e->clienteOrigen?->NombresApellidos ?? 'N/A';
+            $codigoCredito = $e->creditoDestino?->proposicion?->CodigoCredito ?? '';
+            $ctaCliente = $codigoCredito ? "{$codigoCredito} - ".mb_strtoupper($clienteNombre) : mb_strtoupper($clienteNombre);
+            if ($e->TipoResolucion !== 'TRASLADO_DE_PAGO') $tExt += $e->MontoAplicar;
+            $tipo = $e->TipoResolucion === 'TRASLADO_DE_PAGO' ? 'TRAS' : 'EXT';
+            $this->writeDataRow($sheet, $row, [$e->excedente?->NroOperacion??'', $e->created_at->format('d/m/Y'), $ctaCliente, $tipo, $e->MontoAplicar], 5);
+            $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $row++;
+        }
+        foreach ($exoneraciones as $e) {
+            $clienteNombreExo = $e->credito?->proposicion?->cliente?->NombresApellidos ?? '';
+            $codigoCreditoExo = $e->credito?->proposicion?->CodigoCredito ?? '';
+            $ctaClienteExo = $codigoCreditoExo ? "{$codigoCreditoExo} - ".mb_strtoupper($clienteNombreExo) : mb_strtoupper($clienteNombreExo);
+            $tExt += $e->MontoExonerado;
+            $this->writeDataRow($sheet, $row, [$codigoCreditoExo, $e->FechaAprobacion?->format('d/m/Y'), $ctaClienteExo, 'EXO', $e->MontoExonerado], 5);
+            $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $row++;
+        }
+        $sheet->setCellValue('D'.$row, 'TOTAL EXT. Y DEV.:'); $sheet->setCellValue('E'.$row, $tExt);
+        $sheet->getStyle('D'.$row.':E'.$row)->applyFromArray($styles['total']); $row += 2;
+
+        // 8. GASTOS CAJA CHICA
+        $sheet->setCellValue('A'.$row, 'GASTOS CAJA CHICA'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Nro.','Fecha','Proveedor / Motivo','Observación','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        $tCC=0;
+        foreach ($gastos as $g) {
+            $refG = $g->proveedor?->Nombre ?? ($g->proveedor?->RazonSocial ?? '') ?: ($g->motivo?->Descripcion ?? '') ?: 'Gasto #'.$g->GastoID;
+            $this->writeDataRow($sheet, $row, ['G-'.$g->GastoID, $g->FechaEmision->format('d/m/Y'), $refG, $g->Observaciones??'', $g->Total], 5);
+            $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $tCC+=$g->Total; $row++;
+        }
+        foreach ($compras as $c) {
+            $refC = $c->proveedor?->Nombre ?? ($c->proveedor?->RazonSocial ?? '') ?: 'Compra #'.$c->CompraID;
+            $this->writeDataRow($sheet, $row, ['C-'.$c->CompraID, $c->FechaEmision->format('d/m/Y'), $refC, $c->Observaciones??'', $c->Total], 5);
+            $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $tCC+=$c->Total; $row++;
+        }
+        $sheet->setCellValue('D'.$row, 'TOTAL CAJA CHICA:'); $sheet->setCellValue('E'.$row, $tCC); $sheet->getStyle('D'.$row.':E'.$row)->applyFromArray($styles['total']); $row += 2;
+
+        // 9. BALANCE DE CAJA
+        $sheet->setCellValue('A'.$row, 'BALANCE DE CAJA'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
+        $sheet->setCellValue('A'.$row, 'CAJA ABIERTA'); $sheet->getStyle('A'.$row)->getFont()->setBold(true);
+        $sheet->setCellValue('D'.$row, 'CAJA CHICA'); $sheet->getStyle('D'.$row)->getFont()->setBold(true); $row++;
+        foreach (['Concepto','Monto','','Concepto','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
+        $itemsCA = [
+            ['Saldo Inicial:', $saldoInicialReal],
+            ['Pagos (+):', $totalAmortizaciones],
+            ['Moras (+):', $totalMoras],
+            ['Créditos (-):', -$totalCreditosEmitidos],
+            ['Remesas (+/-):', $remesasNetCajaAbierta],
+            ['Excedentes (+):', $totalExcedentesDia],
+            ['Devoluciones (-):', -$devolucionesDia],
+        ];
+        $itemsCC = [
+            ['Saldo Inicial:', $saldoInicialCajaChica],
+            ['Gastos (-):', -$totalGastosCC],
+            ['Remesas (+/-):', $remesasNetCajaChica],
+        ];
+        $maxR = max(count($itemsCA), count($itemsCC));
+        for ($i = 0; $i < $maxR; $i++) {
+            if (isset($itemsCA[$i])) { $sheet->setCellValue('A'.$row, $itemsCA[$i][0]); $sheet->setCellValue('B'.$row, $itemsCA[$i][1]); $sheet->getStyle('B'.$row)->getAlignment()->setHorizontal('right'); }
+            if (isset($itemsCC[$i])) { $sheet->setCellValue('D'.$row, $itemsCC[$i][0]); $sheet->setCellValue('E'.$row, $itemsCC[$i][1]); $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); }
+            $row++;
+        }
+        $sheet->setCellValue('A'.$row, 'TOTAL:'); $sheet->setCellValue('B'.$row, $totalCajaAbiertaReal);
+        $sheet->setCellValue('D'.$row, 'TOTAL:'); $sheet->setCellValue('E'.$row, $totalCajaChica);
+        $sheet->getStyle('A'.$row.':B'.$row)->applyFromArray($styles['total']); $sheet->getStyle('D'.$row.':E'.$row)->applyFromArray($styles['total']);
+        $row++; $sheet->setCellValue('A'.$row, 'Cta. a Mayor:'); $sheet->setCellValue('B'.$row, $saldoCuentaAMayor); $row += 2;
+
+        // Column widths
+        foreach (range('A','F') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
 
         return $this->downloadSpreadsheet($spreadsheet, "Balance_Diario_{$fecha}");
     }
