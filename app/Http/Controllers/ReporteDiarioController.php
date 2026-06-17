@@ -187,7 +187,7 @@ class ReporteDiarioController extends Controller
         }
 
         $extornos = $extornosQuery
-            ->with(['clienteOrigen', 'clienteDestino', 'excedente', 'creditoDestino.proposicion.cliente'])
+            ->with(['clienteOrigen', 'clienteDestino', 'excedente', 'creditoDestino.proposicion.cliente', 'creditoOrigen.proposicion.cliente'])
             ->orderBy('SolicitudID', 'asc')
             ->get();
 
@@ -214,10 +214,6 @@ class ReporteDiarioController extends Controller
             ->where('pago.Activo', true)
             ->where('pago.EsPagoAMayor', false)
             ->where('pago.EsPagoAMayorPorMora', false)
-            ->where(function($q) {
-                $q->whereNull('pago.EstadoTraslado')
-                  ->orWhere('pago.EstadoTraslado', '!=', 'TRASLADADO');
-            })
             ->whereDate('pago.FechaPago', $fecha);
 
         if ($sedeId) {
@@ -253,6 +249,36 @@ class ReporteDiarioController extends Controller
         $totalAmortizaciones = $pagos->sum(function($p) {
             return $p->MontoOriginal;
         });
+
+        // ─── 4e. MORAS (Pago a Mayor por Mora) ───
+        $morasQuery = Pago::withoutGlobalScopes()
+            ->where('pago.Activo', true)
+            ->where('pago.EsPagoAMayorPorMora', true)
+            ->whereDate('pago.FechaPago', $fecha);
+
+        if ($sedeId) {
+            $morasQuery->where('pago.SedeID', $sedeId);
+        }
+
+        $moras = $morasQuery
+            ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->leftJoin('Zona', 'ProposicionCredito.ZonaID', '=', 'Zona.ZonaID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->leftJoin('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+            ->select(
+                'pago.PagoID',
+                'ProposicionCredito.CodigoCredito',
+                'Zona.Nombre as ZonaNombre',
+                'TipoCredito.Codigo as TipoCreditoCodigo',
+                'Cliente.NombresApellidos',
+                'pago.MontoPagado',
+                'pago.Comentario'
+            )
+            ->orderBy('pago.PagoID', 'asc')
+            ->get();
+
+        $totalMoras = $moras->sum('MontoPagado');
 
         // ─── 5. CREDITOS EMITIDOS ───
         $creditosQuery = Credito::withoutGlobalScopes()
@@ -323,10 +349,6 @@ class ReporteDiarioController extends Controller
                     ->where('Activo', true)
                     ->where('EsPagoAMayor', false)
                     ->where('EsPagoAMayorPorMora', false)
-                    ->where(function($q) {
-                        $q->whereNull('EstadoTraslado')
-                          ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
-                    })
                     ->where('FechaPago', '<=', $fechaLimite)
                     ->where('SedeID', $sedeId)
                     ->select('MontoPagado', 'Comentario')
@@ -374,7 +396,15 @@ class ReporteDiarioController extends Controller
                         return (float)$e->Monto + (float)($e->monto_aplicado ?? 0);
                     });
 
-                return $transferenciasRecibidas + $pagos + $inyecciones + $trasladosEntrada + $excedentes
+                // 7. Moras (Pago a Mayor por Mora)
+                $moras = \App\Models\Pago::withoutGlobalScopes()
+                    ->where('Activo', true)
+                    ->where('EsPagoAMayorPorMora', true)
+                    ->where('FechaPago', '<=', $fechaLimite)
+                    ->where('SedeID', $sedeId)
+                    ->sum('MontoPagado');
+
+                return $transferenciasRecibidas + $pagos + $inyecciones + $trasladosEntrada + $excedentes + $moras
                      - $transferenciasEnviadas - $creditos - $trasladosSalida;
             };
 
@@ -562,7 +592,7 @@ class ReporteDiarioController extends Controller
                 ->sum('MontoAplicar');
 
             // Totales finales
-            $totalCajaAbierta = $saldoInicialCajaAbierta + $totalAmortizaciones - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
+            $totalCajaAbierta = $saldoInicialCajaAbierta + $totalAmortizaciones + $totalMoras - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
             $totalCajaChica = $saldoInicialCajaChica - ($totalGastos + $totalCompras) + $remesasNetCajaChica;
 
             // Otras operaciones (para cuadrar el reporte matemáticamente)
@@ -573,7 +603,7 @@ class ReporteDiarioController extends Controller
 
         $saldoRealAjustado = $saldoCierreCajaAbierta - 150000;
         $saldoInicialReal = $saldoInicialCajaAbierta - 150000;
-        $totalCajaAbiertaReal = $saldoInicialReal + $totalAmortizaciones - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
+        $totalCajaAbiertaReal = $saldoInicialReal + $totalAmortizaciones + $totalMoras - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
 
         $data = [
             'fecha'                 => $fechaCarbon,
@@ -620,6 +650,9 @@ class ReporteDiarioController extends Controller
             // 4d. Amortizaciones
             'pagos'                 => $pagos,
             'totalAmortizaciones'   => $totalAmortizaciones,
+            // 4e. Moras
+            'moras'                 => $moras,
+            'totalMoras'            => $totalMoras,
             // 5. Créditos Emitidos
             'creditos'              => $creditos,
             'totalCreditosEmitidos' => $totalCreditosEmitidos,

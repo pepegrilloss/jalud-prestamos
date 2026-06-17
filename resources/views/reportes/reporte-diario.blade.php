@@ -206,6 +206,50 @@
     </table>
 
     {{-- ═══════════════════════════════════════ --}}
+    {{-- 1B. MORAS --}}
+    {{-- ═══════════════════════════════════════ --}}
+    <div class="seccion-separador"></div>
+    <div class="seccion-titulo">&nbsp;MORAS</div>
+    <div class="seccion-subrayado">&nbsp;=====</div>
+
+    <table class="datos-table">
+        <thead>
+            <tr>
+                <th style="width: 13%;">OPERACION</th>
+                <th style="width: 15%;">ZONA</th>
+                <th style="width: 9%;">CRED.</th>
+                <th style="width: 45%;">CLIENTE</th>
+                <th style="width: 18%; text-align: right;">MONTO</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($moras as $mora)
+                <tr>
+                    <td>{{ $mora->CodigoCredito ?? '' }}</td>
+                    <td>{{ mb_strtoupper($mora->ZonaNombre ?? 'N/A') }}</td>
+                    <td>{{ $mora->TipoCreditoCodigo ?? '001' }}</td>
+                    <td>{{ mb_strtoupper($mora->NombresApellidos ?? '') }}</td>
+                    <td class="monto">{{ number_format($mora->MontoPagado, 2) }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 5px;">Sin moras registradas</td>
+                </tr>
+            @endforelse
+
+            @if($moras->count() > 0)
+                <tr class="total-row">
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td style="text-align: right; padding-right: 10px;">TOTAL MORAS:</td>
+                    <td class="monto">{{ number_format($totalMoras, 2) }}</td>
+                </tr>
+            @endif
+        </tbody>
+    </table>
+
+    {{-- ═══════════════════════════════════════ --}}
     {{-- 2. CREDITOS EMITIDOS --}}
     {{-- ═══════════════════════════════════════ --}}
     <div class="seccion-separador"></div>
@@ -430,11 +474,12 @@
     <table class="datos-table">
         <thead>
             <tr>
-                <th style="width: 15%;">OPERACION</th>
-                <th style="width: 12%;">FECHA</th>
-                <th style="width: 35%;">CTA CLIENTE</th>
-                <th style="width: 18%; text-align: right;">MONTO</th>
-                <th style="width: 20%; text-align: center;">TIPO</th>
+                <th style="width: 10%;">OPERACION</th>
+                <th style="width: 8%;">FECHA</th>
+                <th style="width: 27%;">CTA. ORIGEN</th>
+                <th style="width: 27%;">CTA. DESTINO</th>
+                <th style="width: 16%; text-align: center;">TIPO</th>
+                <th style="width: 12%; text-align: right;">MONTO</th>
             </tr>
         </thead>
         <tbody>
@@ -451,15 +496,25 @@
                         ?? $extorno->clienteDestino?->NombresApellidos
                         ?? $extorno->clienteOrigen?->NombresApellidos
                         ?? 'N/A';
-                    $codigoCredito = $extorno->creditoDestino?->proposicion?->CodigoCredito ?? '';
-                    $ctaCliente = $codigoCredito ? "{$codigoCredito} - " . mb_strtoupper($clienteNombre) : mb_strtoupper($clienteNombre);
+                    $ctaCliente = mb_strtoupper($clienteNombre);
+
+                    if ($extorno->TipoResolucion === 'TRASLADO_DE_PAGO') {
+                        $clienteOrigenNombre = $extorno->creditoOrigen?->proposicion?->cliente?->NombresApellidos
+                            ?? $extorno->clienteOrigen?->NombresApellidos ?? '';
+                        $ctaOrigen = mb_strtoupper($clienteOrigenNombre);
+                    }
                 @endphp
                 <tr>
                     <td>{{ $extorno->excedente?->NroOperacion ?? '' }}</td>
                     <td>{{ \Carbon\Carbon::parse($extorno->created_at)->format('d/m/Y') }}</td>
+                    @if($extorno->TipoResolucion === 'TRASLADO_DE_PAGO')
+                    <td>{{ $ctaOrigen ?? '' }}</td>
                     <td>{{ $ctaCliente }}</td>
+                    @else
+                    <td colspan="2">{{ $ctaCliente }}</td>
+                    @endif
+                    <td style="text-align: center;">{{ $extorno->TipoResolucion === 'TRASLADO_DE_PAGO' ? 'TRAS' : 'EXT' }}</td>
                     <td class="monto">{{ number_format($extorno->MontoAplicar, 2) }}</td>
-                    <td style="text-align: center;">EXT</td>
                 </tr>
             @endforeach
 
@@ -475,15 +530,15 @@
                     <td>{{ $codigoCreditoExo }}</td>
                     <td>{{ $exoneracion->FechaAprobacion ? \Carbon\Carbon::parse($exoneracion->FechaAprobacion)->format('d/m/Y') : '' }}
                     </td>
-                    <td>{{ $ctaClienteExo }}</td>
-                    <td class="monto">{{ number_format($exoneracion->MontoExonerado, 2) }}</td>
+                    <td colspan="2">{{ $ctaClienteExo }}</td>
                     <td style="text-align: center;">EXO</td>
+                    <td class="monto">{{ number_format($exoneracion->MontoExonerado, 2) }}</td>
                 </tr>
             @endforeach
 
             @if($filaNum === 0)
                 <tr>
-                    <td colspan="5" style="text-align: center; padding: 5px;">Sin extornos / devoluciones</td>
+                    <td colspan="6" style="text-align: center; padding: 5px;">Sin extornos / devoluciones</td>
                 </tr>
             @endif
 
@@ -491,9 +546,10 @@
                 <tr class="total-row">
                     <td></td>
                     <td></td>
-                    <td style="text-align: right; padding-right: 10px;">TOTAL EXTORNOS Y DEV.:</td>
-                    <td class="monto">{{ number_format($totalExtornosDev, 2) }}</td>
                     <td></td>
+                    <td></td>
+                    <td style="text-align: right; padding-right: 10px; overflow: visible; white-space: normal;">TOTAL EXT. Y DEV.:</td>
+                    <td class="monto">{{ number_format($totalExtornosDev, 2) }}</td>
                 </tr>
             @endif
         </tbody>
@@ -598,6 +654,10 @@
                     <tr>
                         <td style="width: 60%; text-align: right; font-size: 8px; color: #00aa00; font-weight: bold;">Pagos (+):</td>
                         <td class="monto" style="width: 40%; font-size: 8px; color: #00aa00; font-weight: bold;">+{{ number_format($totalAmortizaciones, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td style="width: 60%; text-align: right; font-size: 8px; color: #e6a800; font-weight: bold;">Moras (+):</td>
+                        <td class="monto" style="width: 40%; font-size: 8px; color: #e6a800; font-weight: bold;">+{{ number_format($totalMoras ?? 0, 2) }}</td>
                     </tr>
                     <tr>
                         <td style="width: 60%; text-align: right; font-size: 8px; color: #dd0000; font-weight: bold;">Créditos (-):</td>
