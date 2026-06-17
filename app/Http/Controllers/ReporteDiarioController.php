@@ -197,7 +197,10 @@ class ReporteDiarioController extends Controller
         $excedentesDiaParaTabla = \App\Models\Excedente::withoutGlobalScopes()
             ->where('SedeID', $sedeId)
             ->where('Activo', true)
-            ->where('Cuenta', 'Caja Abierta')
+            ->where(function($q) {
+                $q->where('Cuenta', 'Caja Abierta')
+                  ->orWhereNull('Cuenta');
+            })
             ->whereBetween('Fecha', [$fechaInicioDia, $fechaFinDia])
             ->with(['resoluciones' => function($q) {
                 $q->where('Estado', 'APROBADA')
@@ -358,7 +361,10 @@ class ReporteDiarioController extends Controller
                 $excedentes = \App\Models\Excedente::withoutGlobalScopes()
                     ->where('SedeID', $sedeId)
                     ->where('Activo', true)
-                    ->where('Cuenta', 'Caja Abierta')
+                    ->where(function($q) {
+                        $q->where('Cuenta', 'Caja Abierta')
+                          ->orWhereNull('Cuenta');
+                    })
                     ->where('Fecha', '<=', $fechaLimite)
                     ->withSum(['resoluciones as monto_aplicado' => function($q) {
                         $q->where('Estado', 'APROBADA');
@@ -484,7 +490,10 @@ class ReporteDiarioController extends Controller
             $excedentesDia = \App\Models\Excedente::withoutGlobalScopes()
                 ->where('SedeID', $sedeId)
                 ->where('Activo', true)
-                ->where('Cuenta', 'Caja Abierta')
+                ->where(function($q) {
+                    $q->where('Cuenta', 'Caja Abierta')
+                      ->orWhereNull('Cuenta');
+                })
                 ->whereBetween('Fecha', [$fechaInicioDia, $fechaFinDia])
                 ->withSum(['resoluciones as monto_aplicado' => function($q) {
                     $q->where('Estado', 'APROBADA');

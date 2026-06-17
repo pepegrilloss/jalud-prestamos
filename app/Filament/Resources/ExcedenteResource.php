@@ -71,7 +71,7 @@ class ExcedenteResource extends Resource implements HasShieldPermissions
                             ->prefixIcon('heroicon-m-building-library')
                             ->default('Caja Abierta')
                             ->readonly()
-                            ->visible(fn(Get $get) => in_array($get('TipoExcedente'), ['YAPE_TRANSFERENCIA', 'SOBRANTE_CAJERO']))
+                            ->visible(fn(Get $get) => in_array($get('TipoExcedente'), ['YAPE_TRANSFERENCIA', 'SOBRANTE_CAJERO', 'SOBRANTE_PROMOTOR']))
                             ->required(fn(Get $get) => in_array($get('TipoExcedente'), ['YAPE_TRANSFERENCIA', 'SOBRANTE_CAJERO'])),
 
                         Forms\Components\DatePicker::make('Fecha')
