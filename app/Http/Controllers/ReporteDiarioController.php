@@ -212,7 +212,10 @@ class ReporteDiarioController extends Controller
         // ─── 4d. CAJA ABIERTA - AMORTIZACIONES (Pagos Físicos) ───
         $pagosQuery = Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)
-            ->where('pago.EsPagoAMayor', false)
+            ->where(function($q) {
+                $q->where('pago.EsPagoAMayor', false)
+                  ->orWhereNull('pago.SolicitudResolucionID');
+            })
             ->where('pago.EsPagoAMayorPorMora', false)
             ->whereDate('pago.FechaPago', $fecha);
 
@@ -347,7 +350,10 @@ class ReporteDiarioController extends Controller
                 // 3. Pagos / Amortizaciones (Entrada física) — descontando porciones aplicadas por excedentes
                 $pagosRaw = \App\Models\Pago::withoutGlobalScopes()
                     ->where('Activo', true)
-                    ->where('EsPagoAMayor', false)
+                    ->where(function($q) {
+                        $q->where('EsPagoAMayor', false)
+                          ->orWhereNull('SolicitudResolucionID');
+                    })
                     ->where('EsPagoAMayorPorMora', false)
                     ->where('FechaPago', '<=', $fechaLimite)
                     ->where('SedeID', $sedeId)

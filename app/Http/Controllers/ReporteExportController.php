@@ -109,7 +109,11 @@ class ReporteExportController extends Controller
             ->orderBy('SolicitudID')->get();
 
         $pagos = \App\Models\Pago::withoutGlobalScopes()
-            ->where('pago.Activo', true)->where('pago.EsPagoAMayor', false)->where('pago.EsPagoAMayorPorMora', false)
+            ->where('pago.Activo', true)->where('pago.EsPagoAMayorPorMora', false)
+            ->where(function($q) {
+                $q->where('pago.EsPagoAMayor', false)
+                  ->orWhereNull('pago.SolicitudResolucionID');
+            })
             ->whereDate('pago.FechaPago', $fecha)->when($sedeId, fn($q) => $q->where('pago.SedeID', $sedeId))
             ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
@@ -216,7 +220,11 @@ class ReporteExportController extends Controller
                     ->where(fn($q) => $q->where('FechaRespuesta', '<=', $limite)->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite)))->sum('Monto');
                 $te = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_ABIERTA')
                     ->where(fn($q) => $q->where('FechaRespuesta', '<=', $limite)->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite)))->sum('Monto');
-                $pg = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayor', false)->where('EsPagoAMayorPorMora', false)
+                $pg = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayorPorMora', false)
+                    ->where(function($q) {
+                        $q->where('EsPagoAMayor', false)
+                          ->orWhereNull('SolicitudResolucionID');
+                    })
                     ->where('FechaPago', '<=', $limite)->where('SedeID', $sedeId)->sum('MontoPagado');
                 $cr = Credito::withoutGlobalScopes()->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
                     ->where('Credito.Activo', true)->where('Credito.SedeID', $sedeId)->where('Credito.FechaGeneracion', '<=', $limite)->sum('ProposicionCredito.MontoTotal');
