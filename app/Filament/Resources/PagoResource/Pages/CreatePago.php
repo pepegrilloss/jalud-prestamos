@@ -399,6 +399,31 @@ class CreatePago extends CreateRecord
             throw new \Exception("El monto no puede exceder S/ {$montoMaximo}. Contacta a administración.");
         }
 
+        // CRÍTICO: Asignar flags de tipo de pago ANTES de la validación de saldo
+        // Estos flags se determinan por la selección del usuario en el modal de confirmación,
+        // no vienen del formulario directamente.
+        if ($this->tipoPagoAMayorSeleccionado === 'MAYOR') {
+            if (!auth()->user()?->can('registrar_pagos_a_mayor')) {
+                throw new \Exception('No tienes permiso para registrar pagos a mayor.');
+            }
+            $data['EsPagoAMayor'] = true;
+            $data['EsPagoAMayorPorMora'] = false;
+        } elseif ($this->tipoPagoAMayorSeleccionado === 'MAYOR_MORA') {
+            if (!auth()->user()?->can('registrar_pagos_a_mayor_por_mora')) {
+                throw new \Exception('No tienes permiso para registrar pagos a mayor por mora.');
+            }
+            $data['EsPagoAMayor'] = false;
+            $data['EsPagoAMayorPorMora'] = true;
+        } else {
+            $data['EsPagoAMayor'] = false;
+            $data['EsPagoAMayorPorMora'] = false;
+        }
+
+        // Mantener para compatibilidad con datos históricos (ya no se usan en el formulario)
+        if (!auth()->user()?->can('registrar_pago_mora')) {
+            $data['EsMora'] = false;
+        }
+
         // Validar que no sobrepase la deuda (solo excepciones: Pago a Mayor o Mora)
         $creditoID = $data['CreditoID'] ?? null;
         if ($creditoID) {
@@ -530,27 +555,6 @@ class CreatePago extends CreateRecord
         }
 
         $data['TipoPago'] = $tipoPago;
-
-        // Mantener para compatibilidad con datos históricos (ya no se usan en el formulario)
-        if (!auth()->user()?->can('registrar_pago_mora')) {
-            $data['EsMora'] = false;
-        }
-        if ($this->tipoPagoAMayorSeleccionado === 'MAYOR') {
-            if (!auth()->user()?->can('registrar_pagos_a_mayor')) {
-                throw new \Exception('No tienes permiso para registrar pagos a mayor.');
-            }
-            $data['EsPagoAMayor'] = true;
-            $data['EsPagoAMayorPorMora'] = false;
-        } elseif ($this->tipoPagoAMayorSeleccionado === 'MAYOR_MORA') {
-            if (!auth()->user()?->can('registrar_pagos_a_mayor_por_mora')) {
-                throw new \Exception('No tienes permiso para registrar pagos a mayor por mora.');
-            }
-            $data['EsPagoAMayor'] = false;
-            $data['EsPagoAMayorPorMora'] = true;
-        } else {
-            $data['EsPagoAMayor'] = false;
-            $data['EsPagoAMayorPorMora'] = false;
-        }
 
         // Usar el valor que el usuario seleccionó en los botones
         // Si no seleccionó nada explícitamente, hacer detección automática
