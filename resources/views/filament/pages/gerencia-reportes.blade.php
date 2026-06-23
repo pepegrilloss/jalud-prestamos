@@ -255,6 +255,8 @@
 <div x-data="{
     sedeId: '0',
     fechaDiario: '{{ now()->format('Y-m-d') }}',
+    fechaCreditosDesde: '{{ now()->startOfMonth()->format('Y-m-d') }}',
+    fechaCreditosHasta: '{{ now()->format('Y-m-d') }}',
     fechaCanceladas: '{{ now()->format('Y-m-d') }}',
     fechaCartera: '{{ now()->format('Y-m-d') }}',
     carteraTipos: [],
@@ -305,6 +307,40 @@
                         PDF
                     </button>
                     <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-diario.excel') }}?sede_id=' + sedeId + '&fecha=' + fechaDiario)">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+                        Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Reporte de Creditos --}}
+        <div class="reporte-card">
+            <div class="card-bar" style="background:#2563eb;"></div>
+            <div class="card-body">
+                <div class="card-header">
+                    <div class="card-icon" style="background:#dbeafe;">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#2563eb"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v15.75m0 0-3.75-3.75M21 12.75l-3.75-3.75M2.25 12.75l3.75-3.75M6 12.75l3.75 3.75"/></svg>
+                    </div>
+                    <h3 class="card-title">Reporte de Creditos</h3>
+                </div>
+                <p class="card-desc">Creditos generados en un rango de fechas con detalle de montos, saldos y vencimientos.</p>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label class="field-label">Desde</label>
+                        <input type="date" x-model="fechaCreditosDesde" class="field-input">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Hasta</label>
+                        <input type="date" x-model="fechaCreditosHasta" class="field-input">
+                    </div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-pdf" x-on:click="openReport('{{ route('reporte-creditos.pdf') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaCreditosDesde + '&fecha_hasta=' + fechaCreditosHasta)">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+                        PDF
+                    </button>
+                    <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-creditos.excel') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaCreditosDesde + '&fecha_hasta=' + fechaCreditosHasta)">
                         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
                         Excel
                     </button>

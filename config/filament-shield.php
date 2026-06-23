@@ -67,6 +67,7 @@ return [
         'view_any_reporte::clientes::inactivos',
         'registrar_pago_mora',
         'bloquear_pago_promotor',
+        'reporte_creditos',
         'page_FacturasPendientes',
     ],
 

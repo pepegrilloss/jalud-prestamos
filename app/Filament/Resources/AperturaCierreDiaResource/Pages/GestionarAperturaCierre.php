@@ -135,65 +135,9 @@ class GestionarAperturaCierre extends ManageRecords
                         $this->halt();
                     }
                 }),
-            Actions\Action::make('bloquearPagoPromotor')
-                ->label(fn() => self::pagosBloqueados() ? 'Desbloquear Pago Promotor' : 'Bloquear Pago Promotor')
-                ->icon(fn() => self::pagosBloqueados() ? 'heroicon-o-lock-open' : 'heroicon-o-lock-closed')
-                ->color(fn() => self::pagosBloqueados() ? 'success' : 'danger')
-                ->visible(fn() => filament()->getCurrentPanel()?->getId() !== 'gerencia' && auth()->user()->can('bloquear_pago_promotor'))
-                ->requiresConfirmation()
-                ->modalHeading(fn() => self::pagosBloqueados() ? 'Desbloquear pagos de promotores' : 'Bloquear pagos de promotores')
-                ->modalDescription(fn() => self::pagosBloqueados()
-                    ? 'Los promotores cobradores podrán registrar pagos nuevamente.'
-                    : 'Los promotores cobradores NO podrán registrar ningún pago, aunque el día esté abierto.')
-                ->modalSubmitActionLabel(fn() => self::pagosBloqueados() ? 'Sí, desbloquear' : 'Sí, bloquear')
-                ->action(function () {
-                    $sedeId = auth()->user()?->getEffectiveSedeId();
-                    if (!$sedeId) {
-                        Notification::make()->title('Sin sede asignada')->danger()->send();
-                        return;
-                    }
-                    $bloqueado = \Illuminate\Support\Facades\DB::table('apertura_cierre_dia')
-                        ->where('pagos_promotor_bloqueados', 1)
-                        ->where('SedeID', $sedeId)
-                        ->exists();
-                    if ($bloqueado) {
-                        \Illuminate\Support\Facades\DB::table('apertura_cierre_dia')
-                            ->where('pagos_promotor_bloqueados', 1)
-                            ->where('SedeID', $sedeId)
-                            ->update(['pagos_promotor_bloqueados' => 0]);
-                    } else {
-                        $record = \App\Models\AperturaCierreDia::withoutGlobalScope('sede')
-                            ->where('SedeID', $sedeId)
-                            ->latest()
-                            ->first();
-                        if ($record) {
-                            $record->update(['pagos_promotor_bloqueados' => true]);
-                        } else {
-                            \App\Models\AperturaCierreDia::create([
-                                'EstadoDia' => 'CERRADO',
-                                'SedeID' => $sedeId,
-                                'pagos_promotor_bloqueados' => true,
-                            ]);
-                        }
-                    }
-                    Notification::make()
-                        ->title(!$bloqueado ? '🔒 Pagos de promotores bloqueados' : '🔓 Pagos de promotores desbloqueados')
-                        ->success()
-                        ->send();
-                }),
         ];
     }
 
-    public static function pagosBloqueados(): bool
-    {
-        $sedeId = auth()->user()?->getEffectiveSedeId();
-        if (!$sedeId) return false;
-        return \Illuminate\Support\Facades\DB::table('apertura_cierre_dia')
-            ->where('pagos_promotor_bloqueados', 1)
-            ->where('SedeID', $sedeId)
-            ->exists();
-    }
-    
     /**
      * Sobrescribir el método que maneja las actualizaciones de la tabla
      */

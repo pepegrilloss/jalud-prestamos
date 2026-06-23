@@ -727,12 +727,15 @@ class PagoResource extends Resource
     {
         if (!parent::canCreate()) { return false; }
 
-        // Si el usuario es promotor y hay bloqueo activo en su sede, bloquear
-        if (auth()->user()?->hasRole('promotor_cobrador') && auth()->user()->SedeID) {
-            $bloqueado = \Illuminate\Support\Facades\DB::table('apertura_cierre_dia')
-                ->where('pagos_promotor_bloqueados', 1)
-                ->where('SedeID', auth()->user()->SedeID)
-                ->exists();
+        // Si el usuario es promotor y hay bloqueo activo en su sede, zona o promotor, bloquear
+        $user = auth()->user();
+        if ($user?->hasRole('promotor_cobrador') && $user->SedeID) {
+            $sedeId = $user->getEffectiveSedeId();
+            $promotorCobrador = $user->promotorCobrador;
+            $zonaId = $promotorCobrador?->ZonaID ?? null;
+            $promotorId = $user->PromotorCobradorID ?? null;
+
+            $bloqueado = \App\Models\PagoBloqueoPromotor::estaBloqueado($sedeId, $zonaId, $promotorId);
             if ($bloqueado) {
                 \Filament\Notifications\Notification::make()
                     ->title('Pagos Bloqueados')

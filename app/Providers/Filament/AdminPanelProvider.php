@@ -166,7 +166,13 @@ class AdminPanelProvider extends PanelProvider
                     ->group('Reportes')
                     ->sort(2)
                     ->url('#reporte-cartera')
-                    ->visible(fn(): bool => auth()->user()?->can('reporte_cartera') ?? false), 
+                    ->visible(fn(): bool => auth()->user()?->can('reporte_cartera') ?? false),
+                \Filament\Navigation\NavigationItem::make('Reporte de Creditos')
+                    ->icon('heroicon-o-banknotes')
+                    ->group('Reportes')
+                    ->sort(3)
+                    ->url('#reporte-creditos')
+                    ->visible(fn(): bool => auth()->user()?->can('reporte_creditos') ?? false),
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
@@ -175,6 +181,10 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn(): string => Blade::render('@livewire(\App\Livewire\ReporteCarteraModal::class)')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn(): string => Blade::render('@livewire(\App\Livewire\ReporteCreditosModal::class)')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->databaseTransactions()
