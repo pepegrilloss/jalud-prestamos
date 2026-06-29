@@ -12,6 +12,9 @@ class ReporteCreditosController extends Controller
 {
     public function descargar(Request $request)
     {
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
+
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
         $sedeIdParam = $request->get('sede_id');
@@ -22,6 +25,10 @@ class ReporteCreditosController extends Controller
 
         $fechaDesdeCarbon = Carbon::createFromFormat('Y-m-d', $fechaDesde)->startOfDay();
         $fechaHastaCarbon = Carbon::createFromFormat('Y-m-d', $fechaHasta)->endOfDay();
+
+        if ($fechaDesdeCarbon->diffInDays($fechaHastaCarbon) > 365) {
+            abort(400, 'El rango maximo permitido es de 1 ano (365 dias).');
+        }
 
         $user = auth()->user();
         if ($user && $user->isPrivileged()) {
@@ -39,14 +46,23 @@ class ReporteCreditosController extends Controller
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'TODAS LAS SEDES';
 
-        $creditos = Credito::withoutGlobalScopes()
+        $baseQuery = Credito::withoutGlobalScopes()
             ->where('Credito.Activo', 1)
             ->whereBetween('Credito.FechaGeneracion', [$fechaDesdeCarbon, $fechaHastaCarbon])
             ->when($sedeId, fn($q) => $q->where('Credito.SedeID', $sedeId))
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
             ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
-            ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
-            ->select(
+            ->join('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID');
+
+        $totalRegistros = (clone $baseQuery)->count();
+        $LIMITE = 2000;
+        $limitado = false;
+
+        if ($totalRegistros > $LIMITE) {
+            $limitado = true;
+        }
+
+        $creditos = $baseQuery->select(
                 'Credito.*',
                 'ProposicionCredito.MontoTotal',
                 'ProposicionCredito.MontoInteres',
@@ -59,6 +75,7 @@ class ReporteCreditosController extends Controller
                 'TipoCredito.Descripcion as TipoCreditoDescripcion'
             )
             ->orderBy('Credito.FechaGeneracion')
+            ->limit($LIMITE)
             ->get();
 
         $totales = [
@@ -68,7 +85,7 @@ class ReporteCreditosController extends Controller
             'saldo' => $creditos->sum('SaldoPendiente'),
         ];
 
-        $data = compact('creditos', 'fechaDesde', 'fechaHasta', 'sedeNombre', 'totales');
+        $data = compact('creditos', 'fechaDesde', 'fechaHasta', 'sedeNombre', 'totales', 'limitado', 'totalRegistros', 'LIMITE');
 
         $fechaDesdeCarbon = Carbon::createFromFormat('Y-m-d', $fechaDesde);
         $fechaHastaCarbon = Carbon::createFromFormat('Y-m-d', $fechaHasta);

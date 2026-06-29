@@ -73,6 +73,13 @@
     <div class="titulo">REPORTE DE CREDITOS</div>
     <div class="subtitulo">Periodo: {{ $fechaDesde->format('d/m/Y') }} - {{ $fechaHasta->format('d/m/Y') }}</div>
 
+    @if($limitado)
+    <div style="text-align:center; background:#fff3cd; border:1px solid #ffc107; padding:6px 10px; margin-bottom:10px; font-size:9px; font-weight:bold; color:#856404;">
+        ATENCION: Se encontraron {{ number_format($totalRegistros) }} registros. Mostrando solo los primeros {{ number_format($LIMITE) }}.
+        Los totales corresponden unicamente a los registros mostrados. Reduzca el rango de fechas para ver el detalle completo.
+    </div>
+    @endif
+
     <table class="datos-table">
         <thead>
             <tr>
@@ -92,17 +99,17 @@
         <tbody>
             @foreach($creditos as $c)
             <tr>
-                <td>{{ $c->proposicion?->cliente?->DNI ?? '-' }}</td>
-                <td>{{ $c->proposicion?->cliente?->NombresApellidos ?? '-' }}</td>
-                <td class="monto">{{ number_format($c->proposicion?->MontoTotal ?? 0, 2) }}</td>
-                <td class="monto">{{ number_format($c->proposicion?->MontoInteres ?? 0, 2) }}</td>
-                <td class="monto">{{ number_format($c->proposicion?->MontoTotalPagar ?? 0, 2) }}</td>
-                <td class="center">{{ $c->FechaGeneracion?->format('d/m/Y') ?? '-' }}</td>
-                <td class="monto">{{ number_format($c->proposicion?->SaldoPendiente ?? 0, 2) }}</td>
-                <td class="monto">{{ number_format($c->proposicion?->MontoCuota ?? 0, 2) }}</td>
-                <td class="center">{{ $c->FechaVencimiento?->format('d/m/Y') ?? '-' }}</td>
-                <td class="center">{{ $c->proposicion?->tipoCredito?->Descripcion ?? '-' }}</td>
-                <td class="center">{{ $c->proposicion?->Plazo ?? '-' }}</td>
+                <td>{{ $c->DNI ?? '-' }}</td>
+                <td>{{ $c->NombresApellidos ?? '-' }}</td>
+                <td class="monto">{{ number_format((float) ($c->MontoTotal ?? 0), 2) }}</td>
+                <td class="monto">{{ number_format((float) ($c->MontoInteres ?? 0), 2) }}</td>
+                <td class="monto">{{ number_format((float) ($c->MontoTotalPagar ?? 0), 2) }}</td>
+                <td class="center">{{ $c->FechaGeneracion ? \Carbon\Carbon::parse($c->FechaGeneracion)->format('d/m/Y') : '-' }}</td>
+                <td class="monto">{{ number_format((float) ($c->SaldoPendiente ?? 0), 2) }}</td>
+                <td class="monto">{{ number_format((float) ($c->MontoCuota ?? 0), 2) }}</td>
+                <td class="center">{{ $c->FechaVencimiento ? \Carbon\Carbon::parse($c->FechaVencimiento)->format('d/m/Y') : '-' }}</td>
+                <td class="center">{{ $c->TipoCreditoDescripcion ?? '-' }}</td>
+                <td class="center">{{ $c->Plazo ?? '-' }}</td>
             </tr>
             @endforeach
         </tbody>

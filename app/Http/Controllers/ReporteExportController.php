@@ -868,6 +868,11 @@ class ReporteExportController extends Controller
 
         $fechaCarbonDesde = Carbon::createFromFormat('Y-m-d', $fechaDesde)->startOfDay();
         $fechaCarbonHasta = Carbon::createFromFormat('Y-m-d', $fechaHasta)->endOfDay();
+
+        if ($fechaCarbonDesde->diffInDays($fechaCarbonHasta) > 365) {
+            abort(400, 'El rango maximo permitido es de 1 ano (365 dias).');
+        }
+
         $sedeId = $this->resolveSedeId();
 
         $writer = new \OpenSpout\Writer\XLSX\Writer();

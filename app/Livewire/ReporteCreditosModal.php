@@ -26,20 +26,22 @@ class ReporteCreditosModal extends Component implements HasForms, HasActions
     {
         return Action::make('generarReporte')
             ->modalHeading('REPORTE DE CREDITOS')
-            ->modalDescription('Seleccione el rango de fechas y el formato para generar el reporte.')
+            ->modalDescription('Seleccione el rango de fechas (maximo 1 ano) y el formato para generar el reporte.')
             ->form([
                 DatePicker::make('fecha_desde')
                     ->label('Desde')
                     ->required()
                     ->default(now()->startOfMonth())
                     ->native(false)
-                    ->displayFormat('d/m/Y'),
+                    ->displayFormat('d/m/Y')
+                    ->helperText('Maximo 1 ano de rango'),
                 DatePicker::make('fecha_hasta')
                     ->label('Hasta')
                     ->required()
                     ->default(now())
                     ->native(false)
-                    ->displayFormat('d/m/Y'),
+                    ->displayFormat('d/m/Y')
+                    ->helperText('Maximo 1 ano de rango'),
                 Select::make('formato')
                     ->label('Formato')
                     ->options([
@@ -56,6 +58,17 @@ class ReporteCreditosModal extends Component implements HasForms, HasActions
                 $fechaDesde = $data['fecha_desde'];
                 $fechaHasta = $data['fecha_hasta'];
                 $formato = $data['formato'] ?? 'pdf';
+
+                $desde = \Carbon\Carbon::parse($fechaDesde);
+                $hasta = \Carbon\Carbon::parse($fechaHasta);
+                if ($desde->diffInDays($hasta) > 365) {
+                    \Filament\Notifications\Notification::make()
+                        ->title('Rango no permitido')
+                        ->body('El rango maximo es de 1 ano (365 dias). Reduzca el rango de fechas.')
+                        ->warning()
+                        ->send();
+                    return;
+                }
 
                 $user = auth()->user();
                 $sedeId = $user->getEffectiveSedeId();
