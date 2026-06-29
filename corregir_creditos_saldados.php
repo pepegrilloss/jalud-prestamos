@@ -14,20 +14,20 @@ use Illuminate\Support\Facades\DB;
 
 echo "=== CORREGIR CREDITOS SALDADOS INCONSISTENTES (CHICLAYO + TRUJILLO) ===\n\n";
 
-$pendientes = DB::table('credito')
-    ->join('proposicioncredito', 'credito.ProposicionCreditoID', '=', 'proposicioncredito.ProposicionCreditoID')
-    ->where('credito.Activo', 1)
-    ->whereIn('credito.SedeID', [1, 2])
-    ->where('credito.EstatusCreditoFinal', 'ACTIVO')
-    ->where('proposicioncredito.SaldoPendiente', 0)
+$pendientes = DB::table('Credito')
+    ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+    ->where('Credito.Activo', 1)
+    ->whereIn('Credito.SedeID', [1, 2])
+    ->where('Credito.EstatusCreditoFinal', 'ACTIVO')
+    ->where('ProposicionCredito.SaldoPendiente', 0)
     ->select(
-        'credito.CreditoID',
-        'credito.SedeID',
-        'proposicioncredito.CodigoCredito',
-        'proposicioncredito.ProposicionCreditoID',
-        'proposicioncredito.FueRefinanciada',
-        'proposicioncredito.EsRefinanciamiento',
-        'proposicioncredito.MontoTotalPagar'
+        'Credito.CreditoID',
+        'Credito.SedeID',
+        'ProposicionCredito.CodigoCredito',
+        'ProposicionCredito.ProposicionCreditoID',
+        'ProposicionCredito.FueRefinanciada',
+        'ProposicionCredito.EsRefinanciamiento',
+        'ProposicionCredito.MontoTotalPagar'
     )
     ->get();
 
@@ -50,7 +50,7 @@ foreach ($pendientes as $c) {
         $razon = 'Saldo=0';
     }
 
-    DB::table('credito')
+    DB::table('Credito')
         ->where('CreditoID', $c->CreditoID)
         ->update([
             'EstatusCreditoFinal' => 'SALDADO',

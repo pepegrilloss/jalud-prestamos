@@ -1,13 +1,8 @@
 <?php
 /**
  * Actualizar ZonaID en ProposicionCredito desde Excel de creditos activos
- *
- * Ejecutar en el servidor:
- *   php actualizar_zonas_desde_excel.php
- *
  * Asigna zona si no tiene Y corrige si tiene zona equivocada.
- * Solo creditos activos con SaldoPendiente > 0.
- * Solo SedeID=1 (Chiclayo).
+ * Solo creditos activos con SaldoPendiente > 0. Solo SedeID=1 (Chiclayo).
  */
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
@@ -36,7 +31,6 @@ $sheet = $spreadsheet->getActiveSheet();
 $totalRows = $sheet->getHighestRow();
 echo "Filas totales en Excel: {$totalRows}\n";
 
-// Cargar zonas
 $zonas = DB::table('Zona')->where('SedeID', $SEDE_ID)->where('Activo', 1)->pluck('ZonaID', 'Nombre')->toArray();
 echo "Zonas disponibles: " . count($zonas) . "\n";
 foreach ($zonas as $nombre => $id) {
@@ -65,7 +59,6 @@ for ($r = 3; $r <= $totalRows; $r++) {
         continue;
     }
 
-    // Buscar ZonaID por nombre
     $zonaID = $zonas[$zonaNombre] ?? null;
     if (!$zonaID) {
         $zonaNoExiste++;
@@ -73,7 +66,6 @@ for ($r = 3; $r <= $totalRows; $r++) {
         continue;
     }
 
-    // Buscar ProposicionCredito activa con saldo > 0
     $prop = DB::table('ProposicionCredito')
         ->where('CodigoCredito', $codigoCredito)
         ->where('SedeID', $SEDE_ID)
@@ -86,13 +78,11 @@ for ($r = 3; $r <= $totalRows; $r++) {
         continue;
     }
 
-    // Si ya tiene la zona correcta, omitir
     if (!empty($prop->ZonaID) && $prop->ZonaID == $zonaID) {
         $yaCorrectos++;
         continue;
     }
 
-    // Actualizar o corregir
     $zonaAnterior = $prop->ZonaID;
     DB::table('ProposicionCredito')
         ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
