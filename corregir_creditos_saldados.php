@@ -1,7 +1,7 @@
 <?php
 /**
  * Corregir creditos inconsistentes: Saldo=0 pero Status=ACTIVO
- * Solo Chiclayo (SedeID=1)
+ * Chiclayo + Trujillo
  *
  * Ejecutar: php corregir_creditos_saldados.php
  */
@@ -14,21 +14,20 @@ use Illuminate\Support\Facades\DB;
 
 echo "=== CORREGIR CREDITOS SALDADOS INCONSISTENTES (CHICLAYO + TRUJILLO) ===\n\n";
 
-// Buscar creditos con Status=ACTIVO pero Saldo=0 (ambas sedes)
-$pendientes = DB::table('Credito')
-    ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
-    ->where('Credito.Activo', 1)
-    ->whereIn('Credito.SedeID', [1, 2])
-    ->where('Credito.EstatusCreditoFinal', 'ACTIVO')
-    ->where('ProposicionCredito.SaldoPendiente', 0)
+$pendientes = DB::table('credito')
+    ->join('proposicioncredito', 'credito.ProposicionCreditoID', '=', 'proposicioncredito.ProposicionCreditoID')
+    ->where('credito.Activo', 1)
+    ->whereIn('credito.SedeID', [1, 2])
+    ->where('credito.EstatusCreditoFinal', 'ACTIVO')
+    ->where('proposicioncredito.SaldoPendiente', 0)
     ->select(
-        'Credito.CreditoID',
-        'Credito.SedeID',
-        'ProposicionCredito.CodigoCredito',
-        'ProposicionCredito.ProposicionCreditoID',
-        'ProposicionCredito.FueRefinanciada',
-        'ProposicionCredito.EsRefinanciamiento',
-        'ProposicionCredito.MontoTotalPagar'
+        'credito.CreditoID',
+        'credito.SedeID',
+        'proposicioncredito.CodigoCredito',
+        'proposicioncredito.ProposicionCreditoID',
+        'proposicioncredito.FueRefinanciada',
+        'proposicioncredito.EsRefinanciamiento',
+        'proposicioncredito.MontoTotalPagar'
     )
     ->get();
 
@@ -51,7 +50,7 @@ foreach ($pendientes as $c) {
         $razon = 'Saldo=0';
     }
 
-    DB::table('Credito')
+    DB::table('credito')
         ->where('CreditoID', $c->CreditoID)
         ->update([
             'EstatusCreditoFinal' => 'SALDADO',
@@ -62,12 +61,11 @@ foreach ($pendientes as $c) {
     echo "  [OK] [{$sedeNombre}] {$c->CodigoCredito} -> SALDADO ({$razon})\n";
 }
 
-// Marcar cuotas pendientes como PAGADA para estos creditos
 echo "\n--- ACTUALIZANDO CUOTAS PENDIENTES ---\n";
 $cuotasAct = 0;
 foreach ($pendientes as $c) {
     $sedeNombre = $c->SedeID == 1 ? 'Chiclayo' : 'Trujillo';
-    $n = DB::table('Cuota')
+    $n = DB::table('cuota')
         ->where('CreditoID', $c->CreditoID)
         ->where('Estado', 'PENDIENTE')
         ->update([
