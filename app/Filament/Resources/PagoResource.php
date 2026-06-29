@@ -398,6 +398,15 @@ class PagoResource extends Resource
                                             ->first();
                                         if ($cuotaPendiente) {
                                             $set('CuotaID', $cuotaPendiente->CuotaID);
+                                        } else {
+                                            // Fallback final: cualquier cuota como referencia
+                                            $cuotaRef = \App\Models\Cuota::where('CreditoID', $creditoID)
+                                                ->where('NumeroCuota', '>', 0)
+                                                ->orderBy('NumeroCuota')
+                                                ->first();
+                                            if ($cuotaRef) {
+                                                $set('CuotaID', $cuotaRef->CuotaID);
+                                            }
                                         }
                                     }
                                 }

@@ -588,9 +588,13 @@ class CreatePago extends CreateRecord
             DB::transaction(function () {
                 $pagoOriginal = $this->record;
 
-                if (!$pagoOriginal || !$pagoOriginal->CreditoID || !$pagoOriginal->CuotaID) {
-                    \Log::warning('SEGURIDAD - CreatePago::afterCreate - No pago, CreditoID or CuotaID', ['pago' => $pagoOriginal]);
+                if (!$pagoOriginal || !$pagoOriginal->CreditoID) {
+                    \Log::warning('SEGURIDAD - CreatePago::afterCreate - No pago o CreditoID', ['pago' => $pagoOriginal]);
                     return;
+                }
+
+                if (!$pagoOriginal->CuotaID) {
+                    \Log::warning('SEGURIDAD - CreatePago::afterCreate - Sin CuotaID (pago a mayor o saldado)', ['PagoID' => $pagoOriginal->PagoID]);
                 }
 
                 // Asegurar que FechaPago tenga un valor
@@ -608,7 +612,7 @@ class CreatePago extends CreateRecord
                 ]);
 
                 // Si es pago de mora, solo registrar en caja, no afecta cuota ni saldo
-                if (!$pagoOriginal->EsMora) {
+                if (!$pagoOriginal->EsMora && $pagoOriginal->CuotaID) {
                     $credito = \App\Models\Credito::with('proposicion.cliente')->lockForUpdate()->find($pagoOriginal->CreditoID);
 
                     if (!$credito) {
@@ -705,10 +709,13 @@ class CreatePago extends CreateRecord
 
             // Mostrar notificación toast al usuario actual
             $cuota = $this->record->cuota;
+            $body = $cuota
+                ? "Pago de S/ {$this->record->MontoPagado} registrado en la cuota #{$cuota->NumeroCuota} correctamente."
+                : "Pago de S/ {$this->record->MontoPagado} registrado correctamente.";
             Notification::make()
                 ->success()
                 ->title('✅ Pago Registrado Exitosamente')
-                ->body("Pago de S/ {$this->record->MontoPagado} registrado en la cuota #{$cuota->NumeroCuota} correctamente.")
+                ->body($body)
                 ->send();
 
             // Enviar notificación a la campanita de los admins
