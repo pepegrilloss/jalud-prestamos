@@ -663,7 +663,7 @@ class PagoResource extends Resource
                             )
                             ->when(
                                 in_array('zona', $activos) && isset($data['ZonaID']) && $data['ZonaID'],
-                                fn(Builder $q) => $q->whereHas('cuota.credito.proposicion', function ($subQ) use ($data) {
+                                fn(Builder $q) => $q->whereHas('credito.proposicion', function ($subQ) use ($data) {
                                     $subQ->where('ZonaID', $data['ZonaID']);
                                 })
                             )

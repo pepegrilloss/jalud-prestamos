@@ -186,7 +186,7 @@ class ListPagos extends ListRecords
             $promotorCobrador = auth()->user()->promotorCobrador;
             
             if ($promotorCobrador && $promotorCobrador->ZonaID) {
-                return $query->whereHas('cuota.credito.proposicion', function (Builder $q) use ($promotorCobrador) {
+                return $query->whereHas('credito.proposicion', function (Builder $q) use ($promotorCobrador) {
                     $q->where('ZonaID', $promotorCobrador->ZonaID);
                 });
             }
