@@ -282,7 +282,15 @@ class AprobacionProposicionResource extends Resource
      */
     private static function puedeAprobarProposicion(ProposicionCredito $proposicion): bool
     {
-        $nivelActivo = auth()->user()->getNivelAprobacionActivo();
+        $user = auth()->user();
+
+        if ($user?->puedeVerTodasLasSedes()) {
+            // Usuarios privilegiados: verificar sin filtro de sede y sin restriccion de monto
+            return $proposicion->aprobaciones()->withoutGlobalScope('sede')
+                ->where('Estado', 'PENDIENTE')->exists();
+        }
+
+        $nivelActivo = $user->getNivelAprobacionActivo();
         if (!$nivelActivo || !$nivelActivo->NivelAprobacionID) {
             return false;
         }
@@ -291,7 +299,7 @@ class AprobacionProposicionResource extends Resource
             return false;
         }
 
-        return auth()->user()->puedeAprobarPorMonto((float) $proposicion->MontoTotal);
+        return $user->puedeAprobarPorMonto((float) $proposicion->MontoTotal);
     }
 
     public static function getPages(): array
