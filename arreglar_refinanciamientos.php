@@ -40,7 +40,15 @@ foreach ($inconsistentes as $inc) {
 
 // 3. Buscar creditos con auto-pago de 0
 echo "\n=== PAGOS AUTOMATICOS CON MONTO 0 ===\n";
-$auto0 = DB::select("SELECT p.PagoID, p.MontoPagado, p.FechaPago, p.CreditoID, pc.CodigoCredito FROM pago p JOIN Credito c ON p.CreditoID=c.CreditoID JOIN ProposicionCredito pc ON c.ProposicionCreditoID=pc.ProposicionCreditoID WHERE p.EsPagoAutomatico = 1 AND p.MontoPagado = 0 AND pc.SedeID = 1 AND p.Activo = 1");
+$auto0 = DB::table('pago')
+    ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
+    ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+    ->where('pago.EsPagoAutomatico', 1)
+    ->where('pago.MontoPagado', 0)
+    ->where('ProposicionCredito.SedeID', 1)
+    ->where('pago.Activo', 1)
+    ->select('pago.PagoID', 'pago.MontoPagado', 'pago.FechaPago', 'pago.CreditoID', 'ProposicionCredito.CodigoCredito')
+    ->get();
 
 echo "Encontrados: ".count($auto0)."\n";
 foreach ($auto0 as $a) {
@@ -79,14 +87,19 @@ if (count($auto0) == 0) {
 } else {
     $pagosFix = 0;
     foreach ($auto0 as $a) {
-        // Calcular el monto correcto: MontoTotalPagar - suma de otros pagos
-        $totales = DB::select("SELECT pc.MontoTotalPagar, COALESCE(SUM(p2.MontoPagado),0) as otros_pagos FROM ProposicionCredito pc JOIN Credito c ON pc.ProposicionCreditoID=c.ProposicionCreditoID LEFT JOIN pago p2 ON c.CreditoID=p2.CreditoID AND p2.Activo=1 AND p2.PagoID != ? WHERE c.CreditoID = ?", [$a->PagoID, $a->CreditoID]);
-        $montoCorrecto = 0;
-        if ($totales) {
-            $montoCorrecto = max(0, (float)($totales[0]->MontoTotalPagar ?? 0) - (float)($totales[0]->otros_pagos ?? 0));
-        }
+        // Calcular monto correcto: MontoTotalPagar - suma de otros pagos
+        $mtp = DB::table('ProposicionCredito')
+            ->join('Credito', 'ProposicionCredito.ProposicionCreditoID', '=', 'Credito.ProposicionCreditoID')
+            ->where('Credito.CreditoID', $a->CreditoID)
+            ->value('ProposicionCredito.MontoTotalPagar');
+        $otros = DB::table('pago')
+            ->where('CreditoID', $a->CreditoID)
+            ->where('Activo', 1)
+            ->where('PagoID', '!=', $a->PagoID)
+            ->sum('MontoPagado');
+        $montoCorrecto = max(0, (float)$mtp - (float)$otros);
         DB::table('pago')->where('PagoID', $a->PagoID)->update(['MontoPagado' => $montoCorrecto]);
-        echo "  [OK] PagoID={$a->PagoID} ({$a->CodigoCredito}) | Monto 0 → {$montoCorrecto}\n";
+        echo "  [OK] PagoID={$a->PagoID} ({$a->CodigoCredito}) | Monto 0 → S/ {$montoCorrecto} | MontoTotalPagar=S/{$mtp} | Otros=S/{$otros}\n";
         $pagosFix++;
     }
     echo "  Pagos corregidos: {$pagosFix}\n";
