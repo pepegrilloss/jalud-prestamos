@@ -65,6 +65,8 @@ class AperturarFechaPasada extends Page
 
     public function aperturar(): void
     {
+        set_time_limit(300);
+
         $data = $this->form->getState();
         $fecha = \Carbon\Carbon::parse($data['fecha']);
 

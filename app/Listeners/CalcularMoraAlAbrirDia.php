@@ -16,6 +16,8 @@ class CalcularMoraAlAbrirDia
 {
     public function handle($event)
     {
+        set_time_limit(300);
+
         Log::info('[LISTENER] CalcularMoraAlAbrirDia disparado', [
             'event' => get_class($event),
             'fecha' => $event?->aperturaCierre?->Fecha ?? 'desconocida',

@@ -26,6 +26,8 @@ class CalcularMoraAutomatica implements ShouldQueue
 
     public function handle(): void
     {
+        set_time_limit(300);
+
         $fecha = $this->fecha ? \Carbon\Carbon::parse($this->fecha) : today();
         \Log::info('[JOB] CalcularMoraAutomatica: Iniciando cálculo de moras', ['fecha' => $fecha->toDateString()]);
 

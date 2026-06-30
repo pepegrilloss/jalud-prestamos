@@ -3,12 +3,18 @@
 namespace App\Filament\Resources\CreditoResource\Pages;
 
 use App\Filament\Resources\CreditoResource;
-use App\Exports\DescargarPagosCredito;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Actions;
 use Filament\Actions\Action;
+use Filament\Forms;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Filament\Notifications\Notification;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use App\Models\Tasa;
 
 class ViewCredito extends ViewRecord
 {
@@ -32,12 +38,207 @@ class ViewCredito extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('editar_capital_tasa')
+                ->label('Editar Capital / Tasa')
+                ->icon('heroicon-o-pencil-square')
+                ->color('warning')
+                ->visible(fn() => auth()->user()?->can('editar_capital_tasa') ?? false)
+                ->modalHeading('Editar Capital y Tasa de Interés')
+                ->modalDescription('Modificar el capital solicitado y la tasa de interés. Se recalcularán los montos automáticamente.')
+                ->form([
+                    Forms\Components\Grid::make(2)
+                        ->schema([
+                            Forms\Components\TextInput::make('MontoTotal')
+                                ->label('Capital Solicitado')
+                                ->numeric()
+                                ->required()
+                                ->minValue(0.01)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function (Set $set, Get $get) {
+                                    self::recalcularTotales($set, $get);
+                                }),
+                            Forms\Components\Select::make('TasaID')
+                                ->label('Tasa de Interés')
+                                ->options(function () {
+                                    return Tasa::where('Activo', true)->pluck('Nombre', 'TasaID');
+                                })
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                                    if ($state && $tasa = Tasa::find($state)) {
+                                        $set('TasaInteres', (float)$tasa->Valor);
+                                        $set('NumeroCuotas', (int)$tasa->Cuotas);
+                                        self::recalcularTotales($set, $get);
+                                    }
+                                }),
+                        ]),
+                    Forms\Components\Grid::make(2)
+                        ->schema([
+                            Forms\Components\TextInput::make('NumeroCuotas')
+                                ->label('N° Cuotas')
+                                ->numeric()
+                                ->integer()
+                                ->required()
+                                ->minValue(1)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function (Set $set, Get $get) {
+                                    self::recalcularTotales($set, $get);
+                                }),
+                            Forms\Components\Placeholder::make('info_recalculo')
+                                ->label('Valores Recalculados')
+                                ->content(function (Get $get) {
+                                    $monto = (float)$get('MontoTotal');
+                                    $tasa = (float)$get('TasaInteres');
+                                    $cuotas = (int)$get('NumeroCuotas');
+                                    if ($monto <= 0 || $tasa <= 0 || $cuotas <= 0) return 'Ingrese valores válidos';
+
+                                    $interes = round($monto * ($tasa / 100), 2);
+                                    $total = round($monto + $interes, 2);
+                                    $cuota = round($total / $cuotas, 2);
+
+                                    return new \Illuminate\Support\HtmlString("
+                                        <b>Interés:</b> S/ {$interes}<br>
+                                        <b>Total a Pagar:</b> S/ {$total}<br>
+                                        <b>Cuota:</b> S/ {$cuota}
+                                    ");
+                                }),
+                        ]),
+                    Forms\Components\Hidden::make('TasaInteres'),
+                ])
+                ->fillForm(function () {
+                    $prop = $this->record->proposicion;
+                    return [
+                        'MontoTotal' => (float) ($prop->MontoTotal ?? 0),
+                        'TasaID' => (int) ($prop->TasaID ?? 0),
+                        'TasaInteres' => (float) ($prop->TasaInteres ?? 0),
+                        'NumeroCuotas' => (int) ($prop->NumeroCuotas ?? 1),
+                    ];
+                })
+                ->action(function (array $data) {
+                    $prop = $this->record->proposicion;
+                    if (!$prop) {
+                        Notification::make()->danger()->title('Error')->body('No se encontró la proposición de crédito.')->send();
+                        return;
+                    }
+
+                    $monto = (float)$data['MontoTotal'];
+                    $tasa = (float)$data['TasaInteres'];
+                    $tasaID = (int)($data['TasaID'] ?? $prop->TasaID);
+                    $cuotas = (int)$data['NumeroCuotas'];
+                    $interes = round($monto * ($tasa / 100), 2);
+                    $totalPagar = round($monto + $interes, 2);
+                    $montoCuota = round($totalPagar / $cuotas, 2);
+
+                    $creditoID = $this->record->CreditoID;
+
+                    DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $cuotas, $interes, $totalPagar, $montoCuota, $creditoID) {
+                        // 1. Actualizar ProposicionCredito
+                        DB::table('ProposicionCredito')
+                            ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
+                            ->update([
+                                'MontoTotal' => $monto,
+                                'TasaID' => $tasaID,
+                                'TasaInteres' => $tasa,
+                                'NumeroCuotas' => $cuotas,
+                                'MontoInteres' => $interes,
+                                'MontoTotalPagar' => $totalPagar,
+                                'MontoCuota' => $montoCuota,
+                                'Plazo' => $cuotas,
+                            ]);
+
+                        // 2. Recalcular SaldoPendiente
+                        $totalPagado = DB::table('pago')
+                            ->where('CreditoID', $creditoID)
+                            ->where('Activo', 1)
+                            ->sum('MontoPagado');
+                        $nuevoSaldo = max(0, $totalPagar - (float)$totalPagado);
+
+                        DB::table('ProposicionCredito')
+                            ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
+                            ->update(['SaldoPendiente' => $nuevoSaldo]);
+
+                        // 3. Actualizar cuotas existentes
+                        $cuotasExistentes = DB::table('cuota')
+                            ->where('CreditoID', $creditoID)
+                            ->orderBy('NumeroCuota')
+                            ->get();
+
+                        if ($cuotasExistentes->count() >= $cuotas) {
+                            $idsMantener = $cuotasExistentes->take($cuotas)->pluck('CuotaID');
+                            DB::table('cuota')
+                                ->where('CreditoID', $creditoID)
+                                ->whereNotIn('CuotaID', $idsMantener)
+                                ->delete();
+
+                            DB::table('cuota')
+                                ->whereIn('CuotaID', $idsMantener)
+                                ->update(['MontoCuota' => $montoCuota, 'FechaModificacion' => now()]);
+                        } else {
+                            DB::table('cuota')
+                                ->where('CreditoID', $creditoID)
+                                ->update(['MontoCuota' => $montoCuota, 'FechaModificacion' => now()]);
+
+                            $fechaBase = Carbon::parse($this->record->FechaInicio ?? now());
+                            for ($i = $cuotasExistentes->count() + 1; $i <= $cuotas; $i++) {
+                                DB::table('cuota')->insert([
+                                    'CreditoID' => $creditoID,
+                                    'NumeroCuota' => $i,
+                                    'MontoCuota' => $montoCuota,
+                                    'FechaVencimiento' => $fechaBase->copy()->addDays($i),
+                                    'Estado' => 'PENDIENTE',
+                                    'Activo' => 1,
+                                    'SedeID' => $prop->SedeID,
+                                    'FechaCreacion' => now(),
+                                ]);
+                            }
+                        }
+
+                        // 4. Si el nuevo saldo es 0, marcar como SALDADO
+                        if ($nuevoSaldo <= 0 && (float)$totalPagado > 0) {
+                            DB::table('Credito')
+                                ->where('CreditoID', $creditoID)
+                                ->update([
+                                    'EstatusCreditoFinal' => 'SALDADO',
+                                    'FechaSaldamiento' => now(),
+                                ]);
+                            DB::table('cuota')
+                                ->where('CreditoID', $creditoID)
+                                ->whereIn('Estado', ['PENDIENTE', 'VENCIDA', 'MORA'])
+                                ->update(['Estado' => 'PAGADA', 'FechaPago' => now()]);
+                        } elseif ($nuevoSaldo > 0 && $this->record->EstatusCreditoFinal === 'SALDADO') {
+                            DB::table('Credito')
+                                ->where('CreditoID', $creditoID)
+                                ->update([
+                                    'EstatusCreditoFinal' => 'ACTIVO',
+                                    'FechaSaldamiento' => null,
+                                ]);
+                        }
+                    });
+
+                    $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
+                })
+                ->modalWidth('lg'),
+
             Action::make('descargar_pagos')
                 ->label('Descargar Pagos (PDF)')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->url(fn() => route('descargar-pagos.pdf', $this->record->CreditoID))
                 ->openUrlInNewTab(),
         ];
+    }
+
+    private static function recalcularTotales(Set $set, Get $get): void
+    {
+        $monto = (float)$get('MontoTotal');
+        $tasa = (float)$get('TasaInteres');
+        $cuotas = (int)$get('NumeroCuotas');
+
+        if ($monto > 0 && $tasa > 0 && $cuotas > 0) {
+            $interes = round($monto * ($tasa / 100), 2);
+            // El Placeholder se actualiza solo via live()
+        }
     }
 
     public function infolist(Infolist $infolist): Infolist
@@ -48,7 +249,6 @@ class ViewCredito extends ViewRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        // Este método ahora no es necesario ya que usamos las relaciones directamente
         return $data;
     }
 }

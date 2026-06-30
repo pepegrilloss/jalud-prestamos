@@ -69,6 +69,7 @@ return [
         'bloquear_pago_promotor',
         'reporte_creditos',
         'page_FacturasPendientes',
+        'editar_capital_tasa',
     ],
 
     'generator' => [
