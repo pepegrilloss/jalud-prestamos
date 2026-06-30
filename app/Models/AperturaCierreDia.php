@@ -191,16 +191,16 @@ class AperturaCierreDia extends Model
         //     $pendientes[] = "{$extornosPendientes} extorno(s) / resolución(es) de excedente pendiente(s).";
         // }
 
-        // 5. Excedentes sin resolver
-        $excedentesPendientes = Excedente::withoutGlobalScope('sede')
-            ->where('SedeID', $this->SedeID)
-            ->where('EstadoResolucion', 'PENDIENTE')
-            ->whereDate('Fecha', $fecha)
-            ->count();
-
-        if ($excedentesPendientes > 0) {
-            $pendientes[] = "{$excedentesPendientes} excedente(s) pendiente(s) de resolver.";
-        }
+        // 5. Excedentes sin resolver (no bloquean cierre de dia)
+        // $excedentesPendientes = Excedente::withoutGlobalScope('sede')
+        //     ->where('SedeID', $this->SedeID)
+        //     ->where('EstadoResolucion', 'PENDIENTE')
+        //     ->whereDate('Fecha', $fecha)
+        //     ->count();
+        //
+        // if ($excedentesPendientes > 0) {
+        //     $pendientes[] = "{$excedentesPendientes} excedente(s) pendiente(s) de resolver.";
+        // }
 
         // 6. Facturas pendientes de pago (compras a crédito sin pagar)
         $facturasPendientes = Compra::withoutGlobalScope('sede')
