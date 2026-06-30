@@ -164,8 +164,11 @@ class ProposicionCredito extends Model
 
     public static function generarCodigoCredito()
     {
-        $ultimo = self::orderBy('ProposicionCreditoID', 'desc')->first();
-        $numero = ($ultimo ? (int) substr($ultimo->CodigoCredito, 2) + 1 : 1);
+        $ultimo = self::withoutGlobalScope('sede')
+            ->where('CodigoCredito', 'like', 'C-%')
+            ->orderByRaw('CAST(SUBSTRING(CodigoCredito, 3) AS UNSIGNED) DESC')
+            ->value('CodigoCredito');
+        $numero = $ultimo ? (int) substr($ultimo, 2) + 1 : 1;
         return 'C-' . str_pad($numero, 6, '0', STR_PAD_LEFT);
     }
 
