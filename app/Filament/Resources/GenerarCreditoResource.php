@@ -521,7 +521,8 @@ class GenerarCreditoResource extends Resource
             $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
 
             // Obtener el crédito de la proposición anterior
-            $creditoAnterior = Credito::where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)
+            $creditoAnterior = Credito::withoutGlobalScope('sede')
+                ->where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)
                 ->where('Activo', true)
                 ->first();
 
@@ -535,11 +536,7 @@ class GenerarCreditoResource extends Resource
             // Filtrar cuotas pendientes
             $cuotasPendientes = $allCuotas->whereIn('Estado', ['PENDIENTE', 'VENCIDA', 'MORA', 'NORMAL']);
 
-            if ($cuotasPendientes->isEmpty()) {
-                return;
-            }
-
-            // Calcular el saldo total pendiente desde la proposición anterior (ya calculado correctamente)
+            // Calcular el saldo total pendiente desde la proposición anterior
             $saldoTotalPendiente = (float) $proposicionAnterior->SaldoPendiente;
 
             $montoRefinanciamiento = (float) $record->MontoTotal;
@@ -553,10 +550,13 @@ class GenerarCreditoResource extends Resource
                 $promotorCobradorID = Auth::user()?->PromotorCobradorID;
             }
 
+            // Obtener cuota de referencia (preferir pendiente, fallback a cualquier cuota)
+            $cuotaRef = $cuotasPendientes->first() ?? $allCuotas->first();
+
             // PAGO 1: Crear pago por el saldo pendiente del crédito anterior
             $pago1 = Pago::create([
                 'CreditoID' => $creditoAnterior->CreditoID,
-                'CuotaID' => $cuotasPendientes->first()->CuotaID,
+                'CuotaID' => $cuotaRef?->CuotaID,
                 'PromotorCobradorID' => $promotorCobradorID,
                 'MontoPagado' => $saldoTotalPendiente,
                 'FechaPago' => $fechaPago,

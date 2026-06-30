@@ -282,20 +282,8 @@ class ProposicionCredito extends Model
             if ($proposicionAnterior) {
                 $proposicionAnterior->Activo = false;
                 $proposicionAnterior->FueRefinanciada = true;
-                $proposicionAnterior->SaldoPendiente = 0;
                 $proposicionAnterior->FechaModificacion = now();
                 $proposicionAnterior->save();
-
-                // Marcar el credito anterior como SALDADO
-                $creditoAnterior = \App\Models\Credito::withoutGlobalScope('sede')
-                    ->where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)
-                    ->where('Activo', 1)
-                    ->first();
-                if ($creditoAnterior && $creditoAnterior->EstatusCreditoFinal !== 'SALDADO') {
-                    $creditoAnterior->EstatusCreditoFinal = 'SALDADO';
-                    $creditoAnterior->FechaSaldamiento = now();
-                    $creditoAnterior->save();
-                }
             }
         }
     }
