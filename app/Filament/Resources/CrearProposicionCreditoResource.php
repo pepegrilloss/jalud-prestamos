@@ -605,7 +605,7 @@ class CrearProposicionCreditoResource extends Resource
      */
     public static function cargarDatosRefinanciamiento(Set $set, Get $get, $proposicionAnteriorID): void
     {
-        $proposicionAnterior = ProposicionCredito::find($proposicionAnteriorID);
+        $proposicionAnterior = ProposicionCredito::withoutGlobalScope('sede')->find($proposicionAnteriorID);
 
         if (!$proposicionAnterior) {
             Notification::make()

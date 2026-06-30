@@ -79,7 +79,7 @@ class CreateCrearProposicionCredito extends CreateRecord
 
         // Manejar Refinanciamiento
         if ($esRefinanciamiento) {
-            $proposicionAnterior = ProposicionCredito::find($data['ProposicionCreditoAnteriorID']);
+            $proposicionAnterior = ProposicionCredito::withoutGlobalScope('sede')->find($data['ProposicionCreditoAnteriorID']);
 
             if (!$proposicionAnterior) {
                 Notification::make()

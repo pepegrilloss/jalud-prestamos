@@ -277,7 +277,7 @@ class ProposicionCredito extends Model
     public function desactivarProposicionRefinanciada(): void
     {
         if ($this->ProposicionCreditoAnteriorID) {
-            $proposicionAnterior = ProposicionCredito::find($this->ProposicionCreditoAnteriorID);
+            $proposicionAnterior = ProposicionCredito::withoutGlobalScope('sede')->find($this->ProposicionCreditoAnteriorID);
 
             if ($proposicionAnterior) {
                 $proposicionAnterior->Activo = false;
@@ -287,7 +287,8 @@ class ProposicionCredito extends Model
                 $proposicionAnterior->save();
 
                 // Marcar el credito anterior como SALDADO
-                $creditoAnterior = \App\Models\Credito::where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)
+                $creditoAnterior = \App\Models\Credito::withoutGlobalScope('sede')
+                    ->where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)
                     ->where('Activo', 1)
                     ->first();
                 if ($creditoAnterior && $creditoAnterior->EstatusCreditoFinal !== 'SALDADO') {

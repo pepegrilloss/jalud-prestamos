@@ -510,7 +510,7 @@ class GenerarCreditoResource extends Resource
     protected static function crearPagoAutomaticoRefinanciamiento(ProposicionCredito $record, Credito $creditoNuevo): void
     {
         try {
-            $proposicionAnterior = ProposicionCredito::find($record->ProposicionCreditoAnteriorID);
+            $proposicionAnterior = ProposicionCredito::withoutGlobalScope('sede')->find($record->ProposicionCreditoAnteriorID);
 
             if (!$proposicionAnterior) {
                 return;
