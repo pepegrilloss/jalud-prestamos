@@ -70,6 +70,7 @@ return [
         'reporte_creditos',
         'page_FacturasPendientes',
         'editar_capital_tasa',
+        'aprobar_extornos',
     ],
 
     'generator' => [

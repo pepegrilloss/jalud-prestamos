@@ -109,7 +109,7 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar Extorno/Resolución')
                     ->modalDescription('¿Está seguro de aprobar esta solicitud? Se reflejarán los cambios financieros correspondientes de forma automática y el excedente se marcará como resuelto.')
-                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && $record->FechaCierre === null && \App\Models\AperturaCierreDia::estaAbierto() && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
+                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && $record->FechaCierre === null && \App\Models\AperturaCierreDia::estaAbierto() && auth()->user()?->can('aprobar_extornos'))
                     ->action(function ($record) {
                         app(\App\Services\ResolucionExcedenteService::class)->aprobar($record, auth()->user());
 
@@ -140,7 +140,7 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                             ->required()
                             ->placeholder('Indique la razón por la que rechaza esta solicitud...'),
                     ])
-                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && $record->FechaCierre === null && \App\Models\AperturaCierreDia::estaAbierto() && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
+                    ->visible(fn($record) => $record->Estado === 'PENDIENTE' && $record->FechaCierre === null && \App\Models\AperturaCierreDia::estaAbierto() && auth()->user()?->can('aprobar_extornos'))
                     ->action(function ($record, array $data) {
                         $record->update([
                             'Estado' => 'RECHAZADA',
