@@ -69,7 +69,10 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasOne(UserNivelAprobacion::class, 'UserID')
             ->withoutGlobalScope('sede')
-            ->where('Activo', true);
+            ->where('Activo', true)
+            ->when(session('sede_activa'), function ($q, $sede) {
+                $q->where('UserNivelAprobacion.SedeID', $sede);
+            });
     }
 
     public function getNivelAprobacionActivo()

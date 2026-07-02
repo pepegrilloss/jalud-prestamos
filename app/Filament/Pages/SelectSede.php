@@ -45,7 +45,6 @@ class SelectSede extends Page
     {
         $user = auth()->user();
 
-        // Validar que la sede esté en las permitidas para el usuario
         $allowedIds = $this->getSedes()->pluck('SedeID')->toArray();
         if (!in_array($sedeId, $allowedIds)) {
             return;
@@ -53,7 +52,6 @@ class SelectSede extends Page
 
         $sede = Sede::find($sedeId);
 
-        // Si la sede es Gerencia y el usuario no tiene acceso directo, forzar su sede asignada
         if (str_contains(strtolower($sede->Nombre), 'gerencia') && !($user->esAdmin() || $user->puedeVerTodasLasSedes())) {
             session(['sede_activa' => $user->SedeID]);
             $this->redirect('/admin');

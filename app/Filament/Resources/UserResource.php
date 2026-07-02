@@ -176,20 +176,22 @@ class UserResource extends Resource
                             ->label('Nivel de Aprobación'),
                     ])
                     ->action(function (User $record, array $data) {
-                        // Eliminar nivel anterior si existe
+                        $sedeActual = session('sede_activa') ?? $record->SedeID;
+
+                        // Desactivar solo el nivel anterior en LA SEDE ACTUAL
                         UserNivelAprobacion::withoutGlobalScope('sede')
                             ->where('UserID', $record->id)
+                            ->where('SedeID', $sedeActual)
                             ->where('Activo', true)
                             ->update(['Activo' => false]);
 
-                        // Crear o actualizar el nuevo nivel
+                        // Crear o actualizar el nivel en LA SEDE ACTUAL
                         UserNivelAprobacion::withoutGlobalScope('sede')->updateOrCreate(
-                            ['UserID' => $record->id],
+                            ['UserID' => $record->id, 'SedeID' => $sedeActual],
                             [
                                 'NivelAprobacionID' => $data['NivelAprobacionID'],
                                 'FechaAsignacion' => now(),
                                 'Activo' => true,
-                                'SedeID' => $record->SedeID,
                             ]
                         );
 
