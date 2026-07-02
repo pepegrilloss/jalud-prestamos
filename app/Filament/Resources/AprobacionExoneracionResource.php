@@ -31,22 +31,27 @@ class AprobacionExoneracionResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        $user = auth()->user();
+
+        if ($user?->puedeVerTodasLasSedes()) {
+            return parent::getEloquentQuery()->withoutGlobalScope('sede')
+                ->where('NivelAprobacionRequerido', 3)
+                ->where('Estado', 'PENDIENTE');
+        }
+
         $query = parent::getEloquentQuery();
         
         $userID = auth()->id();
         
-        // El usuario debe tener el nivel de aprobación 3 (Gerencia) asignado
         $tieneNivelGerencia = UserNivelAprobacion::where('UserID', $userID)
             ->where('NivelAprobacionID', 3)
             ->where('Activo', 1)
             ->exists();
 
-        // Si no tiene el nivel de gerencia, eliminar registros
         if (!$tieneNivelGerencia) {
             return $query->whereRaw('0 = 1');
         }
 
-        // Solo mostrar solicitudes PENDIENTES que requieren nivel de aprobación 3 (Gerencia)
         return $query->where('NivelAprobacionRequerido', 3)
             ->where('Estado', 'PENDIENTE');
     }
@@ -132,7 +137,7 @@ class AprobacionExoneracionResource extends Resource
                         }
 
                         DB::transaction(function () use ($record, $data) {
-                            $record = $record->fresh()->lockForUpdate();
+                            $record = $record->fresh();
 
                             if ($record->Estado !== 'PENDIENTE') {
                                 throw new \Exception('Esta solicitud ya fue procesada.');

@@ -278,7 +278,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 if (!$get('ClienteDestinoID'))
                                     return [];
                                 return Credito::whereHas('proposicion', function ($q) use ($get) {
-                                    $q->where('ClienteID', $get('ClienteDestinoID'))->where('Activo', 1);
+                                    $q->where('ClienteID', $get('ClienteDestinoID'));
                                 })->where('Activo', 1)->with('proposicion.tipoCredito')->get()->mapWithKeys(function ($cr) {
                                     return [$cr->CreditoID => "{$cr->proposicion->CodigoCredito} - Vigente"];
                                 });

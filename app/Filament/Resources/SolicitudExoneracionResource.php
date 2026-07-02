@@ -155,8 +155,23 @@ class SolicitudExoneracionResource extends Resource
                 return $query->with(['proposicion' => fn($q) => $q->with('cliente', 'tipoCredito', 'zona'), 'tipoPago'])
                     ->where('Activo', 1)
                     ->whereHas('proposicion', function (Builder $q) {
-                        $q->where('SaldoPendiente', '>', 0)
-                            ->where('FueRefinanciada', 0);
+                        $q->where('FueRefinanciada', 0);
+                    })
+                    ->where(function (Builder $q) {
+                        // Creditos con SaldoPendiente > 0
+                        $q->whereHas('proposicion', function (Builder $sub) {
+                            $sub->where('SaldoPendiente', '>', 0);
+                        });
+                        // O creditos con mora pendiente (aunque SaldoPendiente = 0)
+                        $q->orWhereHas('moras', function (Builder $sub) {
+                            $sub->whereRaw('MoraAcumulada > COALESCE(
+                                (SELECT SUM(p.MontoPagado) FROM pago p
+                                 WHERE p.CreditoID = mora.CreditoID
+                                   AND p.TipoConcepto = ?
+                                   AND p.Activo = 1
+                                ), 0
+                            )', ['M']);
+                        });
                     });
             })
             ->actions([

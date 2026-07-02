@@ -608,6 +608,24 @@ class CreditoResource extends Resource
             Infolists\Components\Section::make('Moras Acumuladas')
                 ->icon('heroicon-m-clock')
                 ->collapsed()
+                ->description(function ($record) {
+                    $ultimaMora = $record->moras()->latest('FechaMora')->first();
+                    if (!$ultimaMora) return 'Sin moras registradas';
+
+                    $moraExonerada = \App\Models\Pago::where('CreditoID', $record->CreditoID)
+                        ->where('TipoConcepto', 'M')
+                        ->where('Activo', 1)
+                        ->sum('MontoPagado');
+                    $neta = (float)$ultimaMora->MoraAcumulada - (float)$moraExonerada;
+                    $neta = max(0, $neta);
+
+                    $texto = "Mora histórica: S/ " . number_format($ultimaMora->MoraAcumulada, 2);
+                    if ($moraExonerada > 0) {
+                        $texto .= " | Exonerada: S/ " . number_format($moraExonerada, 2);
+                        $texto .= " | Pendiente: S/ " . number_format($neta, 2);
+                    }
+                    return $texto;
+                })
                 ->schema([
                     Infolists\Components\RepeatableEntry::make('moras')
                         ->label('')
