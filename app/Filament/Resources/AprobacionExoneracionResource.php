@@ -33,7 +33,8 @@ class AprobacionExoneracionResource extends Resource
     {
         $user = auth()->user();
 
-        if ($user?->puedeVerTodasLasSedes()) {
+        // Usuarios con ver_todas_las_sedes o aprobar_exoneraciones: ven todas las sedes sin restricción de nivel
+        if ($user?->puedeVerTodasLasSedes() || $user?->can('aprobar_exoneraciones')) {
             return parent::getEloquentQuery()->withoutGlobalScope('sede')
                 ->where('NivelAprobacionRequerido', 3)
                 ->where('Estado', 'PENDIENTE');
@@ -70,7 +71,7 @@ class AprobacionExoneracionResource extends Resource
 
         public static function canViewAny(): bool
     {
-        return auth()->user()?->can('view_any_aprobacion::exoneracion') ?? false;
+        return auth()->user()?->can('view_any_aprobacion::exoneracion') || auth()->user()?->can('aprobar_exoneraciones') ?? false;
     }
 
     public static function table(Table $table): Table
@@ -172,7 +173,21 @@ class AprobacionExoneracionResource extends Resource
                                 $pago->FechaPago = $aprobacion->FechaAprobacion;
                                 $pago->UsuarioRegistro = $usuarioActual?->username ?? $usuarioActual?->name ?? auth()->id();
                                 $pago->Activo = 1;
+
+                                // Asignar cualquier cuota del crédito como referencia
+                                $cuotaRef = \App\Models\Cuota::withoutGlobalScope('sede')
+                                    ->where('CreditoID', $record->CreditoID)
+                                    ->orderBy('NumeroCuota')
+                                    ->first();
+                                if ($cuotaRef) {
+                                    $pago->CuotaID = $cuotaRef->CuotaID;
+                                }
+
                                 $pago->save();
+
+                                if (!$pago->PagoID) {
+                                    throw new \Exception('No se pudo generar el pago automático de exoneración.');
+                                }
 
                                 // Vincular el pago generado a la solicitud
                                 $record->update([
