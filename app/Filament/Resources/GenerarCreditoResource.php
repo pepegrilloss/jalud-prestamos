@@ -424,6 +424,36 @@ class GenerarCreditoResource extends Resource
                             return;
                         }
 
+                        // Verificar mora pendiente del cliente en la misma sede
+                        $moraPendiente = ProposicionCredito::where('ClienteID', $record->ClienteID)
+                            ->where('SedeID', $sedeId)
+                            ->where('Activo', true)
+                            ->where('Estado', 'APROBADO')
+                            ->where('FueRefinanciada', 0)
+                            ->whereHas('credito', function ($q) {
+                                $q->where('Activo', true)
+                                  ->whereHas('moras', function ($sub) {
+                                      $sub->whereRaw('MoraAcumulada > COALESCE(
+                                          (SELECT SUM(p.MontoPagado) FROM pago p
+                                           WHERE p.CreditoID = mora.CreditoID
+                                             AND p.TipoConcepto = ?
+                                             AND p.Activo = 1), 0
+                                      )', ['M']);
+                                  });
+                            })
+                            ->pluck('CodigoCredito');
+
+                        if ($moraPendiente->isNotEmpty()) {
+                            $lista = $moraPendiente->implode(', ');
+                            Notification::make()
+                                ->danger()
+                                ->title('Cliente con mora pendiente')
+                                ->body("No se puede generar el crédito. El cliente tiene mora pendiente en: {$lista}")
+                                ->persistent()
+                                ->send();
+                            return;
+                        }
+
                         $fondoService = app(\App\Services\FondoSedeService::class);
 
                         // Pre-check rápido (soft, sin lock) para UX

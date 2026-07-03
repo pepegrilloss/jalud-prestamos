@@ -110,10 +110,6 @@ class HistorialExoneracionResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('SedeID')
-                    ->label('Sede')
-                    ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
-                    ->visible(fn () => auth()->user()->esAdmin()),
                 Tables\Filters\SelectFilter::make('TipoExoneracion')
                     ->label('Tipo')
                     ->options([
@@ -121,6 +117,34 @@ class HistorialExoneracionResource extends Resource
                         'I' => 'Interés',
                         'M' => 'Mora',
                     ]),
+                Tables\Filters\Filter::make('FechaExoneracion')
+                    ->form([
+                        \Filament\Forms\Components\DatePicker::make('desde')
+                            ->label('Desde'),
+                        \Filament\Forms\Components\DatePicker::make('hasta')
+                            ->label('Hasta'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        return $query
+                            ->when($data['desde'], fn($q) => $q->whereDate('FechaExoneracion', '>=', $data['desde']))
+                            ->when($data['hasta'], fn($q) => $q->whereDate('FechaExoneracion', '<=', $data['hasta']));
+                    }),
+                Tables\Filters\Filter::make('cliente')
+                    ->label('Cliente / Crédito')
+                    ->form([
+                        \Filament\Forms\Components\TextInput::make('busqueda')
+                            ->label('Buscar por cliente o código de crédito')
+                            ->placeholder('Nombre, DNI o código...'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when($data['busqueda'], function ($q, $busqueda) {
+                            $q->where(function ($sub) use ($busqueda) {
+                                $sub->whereHas('cliente', fn($cq) => $cq->where('NombresApellidos', 'like', "%{$busqueda}%"))
+                                    ->orWhereHas('cliente', fn($cq) => $cq->where('DNI', 'like', "%{$busqueda}%"))
+                                    ->orWhereHas('credito.proposicion', fn($cq) => $cq->where('CodigoCredito', 'like', "%{$busqueda}%"));
+                            });
+                        });
+                    }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
                 return $query->with(['cliente', 'credito.proposicion'])
