@@ -32,6 +32,9 @@ class ReporteDiarioController extends Controller
      */
     public function descargar(Request $request)
     {
+        set_time_limit(300);
+        ini_set('memory_limit', '1024M');
+
         $fecha = $request->get('fecha');
         $aperturaCierreDiaId = $request->get('id');
         $sedeIdParam = $request->get('sede_id') ?? $request->get('sede');
@@ -209,7 +212,7 @@ class ReporteDiarioController extends Controller
             ->orderBy('ExcedenteID', 'asc')
             ->get();
 
-        // ─── 4d. CAJA ABIERTA - AMORTIZACIONES (Pagos Físicos) ───
+        // ─── 4d. CAJA ABIERTA - AMORTIZACIONES (Pagos Físicos, excluye exoneraciones) ───
         $pagosQuery = Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)
             ->where(function($q) {
@@ -217,6 +220,10 @@ class ReporteDiarioController extends Controller
                   ->orWhereNull('pago.SolicitudResolucionID');
             })
             ->where('pago.EsPagoAMayorPorMora', false)
+            ->where(function($q) {
+                $q->whereNull('pago.TipoConcepto')
+                  ->orWhere('pago.TipoConcepto', 'C');
+            })
             ->whereDate('pago.FechaPago', $fecha);
 
         if ($sedeId) {
@@ -355,6 +362,10 @@ class ReporteDiarioController extends Controller
                           ->orWhereNull('SolicitudResolucionID');
                     })
                     ->where('EsPagoAMayorPorMora', false)
+                    ->where(function($q) {
+                        $q->whereNull('TipoConcepto')
+                          ->orWhere('TipoConcepto', 'C');
+                    })
                     ->where('FechaPago', '<=', $fechaLimite)
                     ->where('SedeID', $sedeId)
                     ->select('MontoPagado', 'Comentario')

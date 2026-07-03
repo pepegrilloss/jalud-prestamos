@@ -117,6 +117,7 @@ class AprobacionExoneracionResource extends Resource
                     ->label('Aprobar')
                     ->icon('heroicon-o-check')
                     ->color('success')
+                    ->visible(fn() => auth()->user()?->can('aprobar_exoneraciones') ?? false)
                     ->form([
                         Forms\Components\Select::make('Estado')
                             ->label('Decisión')

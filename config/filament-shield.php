@@ -71,6 +71,7 @@ return [
         'page_FacturasPendientes',
         'editar_capital_tasa',
         'aprobar_extornos',
+        'aprobar_exoneraciones',
     ],
 
     'generator' => [

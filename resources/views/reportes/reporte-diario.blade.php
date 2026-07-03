@@ -465,11 +465,11 @@
     </table>
 
     {{-- ═══════════════════════════════════════ --}}
-    {{-- 5. EXTORNOS Y DEVOLUCIONES --}}
+    {{-- 5. EXTORNOS DEVOLUCIONES Y EXONERACIONES --}}
     {{-- ═══════════════════════════════════════ --}}
     <div class="seccion-separador"></div>
-    <div class="seccion-titulo">&nbsp;EXTORNOS Y DEVOLUCIONES</div>
-    <div class="seccion-subrayado">&nbsp;========================</div>
+    <div class="seccion-titulo">&nbsp;EXTORNOS, DEVOLUCIONES Y EXONERACIONES</div>
+    <div class="seccion-subrayado">&nbsp;======================================</div>
 
     <table class="datos-table">
         <thead>
