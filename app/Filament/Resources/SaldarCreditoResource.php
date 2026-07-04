@@ -120,7 +120,11 @@ class SaldarCreditoResource extends Resource
                 Tables\Filters\SelectFilter::make('ZonaID')
                     ->label('Zona')
                     ->options(fn() => \App\Models\Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
-                    ->searchable(),
+                    ->searchable()
+                    ->query(fn(Builder $q, array $data) => $q->when(
+                        $data['value'] ?? null,
+                        fn(Builder $q, $v) => $q->where('ProposicionCredito.ZonaID', $v)
+                    )),
 
                 Tables\Filters\SelectFilter::make('estado')
                     ->label('Estado')
