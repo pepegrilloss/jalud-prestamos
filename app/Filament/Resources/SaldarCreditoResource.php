@@ -117,14 +117,20 @@ class SaldarCreditoResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('zona')
+                Tables\Filters\Filter::make('zona')
                     ->label('Zona')
-                    ->options(fn() => \App\Models\Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
-                    ->searchable()
-                    ->query(fn(Builder $q, array $data) => $q->when(
-                        $data['value'] ?? null,
-                        fn(Builder $q, $v) => $q->where('ProposicionCredito.ZonaID', $v)
-                    )),
+                    ->form([
+                        \Filament\Forms\Components\Select::make('zona_id')
+                            ->label('Seleccionar zona')
+                            ->options(fn() => \App\Models\Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
+                            ->searchable()
+                            ->placeholder('Todas las zonas'),
+                    ])
+                    ->query(function (Builder $q, array $data) {
+                        if (!empty($data['zona_id'])) {
+                            $q->where('ProposicionCredito.ZonaID', $data['zona_id']);
+                        }
+                    }),
 
                 Tables\Filters\Filter::make('con_mora')
                     ->label('Solo con mora pendiente')
