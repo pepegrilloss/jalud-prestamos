@@ -111,15 +111,6 @@ class SaldarCreditoResource extends Resource
                     ->sortable()
                     ->color(fn($state) => ((float)$state ?? 0) > 0 ? 'danger' : 'success'),
 
-                Tables\Columns\TextColumn::make('EstatusCreditoFinal')
-                    ->label('Estado')
-                    ->badge()
-                    ->color(fn($state) => match($state) {
-                        'SALDADO' => 'success',
-                        'ACTIVO' => 'warning',
-                        default => 'gray'
-                    }),
-
                 Tables\Columns\TextColumn::make('TipoCreditoDesc')
                     ->label('Tipo')
                     ->sortable()
