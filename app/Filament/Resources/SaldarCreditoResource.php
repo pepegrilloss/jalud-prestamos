@@ -117,24 +117,13 @@ class SaldarCreditoResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('ZonaID')
+                Tables\Filters\SelectFilter::make('zona')
                     ->label('Zona')
                     ->options(fn() => \App\Models\Zona::where('Activo', true)->pluck('Nombre', 'ZonaID'))
                     ->searchable()
                     ->query(fn(Builder $q, array $data) => $q->when(
                         $data['value'] ?? null,
                         fn(Builder $q, $v) => $q->where('ProposicionCredito.ZonaID', $v)
-                    )),
-
-                Tables\Filters\SelectFilter::make('estado')
-                    ->label('Estado')
-                    ->options([
-                        'ACTIVO' => 'ACTIVO',
-                        'SALDADO' => 'SALDADO',
-                    ])
-                    ->query(fn(Builder $q, array $data) => $q->when(
-                        $data['value'] ?? null,
-                        fn(Builder $q, $v) => $q->where('Credito.EstatusCreditoFinal', $v)
                     )),
 
                 Tables\Filters\Filter::make('con_mora')
