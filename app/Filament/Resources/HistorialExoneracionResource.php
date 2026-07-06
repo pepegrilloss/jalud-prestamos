@@ -12,8 +12,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-
 use App\Models\Sede;
+use App\Models\Zona;
 class HistorialExoneracionResource extends Resource
 {
     protected static ?string $model = HistorialExoneracion::class;
@@ -77,7 +77,11 @@ class HistorialExoneracionResource extends Resource
                 Tables\Columns\TextColumn::make('cliente.NombresApellidos')
                     ->label('Cliente')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->summarize([
+                        Tables\Columns\Summarizers\Count::make()
+                            ->label('Total registros'),
+                    ]),
                 Tables\Columns\TextColumn::make('credito.proposicion.CodigoCredito')
                     ->label('Crédito')
                     ->searchable()
@@ -99,7 +103,12 @@ class HistorialExoneracionResource extends Resource
                 Tables\Columns\TextColumn::make('MontoExonerado')
                     ->label('Monto')
                     ->money('PEN')
-                    ->sortable(),
+                    ->sortable()
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->label('Total exonerado')
+                            ->money('PEN'),
+                    ]),
                 Tables\Columns\TextColumn::make('UsuarioAprobador')
                     ->label('Aprobador')
                     ->searchable()
@@ -117,6 +126,16 @@ class HistorialExoneracionResource extends Resource
                         'I' => 'Interés',
                         'M' => 'Mora',
                     ]),
+                Tables\Filters\SelectFilter::make('zona')
+                    ->label('Zona')
+                    ->options(fn() => Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
+                    ->searchable()
+                    ->query(function (Builder $q, array $data) {
+                        return $q->when(
+                            $data['value'] ?? null,
+                            fn(Builder $q) => $q->whereHas('credito.proposicion', fn($sub) => $sub->where('ZonaID', $data['value']))
+                        );
+                    }),
                 Tables\Filters\Filter::make('FechaExoneracion')
                     ->form([
                         \Filament\Forms\Components\DatePicker::make('desde')
