@@ -76,19 +76,26 @@ class PagoResource extends Resource
                     ->schema([
                         Forms\Components\Placeholder::make('cliente_info')
                             ->label('Cliente')
-                            ->content(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->NombresApellidos ?? '-')
+                            ->content(fn($record) =>
+                                $record?->cuota?->credito?->proposicion?->cliente?->NombresApellidos
+                                ?? $record?->credito?->proposicion?->cliente?->NombresApellidos
+                                ?? '-')
                             ->visible(fn() => request()->routeIs('*.view')),
 
                         Forms\Components\Placeholder::make('zona_info')
                             ->label('Zona')
-                            ->content(fn($record) => $record?->cuota?->credito?->proposicion?->cliente?->negocio?->zona?->Nombre ?? '-')
+                            ->content(fn($record) =>
+                                $record?->cuota?->credito?->proposicion?->cliente?->negocio?->zona?->Nombre
+                                ?? $record?->credito?->proposicion?->cliente?->negocio?->zona?->Nombre
+                                ?? '-')
                             ->visible(fn() => request()->routeIs('*.view')),
 
                         Forms\Components\Placeholder::make('promotor_info')
                             ->label('Promotor Cobrador')
                             ->content(function ($record) {
-                                // Obtener la Zona desde Pago -> Cuota -> Credito -> Proposicion -> Zona
-                                $zona = $record?->cuota?->credito?->proposicion?->zona;
+                                // Obtener la Zona desde Pago -> Cuota -> Credito -> Proposicion -> Zona (fallback: via Credito directo)
+                                $zona = $record?->cuota?->credito?->proposicion?->zona
+                                    ?? $record?->credito?->proposicion?->zona;
                                 if (!$zona) {
                                     return '-';
                                 }
@@ -344,7 +351,10 @@ class PagoResource extends Resource
 
                         Forms\Components\Placeholder::make('tipo_credito_view')
                             ->label('Tipo de Crédito')
-                            ->content(fn($record) => $record?->cuota?->credito?->proposicion?->tipoCredito?->Descripcion ?? '-')
+                            ->content(fn($record) =>
+                                $record?->cuota?->credito?->proposicion?->tipoCredito?->Descripcion
+                                ?? $record?->credito?->proposicion?->tipoCredito?->Descripcion
+                                ?? '-')
                             ->visible(fn() => request()->routeIs('*.view')),
 
                         Forms\Components\Select::make('CuotaID')
