@@ -490,7 +490,12 @@ class PagoResource extends Resource
                     ->label('Cuota #')
                     ->sortable()
                     ->formatStateUsing(function ($state, $record) {
-                        return $state ? "Cuota #{$state}" : '-';
+                        if ($state) return "Cuota #{$state}";
+                        if ($record->EsPagoAMayorPorMora) return 'A MAYOR X MORA';
+                        if ($record->EsPagoAMayor) return 'A MAYOR';
+                        if ($record->EsMora) return 'MORA';
+                        if ($record->EsPagoAutomatico) return 'AUTO';
+                        return 'SIN CUOTA';
                     }),
 
                 Tables\Columns\TextColumn::make('TipoConcepto')

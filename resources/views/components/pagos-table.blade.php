@@ -50,6 +50,7 @@
 
             $esPagoAMayor = false;
             $esPagoAMayorPorMora = false;
+            $esPagoAutomatico = false;
 
             foreach ($pagosDelDia as $p) {
                 $esTrasladado = $p->EstadoTraslado === 'TRASLADADO';
@@ -61,6 +62,7 @@
                 if ($p->EsMora) $esMora = true;
                 if ($p->EsPagoAMayor) $esPagoAMayor = true;
                 if ($p->EsPagoAMayorPorMora) $esPagoAMayorPorMora = true;
+                if ($p->EsPagoAutomatico) $esPagoAutomatico = true;
                 
                 $tiposPago[] = $p->TipoPago ?? 'Efectivo';
                 if ($p->UsuarioRegistro) $usuarios[] = $p->UsuarioRegistro;
@@ -96,6 +98,7 @@
             $pagoMock->EsMora = $esMora;
             $pagoMock->EsPagoAMayor = $esPagoAMayor;
             $pagoMock->EsPagoAMayorPorMora = $esPagoAMayorPorMora;
+            $pagoMock->EsPagoAutomatico = $esPagoAutomatico;
             $pagoMock->UsuarioRegistro = collect($usuarios)->unique()->implode(', ');
             $pagoMock->Comentario = implode("\n\n", $observaciones);
             $pagoMock->solicitudResolucion = null;
@@ -196,6 +199,9 @@
                                 @endif
                                 @if($pago->EsPagoAMayorPorMora)
                                     <span class="bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400 px-1.5 py-0.5 rounded border border-danger-200 dark:border-danger-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">A MAYOR POR MORA</span>
+                                @endif
+                                @if(!$pago->EsPagoAMayor && !$pago->EsPagoAMayorPorMora && !$pago->EsMora && $pago->EsPagoAutomatico)
+                                    <span class="bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">AUTOMÁTICO</span>
                                 @endif
                                 {!! nl2br(e($obs)) !!}
                             </td>
