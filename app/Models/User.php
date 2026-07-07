@@ -79,6 +79,7 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->userNivelesAprobacion()
             ->where('Activo', true)
+            ->where('UserNivelAprobacion.SedeID', $this->getEffectiveSedeId())
             ->with('nivelAprobacion')
             ->first();
     }

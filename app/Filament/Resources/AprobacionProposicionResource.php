@@ -295,7 +295,7 @@ class AprobacionProposicionResource extends Resource
             return false;
         }
 
-        if (!$proposicion->aprobaciones()->where('Estado', 'PENDIENTE')->exists()) {
+        if (!$proposicion->aprobaciones()->withoutGlobalScope('sede')->where('Estado', 'PENDIENTE')->exists()) {
             return false;
         }
 
