@@ -51,6 +51,10 @@ class ProposicionCredito extends Model
         'ProposicionCreditoAnteriorID',
         'FueRefinanciada',
         'SedeID',
+        'Eliminado',
+        'FechaEliminacion',
+        'UserEliminacionID',
+        'MotivoEliminacion',
     ];
 
     protected $casts = [
@@ -68,6 +72,8 @@ class ProposicionCredito extends Model
         'Activo' => 'boolean',
         'EsRefinanciamiento' => 'boolean',
         'FueRefinanciada' => 'boolean',
+        'Eliminado' => 'boolean',
+        'FechaEliminacion' => 'datetime',
     ];
 
     /**
@@ -78,9 +84,12 @@ class ProposicionCredito extends Model
         parent::boot();
 
         static::updating(function ($model) {
-            // Eliminamos la llave primaria de los atributos a actualizar
-            // Esto evita el error SQLSTATE[42000] en SQL Server
             unset($model->{$model->getKeyName()});
+        });
+
+        // Global scope: excluir creditos eliminados (soft delete)
+        static::addGlobalScope('eliminado', function (\Illuminate\Database\Eloquent\Builder $query) {
+            $query->where('ProposicionCredito.Eliminado', 0);
         });
     }
 

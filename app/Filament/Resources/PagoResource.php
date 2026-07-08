@@ -17,6 +17,7 @@ use Illuminate\Support\HtmlString;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\Sede;
 class PagoResource extends Resource
@@ -486,16 +487,16 @@ class PagoResource extends Resource
                     ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('ProposicionCredito.CodigoCredito', 'like', "%{$search}%"))
                     ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('ProposicionCredito.CodigoCredito', $direction)),
 
-                Tables\Columns\TextColumn::make('numero_cuota')
-                    ->label('Cuota #')
+                Tables\Columns\TextColumn::make('numero_pago')
+                    ->label('Pago #')
                     ->sortable()
                     ->formatStateUsing(function ($state, $record) {
-                        if ($state) return "Cuota #{$state}";
                         if ($record->EsPagoAMayorPorMora) return 'A MAYOR X MORA';
                         if ($record->EsPagoAMayor) return 'A MAYOR';
                         if ($record->EsMora) return 'MORA';
                         if ($record->EsPagoAutomatico) return 'AUTO';
-                        return 'SIN CUOTA';
+                        if ($state) return "Pago #{$state}";
+                        return '-';
                     }),
 
                 Tables\Columns\TextColumn::make('TipoConcepto')
@@ -709,13 +710,12 @@ class PagoResource extends Resource
                     ->leftJoin('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
                     ->leftJoin('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
                     ->leftJoin('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
-                    ->leftJoin('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
                     ->select([
                         'pago.*',
                         'Cliente.NombresApellidos as cliente_nombre',
                         'TipoCredito.Descripcion as tipo_credito_desc',
                         'ProposicionCredito.CodigoCredito as codigo_credito',
-                        'cuota.NumeroCuota as numero_cuota'
+                        DB::raw('ROW_NUMBER() OVER (PARTITION BY pago.CreditoID ORDER BY pago.FechaPago, pago.PagoID) as numero_pago')
                     ]);
                 
                 return $query;

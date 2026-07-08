@@ -226,6 +226,73 @@ class ViewCredito extends ViewRecord
                 ->icon('heroicon-o-arrow-down-tray')
                 ->url(fn() => route('descargar-pagos.pdf', $this->record->CreditoID))
                 ->openUrlInNewTab(),
+
+            Action::make('eliminar_credito')
+                ->label('Eliminar Crédito')
+                ->icon('heroicon-o-trash')
+                ->color('danger')
+                ->visible(fn() => auth()->user()?->esAdmin() ?? false)
+                ->requiresConfirmation()
+                ->modalHeading('⚠️ Eliminar Crédito')
+                ->modalDescription('Esta acción eliminará el crédito permanentemente de todos los reportes y listados. El registro queda marcado para trazabilidad.')
+                ->form([
+                    Forms\Components\Textarea::make('motivo')
+                        ->label('Motivo de Eliminación')
+                        ->required()
+                        ->placeholder('Indique la razón por la que se elimina este crédito...'),
+                ])
+                ->action(function (array $data) {
+                    $creditoID = $this->record->CreditoID;
+                    $propID = $this->record->ProposicionCreditoID;
+                    $userID = auth()->id();
+
+                    DB::transaction(function () use ($creditoID, $propID, $userID, $data) {
+                        // Marcar proposicion como eliminada
+                        DB::table('ProposicionCredito')
+                            ->where('ProposicionCreditoID', $propID)
+                            ->update([
+                                'Eliminado' => 1,
+                                'FechaEliminacion' => now(),
+                                'UserEliminacionID' => $userID,
+                                'MotivoEliminacion' => $data['motivo'],
+                                'Activo' => 0,
+                                'SaldoPendiente' => 0,
+                            ]);
+
+                        // Marcar credito como inactivo y eliminado
+                        DB::table('Credito')
+                            ->where('CreditoID', $creditoID)
+                            ->update([
+                                'Activo' => 0,
+                                'EstatusCreditoFinal' => 'ELIMINADO',
+                                'FechaSaldamiento' => now(),
+                            ]);
+
+                        // Desactivar pagos
+                        DB::table('pago')->where('CreditoID', $creditoID)->update(['Activo' => 0]);
+                        // Desactivar cuotas
+                        DB::table('cuota')->where('CreditoID', $creditoID)->update(['Activo' => 0]);
+                        // Eliminar mora
+                        DB::table('mora')->where('CreditoID', $creditoID)->delete();
+                    });
+
+                    // Registrar en auditoría
+                    \App\Models\Log::registrar(
+                        'ELIMINAR_CREDITO',
+                        'Credito',
+                        $creditoID,
+                        null,
+                        ['codigo' => $this->record->CodigoCredito, 'motivo' => $data['motivo'], 'user_id' => auth()->id()]
+                    );
+
+                    Notification::make()
+                        ->danger()
+                        ->title('Crédito Eliminado')
+                        ->body('El crédito ha sido eliminado. Queda registrado para trazabilidad.')
+                        ->send();
+
+                    $this->redirect(CreditoResource::getUrl('index'));
+                }),
         ];
     }
 

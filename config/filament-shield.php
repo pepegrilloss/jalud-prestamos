@@ -72,6 +72,7 @@ return [
         'editar_capital_tasa',
         'aprobar_extornos',
         'aprobar_exoneraciones',
+        'eliminar_credito',
     ],
 
     'generator' => [

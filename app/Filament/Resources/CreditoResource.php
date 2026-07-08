@@ -535,6 +535,27 @@ class CreditoResource extends Resource
                                 ->badge()
                                 ->color('success'),
 
+                            Infolists\Components\TextEntry::make('TotalPagado')
+                                ->label('Total Pagado')
+                                ->money('PEN')
+                                ->getStateUsing(fn($record) => max(0, (float)($record->proposicion?->MontoTotalPagar ?? 0) - (float)($record->proposicion?->SaldoPendiente ?? 0)))
+                                ->color('success')
+                                ->weight(\Filament\Support\Enums\FontWeight::Bold),
+
+                            Infolists\Components\TextEntry::make('MoraAcumulada')
+                                ->label('Mora Acumulada')
+                                ->money('PEN')
+                                ->getStateUsing(function ($record) {
+                                    $ultimaMora = $record->moras()->latest('FechaMora')->first(['MoraAcumulada']);
+                                    $moraExonerada = (float) \App\Models\Pago::where('CreditoID', $record->CreditoID)
+                                        ->where('TipoConcepto', 'M')
+                                        ->where('Activo', 1)
+                                        ->sum('MontoPagado');
+                                    return max(0, (float)($ultimaMora?->MoraAcumulada ?? 0) - $moraExonerada);
+                                })
+                                ->color('danger')
+                                ->weight(\Filament\Support\Enums\FontWeight::Bold),
+
                             Infolists\Components\TextEntry::make('FechaGeneracion')
                                 ->label('Fecha de Generación')
                                 ->icon('heroicon-m-calendar')
