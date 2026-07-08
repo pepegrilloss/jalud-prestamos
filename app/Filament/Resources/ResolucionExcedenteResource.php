@@ -214,11 +214,23 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->required()
                             ->numeric()
                             ->minValue(0.01)
+                            ->maxValue(function (Get $get) {
+                                if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $get('PagoOrigenID')) {
+                                    $pago = \App\Models\Pago::find($get('PagoOrigenID'));
+                                    if ($pago) return (float)$pago->MontoPagado;
+                                }
+                                return 999999999;
+                            })
                             ->prefix('S/')
-                            ->readOnly(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO')
                             ->helperText(function (Get $get) {
+                                if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $get('PagoOrigenID')) {
+                                    $pago = \App\Models\Pago::find($get('PagoOrigenID'));
+                                    if ($pago) {
+                                        return 'Ingrese el monto a trasladar (máx S/ ' . number_format($pago->MontoPagado, 2) . ').';
+                                    }
+                                }
                                 if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO') {
-                                    return 'El monto se toma automáticamente del pago seleccionado.';
+                                    return 'Seleccione un pago. El monto se puede ajustar.';
                                 }
                                 $excedenteID = $get('ExcedenteID');
                                 if ($excedenteID) {
@@ -231,8 +243,16 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             })
                             ->rules([
                                 fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
-                                    if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO')
-                                        return; // No validar contra excedente
+                                    if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO') {
+                                        $pagoID = $get('PagoOrigenID');
+                                        if ($pagoID) {
+                                            $pago = \App\Models\Pago::find($pagoID);
+                                            if ($pago && $value > $pago->MontoPagado) {
+                                                $fail("El monto no puede exceder S/ " . number_format($pago->MontoPagado, 2) . " (valor del pago).");
+                                            }
+                                        }
+                                        return;
+                                    }
                                     $excedenteID = $get('ExcedenteID');
                                     if ($excedenteID) {
                                         $excedente = Excedente::find($excedenteID);

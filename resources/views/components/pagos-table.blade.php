@@ -54,9 +54,16 @@
 
             foreach ($pagosDelDia as $p) {
                 $esTrasladado = $p->EstadoTraslado === 'TRASLADADO';
-                $montoReal = $esTrasladado ? -$p->MontoPagado : (($p->EsMora) ? 0 : $p->MontoPagado);
+                $montoTraslado = $p->MontoPagado;
+                if ($esTrasladado) {
+                    $sol = \App\Models\SolicitudResolucionExcedente::where('PagoOrigenID', $p->PagoID)
+                        ->where('TipoResolucion', 'TRASLADO_DE_PAGO')
+                        ->first();
+                    $montoTraslado = $sol?->MontoAplicar ?? $p->MontoPagado;
+                }
+                $montoReal = $esTrasladado ? -$montoTraslado : (($p->EsMora) ? 0 : $p->MontoPagado);
                 $montoTotalDia += $montoReal;
-                $montoVisualSum += $p->MontoPagado;
+                $montoVisualSum += $esTrasladado ? $montoTraslado : $p->MontoPagado;
 
                 if (!$esTrasladado) $esTrasladadoTotal = false;
                 if ($p->EsMora) $esMora = true;

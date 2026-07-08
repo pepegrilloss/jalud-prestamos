@@ -38,16 +38,27 @@ class SaldoPendienteService
         }
 
         // Calcular total pagado (1 query)
+        // Incluye todos los pagos (incluso trasladados) y resta el monto trasladado
+        $tablaSolicitudes = (new \App\Models\SolicitudResolucionExcedente)->getTable();
         $totalPagado = (float) (DB::selectOne("
             SELECT COALESCE((
                 SELECT SUM(p.MontoPagado) 
                 FROM pago p 
                 WHERE p.CreditoID = ? 
                   AND p.Activo = 1
-                  AND (p.EstadoTraslado IS NULL OR p.EstadoTraslado != 'TRASLADADO')
                   AND p.EsMora = 0
-            ), 0) as total_pagado
-        ", [$credito->CreditoID])->total_pagado ?? 0);
+            ), 0)
+            -
+            COALESCE((
+                SELECT SUM(sre.MontoAplicar)
+                FROM {$tablaSolicitudes} sre
+                JOIN pago p2 ON sre.PagoOrigenID = p2.PagoID
+                WHERE p2.CreditoID = ?
+                  AND sre.TipoResolucion = 'TRASLADO_DE_PAGO'
+                  AND sre.Estado = 'APROBADA'
+            ), 0)
+            as total_pagado
+        ", [$credito->CreditoID, $credito->CreditoID])->total_pagado ?? 0);
 
         // La deuda real es MontoTotalPagar, no SUM(cuota.MontoCuota)
         // Las cuotas son referenciales; sus montos pueden no cerrar exacto por redondeo
