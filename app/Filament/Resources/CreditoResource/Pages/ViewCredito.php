@@ -246,6 +246,18 @@ class ViewCredito extends ViewRecord
                     $propID = $this->record->ProposicionCreditoID;
                     $userID = auth()->id();
 
+                    // Verificar si el credito tiene pagos registrados
+                    $totalPagos = DB::table('pago')->where('CreditoID', $creditoID)->where('Activo', 1)->count();
+                    if ($totalPagos > 0) {
+                        Notification::make()
+                            ->danger()
+                            ->title('No se puede eliminar')
+                            ->body("El crédito tiene {$totalPagos} pago(s) registrado(s). No se puede eliminar.")
+                            ->persistent()
+                            ->send();
+                        return;
+                    }
+
                     DB::transaction(function () use ($creditoID, $propID, $userID, $data) {
                         // Marcar proposicion como eliminada
                         DB::table('ProposicionCredito')
