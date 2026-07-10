@@ -4,30 +4,18 @@
  * Solo ejecutar una vez.
  */
 
-$db_host = '127.0.0.1';
-$db_port = '3306';
-$db_name = 'jvcso1ub_jalud_prestamos';
-$db_user = 'root';
-$db_pass = '';
-
-try {
-    $pdo = new PDO("mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("ERROR de conexion: " . $e->getMessage() . "\n");
-}
+require __DIR__ . '/../vendor/autoload.php';
+$app = require_once __DIR__ . '/../bootstrap/app.php';
+$app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 $codigo = 'C-003603';
 $desde  = '2026-06-12';
 $hasta  = '2026-06-22';
 
-$stmt = $pdo->prepare("
-    SELECT c.CreditoID FROM Credito c
-    JOIN ProposicionCredito pc ON pc.ProposicionCreditoID = c.ProposicionCreditoID
-    WHERE pc.CodigoCredito = ?
-");
-$stmt->execute([$codigo]);
-$creditoId = $stmt->fetchColumn();
+$creditoId = \App\Models\ProposicionCredito::withoutGlobalScopes()
+    ->where('CodigoCredito', $codigo)
+    ->join('Credito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+    ->value('Credito.CreditoID');
 
 if (!$creditoId) {
     die("ERROR: No se encontro el credito $codigo\n");
@@ -37,31 +25,39 @@ echo "Credito: $codigo (CreditoID: $creditoId)\n";
 echo "Rango: $desde al $hasta\n\n";
 
 echo "--- ANTES ---\n";
-$stmt = $pdo->prepare("
-    SELECT PagoID, FechaPago, MontoPagado, TipoConcepto, EsPagoAMayor
-    FROM pago
-    WHERE CreditoID = ? AND FechaPago >= ? AND FechaPago < DATE_ADD(?, INTERVAL 1 DAY)
-    ORDER BY FechaPago
-");
-$stmt->execute([$creditoId, $desde, $hasta]);
-foreach ($stmt->fetchAll() as $p) {
-    $f = substr($p['FechaPago'], 0, 10);
-    echo "  PagoID={$p['PagoID']} | $f | Monto={$p['MontoPagado']} | Concepto={$p['TipoConcepto']} | A_MAYOR={$p['EsPagoAMayor']}\n";
+$pagos = \App\Models\Pago::withoutGlobalScopes()
+    ->where('CreditoID', $creditoId)
+    ->where('FechaPago', '>=', $desde)
+    ->where('FechaPago', '<', $hasta . ' 23:59:59')
+    ->orderBy('FechaPago')
+    ->get();
+
+foreach ($pagos as $p) {
+    echo "  PagoID={$p->PagoID} | {$p->FechaPago->format('Y-m-d')} | Monto={$p->MontoPagado} | Concepto={$p->TipoConcepto} | A_MAYOR={$p->EsPagoAMayor}\n";
 }
 
-$stmtUpdate = $pdo->prepare("
-    UPDATE pago
-    SET TipoConcepto = 'C', EsPagoAMayor = 1, EsPagoForzado = 0
-    WHERE CreditoID = ? AND FechaPago >= ? AND FechaPago < DATE_ADD(?, INTERVAL 1 DAY)
-");
-$stmtUpdate->execute([$creditoId, $desde, $hasta]);
-echo "\nActualizados: {$stmtUpdate->rowCount()} pagos\n\n";
+$afectados = \App\Models\Pago::withoutGlobalScopes()
+    ->where('CreditoID', $creditoId)
+    ->where('FechaPago', '>=', $desde)
+    ->where('FechaPago', '<', $hasta . ' 23:59:59')
+    ->update([
+        'TipoConcepto' => 'C',
+        'EsPagoAMayor' => 1,
+        'EsPagoForzado' => 0,
+    ]);
+
+echo "\nActualizados: $afectados pagos\n\n";
 
 echo "--- DESPUES ---\n";
-$stmt->execute([$creditoId, $desde, $hasta]);
-foreach ($stmt->fetchAll() as $p) {
-    $f = substr($p['FechaPago'], 0, 10);
-    echo "  PagoID={$p['PagoID']} | $f | Monto={$p['MontoPagado']} | Concepto={$p['TipoConcepto']} | A_MAYOR={$p['EsPagoAMayor']}\n";
+$pagos = \App\Models\Pago::withoutGlobalScopes()
+    ->where('CreditoID', $creditoId)
+    ->where('FechaPago', '>=', $desde)
+    ->where('FechaPago', '<', $hasta . ' 23:59:59')
+    ->orderBy('FechaPago')
+    ->get();
+
+foreach ($pagos as $p) {
+    echo "  PagoID={$p->PagoID} | {$p->FechaPago->format('Y-m-d')} | Monto={$p->MontoPagado} | Concepto={$p->TipoConcepto} | A_MAYOR={$p->EsPagoAMayor}\n";
 }
 
 echo "\nListo.\n";
