@@ -722,7 +722,15 @@ class PagoResource extends Resource
                         'TipoCredito.Descripcion as tipo_credito_desc',
                         'Zona.Nombre as zona_nombre',
                         'ProposicionCredito.CodigoCredito as codigo_credito',
-                        DB::raw('ROW_NUMBER() OVER (PARTITION BY pago.CreditoID ORDER BY pago.FechaPago, pago.PagoID) as numero_pago')
+                        DB::raw("(
+                            SELECT COUNT(*)
+                            FROM pago p2
+                            WHERE p2.CreditoID = pago.CreditoID
+                              AND (
+                                  p2.FechaPago < pago.FechaPago
+                                  OR (p2.FechaPago = pago.FechaPago AND p2.PagoID <= pago.PagoID)
+                              )
+                        ) as numero_pago")
                     ]);
                 
                 return $query;
