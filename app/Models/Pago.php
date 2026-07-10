@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\BelongsToSede;
+use App\Services\SedeIntegrityService;
 
 class Pago extends Model
 {
@@ -21,18 +22,39 @@ class Pago extends Model
                 $model->FechaModificacion = $fecha;
             }
 
-            if ($model->CreditoID && $model->SedeID) {
+            if ($model->CreditoID) {
                 $creditoSedeID = \App\Models\Credito::withoutGlobalScope('sede')
                     ->where('CreditoID', $model->CreditoID)
                     ->value('SedeID');
-                if ($creditoSedeID && $creditoSedeID != $model->SedeID) {
-                    \Illuminate\Support\Facades\Log::warning('Pago SedeID auto-corregido', [
+
+                if (!$creditoSedeID) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'CreditoID' => 'No se encontro el credito del pago.',
+                    ]);
+                }
+
+                if (empty($model->SedeID)) {
+                    $model->SedeID = $creditoSedeID;
+                }
+
+                if ((int) $creditoSedeID !== (int) $model->SedeID) {
+                    \Illuminate\Support\Facades\Log::warning('Pago cross-sede bloqueado', [
                         'CreditoID' => $model->CreditoID,
                         'Pago.SedeID_asignado' => $model->SedeID,
                         'Credito.SedeID' => $creditoSedeID,
                     ]);
-                    $model->SedeID = $creditoSedeID;
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'SedeID' => 'No se puede registrar un pago en un credito de otra sede.',
+                    ]);
                 }
+
+                app(SedeIntegrityService::class)->assertPagoConsistente(
+                    $model->CreditoID,
+                    $model->CuotaID,
+                    null,
+                    $model->PromotorCobradorID,
+                    $model->SedeID
+                );
             }
         });
 
@@ -41,6 +63,16 @@ class Pago extends Model
             if ($fechaAbierta) {
                 $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
                 $model->FechaModificacion = $fecha;
+            }
+
+            if ($model->CreditoID) {
+                app(SedeIntegrityService::class)->assertPagoConsistente(
+                    $model->CreditoID,
+                    $model->CuotaID,
+                    null,
+                    $model->PromotorCobradorID,
+                    $model->SedeID
+                );
             }
         });
     }

@@ -175,13 +175,7 @@ class AprobacionExoneracionResource extends Resource
                                 $pago->Activo = 1;
 
                                 // Asignar cualquier cuota del crédito como referencia
-                                $cuotaRef = \App\Models\Cuota::withoutGlobalScope('sede')
-                                    ->where('CreditoID', $record->CreditoID)
-                                    ->orderBy('NumeroCuota')
-                                    ->first();
-                                if ($cuotaRef) {
-                                    $pago->CuotaID = $cuotaRef->CuotaID;
-                                }
+                                $pago->CuotaID = null;
 
                                 $pago->save();
 
@@ -268,4 +262,3 @@ class AprobacionExoneracionResource extends Resource
         ];
     }
 }
-

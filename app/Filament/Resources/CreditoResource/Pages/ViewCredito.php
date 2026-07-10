@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\Tasa;
+use App\Models\Zona;
 
 class ViewCredito extends ViewRecord
 {
@@ -74,6 +75,19 @@ class ViewCredito extends ViewRecord
                                     }
                                 }),
                         ]),
+                    Forms\Components\Select::make('ZonaID')
+                        ->label('Zona')
+                        ->options(function () {
+                            $sedeId = $this->record->proposicion?->SedeID;
+
+                            return Zona::where('Activo', true)
+                                ->when($sedeId, fn($query) => $query->where('SedeID', $sedeId))
+                                ->orderBy('Nombre')
+                                ->pluck('Nombre', 'ZonaID');
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->required(),
                     Forms\Components\Grid::make(2)
                         ->schema([
                             Forms\Components\TextInput::make('NumeroCuotas')
@@ -114,6 +128,7 @@ class ViewCredito extends ViewRecord
                         'TasaID' => (int) ($prop->TasaID ?? 0),
                         'TasaInteres' => (float) ($prop->TasaInteres ?? 0),
                         'NumeroCuotas' => (int) ($prop->NumeroCuotas ?? 1),
+                        'ZonaID' => (int) ($prop->ZonaID ?? 0),
                     ];
                 })
                 ->action(function (array $data) {
@@ -127,13 +142,20 @@ class ViewCredito extends ViewRecord
                     $tasa = (float)$data['TasaInteres'];
                     $tasaID = (int)($data['TasaID'] ?? $prop->TasaID);
                     $cuotas = (int)$data['NumeroCuotas'];
+                    $zonaID = (int)($data['ZonaID'] ?? $prop->ZonaID);
                     $interes = round($monto * ($tasa / 100), 2);
                     $totalPagar = round($monto + $interes, 2);
                     $montoCuota = round($totalPagar / $cuotas, 2);
 
                     $creditoID = $this->record->CreditoID;
 
-                    DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $cuotas, $interes, $totalPagar, $montoCuota, $creditoID) {
+                    $zona = Zona::withoutGlobalScope('sede')->find($zonaID);
+                    if (!$zona || (int) $zona->SedeID !== (int) $prop->SedeID) {
+                        Notification::make()->danger()->title('Zona invÃ¡lida')->body('La zona seleccionada no pertenece a la sede del crÃ©dito.')->send();
+                        return;
+                    }
+
+                    DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID) {
                         // 1. Actualizar ProposicionCredito
                         DB::table('ProposicionCredito')
                             ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
@@ -141,6 +163,7 @@ class ViewCredito extends ViewRecord
                                 'MontoTotal' => $monto,
                                 'TasaID' => $tasaID,
                                 'TasaInteres' => $tasa,
+                                'ZonaID' => $zonaID,
                                 'NumeroCuotas' => $cuotas,
                                 'MontoInteres' => $interes,
                                 'MontoTotalPagar' => $totalPagar,

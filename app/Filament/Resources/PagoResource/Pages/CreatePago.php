@@ -481,7 +481,16 @@ class CreatePago extends CreateRecord
 
         // 2. Ahora que tenemos seguro el CreditoID, asegurar la CuotaID por FECHA DEL DÍA
         // Todos los pagos del mismo día van a la misma cuota (cuota = día)
-        if (!isset($data['CuotaID']) || empty($data['CuotaID'])) {
+        $pagoSinCuota = !empty($data['EsMora'])
+            || !empty($data['EsPagoAMayor'])
+            || !empty($data['EsPagoAMayorPorMora'])
+            || !empty($data['EsPagoAutomatico']);
+
+        if ($pagoSinCuota) {
+            $data['CuotaID'] = null;
+        }
+
+        if (!$pagoSinCuota && (!isset($data['CuotaID']) || empty($data['CuotaID']))) {
             $creditoID = $data['CreditoID'] ?? null;
             if ($creditoID) {
                 // Obtener la fecha del día de operación
@@ -541,6 +550,24 @@ class CreatePago extends CreateRecord
             // Si el usuario no es promotor cobrador, dejar como NULL
             $data['PromotorCobradorID'] = null;
         }
+
+        $creditoValidacion = \App\Models\Credito::withoutGlobalScope('sede')
+            ->where('CreditoID', $data['CreditoID'])
+            ->first();
+
+        if (!$creditoValidacion) {
+            throw new \Exception('No se encontro el credito seleccionado.');
+        }
+
+        $data['SedeID'] = $creditoValidacion->SedeID;
+
+        app(\App\Services\SedeIntegrityService::class)->assertPagoConsistente(
+            (int) $data['CreditoID'],
+            !empty($data['CuotaID']) ? (int) $data['CuotaID'] : null,
+            !empty($data['ClienteID']) ? (int) $data['ClienteID'] : null,
+            !empty($data['PromotorCobradorID']) ? (int) $data['PromotorCobradorID'] : null,
+            (int) $data['SedeID']
+        );
 
         // Obtener el usuario actual
         $data['UsuarioRegistro'] = auth()->user()->name ?? auth()->id();

@@ -10,6 +10,17 @@ class EditResolucionExcedente extends EditRecord
 {
     protected static string $resource = ResolucionExcedenteResource::class;
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['SedeID'] = $this->record->SedeID;
+
+        $solicitud = $this->record->replicate();
+        $solicitud->fill($data);
+        app(\App\Services\SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
+
+        return $data;
+    }
+
     public function getTitle(): string | \Illuminate\Contracts\Support\Htmlable
     {
         $url = static::getResource()::getUrl('index');

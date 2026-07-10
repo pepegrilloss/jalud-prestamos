@@ -3,12 +3,18 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SaldarCreditoResource\Pages;
+use App\Models\Log as AuditLog;
+use App\Models\Pago;
 use App\Models\ProposicionCredito;
+use App\Services\DateFieldResolver;
+use App\Services\FondoSedeService;
+use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -142,13 +148,93 @@ class SaldarCreditoResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Confirmar Saldar Crédito')
-                    ->modalDescription(fn($record) => "¿Está seguro de saldar {$record->CodigoCredito}? Se pondrá el saldo en 0 y se eliminará la mora.")
-                    ->action(function ($record) {
+                    ->modalDescription(fn($record) => "Revise el monto para {$record->CodigoCredito}. Si no cubre todo el saldo, se registrara como pago parcial.")
+                    ->form([
+                        Forms\Components\TextInput::make('MontoSaldar')
+                            ->label('Monto a saldar')
+                            ->prefix('S/')
+                            ->numeric()
+                            ->required()
+                            ->minValue(0.01)
+                            ->default(fn($record) => (float) ($record->SaldoPendiente ?? 0))
+                            ->extraAttributes(['onwheel' => 'return false;']),
+
+                        Forms\Components\DatePicker::make('FechaSaldamiento')
+                            ->label('Fecha de saldamiento')
+                            ->required()
+                            ->default(fn() => DateFieldResolver::getFechaAbierta() ?? now())
+                            ->native(false)
+                            ->displayFormat('d/m/Y'),
+
+                        Forms\Components\Textarea::make('Comentario')
+                            ->label('Comentario')
+                            ->rows(3)
+                            ->maxLength(500),
+                    ])
+                    ->action(function ($record, array $data) {
                         $creditoID = $record->CreditoID;
                         $codigo = $record->CodigoCredito;
+                        $montoSaldar = (float) $data['MontoSaldar'];
+                        $fechaSaldamiento = Carbon::parse($data['FechaSaldamiento'])->setTime(now()->hour, now()->minute, now()->second);
+                        $comentario = trim((string) ($data['Comentario'] ?? ''));
+                        $saldoAnterior = (float) ($record->SaldoPendiente ?? 0);
 
                         DB::beginTransaction();
                         try {
+                            $pago = Pago::create([
+                                'CreditoID' => $creditoID,
+                                'CuotaID' => null,
+                                'MontoPagado' => $montoSaldar,
+                                'FechaPago' => $fechaSaldamiento,
+                                'TipoPago' => Pago::TIPO_EFECTIVO,
+                                'TipoConcepto' => 'C',
+                                'EsMora' => false,
+                                'EsPagoAMayor' => $montoSaldar > $saldoAnterior,
+                                'EsPagoForzado' => true,
+                                'EsPagoAutomatico' => false,
+                                'Comentario' => $comentario ?: "Saldamiento manual de {$codigo}",
+                                'UsuarioRegistro' => auth()->user()?->name ?? (string) auth()->id(),
+                                'Activo' => true,
+                                'SedeID' => $record->SedeID,
+                            ]);
+
+                            app(FondoSedeService::class)->registrarIngresoRecaudo(
+                                $record->SedeID,
+                                $montoSaldar,
+                                $pago->PagoID,
+                                auth()->id()
+                            );
+
+                            $saldoRestante = (float) DB::table('ProposicionCredito')
+                                ->where('ProposicionCreditoID', $record->ProposicionCreditoID)
+                                ->value('SaldoPendiente');
+
+                            if ($saldoRestante > 0) {
+                                AuditLog::registrar(
+                                    'PAGO_PARCIAL',
+                                    'Credito',
+                                    $creditoID,
+                                    ['SaldoPendiente' => $saldoAnterior],
+                                    [
+                                        'SaldoPendiente' => $saldoRestante,
+                                        'MontoSaldar' => $montoSaldar,
+                                        'FechaPago' => $fechaSaldamiento->toDateTimeString(),
+                                        'Comentario' => $comentario,
+                                        'PagoID' => $pago->PagoID,
+                                    ]
+                                );
+
+                                DB::commit();
+
+                                Notification::make()
+                                    ->success()
+                                    ->title("Pago parcial registrado")
+                                    ->body("Se registro S/ " . number_format($montoSaldar, 2) . " para {$codigo}. Saldo restante: S/ " . number_format($saldoRestante, 2) . ".")
+                                    ->send();
+
+                                return;
+                            }
+
                             DB::table('ProposicionCredito')
                                 ->where('ProposicionCreditoID', $record->ProposicionCreditoID)
                                 ->update(['SaldoPendiente' => 0]);
@@ -157,22 +243,37 @@ class SaldarCreditoResource extends Resource
                                 ->where('CreditoID', $creditoID)
                                 ->update([
                                     'EstatusCreditoFinal' => 'SALDADO',
-                                    'FechaSaldamiento' => now(),
+                                    'FechaSaldamiento' => $fechaSaldamiento,
                                 ]);
 
                             DB::table('cuota')
                                 ->where('CreditoID', $creditoID)
                                 ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA', 'VENCIDA'])
-                                ->update(['Estado' => 'PAGADA', 'FechaPago' => now()]);
+                                ->update(['Estado' => 'PAGADA', 'FechaPago' => $fechaSaldamiento]);
 
                             $morasElim = DB::table('mora')->where('CreditoID', $creditoID)->delete();
+
+                            AuditLog::registrar(
+                                'SALDAR',
+                                'Credito',
+                                $creditoID,
+                                ['SaldoPendiente' => $saldoAnterior],
+                                [
+                                    'SaldoPendiente' => 0,
+                                    'MontoSaldar' => $montoSaldar,
+                                    'FechaSaldamiento' => $fechaSaldamiento->toDateTimeString(),
+                                    'Comentario' => $comentario,
+                                    'PagoID' => $pago->PagoID,
+                                    'MorasEliminadas' => $morasElim,
+                                ]
+                            );
 
                             DB::commit();
 
                             Notification::make()
                                 ->success()
                                 ->title("{$codigo} saldado")
-                                ->body("Mora eliminada: {$morasElim} registros.")
+                                ->body("Pago registrado: S/ " . number_format($montoSaldar, 2) . ". Mora eliminada: {$morasElim} registros.")
                                 ->send();
                         } catch (\Exception $e) {
                             DB::rollBack();

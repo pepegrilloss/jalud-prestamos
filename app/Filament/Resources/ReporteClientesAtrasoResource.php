@@ -118,8 +118,7 @@ class ReporteClientesAtrasoResource extends Resource
                     // para evitar pagos()->max('FechaPago') por cada fila.
                     ->addSelect([
                         'ultimo_pago' => \App\Models\Pago::select('pago.FechaPago')
-                            ->join('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
-                            ->whereColumn('cuota.CreditoID', '=', 'Credito.CreditoID')
+                            ->whereColumn('pago.CreditoID', '=', 'Credito.CreditoID')
                             ->where('pago.Activo', 1)
                             ->orderByDesc('pago.FechaPago')
                             ->limit(1),

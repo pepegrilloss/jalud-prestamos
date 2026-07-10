@@ -34,6 +34,35 @@ class Mora extends Model
     ];
 
     // Relación con Crédito
+    protected static function booted(): void
+    {
+        static::saving(function (Mora $mora) {
+            if (!$mora->CreditoID) {
+                return;
+            }
+
+            $creditoSedeId = Credito::withoutGlobalScope('sede')
+                ->where('CreditoID', $mora->CreditoID)
+                ->value('SedeID');
+
+            if (!$creditoSedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'CreditoID' => 'No se encontro el credito de la mora.',
+                ]);
+            }
+
+            if (empty($mora->SedeID)) {
+                $mora->SedeID = $creditoSedeId;
+            }
+
+            if ((int) $mora->SedeID !== (int) $creditoSedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'SedeID' => 'No se puede guardar una mora en una sede distinta a su credito.',
+                ]);
+            }
+        });
+    }
+
     public function credito()
     {
         return $this->belongsTo(Credito::class, 'CreditoID', 'CreditoID');

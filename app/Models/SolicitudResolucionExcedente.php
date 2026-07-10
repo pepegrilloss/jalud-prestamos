@@ -10,6 +10,19 @@ class SolicitudResolucionExcedente extends Model
 {
     use HasFactory, BelongsToSede;
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            app(\App\Services\SedeIntegrityService::class)->assertSolicitudResolucionConsistente($model);
+        });
+
+        static::updating(function ($model) {
+            app(\App\Services\SedeIntegrityService::class)->assertSolicitudResolucionConsistente($model);
+        });
+    }
+
     protected $table = 'solicitudes_resolucion_excedente';
     protected $primaryKey = 'SolicitudID';
 

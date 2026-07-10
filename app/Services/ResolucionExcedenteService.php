@@ -16,6 +16,8 @@ class ResolucionExcedenteService
             throw new \Exception('Esta solicitud ya fue procesada.');
         }
 
+        app(SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
+
         DB::transaction(function () use ($solicitud, $aprobador) {
             // Marcar la solicitud como aprobada
             $solicitud->Estado = 'APROBADA';
@@ -38,6 +40,8 @@ class ResolucionExcedenteService
      */
     private function procesarTrasladoPago(SolicitudResolucionExcedente $solicitud, $aprobador): void
     {
+        app(SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
+
         // Obtener el pago original del Cliente A
         $pagoOriginal = Pago::find($solicitud->PagoOrigenID);
         if (!$pagoOriginal)
@@ -61,19 +65,13 @@ class ResolucionExcedenteService
         }
 
         // 2. Crear nuevo pago en crédito destino
-        $cuota = Cuota::where('CreditoID', $solicitud->CreditoDestinoID)
-            ->where('Activo', 1)
-            ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
-            ->orderBy('NumeroCuota', 'asc')
-            ->first();
-
         $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
         // Usar la fecha del pago ORIGINAL, no la del día abierto
         $fechaPago = $pagoOriginal->FechaPago ?? ($fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now());
 
         $nuevoPago = Pago::create([
             'CreditoID' => $solicitud->CreditoDestinoID,
-            'CuotaID' => $cuota ? $cuota->CuotaID : null,
+            'CuotaID' => null,
             'MontoPagado' => $montoAplicar,
             'FechaPago' => $fechaPago,
             'TipoPago' => $pagoOriginal->TipoPago,
@@ -145,11 +143,15 @@ class ResolucionExcedenteService
                 // Buscar algún crédito activo del cliente
                 $creditoActivo = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID) {
                     $q->where('ClienteID', $clienteID)->where('Activo', 1);
-                })->where('Activo', 1)->first();
+                })
+                    ->where('SedeID', $solicitud->SedeID)
+                    ->where('Activo', 1)
+                    ->first();
                 
                 if ($creditoActivo) {
                     $solicitud->CreditoDestinoID = $creditoActivo->CreditoID;
                     $solicitud->save();
+                    app(SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
                 }
             }
         }
@@ -171,16 +173,12 @@ class ResolucionExcedenteService
         float $montoAplicar,
         $aprobador
     ): void {
+        app(SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
+
         $tipoPago = 'EFECTIVO';
         if ($excedente->TipoExcedente === 'YAPE_TRANSFERENCIA') {
             $tipoPago = 'TRANSFERENCIA';
         }
-
-        $cuota = Cuota::where('CreditoID', $solicitud->CreditoDestinoID)
-            ->where('Activo', 1)
-            ->whereIn('Estado', ['PENDIENTE', 'NORMAL', 'MORA'])
-            ->orderBy('NumeroCuota', 'asc')
-            ->first();
 
         if ($excedente && $excedente->Fecha) {
             $fechaPago = Carbon::parse($excedente->Fecha)->setTime(now()->hour, now()->minute, now()->second);
@@ -191,7 +189,7 @@ class ResolucionExcedenteService
 
         $nuevoPago = Pago::create([
             'CreditoID' => $solicitud->CreditoDestinoID,
-            'CuotaID' => $cuota ? $cuota->CuotaID : null,
+            'CuotaID' => null,
             'MontoPagado' => $montoAplicar,
             'FechaPago' => $fechaPago,
             'TipoPago' => $tipoPago,

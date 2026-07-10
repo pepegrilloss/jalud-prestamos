@@ -83,14 +83,46 @@ class ProposicionCredito extends Model
     {
         parent::boot();
 
+        static::creating(function ($model) {
+            $model->asegurarSedeDeCliente();
+        });
+
         static::updating(function ($model) {
             unset($model->{$model->getKeyName()});
+            $model->asegurarSedeDeCliente();
         });
 
         // Global scope: excluir creditos eliminados (soft delete)
         static::addGlobalScope('eliminado', function (\Illuminate\Database\Eloquent\Builder $query) {
             $query->where('ProposicionCredito.Eliminado', 0);
         });
+    }
+
+    private function asegurarSedeDeCliente(): void
+    {
+        if (!$this->ClienteID) {
+            return;
+        }
+
+        $clienteSedeId = Cliente::withoutGlobalScope('sede')
+            ->where('ClienteID', $this->ClienteID)
+            ->value('SedeID');
+
+        if (!$clienteSedeId) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'ClienteID' => 'No se encontro el cliente de la proposicion.',
+            ]);
+        }
+
+        if (empty($this->SedeID)) {
+            $this->SedeID = $clienteSedeId;
+        }
+
+        if ((int) $this->SedeID !== (int) $clienteSedeId) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'SedeID' => 'No se puede guardar una proposicion en una sede distinta a su cliente.',
+            ]);
+        }
     }
 
     // --- Relaciones ---

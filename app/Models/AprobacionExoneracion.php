@@ -30,6 +30,35 @@ class AprobacionExoneracion extends Model
         'FechaCreacion' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (AprobacionExoneracion $aprobacion) {
+            if (!$aprobacion->SolicitudExoneracionID) {
+                return;
+            }
+
+            $solicitudSedeId = SolicitudExoneracion::withoutGlobalScope('sede')
+                ->where('SolicitudExoneracionID', $aprobacion->SolicitudExoneracionID)
+                ->value('SedeID');
+
+            if (!$solicitudSedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'SolicitudExoneracionID' => 'No se encontro la solicitud de exoneracion.',
+                ]);
+            }
+
+            if (empty($aprobacion->SedeID)) {
+                $aprobacion->SedeID = $solicitudSedeId;
+            }
+
+            if ((int) $aprobacion->SedeID !== (int) $solicitudSedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'SedeID' => 'No se puede guardar una aprobacion de exoneracion en una sede distinta a su solicitud.',
+                ]);
+            }
+        });
+    }
+
     public function solicitud(): BelongsTo
     {
         return $this->belongsTo(SolicitudExoneracion::class, 'SolicitudExoneracionID');

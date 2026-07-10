@@ -482,6 +482,11 @@ class PagoResource extends Resource
                     ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('TipoCredito.Descripcion', 'like', "%{$search}%"))
                     ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('TipoCredito.Descripcion', $direction)),
 
+                Tables\Columns\TextColumn::make('zona_nombre')
+                    ->label('Zona')
+                    ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('Zona.Nombre', 'like', "%{$search}%"))
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('Zona.Nombre', $direction)),
+
                 Tables\Columns\TextColumn::make('codigo_credito')
                     ->label('Código Crédito')
                     ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('ProposicionCredito.CodigoCredito', 'like', "%{$search}%"))
@@ -710,10 +715,12 @@ class PagoResource extends Resource
                     ->leftJoin('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
                     ->leftJoin('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
                     ->leftJoin('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+                    ->leftJoin('Zona', 'ProposicionCredito.ZonaID', '=', 'Zona.ZonaID')
                     ->select([
                         'pago.*',
                         'Cliente.NombresApellidos as cliente_nombre',
                         'TipoCredito.Descripcion as tipo_credito_desc',
+                        'Zona.Nombre as zona_nombre',
                         'ProposicionCredito.CodigoCredito as codigo_credito',
                         DB::raw('ROW_NUMBER() OVER (PARTITION BY pago.CreditoID ORDER BY pago.FechaPago, pago.PagoID) as numero_pago')
                     ]);

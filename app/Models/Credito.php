@@ -29,6 +29,35 @@ class Credito extends Model
         'Activo' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (Credito $credito) {
+            if (!$credito->ProposicionCreditoID) {
+                return;
+            }
+
+            $proposicionSedeId = ProposicionCredito::withoutGlobalScope('sede')
+                ->where('ProposicionCreditoID', $credito->ProposicionCreditoID)
+                ->value('SedeID');
+
+            if (!$proposicionSedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'ProposicionCreditoID' => 'No se encontro la proposicion del credito.',
+                ]);
+            }
+
+            if (empty($credito->SedeID)) {
+                $credito->SedeID = $proposicionSedeId;
+            }
+
+            if ((int) $credito->SedeID !== (int) $proposicionSedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'SedeID' => 'No se puede guardar un credito en una sede distinta a su proposicion.',
+                ]);
+            }
+        });
+    }
+
     // --- Relaciones ---
 
     public function proposicion()

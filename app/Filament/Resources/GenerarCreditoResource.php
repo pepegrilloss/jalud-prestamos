@@ -414,6 +414,27 @@ class GenerarCreditoResource extends Resource
                         $user = auth()->user();
                         $sedeId = $user->getEffectiveSedeId();
 
+                        if ($sedeId) {
+                            try {
+                                app(\App\Services\SedeIntegrityService::class)->assertRecordSede($record, (int) $sedeId, 'proposicion de credito');
+                                app(\App\Services\SedeIntegrityService::class)->assertIdSede(
+                                    Cliente::class,
+                                    'ClienteID',
+                                    (int) $record->ClienteID,
+                                    (int) $sedeId,
+                                    'cliente'
+                                );
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Cruce de sede bloqueado')
+                                    ->body($e->getMessage())
+                                    ->persistent()
+                                    ->send();
+                                return;
+                            }
+                        }
+
                         if (!$sedeId) {
                             Notification::make()
                                 ->danger()
@@ -482,6 +503,7 @@ class GenerarCreditoResource extends Resource
                                     'FechaGeneracion' => $fechaGeneracion,
                                     'UserGeneracionID' => auth()->id(),
                                     'Activo' => true,
+                                    'SedeID' => $sedeId,
                                 ]);
 
                                 $fondoService->registrarEgresoColocacion(
@@ -540,7 +562,10 @@ class GenerarCreditoResource extends Resource
     protected static function crearPagoAutomaticoRefinanciamiento(ProposicionCredito $record, Credito $creditoNuevo): void
     {
         try {
-            $proposicionAnterior = ProposicionCredito::withoutGlobalScope('sede')->find($record->ProposicionCreditoAnteriorID);
+            $proposicionAnterior = ProposicionCredito::withoutGlobalScope('sede')
+                ->where('ProposicionCreditoID', $record->ProposicionCreditoAnteriorID)
+                ->where('SedeID', $record->SedeID)
+                ->first();
 
             if (!$proposicionAnterior) {
                 return;
@@ -553,12 +578,20 @@ class GenerarCreditoResource extends Resource
             // Obtener el crédito de la proposición anterior
             $creditoAnterior = Credito::withoutGlobalScope('sede')
                 ->where('ProposicionCreditoID', $proposicionAnterior->ProposicionCreditoID)
+                ->where('SedeID', $record->SedeID)
                 ->where('Activo', true)
                 ->first();
 
             if (!$creditoAnterior) {
                 return;
             }
+
+            app(\App\Services\SedeIntegrityService::class)->assertRefinanciamientoConsistente(
+                $record,
+                $proposicionAnterior,
+                $creditoAnterior
+            );
+            app(\App\Services\SedeIntegrityService::class)->assertRecordSede($creditoNuevo, (int) $record->SedeID, 'credito nuevo');
 
             // Obtener todas las cuotas del crédito anterior
             $allCuotas = $creditoAnterior->cuotas()->where('Activo', true)->get();
@@ -586,7 +619,7 @@ class GenerarCreditoResource extends Resource
             // PAGO 1: Crear pago por el saldo pendiente del crédito anterior
             $pago1 = Pago::create([
                 'CreditoID' => $creditoAnterior->CreditoID,
-                'CuotaID' => $cuotaRef?->CuotaID,
+                'CuotaID' => null,
                 'PromotorCobradorID' => $promotorCobradorID,
                 'MontoPagado' => $saldoTotalPendiente,
                 'FechaPago' => $fechaPago,

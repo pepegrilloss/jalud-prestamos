@@ -20,11 +20,14 @@ class Excedente extends Model
                     ->where('ClienteID', $model->ClienteOrigenID)
                     ->value('SedeID');
                 if ($clienteSedeID && $clienteSedeID != $model->SedeID) {
-                    \Illuminate\Support\Facades\Log::warning('Excedente ClienteOrigen cross-sede corregido', [
+                    \Illuminate\Support\Facades\Log::warning('Excedente ClienteOrigen cross-sede bloqueado', [
                         'ExcedenteID' => $model->ExcedenteID ?? 'new',
                         'Excedente.SedeID' => $model->SedeID,
                         'Cliente.SedeID' => $clienteSedeID,
                         'ClienteOrigenID' => $model->ClienteOrigenID,
+                    ]);
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'SedeID' => 'No se puede registrar un excedente con cliente origen de otra sede.',
                     ]);
                 }
             }
@@ -33,11 +36,14 @@ class Excedente extends Model
                     ->where('PagoID', $model->PagoOrigenID)
                     ->value('SedeID');
                 if ($pagoSedeID && $pagoSedeID != $model->SedeID) {
-                    \Illuminate\Support\Facades\Log::warning('Excedente PagoOrigen cross-sede', [
+                    \Illuminate\Support\Facades\Log::warning('Excedente PagoOrigen cross-sede bloqueado', [
                         'ExcedenteID' => $model->ExcedenteID ?? 'new',
                         'Excedente.SedeID' => $model->SedeID,
                         'Pago.SedeID' => $pagoSedeID,
                         'PagoOrigenID' => $model->PagoOrigenID,
+                    ]);
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'SedeID' => 'No se puede registrar un excedente con pago origen de otra sede.',
                     ]);
                 }
             }

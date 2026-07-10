@@ -64,7 +64,7 @@ class ReporteCreditosVencidosResource extends Resource
                     ->money('PEN')
                     // OPTIMIZACIÓN N+1: lee el atributo precalculado por la subquery en modifyQueryUsing.
                     ->getStateUsing(fn ($record) => (float) ($record->total_pagado ?? 0))
-                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw("(SELECT COALESCE(SUM(p.MontoPagado), 0) FROM pago p JOIN cuota c ON p.CuotaID = c.CuotaID WHERE c.CreditoID = Credito.CreditoID AND p.Activo = 1) {$direction}")),
+                    ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw("(SELECT COALESCE(SUM(p.MontoPagado), 0) FROM pago p WHERE p.CreditoID = Credito.CreditoID AND p.Activo = 1) {$direction}")),
 
                 Tables\Columns\TextColumn::make('saldoPendiente')
                     ->label('Saldo')
@@ -135,8 +135,7 @@ class ReporteCreditosVencidosResource extends Resource
                     // en vez de ejecutar Pago::sum() por cada fila en getStateUsing.
                     ->addSelect([
                         'total_pagado' => \App\Models\Pago::selectRaw('COALESCE(SUM(pago.MontoPagado), 0)')
-                            ->join('cuota', 'pago.CuotaID', '=', 'cuota.CuotaID')
-                            ->whereColumn('cuota.CreditoID', '=', 'Credito.CreditoID')
+                            ->whereColumn('pago.CreditoID', '=', 'Credito.CreditoID')
                             ->where('pago.Activo', 1),
                     ]);
             })

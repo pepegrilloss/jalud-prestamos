@@ -44,6 +44,35 @@ class Cuota extends Model
         'Activo' => 'boolean'
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (Cuota $cuota) {
+            if (!$cuota->CreditoID) {
+                return;
+            }
+
+            $creditoSedeId = Credito::withoutGlobalScope('sede')
+                ->where('CreditoID', $cuota->CreditoID)
+                ->value('SedeID');
+
+            if (!$creditoSedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'CreditoID' => 'No se encontro el credito de la cuota.',
+                ]);
+            }
+
+            if (empty($cuota->SedeID)) {
+                $cuota->SedeID = $creditoSedeId;
+            }
+
+            if ((int) $cuota->SedeID !== (int) $creditoSedeId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'SedeID' => 'No se puede guardar una cuota en una sede distinta a su credito.',
+                ]);
+            }
+        });
+    }
+
     // Relaciones
     public function credito()
     {

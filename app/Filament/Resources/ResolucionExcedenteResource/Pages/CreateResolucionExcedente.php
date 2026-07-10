@@ -13,6 +13,11 @@ class CreateResolucionExcedente extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['UserSolicitanteID'] = auth()->id();
+        $data['SedeID'] = $data['SedeID'] ?? auth()->user()?->getEffectiveSedeId();
+
+        $solicitud = new \App\Models\SolicitudResolucionExcedente($data);
+        app(\App\Services\SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
+
         return $data;
     }
 

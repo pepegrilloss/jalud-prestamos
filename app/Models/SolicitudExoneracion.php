@@ -43,6 +43,41 @@ class SolicitudExoneracion extends Model
         'Activo' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (SolicitudExoneracion $solicitud) {
+            if (!$solicitud->CreditoID) {
+                return;
+            }
+
+            $credito = Credito::withoutGlobalScope('sede')
+                ->where('CreditoID', $solicitud->CreditoID)
+                ->first();
+
+            if (!$credito) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'CreditoID' => 'No se encontro el credito de la solicitud de exoneracion.',
+                ]);
+            }
+
+            if (empty($solicitud->SedeID)) {
+                $solicitud->SedeID = $credito->SedeID;
+            }
+
+            app(\App\Services\SedeIntegrityService::class)->assertRecordSede($credito, (int) $solicitud->SedeID, 'credito de la solicitud de exoneracion');
+
+            if ($solicitud->PagoGeneradoID) {
+                app(\App\Services\SedeIntegrityService::class)->assertIdSede(
+                    Pago::class,
+                    'PagoID',
+                    (int) $solicitud->PagoGeneradoID,
+                    (int) $solicitud->SedeID,
+                    'pago generado por exoneracion'
+                );
+            }
+        });
+    }
+
     public function credito(): BelongsTo
     {
         return $this->belongsTo(Credito::class, 'CreditoID');
