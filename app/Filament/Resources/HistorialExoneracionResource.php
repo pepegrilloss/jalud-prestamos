@@ -12,7 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\Sede;
+use App\Models\Zona;
 class HistorialExoneracionResource extends Resource
 {
     protected static ?string $model = HistorialExoneracion::class;
@@ -85,6 +85,10 @@ class HistorialExoneracionResource extends Resource
                     ->label('Crédito')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('credito.proposicion.zona.Nombre')
+                    ->label('Zona')
+                    ->sortable()
+                    ->placeholder('Sin zona'),
                 Tables\Columns\BadgeColumn::make('TipoExoneracion')
                     ->label('Tipo')
                     ->formatStateUsing(fn($state) => match($state) {
@@ -125,6 +129,19 @@ class HistorialExoneracionResource extends Resource
                         'I' => 'Interés',
                         'M' => 'Mora',
                     ]),
+                Tables\Filters\SelectFilter::make('ZonaID')
+                    ->label('Zona')
+                    ->options(function () {
+                        $sedeId = session('sede_activa') ?? auth()->user()?->getEffectiveSedeId();
+
+                        return Zona::where('Activo', true)
+                            ->when($sedeId, fn($query) => $query->where('SedeID', $sedeId))
+                            ->orderBy('Nombre')
+                            ->pluck('Nombre', 'ZonaID');
+                    })
+                    ->query(fn(Builder $query, array $data) => filled($data['value'] ?? null)
+                        ? $query->whereHas('credito.proposicion', fn(Builder $subQuery) => $subQuery->where('ZonaID', $data['value']))
+                        : $query),
                 Tables\Filters\Filter::make('FechaExoneracion')
                     ->form([
                         \Filament\Forms\Components\DatePicker::make('desde')
@@ -155,7 +172,7 @@ class HistorialExoneracionResource extends Resource
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query) {
-                return $query->with(['cliente', 'credito.proposicion'])
+                return $query->with(['cliente', 'credito.proposicion.zona'])
                     ->orderBy('FechaExoneracion', 'desc');
             })
             ->actions([

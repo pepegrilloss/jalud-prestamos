@@ -6,6 +6,7 @@ use App\Filament\Resources\SaldarCreditoResource\Pages;
 use App\Models\Log as AuditLog;
 use App\Models\Pago;
 use App\Models\ProposicionCredito;
+use App\Models\Zona;
 use App\Services\DateFieldResolver;
 use App\Services\FondoSedeService;
 use Filament\Forms;
@@ -123,6 +124,19 @@ class SaldarCreditoResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('ZonaID')
+                    ->label('Zona')
+                    ->options(function () {
+                        $sedeId = session('sede_activa') ?? auth()->user()?->getEffectiveSedeId();
+
+                        return Zona::where('Activo', true)
+                            ->when($sedeId, fn($query) => $query->where('SedeID', $sedeId))
+                            ->orderBy('Nombre')
+                            ->pluck('Nombre', 'ZonaID');
+                    })
+                    ->query(fn(Builder $query, array $data) => filled($data['value'] ?? null)
+                        ? $query->where('ProposicionCredito.ZonaID', $data['value'])
+                        : $query),
 
                 Tables\Filters\Filter::make('con_mora')
                     ->label('Solo con mora pendiente')
