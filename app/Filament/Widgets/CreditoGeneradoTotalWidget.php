@@ -43,22 +43,19 @@ class CreditoGeneradoTotalWidget extends BaseWidget
         $user = auth()->user();
         $fecha = $this->fechaFiltro;
 
-        $query = Credito::whereHas('proposicion', function ($q) {
-                $q->where('FueRefinanciada', 0);
-            });
+        $query = Credito::withoutGlobalScope('sede')
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->where('ProposicionCredito.FueRefinanciada', 0);
         
         if ($fecha) {
-            $query->whereDate('FechaGeneracion', $fecha);
+            $query->whereDate('Credito.FechaGeneracion', $fecha);
         }
 
         if (!$user->isPrivileged() || $user->getEffectiveSedeId()) {
-            $query->where('SedeID', $user->getEffectiveSedeId());
+            $query->where('Credito.SedeID', $user->getEffectiveSedeId());
         }
 
-        $totalMonto = $query->get()
-            ->sum(function($credito) {
-                return $credito->proposicion?->MontoTotal ?? 0;
-            });
+        $totalMonto = (float) $query->sum('ProposicionCredito.MontoTotal');
 
         $inputId = 'datePickerTotal';
 

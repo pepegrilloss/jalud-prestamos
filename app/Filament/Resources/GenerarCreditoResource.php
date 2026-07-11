@@ -686,36 +686,13 @@ class GenerarCreditoResource extends Resource
 
     protected static function calcularFechasCredito(Credito $credito, ProposicionCredito $record): void
     {
-        $feriadosData = [];
-        try {
-            $fechaInicio = \Carbon\Carbon::parse($credito->FechaGeneracion);
-            $fechaFin = $fechaInicio->copy()->addDays($record->NumeroCuotas * 2);
-            $annoInicio = $fechaInicio->year;
-            $annoFin = $fechaFin->year;
-            
-            for ($anno = $annoInicio; $anno <= $annoFin; $anno++) {
-                try {
-                    $response = \Illuminate\Support\Facades\Http::timeout(5)->retry(2, 100)->get("https://date.nager.at/api/v3/PublicHolidays/{$anno}/PE");
-                    $feriados = $response->json();
-                    foreach ($feriados as $feriado) {
-                        $feriadosData[$feriado['date']] = $feriado['localName'];
-                    }
-                } catch (\Exception $e) {
-                }
-            }
-        } catch (\Exception $e) {
-        }
-
         $fechaActual = \Carbon\Carbon::parse($credito->FechaGeneracion)->addDay();
         $cuotasContadas = 0;
         $fechaInicio = null;
         $fechaVencimiento = null;
 
         while ($cuotasContadas < $record->NumeroCuotas) {
-            $esDomingo = $fechaActual->dayOfWeek == 0;
-            $esFeriado = isset($feriadosData[$fechaActual->format('Y-m-d')]);
-
-            if (!$esDomingo && !$esFeriado) {
+            if (\App\Services\CalendarioLaboralService::esLaborable($fechaActual, $credito->SedeID)) {
                 if ($fechaInicio === null) {
                     $fechaInicio = $fechaActual->clone();
                 }

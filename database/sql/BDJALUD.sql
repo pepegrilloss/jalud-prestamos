@@ -1480,6 +1480,7 @@ CREATE TABLE `calendario_no_moroso` (
   `CalendarioNoMorosoID` int(11) NOT NULL,
   `Fecha` date NOT NULL,
   `Descripcion` varchar(255) DEFAULT NULL,
+  `Tipo` varchar(30) NOT NULL DEFAULT 'NO_LABORABLE',
   `Activo` tinyint(1) NOT NULL DEFAULT 1,
   `FechaCreacion` datetime NOT NULL DEFAULT current_timestamp(),
   `FechaModificacion` datetime DEFAULT NULL,

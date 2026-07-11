@@ -30,6 +30,7 @@ class GestionarAperturaCierre extends ManageRecords
                     $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $data['Fecha'])
                         ->where('SedeID', $sedeId)
                         ->where('Activo', true)
+                        ->where('Tipo', CalendarioNoMoroso::TIPO_NO_LABORABLE)
                         ->first();
 
                     if ($fechaNoMorosa) {

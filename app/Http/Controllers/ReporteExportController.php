@@ -717,7 +717,7 @@ class ReporteExportController extends Controller
             $fechaRef = $ultimoPago ?? $credito->FechaGeneracion;
             $diasAtraso = $fechaRef
                 ? \App\Services\DiasHabilesCalculator::contarDiasHabiles(
-                    \Carbon\Carbon::parse($fechaRef)->addDay(), now()
+                    \Carbon\Carbon::parse($fechaRef)->addDay(), now(), $credito->SedeID
                 )
                 : 0;
             $this->writeDataRow($sheet, $row, [

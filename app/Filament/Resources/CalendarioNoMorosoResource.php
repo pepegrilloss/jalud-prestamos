@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Models\CalendarioNoMoroso;
 use App\Models\AperturaCierreDia;
+use App\Models\CalendarioNoMoroso;
 use App\Models\Sede;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -17,7 +17,7 @@ class CalendarioNoMorosoResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $navigationLabel = 'Calendario No Moroso';
-    protected static ?string $navigationGroup = 'Administración';
+    protected static ?string $navigationGroup = 'Administracion';
     protected static ?int $navigationSort = 2;
 
     protected static ?string $label = 'Fecha No Morosa';
@@ -36,10 +36,17 @@ class CalendarioNoMorosoResource extends Resource
                     }),
 
                 Forms\Components\TextInput::make('Descripcion')
-                    ->label('Descripción')
+                    ->label('Descripcion')
                     ->required()
                     ->maxLength(255)
-                    ->placeholder('Ej: Domingo de trabajo, Feriado laborable...'),
+                    ->placeholder('Ej: feriado intercambiado, feriado laborable...'),
+
+                Forms\Components\Select::make('Tipo')
+                    ->label('Tipo')
+                    ->options(CalendarioNoMoroso::tipos())
+                    ->default(CalendarioNoMoroso::TIPO_NO_LABORABLE)
+                    ->required()
+                    ->native(false),
 
                 Forms\Components\Toggle::make('Activo')
                     ->label('Activo')
@@ -58,8 +65,15 @@ class CalendarioNoMorosoResource extends Resource
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('Descripcion')
-                    ->label('Descripción')
+                    ->label('Descripcion')
                     ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('Tipo')
+                    ->label('Tipo')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => CalendarioNoMoroso::tipos()[$state] ?? $state)
+                    ->color(fn($state) => $state === CalendarioNoMoroso::TIPO_LABORABLE_FORZADO ? 'success' : 'warning')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('sede.Nombre')
@@ -73,7 +87,7 @@ class CalendarioNoMorosoResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('FechaCreacion')
-                    ->label('Fecha Creación')
+                    ->label('Fecha Creacion')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])

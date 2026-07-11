@@ -57,6 +57,7 @@ class AperturaCierreDiaResource extends Resource
                                 $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $value)
                                     ->where('SedeID', $sedeId)
                                     ->where('Activo', true)
+                                    ->where('Tipo', CalendarioNoMoroso::TIPO_NO_LABORABLE)
                                     ->first();
 
                                 if ($fechaNoMorosa) {
@@ -249,6 +250,7 @@ class AperturaCierreDiaResource extends Resource
                         $fechaNoMorosa = CalendarioNoMoroso::where('Fecha', $record->Fecha->toDateString())
                             ->where('SedeID', $record->SedeID)
                             ->where('Activo', true)
+                            ->where('Tipo', CalendarioNoMoroso::TIPO_NO_LABORABLE)
                             ->first();
 
                         if ($fechaNoMorosa) {

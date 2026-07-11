@@ -149,8 +149,13 @@ class PagoResource extends Resource
                                     }
                                 });
 
-                                return $query->pluck('NombresApellidos', 'ClienteID')
-                                    ->map(fn($nombre, $id) => $nombre . ' - ' . \App\Models\Cliente::where('ClienteID', $id)->value('DNI'));
+                                return $query
+                                    ->select('ClienteID', 'NombresApellidos', 'DNI')
+                                    ->orderBy('NombresApellidos')
+                                    ->get()
+                                    ->mapWithKeys(fn($cliente) => [
+                                        $cliente->ClienteID => "{$cliente->NombresApellidos} - {$cliente->DNI}",
+                                    ]);
                             })
                             ->required()
                             ->searchable()

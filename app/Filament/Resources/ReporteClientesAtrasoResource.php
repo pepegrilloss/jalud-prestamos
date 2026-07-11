@@ -70,7 +70,8 @@ class ReporteClientesAtrasoResource extends Resource
 
                         return \App\Services\DiasHabilesCalculator::contarDiasHabiles(
                             \Carbon\Carbon::parse($fechaReferencia)->addDay(),
-                            now()
+                            now(),
+                            $record->SedeID
                         );
                     })
                     ->sortable()

@@ -147,6 +147,14 @@ class SaldoPendienteService
                 if ($zonaID) {
                     $q->where('ZonaID', $zonaID);
                 }
+
+                $q->where(function ($saldoQ) use ($puedePagarMayor) {
+                    $saldoQ->where('SaldoPendiente', '>', 0);
+
+                    if ($puedePagarMayor) {
+                        $saldoQ->orWhereHas('credito', fn($creditoQ) => $creditoQ->whereIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']));
+                    }
+                });
             })
             ->where('Activo', 1);
 
@@ -154,13 +162,6 @@ class SaldoPendienteService
             $query->whereNotIn('EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO']);
         }
 
-        return $query->get()->filter(function ($credito) use ($puedePagarMayor) {
-            if (!$credito->proposicion) {
-                return false;
-            }
-            // Leer la columna directamente (sin recalcular)
-            $saldo = (float) ($credito->proposicion->SaldoPendiente ?? 0);
-            return $saldo > 0 || ($puedePagarMayor && in_array($credito->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO']));
-        });
+        return $query->get();
     }
 }

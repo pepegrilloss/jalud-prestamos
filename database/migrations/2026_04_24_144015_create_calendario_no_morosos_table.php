@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id('CalendarioNoMorosoID');
             $table->date('Fecha')->notNullable();
             $table->string('Descripcion', 255)->nullable();
+            $table->string('Tipo', 30)->default('NO_LABORABLE');
             $table->boolean('Activo')->default(true);
             $table->datetime('FechaCreacion')->default(now());
             $table->datetime('FechaModificacion')->nullable();

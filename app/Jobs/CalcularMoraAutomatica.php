@@ -4,9 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Credito;
 use App\Models\Mora;
-use App\Models\CalendarioNoMoroso;
-use App\Models\ProposicionCredito;
-use Carbon\Carbon;
+use App\Services\CalendarioLaboralService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,135 +27,116 @@ class CalcularMoraAutomatica implements ShouldQueue
         set_time_limit(300);
 
         $fecha = $this->fecha ? \Carbon\Carbon::parse($this->fecha) : today();
-        \Log::info('[JOB] CalcularMoraAutomatica: Iniciando cálculo de moras', ['fecha' => $fecha->toDateString()]);
-
-        // Las fechas no morosas se validan por sede más abajo (línea 80).
-        // Ya NO hay early return global para evitar que una sede bloquee a otra.
+        \Log::info('[JOB] CalcularMoraAutomatica: iniciando calculo de moras', ['fecha' => $fecha->toDateString()]);
 
         try {
-            // Precargar todas las fechas no morosas AGRUPADAS POR SEDE
-            $fechasNoMorosasPorSede = CalendarioNoMoroso::withoutGlobalScope('sede')
-                ->where('Activo', true)
-                ->get()
-                ->groupBy('SedeID')
-                ->map(fn($grupo) => $grupo
-                    ->map(fn($item) => \Carbon\Carbon::parse($item->Fecha)->toDateString())
-                    ->toArray()
-                );
+            $morasCreadas = 0;
 
-            // Obtener todos los créditos vencidos de TODAS las sedes activas.
-            // Sin auth context, el global scope no filtra, así que usamos withoutGlobalScope + explicit scoping.
-            $creditosVencidos = Credito::withoutGlobalScope('sede')
+            Credito::withoutGlobalScope('sede')
                 ->where('Activo', 1)
                 ->whereDate('FechaVencimiento', '<=', $fecha)
                 ->whereIn('SedeID', \App\Models\Sede::where('Activo', true)->pluck('SedeID'))
-                ->with(['proposicion.cliente.tasaMora', 'tipoPago', 'cuotas' => fn($q) => $q->where('Estado', '!=', 'PAGADA')])
-                ->get();
-
-            \Log::info('[JOB] Créditos vencidos encontrados: ' . $creditosVencidos->count());
-
-            $morasCreadas = 0;
-
-            foreach ($creditosVencidos as $credito) {
-                \Log::debug('[JOB] Procesando crédito: ' . $credito->CreditoID);
-                
-                // --- LÓGICA DE VENCIMIENTO EFECTIVO ---
-                $vencimientoEfectivo = \Carbon\Carbon::parse($credito->FechaVencimiento);
-                
-                // Desplazar el vencimiento al siguiente día hábil si cae en día no laborable
-                // Solo para la sede del crédito (feriados locales no afectan otras sedes)
-                $fechasNoMorosasSede = $fechasNoMorosasPorSede[$credito->SedeID] ?? [];
-                while (in_array($vencimientoEfectivo->toDateString(), $fechasNoMorosasSede)) {
-                    $vencimientoEfectivo->addDay();
-                }
-
-                // El cliente tiene todo el día del "Vencimiento Efectivo" para pagar. 
-                // Por lo tanto, SOLO se cobra mora si la fecha de apertura ($fecha) es ESTRICTAMENTE MAYOR al Vencimiento Efectivo.
-                if ($fecha->toDateString() <= $vencimientoEfectivo->toDateString()) {
-                    \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': En periodo de gracia. Vencimiento efectivo: ' . $vencimientoEfectivo->toDateString());
-                    continue; // Aún no corresponde cobrar mora
-                }
-                // ---------------------------------------
-
-                // Verificar si ya existe mora registrada para la fecha especificada
-                $moraHoy = Mora::where('CreditoID', $credito->CreditoID)
-                    ->whereDate('FechaMora', $fecha->toDateString())
-                    ->exists();
-
-                if ($moraHoy) {
-                    \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': Ya tiene mora registrada para ' . $fecha->toDateString());
-                    continue; // Ya se calculó para esa fecha
-                }
-
-                // OPTIMIZADO: Leer SaldoPendiente de la columna (mantenida por PagoObserver)
-                $saldoPendiente = $credito->proposicion
-                    ? (float) ($credito->proposicion->SaldoPendiente ?? 0)
-                    : 0;
-
-                if ($saldoPendiente <= 0) {
-                    \Log::debug('[JOB] Crédito ' . $credito->CreditoID . ': Saldo pendiente <= 0: ' . number_format($saldoPendiente, 2));
-                    continue; // No hay saldo, no calcular mora
-                }
-
-                // Obtener cliente a través de proposicion
-                $cliente = $credito->proposicion?->cliente;
-                if (!$cliente) {
-                    \Log::warning('[JOB] Crédito ' . $credito->CreditoID . ': No tiene cliente asociado');
-                    continue; // No hay cliente asociado
-                }
-
-                // Obtener porcentaje de mora del cliente
-                $porcentajeMora = $cliente->tasaMora?->Porcentaje ?? 0;
-
-                if ($porcentajeMora <= 0) {
-                    \Log::warning('[JOB] Crédito ' . $credito->CreditoID . ': Cliente sin tasa de mora');
-                    continue; // No tiene tasa de mora configurada
-                }
-
-                // Calcular mora diaria
-                // Mora = SaldoPendiente * (Porcentaje / 100)
-                $montoMora = $saldoPendiente * ($porcentajeMora / 100);
-
-                // Obtener mora acumulada anterior
-                $moraAnterior = Mora::where('CreditoID', $credito->CreditoID)
-                    ->orderBy('FechaMora', 'desc')
-                    ->first();
-
-                $moraAcumulada = ($moraAnterior?->MoraAcumulada ?? 0) + $montoMora;
-
-                // Registrar la mora del día
-                $moraNueva = Mora::create([
-                    'CreditoID' => $credito->CreditoID,
-                    'FechaMora' => $fecha,
-                    'SaldoPendiente' => $saldoPendiente,
-                    'PorcentajeMora' => $porcentajeMora,
-                    'MontoMora' => $montoMora,
-                    'MoraAcumulada' => $moraAcumulada,
-                    'SedeID' => $credito->SedeID,
-                ]);
-
-                $morasCreadas++;
-
-                // Log para auditoría
-                \Log::info('[JOB] Mora calculada', [
-                    'CreditoID' => $credito->CreditoID,
-                    'ClienteID' => $cliente->ClienteID,
-                    'Fecha' => $fecha->toDateString(),
-                    'SaldoPendiente' => $saldoPendiente,
-                    'Porcentaje' => $porcentajeMora,
-                    'MontoMora' => $montoMora,
-                    'MoraAcumulada' => $moraAcumulada,
-                ]);
-            }
+                ->with(['proposicion.cliente.tasaMora'])
+                ->chunkById(500, function ($creditos) use ($fecha, &$morasCreadas) {
+                    foreach ($creditos as $credito) {
+                        if ($this->procesarCredito($credito, $fecha)) {
+                            $morasCreadas++;
+                        }
+                    }
+                }, 'CreditoID');
 
             \Log::info('[JOB] CalcularMoraAutomatica completado. Moras creadas: ' . $morasCreadas, ['fecha' => $fecha->toDateString()]);
-            
         } catch (\Exception $e) {
             \Log::error('[JOB] Error en CalcularMoraAutomatica', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
+    }
+
+    private function procesarCredito(Credito $credito, \Carbon\Carbon $fecha): bool
+    {
+        \Log::debug('[JOB] Procesando credito: ' . $credito->CreditoID);
+
+        if (CalendarioLaboralService::esNoLaborable($fecha, $credito->SedeID)) {
+            \Log::debug('[JOB] Fecha no laborable para la sede, no se calcula mora', [
+                'CreditoID' => $credito->CreditoID,
+                'fecha' => $fecha->toDateString(),
+                'motivo' => CalendarioLaboralService::motivoNoLaborable($fecha, $credito->SedeID),
+            ]);
+            return false;
+        }
+
+        $vencimientoEfectivo = CalendarioLaboralService::siguienteDiaLaborable(
+            \Carbon\Carbon::parse($credito->FechaVencimiento),
+            $credito->SedeID
+        );
+
+        if ($fecha->toDateString() <= $vencimientoEfectivo->toDateString()) {
+            \Log::debug('[JOB] Credito ' . $credito->CreditoID . ': en periodo de gracia. Vencimiento efectivo: ' . $vencimientoEfectivo->toDateString());
+            return false;
+        }
+
+        $moraHoy = Mora::where('CreditoID', $credito->CreditoID)
+            ->whereDate('FechaMora', $fecha->toDateString())
+            ->exists();
+
+        if ($moraHoy) {
+            \Log::debug('[JOB] Credito ' . $credito->CreditoID . ': ya tiene mora registrada para ' . $fecha->toDateString());
+            return false;
+        }
+
+        $saldoPendiente = $credito->proposicion
+            ? (float) ($credito->proposicion->SaldoPendiente ?? 0)
+            : 0;
+
+        if ($saldoPendiente <= 0) {
+            \Log::debug('[JOB] Credito ' . $credito->CreditoID . ': saldo pendiente <= 0: ' . number_format($saldoPendiente, 2));
+            return false;
+        }
+
+        $cliente = $credito->proposicion?->cliente;
+        if (!$cliente) {
+            \Log::warning('[JOB] Credito ' . $credito->CreditoID . ': no tiene cliente asociado');
+            return false;
+        }
+
+        $porcentajeMora = $cliente->tasaMora?->Porcentaje ?? 0;
+
+        if ($porcentajeMora <= 0) {
+            \Log::warning('[JOB] Credito ' . $credito->CreditoID . ': cliente sin tasa de mora');
+            return false;
+        }
+
+        $montoMora = $saldoPendiente * ($porcentajeMora / 100);
+
+        $moraAnterior = Mora::where('CreditoID', $credito->CreditoID)
+            ->orderBy('FechaMora', 'desc')
+            ->first();
+
+        $moraAcumulada = ($moraAnterior?->MoraAcumulada ?? 0) + $montoMora;
+
+        Mora::create([
+            'CreditoID' => $credito->CreditoID,
+            'FechaMora' => $fecha,
+            'SaldoPendiente' => $saldoPendiente,
+            'PorcentajeMora' => $porcentajeMora,
+            'MontoMora' => $montoMora,
+            'MoraAcumulada' => $moraAcumulada,
+            'SedeID' => $credito->SedeID,
+        ]);
+
+        \Log::info('[JOB] Mora calculada', [
+            'CreditoID' => $credito->CreditoID,
+            'ClienteID' => $cliente->ClienteID,
+            'Fecha' => $fecha->toDateString(),
+            'SaldoPendiente' => $saldoPendiente,
+            'Porcentaje' => $porcentajeMora,
+            'MontoMora' => $montoMora,
+            'MoraAcumulada' => $moraAcumulada,
+        ]);
+
+        return true;
     }
 }
