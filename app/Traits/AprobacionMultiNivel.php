@@ -37,7 +37,7 @@ trait AprobacionMultiNivel
      */
     public function puedeAprobarPorMonto(float $monto): bool
     {
-        if ($this->puedeVerTodasLasSedes()) {
+        if ($this->esAdmin() || $this->hasRole('admin') || $this->puedeVerTodasLasSedes()) {
             return true;
         }
 
@@ -110,7 +110,7 @@ trait AprobacionMultiNivel
             return false;
         }
 
-        $aprobacion = $this->puedeVerTodasLasSedes()
+        $aprobacion = ($this->esAdmin() || $this->hasRole('admin') || $this->puedeVerTodasLasSedes())
             ? $proposicion->aprobaciones()->withoutGlobalScope('sede')->where('Estado', 'PENDIENTE')->first()
             : $proposicion->aprobaciones()->where('Estado', 'PENDIENTE')->first();
 
@@ -136,7 +136,7 @@ trait AprobacionMultiNivel
             return false;
         }
 
-        $aprobacion = $this->puedeVerTodasLasSedes()
+        $aprobacion = ($this->esAdmin() || $this->hasRole('admin') || $this->puedeVerTodasLasSedes())
             ? $proposicion->aprobaciones()->withoutGlobalScope('sede')->where('Estado', 'PENDIENTE')->first()
             : $proposicion->aprobaciones()->where('Estado', 'PENDIENTE')->first();
 

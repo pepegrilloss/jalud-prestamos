@@ -208,7 +208,6 @@ class AprobacionProposicionResource extends Resource
                     ->visible(
                         fn($record) =>
                         $record->Estado === 'PENDIENTE'
-                        && auth()->user()->getNivelAprobacionActivo()?->NivelAprobacionID !== null
                         && self::puedeAprobarProposicion($record)
                         && AperturaCierreDia::estaAbierto()
                     )
@@ -243,7 +242,6 @@ class AprobacionProposicionResource extends Resource
                     ->visible(
                         fn($record) =>
                         $record->Estado === 'PENDIENTE'
-                        && auth()->user()->getNivelAprobacionActivo()?->NivelAprobacionID !== null
                         && self::puedeAprobarProposicion($record)
                         && AperturaCierreDia::estaAbierto()
                     )
@@ -284,7 +282,7 @@ class AprobacionProposicionResource extends Resource
     {
         $user = auth()->user();
 
-        if ($user?->puedeVerTodasLasSedes()) {
+        if ($user?->esAdmin() || $user?->hasRole('admin') || $user?->puedeVerTodasLasSedes()) {
             // Usuarios privilegiados: verificar sin filtro de sede y sin restriccion de monto
             return $proposicion->aprobaciones()->withoutGlobalScope('sede')
                 ->where('Estado', 'PENDIENTE')->exists();
