@@ -132,6 +132,32 @@ class ResolucionExcedenteService
 
         $excedente->save();
 
+        if ($solicitud->TipoResolucion === 'DEVOLUCION_EFECTIVO') {
+            if (!$solicitud->CreditoDestinoID) {
+                throw new \Exception('Debe seleccionar el credito asociado a la devolucion en efectivo.');
+            }
+
+            $credito = \App\Models\Credito::withoutGlobalScope('sede')
+                ->with('proposicion')
+                ->find($solicitud->CreditoDestinoID);
+
+            app(\App\Services\FondoSedeService::class)->registrarEgresoDevolucionEfectivo(
+                $solicitud->SedeID,
+                $montoAplicar,
+                $solicitud->SolicitudID,
+                $solicitud->CreditoDestinoID,
+                $aprobador->id,
+                'Devolucion en efectivo a '
+                    . ($solicitud->clienteDestino?->NombresApellidos ?? 'cliente')
+                    . ' por solicitud #'
+                    . $solicitud->SolicitudID
+                    . ($credito?->proposicion?->CodigoCredito ? ' - credito ' . $credito->proposicion->CodigoCredito : '')
+                    . ($solicitud->DatosValeCaja ? ' - vale: ' . $solicitud->DatosValeCaja : '')
+            );
+
+            return;
+        }
+
         // AHORA SIEMPRE CREAMOS UN PAGO NUEVO INDEPENDIENTE.
         // Esto garantiza que el dinero de extornos (Cuenta a Mayor) jamás se mezcle con pagos físicos normales.
         

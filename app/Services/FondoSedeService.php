@@ -490,6 +490,47 @@ class FondoSedeService
     }
 
     /**
+     * Registrar egreso de Caja Abierta por devolución de efectivo a cliente.
+     */
+    public function registrarEgresoDevolucionEfectivo($sedeId, $monto, $solicitudId, $creditoId, $usuarioId, ?string $observacion = null)
+    {
+        if ($monto <= 0) {
+            throw ValidationException::withMessages(['Monto' => 'El monto debe ser mayor a 0.']);
+        }
+
+        return DB::transaction(function () use ($sedeId, $monto, $solicitudId, $creditoId, $usuarioId, $observacion) {
+            $fondo = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->firstOrCreate(
+                ['SedeID' => $sedeId],
+                ['Saldo' => 0, 'SaldoCajaChica' => 0]
+            );
+
+            if ($fondo->Saldo < $monto) {
+                throw ValidationException::withMessages([
+                    'Monto' => 'Saldo insuficiente en Caja Abierta. Saldo disponible: S/ ' . number_format($fondo->Saldo, 2),
+                ]);
+            }
+
+            $saldoAnterior = $fondo->Saldo;
+            $saldoNuevo = $saldoAnterior - $monto;
+
+            $fondo->Saldo = $saldoNuevo;
+            $fondo->save();
+
+            MovimientoFondo::create([
+                'SedeID' => $sedeId,
+                'Tipo' => 'EGRESO_DEVOLUCION_EFECTIVO',
+                'Monto' => -$monto,
+                'SaldoAnterior' => $saldoAnterior,
+                'SaldoNuevo' => $saldoNuevo,
+                'UsuarioID' => $usuarioId,
+                'Observacion' => $observacion ?: "Devolucion en efectivo solicitud #{$solicitudId}, credito #{$creditoId}",
+            ]);
+
+            return $fondo;
+        });
+    }
+
+    /**
      * Registrar ingreso por recaudo (pago de cliente).
      */
     public function registrarIngresoRecaudo($sedeId, $monto, $pagoId, $usuarioId)

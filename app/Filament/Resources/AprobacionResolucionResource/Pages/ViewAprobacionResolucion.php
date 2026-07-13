@@ -22,7 +22,21 @@ class ViewAprobacionResolucion extends ViewRecord
                 ->modalDescription('¿Está seguro de aprobar esta solicitud? Se reflejarán los cambios financieros correspondientes de forma automática y el excedente se marcará como resuelto.')
                 ->visible(fn($record) => $record->Estado === 'PENDIENTE' && (auth()->user()->hasRole('Administrador') || auth()->user()->hasRole('Super Admin') || auth()->user()->esAdmin()))
                 ->action(function ($record) {
-                    app(\App\Services\ResolucionExcedenteService::class)->aprobar($record, auth()->user());
+                    try {
+                        app(\App\Services\ResolucionExcedenteService::class)->aprobar($record, auth()->user());
+                    } catch (\Throwable $e) {
+                        $message = $e instanceof \Illuminate\Validation\ValidationException
+                            ? collect($e->errors())->flatten()->first()
+                            : $e->getMessage();
+
+                        Notification::make()
+                            ->title('No se pudo aprobar la solicitud')
+                            ->body($message)
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
 
                     Notification::make()
                         ->title('Solicitud Aprobada y Ejecutada')

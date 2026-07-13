@@ -12,6 +12,10 @@ class EditResolucionExcedente extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        if (($data['TipoResolucion'] ?? null) === 'DEVOLUCION_EFECTIVO') {
+            $data['ClienteOrigenID'] = null;
+        }
+
         $data['SedeID'] = $this->record->SedeID;
 
         $solicitud = $this->record->replicate();

@@ -98,6 +98,16 @@ class SedeIntegrityService
         if ($solicitud->CreditoDestinoID) {
             $creditoDestino = $this->find(Credito::class, 'CreditoID', $solicitud->CreditoDestinoID, 'credito destino');
             $this->assertRecordSede($creditoDestino, $sedeId, 'credito destino');
+
+            if ($solicitud->ClienteDestinoID) {
+                $proposicionDestino = ProposicionCredito::withoutGlobalScope('sede')
+                    ->where('ProposicionCreditoID', $creditoDestino->ProposicionCreditoID)
+                    ->first();
+
+                if ($proposicionDestino && (int) $proposicionDestino->ClienteID !== (int) $solicitud->ClienteDestinoID) {
+                    $this->fail('El credito destino no pertenece al cliente seleccionado.');
+                }
+            }
         }
     }
 

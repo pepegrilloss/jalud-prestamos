@@ -389,12 +389,13 @@ class ReporteDiarioController extends Controller
                 // 5. Inyecciones Manuales y Traslados (desde MovimientoFondo, si existen)
                 $otrosMovimientos = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
                     ->where('FechaMovimiento', '<=', $fechaLimite)
-                    ->whereIn('Tipo', ['INGRESO_CAPITAL', 'TRASLADO_CA_A_CC', 'TRASLADO_CC_A_CA'])
+                    ->whereIn('Tipo', ['INGRESO_CAPITAL', 'TRASLADO_CA_A_CC', 'TRASLADO_CC_A_CA', 'EGRESO_DEVOLUCION_EFECTIVO'])
                     ->get();
 
                 $inyecciones = $otrosMovimientos->where('Tipo', 'INGRESO_CAPITAL')->sum('Monto');
                 $trasladosEntrada = $otrosMovimientos->where('Tipo', 'TRASLADO_CC_A_CA')->sum(function($m) { return abs($m->Monto); });
                 $trasladosSalida = $otrosMovimientos->where('Tipo', 'TRASLADO_CA_A_CC')->sum(function($m) { return abs($m->Monto); });
+                $devolucionesEfectivo = $otrosMovimientos->where('Tipo', 'EGRESO_DEVOLUCION_EFECTIVO')->sum(function($m) { return abs($m->Monto); });
 
                 // 6. Excedentes (sobrantes registrados que entran a Caja Abierta)
                 $excedentes = \App\Models\Excedente::withoutGlobalScopes()
@@ -422,7 +423,7 @@ class ReporteDiarioController extends Controller
                     ->sum('MontoPagado');
 
                 return $transferenciasRecibidas + $pagos + $inyecciones + $trasladosEntrada + $excedentes + $moras
-                     - $transferenciasEnviadas - $creditos - $trasladosSalida;
+                     - $transferenciasEnviadas - $creditos - $trasladosSalida - $devolucionesEfectivo;
             };
 
             // Calcular saldo un milisegundo antes de iniciar el día
@@ -601,12 +602,11 @@ class ReporteDiarioController extends Controller
             $remesasNetCajaChica = $ingresosRemesasCC - $salidasRemesasCC;
 
             // Devoluciones en efectivo del día (dinero que sale de caja abierta)
-            $devolucionesDia = \App\Models\SolicitudResolucionExcedente::withoutGlobalScopes()
+            $devolucionesDia = \App\Models\MovimientoFondo::withoutGlobalScopes()
                 ->where('SedeID', $sedeId)
-                ->where('Estado', 'APROBADA')
-                ->where('TipoResolucion', 'DEVOLUCION_EFECTIVO')
-                ->whereBetween('created_at', [$fechaInicioDia, $fechaFinDia])
-                ->sum('MontoAplicar');
+                ->where('Tipo', 'EGRESO_DEVOLUCION_EFECTIVO')
+                ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
+                ->sum(\DB::raw('ABS(Monto)'));
 
             // Totales finales
             $totalCajaAbierta = $saldoInicialCajaAbierta + $totalAmortizaciones + $totalMoras - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
