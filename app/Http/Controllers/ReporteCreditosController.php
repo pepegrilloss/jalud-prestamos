@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Credito;
 use App\Models\Sede;
+use App\Services\SedeAccessService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
@@ -12,6 +13,12 @@ class ReporteCreditosController extends Controller
 {
     public function descargar(Request $request)
     {
+        abort_unless(
+            $request->user()?->puedeAccederAGerencia()
+                || $request->user()?->can('reporte_creditos'),
+            403
+        );
+
         set_time_limit(0);
         ini_set('memory_limit', '512M');
 
@@ -31,17 +38,8 @@ class ReporteCreditosController extends Controller
         }
 
         $user = auth()->user();
-        if ($user && $user->isPrivileged()) {
-            if ($sedeIdParam === '0' || $sedeIdParam === 'todas' || $sedeIdParam === '') {
-                $sedeId = null;
-            } elseif ($sedeIdParam) {
-                $sedeId = (int) $sedeIdParam;
-            } else {
-                $sedeId = $user->getEffectiveSedeId();
-            }
-        } else {
-            $sedeId = $user?->getEffectiveSedeId();
-        }
+        $sedeId = app(SedeAccessService::class)
+            ->resolveReportSedeId($user, $sedeIdParam);
 
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'TODAS LAS SEDES';

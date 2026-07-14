@@ -24,6 +24,31 @@ class UserResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
     public static function getGloballySearchableAttributes(): array
     {
         return ['name', 'username'];
@@ -202,7 +227,8 @@ class UserResource extends Resource
                             ->send();
                     })
                     ->modalHeading('Asignar Nivel de Aprobación al Usuario')
-                    ->modalSubmitActionLabel('Asignar'),
+                    ->modalSubmitActionLabel('Asignar')
+                    ->visible(fn() => auth()->user()?->puedeGestionarUsuariosYRoles() ?? false),
 
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

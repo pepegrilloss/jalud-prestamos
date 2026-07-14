@@ -276,7 +276,7 @@
         const desde = new Date(this.fechaCreditosDesde);
         const hasta = new Date(this.fechaCreditosHasta);
         if (desde > hasta) {
-            alert('La fecha "Desde" no puede ser mayor que "Hasta".');
+            alert('La fecha Desde no puede ser mayor que Hasta.');
             return false;
         }
         const diff = (hasta - desde) / (1000 * 60 * 60 * 24);

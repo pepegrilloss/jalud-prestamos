@@ -12,6 +12,7 @@ use App\Models\TransferenciaSede;
 use App\Models\SolicitudExoneracion;
 use App\Models\Excedente;
 use App\Models\FondoSede;
+use App\Services\SedeAccessService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
@@ -32,6 +33,12 @@ class ReporteDiarioController extends Controller
      */
     public function descargar(Request $request)
     {
+        abort_unless(
+            $request->user()?->puedeAccederAGerencia()
+                || $request->user()?->can('balance_diario'),
+            403
+        );
+
         set_time_limit(300);
         ini_set('memory_limit', '1024M');
 
@@ -56,17 +63,8 @@ class ReporteDiarioController extends Controller
         }
 
         $user = auth()->user();
-        if ($user && $user->isPrivileged()) {
-            if ($sedeIdParam === '0' || $sedeIdParam === 'todas' || $sedeIdParam === '') {
-                $sedeId = null;
-            } elseif ($sedeIdParam) {
-                $sedeId = (int) $sedeIdParam;
-            } else {
-                $sedeId = $aperturaCierre?->SedeID ?? $user->getEffectiveSedeId();
-            }
-        } else {
-            $sedeId = $user?->getEffectiveSedeId() ?? $aperturaCierre?->SedeID;
-        }
+        $sedeId = app(SedeAccessService::class)
+            ->resolveReportSedeId($user, $sedeIdParam);
 
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'SEDE NO ESPECIFICADA';

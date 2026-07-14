@@ -31,7 +31,7 @@ class LogPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create_log');
+        return false;
     }
 
     /**
@@ -39,7 +39,7 @@ class LogPolicy
      */
     public function update(User $user, Log $log): bool
     {
-        return $user->can('update_log');
+        return false;
     }
 
     /**
@@ -47,7 +47,7 @@ class LogPolicy
      */
     public function delete(User $user, Log $log): bool
     {
-        return $user->can('delete_log');
+        return false;
     }
 
     /**
@@ -55,7 +55,7 @@ class LogPolicy
      */
     public function deleteAny(User $user): bool
     {
-        return $user->can('{{ DeleteAny }}');
+        return false;
     }
 
     /**
@@ -63,7 +63,7 @@ class LogPolicy
      */
     public function forceDelete(User $user, Log $log): bool
     {
-        return $user->can('{{ ForceDelete }}');
+        return false;
     }
 
     /**
@@ -71,7 +71,7 @@ class LogPolicy
      */
     public function forceDeleteAny(User $user): bool
     {
-        return $user->can('{{ ForceDeleteAny }}');
+        return false;
     }
 
     /**

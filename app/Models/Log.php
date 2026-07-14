@@ -38,14 +38,14 @@ class Log extends Model
         return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
-    public static function registrar($accion, $modelo, $modeloId = null, $oldValues = null, $newValues = null)
+    public static function registrar($accion, $modelo, $modeloId = null, $oldValues = null, $newValues = null, ?int $sedeId = null, ?int $userId = null)
     {
         // SEGURIDAD: Sanitizar datos sensibles antes de guardar en logs
         $oldValues = self::sanitizarValoresSensibles($oldValues);
         $newValues = self::sanitizarValoresSensibles($newValues);
 
         return self::create([
-            'user_id' => auth()->id() ?? 0,
+            'user_id' => $userId ?? auth()->id() ?? 0,
             'accion' => $accion,
             'modelo' => $modelo,
             'modelo_id' => $modeloId,
@@ -55,7 +55,8 @@ class Log extends Model
             'user_agent' => request()->userAgent(),
             'machine_name' => php_uname('n') ?: gethostname() ?: null,
             'platform' => PHP_OS_FAMILY,
-            'created_at' => now()
+            'created_at' => now(),
+            'SedeID' => $sedeId ?? auth()->user()?->getEffectiveSedeId(),
         ]);
     }
 

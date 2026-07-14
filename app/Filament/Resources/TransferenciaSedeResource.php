@@ -42,7 +42,7 @@ class TransferenciaSedeResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-            return true;
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
         }
         return parent::shouldRegisterNavigation();
     }
@@ -50,7 +50,7 @@ class TransferenciaSedeResource extends Resource
     public static function canAccess(): bool
     {
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-            return true;
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
         }
         return parent::canAccess();
     }
@@ -344,7 +344,7 @@ class TransferenciaSedeResource extends Resource
     public static function esGerencia(): bool
     {
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-            return true;
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
         }
         $sedeActiva = session('sede_activa');
         if ($sedeActiva) {

@@ -50,7 +50,10 @@ class User extends Authenticatable implements FilamentUser
     // MÉTODO NUEVO - REQUERIDO POR FILAMENT
     public function canAccessPanel(Panel $panel): bool
     {
-        // Permitir acceso si tiene cualquier rol
+        if ($panel->getId() === 'gerencia') {
+            return $this->puedeAccederAGerencia();
+        }
+
         return $this->roles()->exists();
 
         // O si prefieres ser más específico:
@@ -153,6 +156,16 @@ class User extends Authenticatable implements FilamentUser
     public function esAdmin(): bool
     {
         return $this->hasRole(\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName());
+    }
+
+    public function puedeGestionarUsuariosYRoles(): bool
+    {
+        return $this->esAdmin() || $this->hasRole('admin');
+    }
+
+    public function puedeAccederAGerencia(): bool
+    {
+        return $this->esAdmin() || $this->puedeVerTodasLasSedes();
     }
 
     /**

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Models\ProposicionCredito;
+use App\Services\SedeAccessService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 Route::get('/', function () {
@@ -35,14 +36,18 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         ->name('acta-creditos.excel');
 
     Route::get('/pdf/clientes-inactivos', function () {
+        abort_unless(
+            auth()->user()->puedeAccederAGerencia()
+                || auth()->user()->can('view_any_reporte::clientes::inactivos'),
+            403
+        );
+
         $nombre = request()->get('nombre');
         $fechaDesde = request()->get('fecha_desde');
         $fechaHasta = request()->get('fecha_hasta');
 
-        $sedeParam = request()->get('sede_id');
-        $sedeId = ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '')
-            ? null
-            : (($sedeParam) ? (int) $sedeParam : auth()->user()->getEffectiveSedeId());
+        $sedeId = app(SedeAccessService::class)
+            ->resolveReportSedeId(auth()->user(), request()->get('sede_id'));
 
         $clientes = \Illuminate\Support\Facades\DB::table('Cliente')
             ->select('Cliente.ClienteID', 'Cliente.DNI', 'Cliente.NombresApellidos')
@@ -115,13 +120,17 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     })->name('clientes-inactivos.view');
 
     Route::get('/pdf/clientes-atraso', function () {
+        abort_unless(
+            auth()->user()->puedeAccederAGerencia()
+                || auth()->user()->can('view_any_reporte::clientes::atraso'),
+            403
+        );
+
         $fechaDesde = request()->get('fecha_desde');
         $fechaHasta = request()->get('fecha_hasta');
         $clienteId = request()->get('cliente_id');
-        $sedeParam = request()->get('sede_id');
-        $sedeId = ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '')
-            ? null
-            : (($sedeParam) ? (int) $sedeParam : auth()->user()->getEffectiveSedeId());
+        $sedeId = app(SedeAccessService::class)
+            ->resolveReportSedeId(auth()->user(), request()->get('sede_id'));
 
         $query = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) {
@@ -157,18 +166,22 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     })->name('clientes-atraso.view');
 
     Route::get('/pdf/creditos-vencidos', function () {
+        abort_unless(
+            auth()->user()->puedeAccederAGerencia()
+                || auth()->user()->can('view_any_reporte::creditos::vencidos'),
+            403
+        );
+
         $fechaDesde = request()->get('fecha_desde') ?? request()->get('fecha');
         $fechaHasta = request()->get('fecha_hasta') ?? request()->get('fecha');
-        $sedeParam = request()->get('sede_id');
         $clienteId = request()->get('cliente_id');
         $tipoCreditoId = request()->get('tipo_credito_id');
 
         $fechaCarbonDesde = $fechaDesde ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaDesde) : now();
         $fechaCarbonHasta = $fechaHasta ? \Carbon\Carbon::createFromFormat('Y-m-d', $fechaHasta) : $fechaCarbonDesde;
         
-        $sedeId = ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '')
-            ? null
-            : (($sedeParam) ? (int) $sedeParam : auth()->user()->getEffectiveSedeId());
+        $sedeId = app(SedeAccessService::class)
+            ->resolveReportSedeId(auth()->user(), request()->get('sede_id'));
 
         $query = \App\Models\Credito::where('Activo', 1)
             ->whereHas('proposicion', function ($q) use ($clienteId, $tipoCreditoId) {
@@ -221,11 +234,15 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     })->name('creditos-vencidos.view');
 
     Route::get('/pdf/cuentas-canceladas', function () {
+        abort_unless(
+            auth()->user()->puedeAccederAGerencia()
+                || auth()->user()->can('view_any_reporte::cuentas::canceladas'),
+            403
+        );
+
         $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
-        $sedeParam = request()->get('sede_id');
-        $sedeId = ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '')
-            ? null
-            : (($sedeParam) ? (int) $sedeParam : auth()->user()->getEffectiveSedeId());
+        $sedeId = app(SedeAccessService::class)
+            ->resolveReportSedeId(auth()->user(), request()->get('sede_id'));
 
         $proposiciones = \App\Models\ProposicionCredito::select('ProposicionCredito.*')
             ->join('Credito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')

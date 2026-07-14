@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 use App\Models\Sede;
 class LogResource extends Resource
@@ -20,6 +21,27 @@ class LogResource extends Resource
     protected static ?int $navigationGroupSort = 10;
     protected static ?string $modelLabel = 'Log';
     protected static ?string $pluralModelLabel = 'Logs';
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() || parent::canViewAny();
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() || parent::canView($record);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if (auth()->user()?->puedeAccederAGerencia()) {
+            return $query->withoutGlobalScope('sede');
+        }
+
+        return $query;
+    }
 
     public static function form(Form $form): Form
     {
@@ -74,6 +96,7 @@ class LogResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->poll('15s')
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
@@ -92,6 +115,7 @@ class LogResource extends Resource
                         'ELIMINAR' => 'danger',
                         'LOGIN' => 'success',
                         'LOGOUT' => 'warning',
+                        'LOGIN_FALLIDO' => 'danger',
                         default => 'gray',
                     })
                     ->sortable(),
@@ -123,7 +147,7 @@ class LogResource extends Resource
                 Tables\Filters\SelectFilter::make('SedeID')
                     ->label('Sede')
                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
-                    ->visible(fn() => auth()->user()->esAdmin()),
+                    ->visible(fn() => auth()->user()?->puedeAccederAGerencia() ?? false),
                 Tables\Filters\SelectFilter::make('accion')
                     ->label('Acción')
                     ->options([
@@ -132,6 +156,7 @@ class LogResource extends Resource
                         'ELIMINAR' => 'Eliminar',
                         'LOGIN' => 'Login',
                         'LOGOUT' => 'Logout',
+                        'LOGIN_FALLIDO' => 'Login fallido',
                     ]),
 
                 Tables\Filters\SelectFilter::make('modelo')
@@ -143,9 +168,6 @@ class LogResource extends Resource
                 Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
             ]);
     }
 

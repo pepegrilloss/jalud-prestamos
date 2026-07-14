@@ -14,7 +14,8 @@ class AuditObserver
                 class_basename($model),
                 $model->getKey(),
                 null,
-                $model->toArray()
+                $model->toArray(),
+                $this->resolveSedeId($model)
             );
         }
     }
@@ -35,7 +36,8 @@ class AuditObserver
                 class_basename($model),
                 $model->getKey(),
                 $oldValues,
-                $changes
+                $changes,
+                $this->resolveSedeId($model)
             );
         }
     }
@@ -48,7 +50,8 @@ class AuditObserver
                 class_basename($model),
                 $model->getKey(),
                 $model->toArray(),
-                null
+                null,
+                $this->resolveSedeId($model)
             );
         }
     }
@@ -60,5 +63,10 @@ class AuditObserver
             return false;
         }
         return true;
+    }
+
+    private function resolveSedeId($model): ?int
+    {
+        return isset($model->SedeID) ? (int) $model->SedeID : null;
     }
 }

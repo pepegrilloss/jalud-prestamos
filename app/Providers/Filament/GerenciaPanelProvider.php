@@ -24,6 +24,7 @@ use App\Filament\Resources\AperturaCierreDiaResource;
 use App\Filament\Resources\CompraResource;
 use App\Filament\Resources\FondoSedeResource;
 use App\Filament\Resources\GastoResource;
+use App\Filament\Resources\LogResource;
 use App\Filament\Resources\TransferenciaSedeResource;
 use App\Filament\Widgets\CajaAbiertaWidget;
 use App\Filament\Widgets\CajaChicaWidget;
@@ -127,12 +128,14 @@ class GerenciaPanelProvider extends PanelProvider
                 'Tesorería',
                 'Compras y Gastos',
                 'Reportes',
+                'Sistema',
             ])
             ->resources([
                 AperturaCierreDiaResource::class,
                 CompraResource::class,
                 FondoSedeResource::class,
                 GastoResource::class,
+                LogResource::class,
                 TransferenciaSedeResource::class,
             ])
             ->pages([

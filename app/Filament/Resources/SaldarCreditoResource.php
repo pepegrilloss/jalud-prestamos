@@ -333,6 +333,14 @@ class SaldarCreditoResource extends Resource
                                     ->update(['Estado' => 'PAGADA', 'FechaPago' => now()]);
 
                                 $morasElim += DB::table('mora')->where('CreditoID', $creditoID)->delete();
+                                AuditLog::registrar(
+                                    'SALDAR_MASIVO',
+                                    'Credito',
+                                    $creditoID,
+                                    ['SaldoPendiente' => (float) $record->SaldoPendiente],
+                                    ['SaldoPendiente' => 0, 'MorasEliminadas' => $morasElim],
+                                    $record->SedeID
+                                );
                                 $saldados++;
                             }
 

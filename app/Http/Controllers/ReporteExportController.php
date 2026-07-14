@@ -13,6 +13,7 @@ use App\Models\SolicitudExoneracion;
 use App\Models\SolicitudResolucionExcedente;
 use App\Models\FondoSede;
 use App\Models\AperturaCierreDia;
+use App\Services\SedeAccessService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -23,22 +24,16 @@ use Carbon\Carbon;
 
 class ReporteExportController extends Controller
 {
+    private function authorizeGerencia(Request $request): void
+    {
+        abort_unless($request->user()?->puedeAccederAGerencia(), 403);
+    }
+
     private function resolveSedeId(): ?int
     {
         $user = auth()->user();
-        $sedeParam = request()->get('sede_id');
-
-        if ($user->isPrivileged()) {
-            if ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '') {
-                return null;
-            }
-            if ($sedeParam) {
-                return (int) $sedeParam;
-            }
-            return $user->getEffectiveSedeId();
-        }
-
-        return $user->getEffectiveSedeId();
+        return app(SedeAccessService::class)
+            ->resolveReportSedeId($user, request()->get('sede_id'));
     }
 
     private function getStyles(): array
@@ -80,6 +75,8 @@ class ReporteExportController extends Controller
     // ─── BALANCE DIARIO ───
     public function diarioExcel(Request $request)
     {
+        $this->authorizeGerencia($request);
+
         $fecha = $request->get('fecha');
         if (!$fecha) { abort(400, 'Fecha no proporcionada'); }
         $sedeId = $this->resolveSedeId();
@@ -388,6 +385,8 @@ class ReporteExportController extends Controller
     // ─── CUENTAS CANCELADAS ───
     public function canceladasExcel(Request $request)
     {
+        $this->authorizeGerencia($request);
+
         $fecha = $request->get('fecha') ? Carbon::createFromFormat('Y-m-d', $request->get('fecha')) : now();
         $sedeId = $this->resolveSedeId();
 
@@ -469,6 +468,8 @@ class ReporteExportController extends Controller
     // ─── REPORTE DE CARTERA ───
     public function carteraExcel(Request $request)
     {
+        $this->authorizeGerencia($request);
+
         $fecha = $request->get('fecha');
         $tipos = $request->get('tipos', '');
         if (!$fecha) abort(400, 'Debe especificar una fecha.');
@@ -602,6 +603,8 @@ class ReporteExportController extends Controller
     // ─── CREDITOS VENCIDOS ───
     public function vencidosExcel(Request $request)
     {
+        $this->authorizeGerencia($request);
+
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
         $sedeId = $this->resolveSedeId();
@@ -675,6 +678,8 @@ class ReporteExportController extends Controller
     // ─── CLIENTES ATRASO ───
     public function atrasoExcel(Request $request)
     {
+        $this->authorizeGerencia($request);
+
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
         $clienteId = $request->get('cliente_id');
@@ -746,6 +751,8 @@ class ReporteExportController extends Controller
     // ─── CLIENTES INACTIVOS ───
     public function inactivosExcel(Request $request)
     {
+        $this->authorizeGerencia($request);
+
         $nombre = $request->get('nombre');
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
@@ -860,6 +867,8 @@ class ReporteExportController extends Controller
     // ─── REPORTE DE CREDITOS ───
     public function creditosExcel(Request $request)
     {
+        $this->authorizeGerencia($request);
+
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
         if (!$fechaDesde || !$fechaHasta) { abort(400, 'Debe especificar un rango de fechas.'); }

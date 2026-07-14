@@ -148,6 +148,14 @@ class ViewCredito extends ViewRecord
                     $montoCuota = round($totalPagar / $cuotas, 2);
 
                     $creditoID = $this->record->CreditoID;
+                    $valoresAnteriores = [
+                        'MontoTotal' => (float) $prop->MontoTotal,
+                        'TasaID' => (int) $prop->TasaID,
+                        'TasaInteres' => (float) $prop->TasaInteres,
+                        'ZonaID' => (int) $prop->ZonaID,
+                        'NumeroCuotas' => (int) $prop->NumeroCuotas,
+                        'SaldoPendiente' => (float) $prop->SaldoPendiente,
+                    ];
 
                     $zona = Zona::withoutGlobalScope('sede')->find($zonaID);
                     if (!$zona || (int) $zona->SedeID !== (int) $prop->SedeID) {
@@ -239,6 +247,24 @@ class ViewCredito extends ViewRecord
                                 ]);
                         }
                     });
+
+                    \App\Models\Log::registrar(
+                        'EDITAR_CAPITAL_TASA',
+                        'Credito',
+                        $creditoID,
+                        $valoresAnteriores,
+                        [
+                            'MontoTotal' => $monto,
+                            'TasaID' => $tasaID,
+                            'TasaInteres' => $tasa,
+                            'ZonaID' => $zonaID,
+                            'NumeroCuotas' => $cuotas,
+                            'MontoTotalPagar' => $totalPagar,
+                            'MontoCuota' => $montoCuota,
+                            'SaldoPendiente' => $nuevoSaldo,
+                        ],
+                        $prop->SedeID
+                    );
 
                     $this->redirect($this->getResource()::getUrl('view', ['record' => $this->record]));
                 })

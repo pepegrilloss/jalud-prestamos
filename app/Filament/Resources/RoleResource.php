@@ -25,6 +25,31 @@ class RoleResource extends Resource implements HasShieldPermissions
 
     protected static ?string $recordTitleAttribute = 'name';
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->puedeGestionarUsuariosYRoles() ?? false;
+    }
+
     public static function getPermissionPrefixes(): array
     {
         return [

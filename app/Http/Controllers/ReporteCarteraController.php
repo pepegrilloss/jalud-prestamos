@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Credito;
 use App\Models\Pago;
 use App\Models\Sede;
+use App\Services\SedeAccessService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
@@ -13,6 +14,12 @@ class ReporteCarteraController extends Controller
 {
     public function descargar(Request $request)
     {
+        abort_unless(
+            $request->user()?->puedeAccederAGerencia()
+                || $request->user()?->can('reporte_cartera'),
+            403
+        );
+
         $fecha = $request->get('fecha');
         $tipos = $request->get('tipos', ''); // comma-separated: no_vencida,vencida,morosa,pesada
 
@@ -30,18 +37,8 @@ class ReporteCarteraController extends Controller
         }
 
         $user = auth()->user();
-        if ($user->isPrivileged()) {
-            $sedeParam = request()->get('sede_id');
-            if ($sedeParam === '0' || $sedeParam === 'todas' || $sedeParam === '') {
-                $sedeId = null;
-            } elseif ($sedeParam) {
-                $sedeId = (int) $sedeParam;
-            } else {
-                $sedeId = $user->getEffectiveSedeId();
-            }
-        } else {
-            $sedeId = $user->SedeID;
-        }
+        $sedeId = app(SedeAccessService::class)
+            ->resolveReportSedeId($user, request()->get('sede_id'));
 
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'SEDE NO ESPECIFICADA';

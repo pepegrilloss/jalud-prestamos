@@ -15,7 +15,9 @@ class LogAuthenticationListener
             'User',
             $event->user->id,
             null,
-            ['user_id' => $event->user->id, 'name' => $event->user->name]
+            ['user_id' => $event->user->id, 'name' => $event->user->name],
+            $event->user->SedeID,
+            $event->user->id
         );
     }
 
@@ -26,7 +28,9 @@ class LogAuthenticationListener
             'User',
             $event->user->id,
             ['user_id' => $event->user->id, 'name' => $event->user->name],
-            null
+            null,
+            $event->user->SedeID,
+            $event->user->id
         );
     }
 

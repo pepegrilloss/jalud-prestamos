@@ -2,6 +2,8 @@
 
 namespace App\Listeners;
 
+use App\Models\Log as AuditLog;
+use App\Models\User;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -20,10 +22,27 @@ class LogFailedLoginAttempt
         
         // Obtener el número de intentos
         $attempts = RateLimiter::attempts($key);
+        $identificador = $event->credentials['username'] ?? $event->credentials['email'] ?? 'desconocido';
+        $usuario = User::query()
+            ->where('username', $identificador)
+            ->orWhere('email', $identificador)
+            ->first();
+
+        AuditLog::registrar(
+            'LOGIN_FALLIDO',
+            'Auth',
+            $usuario?->id,
+            null,
+            [
+                'identificador' => $identificador,
+                'intentos_desde_ip' => $attempts,
+            ],
+            $usuario?->SedeID
+        );
         
         // Log del intento fallido
         \Log::warning('SEGURIDAD - INTENTO DE LOGIN FALLIDO', [
-            'Usuario' => $event->credentials['username'] ?? $event->credentials['email'] ?? 'desconocido',
+            'Usuario' => $identificador,
             'IP' => $ip,
             'Intentos' => $attempts,
             'UserAgent' => request()->userAgent(),

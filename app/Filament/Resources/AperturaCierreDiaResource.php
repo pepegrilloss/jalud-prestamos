@@ -341,7 +341,7 @@ class AperturaCierreDiaResource extends Resource
     public static function canViewAny(): bool
     {
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-            return auth()->check();
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
         }
         return parent::canViewAny();
     }

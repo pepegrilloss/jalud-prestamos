@@ -29,7 +29,7 @@ class FondoSedeResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-            return true;
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
         }
         return parent::shouldRegisterNavigation();
     }
@@ -37,14 +37,15 @@ class FondoSedeResource extends Resource
     public static function canAccess(): bool
     {
         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
-            return true;
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
         }
         return parent::canAccess();
     }
 
     public static function canCreate(): bool
     {
-        return filament()->getCurrentPanel()?->getId() === 'gerencia';
+        return filament()->getCurrentPanel()?->getId() === 'gerencia'
+            && (auth()->user()?->puedeAccederAGerencia() ?? false);
     }
 
     public static function getEloquentQuery(): Builder
