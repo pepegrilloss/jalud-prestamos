@@ -22,9 +22,12 @@ use App\Filament\Pages\GerenciaDashboard;
 use App\Filament\Pages\GerenciaReportes;
 use App\Filament\Resources\AperturaCierreDiaResource;
 use App\Filament\Resources\CompraResource;
+use App\Filament\Resources\CuentaTesoreriaResource;
 use App\Filament\Resources\FondoSedeResource;
 use App\Filament\Resources\GastoResource;
 use App\Filament\Resources\LogResource;
+use App\Filament\Resources\MovimientoTesoreriaResource;
+use App\Filament\Resources\PrestamoBancarioResource;
 use App\Filament\Resources\TransferenciaSedeResource;
 use App\Filament\Widgets\CajaAbiertaWidget;
 use App\Filament\Widgets\CajaChicaWidget;
@@ -52,7 +55,7 @@ class GerenciaPanelProvider extends PanelProvider
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('3rem')
             ->colors([
-                'primary' => '#a4cb3b',
+                'primary' => '#9fcb36',
             ])
             ->assets([
                 Css::make('custom-login-css', public_path('css/login-custom.css')),
@@ -133,9 +136,12 @@ class GerenciaPanelProvider extends PanelProvider
             ->resources([
                 AperturaCierreDiaResource::class,
                 CompraResource::class,
+                CuentaTesoreriaResource::class,
                 FondoSedeResource::class,
                 GastoResource::class,
                 LogResource::class,
+                MovimientoTesoreriaResource::class,
+                PrestamoBancarioResource::class,
                 TransferenciaSedeResource::class,
             ])
             ->pages([

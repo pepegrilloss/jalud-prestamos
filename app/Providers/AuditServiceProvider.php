@@ -23,7 +23,19 @@ use App\Models\Negocio;
 use App\Models\DocumentoCliente;
 use App\Models\Mora;
 use App\Models\AprobacionProposicion;
+use App\Models\CuentaTesoreria;
+use App\Models\MovimientoTesoreria;
+use App\Models\PrestamoBancario;
+use App\Models\CuotaPrestamoBancario;
+use App\Models\PagoPrestamoBancario;
+use App\Models\RosCaso;
+use App\Models\RosPersona;
+use App\Models\RosOperacion;
+use App\Models\RosSenalAlerta;
+use App\Models\RosTipologia;
+use App\Models\RosAdjunto;
 use App\Observers\AuditObserver;
+use App\Observers\RosAuditObserver;
 
 class AuditServiceProvider extends ServiceProvider
 {
@@ -49,6 +61,17 @@ class AuditServiceProvider extends ServiceProvider
         DocumentoCliente::observe(AuditObserver::class);
         Mora::observe(AuditObserver::class);
         AprobacionProposicion::observe(AuditObserver::class);
+        CuentaTesoreria::observe(AuditObserver::class);
+        MovimientoTesoreria::observe(AuditObserver::class);
+        PrestamoBancario::observe(AuditObserver::class);
+        CuotaPrestamoBancario::observe(AuditObserver::class);
+        PagoPrestamoBancario::observe(AuditObserver::class);
+        RosCaso::observe(RosAuditObserver::class);
+        RosPersona::observe(RosAuditObserver::class);
+        RosOperacion::observe(RosAuditObserver::class);
+        RosSenalAlerta::observe(RosAuditObserver::class);
+        RosTipologia::observe(RosAuditObserver::class);
+        RosAdjunto::observe(RosAuditObserver::class);
     }
 
     public function register()

@@ -42,7 +42,7 @@ class AdminPanelProvider extends PanelProvider
             ->databaseNotifications(fn() => auth()->user()?->esAdmin() ?? false)
             ->databaseNotificationsPolling('60s')
             ->colors([
-                'primary' => '#a4cb3b',
+                'primary' => '#9fcb36',
             ])
             ->assets([
                 Css::make('custom-login-css', public_path('css/login-custom.css')),
@@ -109,7 +109,7 @@ class AdminPanelProvider extends PanelProvider
                     <div x-show="$store.sidebar.isOpen" class="px-2 pb-4 pt-4">
                         <div class="relative group">
                             <span class="absolute inset-y-0 left-0 flex items-center pointer-events-none" style="padding-left: 1rem;">
-                                <svg class="w-5 h-5 text-gray-400 group-focus-within:text-[#a4cb3b] transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <svg class="w-5 h-5 text-gray-400 group-focus-within:text-[#9fcb36] transition-colors" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                                 </svg>
                             </span>
@@ -117,7 +117,7 @@ class AdminPanelProvider extends PanelProvider
                                    id="sidebar-search-input"
                                    placeholder="Buscar en el menú..." 
                                    onkeyup="filterSidebarItems(this.value)"
-                                   class="block w-full pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-4 focus:ring-[#a4cb3b]/20 focus:border-[#a4cb3b] transition-all outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400 shadow-sm"
+                                   class="block w-full pr-4 py-2.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-4 focus:ring-[#9fcb36]/20 focus:border-[#9fcb36] transition-all outline-none text-gray-800 dark:text-gray-100 placeholder:text-gray-400 shadow-sm"
                                    style="padding-left: 3.5rem !important; font-family: \'Ubuntu\', sans-serif;">
                         </div>
                     </div>
