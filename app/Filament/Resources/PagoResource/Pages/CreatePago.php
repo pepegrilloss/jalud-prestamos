@@ -362,7 +362,7 @@ class CreatePago extends CreateRecord
         if (!isset($data['CreditoID']) || empty($data['CreditoID'])) {
             $clienteID = $data['ClienteID'] ?? null;
                 $user = auth()->user();
-                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+                $puedePagarMayor = PagoResource::puedeSeleccionarCreditosSaldados($user);
 
                 // OPTIMIZADO: Usa servicio centralizado (lee columna SaldoPendiente)
                 $creditosConSaldo = \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor);
@@ -408,12 +408,14 @@ class CreatePago extends CreateRecord
             }
             $data['EsPagoAMayor'] = true;
             $data['EsPagoAMayorPorMora'] = false;
+            $data['EsMora'] = false;
         } elseif ($this->tipoPagoAMayorSeleccionado === 'MAYOR_MORA') {
             if (!auth()->user()?->can('registrar_pagos_a_mayor_por_mora')) {
                 throw new \Exception('No tienes permiso para registrar pagos a mayor por mora.');
             }
             $data['EsPagoAMayor'] = false;
             $data['EsPagoAMayorPorMora'] = true;
+            $data['EsMora'] = false;
         } else {
             $data['EsPagoAMayor'] = false;
             $data['EsPagoAMayorPorMora'] = false;

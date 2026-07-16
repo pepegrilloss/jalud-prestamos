@@ -30,6 +30,16 @@ class PagoResource extends Resource
     protected static ?string $modelLabel = 'Pago';
     protected static ?string $pluralModelLabel = 'Pagos';
 
+    public static function puedeSeleccionarCreditosSaldados($user = null): bool
+    {
+        $user ??= auth()->user();
+
+        return (bool) (
+            $user?->can('registrar_pagos_a_mayor')
+            || $user?->can('registrar_pagos_a_mayor_por_mora')
+        );
+    }
+
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()
@@ -117,7 +127,7 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
                                 $user = auth()->user();
-                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+                                $puedePagarMayor = static::puedeSeleccionarCreditosSaldados($user);
 
                                 // OPTIMIZADO: Filtrar por columna SaldoPendiente en SQL
                                 $query = \App\Models\Cliente::whereHas('proposiciones', function ($q) use ($zonaID, $puedePagarMayor) {
@@ -176,7 +186,7 @@ class PagoResource extends Resource
                                     $cliente = \App\Models\Cliente::with([
                                         'proposiciones' => function ($q) use ($zonaID) {
                                             $user = auth()->user();
-                                            $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+                                            $puedePagarMayor = static::puedeSeleccionarCreditosSaldados($user);
 
                                             if (!$puedePagarMayor) {
                                                 $q->where('FueRefinanciada', 0)
@@ -205,7 +215,7 @@ class PagoResource extends Resource
                                     if ($cliente) {
                                         // Filtrar proposiciones con saldo pendiente > 0 o saldados si tiene permiso
                                         $user = auth()->user();
-                                        $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+                                        $puedePagarMayor = static::puedeSeleccionarCreditosSaldados($user);
 
                                         $proposicionesConSaldo = $cliente->proposiciones->filter(function ($prop) use ($puedePagarMayor) {
                                             // OPTIMIZADO: Leer de columna SaldoPendiente (ya cargada con el modelo)
@@ -266,7 +276,7 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
                                 $user = auth()->user();
-                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+                                $puedePagarMayor = static::puedeSeleccionarCreditosSaldados($user);
 
                                 // OPTIMIZADO: Usa servicio centralizado (lee columna SaldoPendiente)
                                 $creditos = \App\Services\SaldoPendienteService::obtenerCreditosConSaldoParaCliente($clienteID, $zonaID, $puedePagarMayor);
@@ -291,7 +301,7 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
                                 $user = auth()->user();
-                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+                                $puedePagarMayor = static::puedeSeleccionarCreditosSaldados($user);
 
                                 $count = \Illuminate\Support\Facades\Cache::remember(
                                     "pago_saldo_count_{$clienteID}_{$zonaID}_" . ($puedePagarMayor ? '1' : '0'),
@@ -311,7 +321,7 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
                                 $user = auth()->user();
-                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+                                $puedePagarMayor = static::puedeSeleccionarCreditosSaldados($user);
 
                                 $count = \Illuminate\Support\Facades\Cache::remember(
                                     "pago_saldo_count_{$clienteID}_{$zonaID}_" . ($puedePagarMayor ? '1' : '0'),
@@ -343,7 +353,7 @@ class PagoResource extends Resource
                                 $promotorCobrador = auth()->user()?->promotorCobrador;
                                 $zonaID = $promotorCobrador?->ZonaID;
                                 $user = auth()->user();
-                                $puedePagarMayor = $user?->can('registrar_pagos_a_mayor') || $user?->can('registrar_pagos_a_mayor_por_mora');
+                                $puedePagarMayor = static::puedeSeleccionarCreditosSaldados($user);
 
                                 // OPTIMIZACIÓN: reutilizar el conteo cacheado.
                                 $count = \Illuminate\Support\Facades\Cache::remember(
