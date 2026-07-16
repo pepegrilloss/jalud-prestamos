@@ -3,18 +3,20 @@
 namespace App\Filament\Resources;
 
 use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
-use BezhanSalleh\FilamentShield\Forms\ShieldSelectAllToggle;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use App\Filament\Resources\RoleResource\Pages;
 use BezhanSalleh\FilamentShield\Support\Utils;
 use BezhanSalleh\FilamentShield\Traits\HasShieldFormComponents;
 use Filament\Facades\Filament;
 use Filament\Forms;
+use Filament\Forms\Set;
 use Filament\Forms\Form;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Unique;
@@ -93,12 +95,33 @@ class RoleResource extends Resource implements HasShieldPermissions
                                     ->options(fn (): Arrayable => Utils::getTenantModel() ? Utils::getTenantModel()::pluck('name', 'id') : collect())
                                     ->hidden(fn (): bool => ! (static::shield()->isCentralApp() && Utils::isTenancyEnabled()))
                                     ->dehydrated(fn (): bool => ! (static::shield()->isCentralApp() && Utils::isTenancyEnabled())),
-                                ShieldSelectAllToggle::make('select_all')
+                                Forms\Components\Toggle::make('select_all')
                                     ->onIcon('heroicon-s-shield-check')
                                     ->offIcon('heroicon-s-shield-exclamation')
                                     ->label(__('filament-shield::filament-shield.field.select_all.name'))
                                     ->helperText(fn (): HtmlString => new HtmlString(__('filament-shield::filament-shield.field.select_all.message')))
-                                    ->dehydrated(fn (bool $state): bool => $state),
+                                    ->live()
+                                    ->afterStateHydrated(function (Forms\Components\Toggle $component, ?Model $record): void {
+                                        if (!$record) {
+                                            return;
+                                        }
+
+                                        $permissions = collect(static::getAllPermissionStateByField())
+                                            ->flatten()
+                                            ->unique()
+                                            ->values();
+
+                                        $component->state(
+                                            $permissions->isNotEmpty()
+                                            && $permissions->every(fn (string $permission): bool => $record->checkPermissionTo($permission))
+                                        );
+                                    })
+                                    ->afterStateUpdated(function (Set $set, bool $state): void {
+                                        foreach (static::getAllPermissionStateByField() as $field => $permissions) {
+                                            $set($field, $state ? $permissions : []);
+                                        }
+                                    })
+                                    ->dehydrated(false),
 
                             ])
                             ->columns([
@@ -149,6 +172,35 @@ class RoleResource extends Resource implements HasShieldPermissions
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
+    }
+
+    protected static function getAllPermissionStateByField(): array
+    {
+        $fields = [];
+
+        if (Utils::isResourceEntityEnabled()) {
+            if (static::shield()->hasSimpleResourcePermissionView()) {
+                $fields['resources_tab'] = array_keys(FilamentShield::getAllResourcePermissions());
+            } else {
+                foreach (FilamentShield::getResources() as $entity) {
+                    $fields[$entity['resource']] = array_keys(static::getResourcePermissionOptions($entity));
+                }
+            }
+        }
+
+        if (Utils::isPageEntityEnabled()) {
+            $fields['pages_tab'] = array_keys(static::getPageOptions());
+        }
+
+        if (Utils::isWidgetEntityEnabled()) {
+            $fields['widgets_tab'] = array_keys(static::getWidgetOptions());
+        }
+
+        if (Utils::isCustomPermissionEntityEnabled()) {
+            $fields['custom_permissions'] = array_keys(static::getCustomPermissionOptions() ?? []);
+        }
+
+        return array_filter($fields, fn (array $permissions): bool => count($permissions) > 0);
     }
 
     public static function getRelations(): array

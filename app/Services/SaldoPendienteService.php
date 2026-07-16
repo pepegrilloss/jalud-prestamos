@@ -75,8 +75,6 @@ class SaldoPendienteService
             ->where('ProposicionCreditoID', $proposicionCreditoID)
             ->update(['SaldoPendiente' => $saldo]);
 
-        self::sincronizarEstatusCredito($credito, $saldo);
-
         if ($saldoAnterior != $saldo) {
             \App\Models\Log::registrar(
                 'ACTUALIZAR',
@@ -88,53 +86,6 @@ class SaldoPendienteService
         }
 
         return (float) $saldo;
-    }
-
-    private static function sincronizarEstatusCredito(Credito $credito, float $saldo): void
-    {
-        $estatusActual = (string) ($credito->EstatusCreditoFinal ?? 'ACTIVO');
-
-        if ($saldo <= 0 && !in_array($estatusActual, ['SALDADO', 'REFINANCIADO', 'ELIMINADO'], true)) {
-            $fechaSaldamiento = DB::table('pago')
-                ->where('CreditoID', $credito->CreditoID)
-                ->where('Activo', 1)
-                ->where('EsMora', 0)
-                ->max('FechaPago');
-
-            DB::table('Credito')
-                ->where('CreditoID', $credito->CreditoID)
-                ->update([
-                    'EstatusCreditoFinal' => 'SALDADO',
-                    'FechaSaldamiento' => $fechaSaldamiento ?: now(),
-                ]);
-
-            \App\Models\Log::registrar(
-                'ACTUALIZAR',
-                'Credito',
-                $credito->CreditoID,
-                ['EstatusCreditoFinal' => $estatusActual],
-                ['EstatusCreditoFinal' => 'SALDADO', 'SaldoPendiente' => $saldo]
-            );
-
-            return;
-        }
-
-        if ($saldo > 0 && $estatusActual === 'SALDADO') {
-            DB::table('Credito')
-                ->where('CreditoID', $credito->CreditoID)
-                ->update([
-                    'EstatusCreditoFinal' => 'ACTIVO',
-                    'FechaSaldamiento' => null,
-                ]);
-
-            \App\Models\Log::registrar(
-                'ACTUALIZAR',
-                'Credito',
-                $credito->CreditoID,
-                ['EstatusCreditoFinal' => 'SALDADO'],
-                ['EstatusCreditoFinal' => 'ACTIVO', 'SaldoPendiente' => $saldo]
-            );
-        }
     }
 
     /**
