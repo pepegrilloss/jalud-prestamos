@@ -603,7 +603,11 @@ class ReporteExportController extends Controller
     // ─── CREDITOS VENCIDOS ───
     public function vencidosExcel(Request $request)
     {
-        $this->authorizeGerencia($request);
+        abort_unless(
+            $request->user()?->puedeAccederAGerencia()
+                || $request->user()?->can('view_any_reporte::creditos::vencidos'),
+            403
+        );
 
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
