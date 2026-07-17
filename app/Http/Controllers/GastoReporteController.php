@@ -14,8 +14,15 @@ use Carbon\Carbon;
 
 class GastoReporteController extends Controller
 {
+    private function authorizeViewAny(): void
+    {
+        abort_unless(auth()->user()?->can('view_any_gasto'), 403);
+    }
+
     public function descargarExcel()
     {
+        $this->authorizeViewAny();
+
         $fechaDesde = request()->query('fecha_desde');
         $fechaHasta = request()->query('fecha_hasta');
         $sedeId = auth()->user()->getEffectiveSedeId();
@@ -177,6 +184,8 @@ class GastoReporteController extends Controller
 
     public function descargarPdf()
     {
+        $this->authorizeViewAny();
+
         $fechaDesde = request()->query('fecha_desde');
         $fechaHasta = request()->query('fecha_hasta');
         $sedeId = auth()->user()->getEffectiveSedeId();

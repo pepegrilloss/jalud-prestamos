@@ -10,6 +10,11 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ClienteReporteController extends Controller
 {
+    private function authorizePermission(string $permission): void
+    {
+        abort_unless(auth()->user()?->can($permission), 403);
+    }
+
     private function query()
     {
         $sedeId = auth()->user()->getEffectiveSedeId();
@@ -26,6 +31,8 @@ class ClienteReporteController extends Controller
 
     public function descargarExcel()
     {
+        $this->authorizePermission('descargar_excel_clientes');
+
         $clientes = $this->query();
 
         $spreadsheet = new Spreadsheet();
@@ -122,6 +129,8 @@ class ClienteReporteController extends Controller
 
     public function descargarPdf()
     {
+        $this->authorizePermission('descargar_pdf_clientes');
+
         $clientes = $this->query();
 
         $pdf = Pdf::loadView('reportes.clientes', [

@@ -24,9 +24,13 @@ use Carbon\Carbon;
 
 class ReporteExportController extends Controller
 {
-    private function authorizeGerencia(Request $request): void
+    private function authorizeGerenciaOrPermission(Request $request, string $permission): void
     {
-        abort_unless($request->user()?->puedeAccederAGerencia(), 403);
+        abort_unless(
+            $request->user()?->puedeAccederAGerencia()
+                || $request->user()?->can($permission),
+            403
+        );
     }
 
     private function resolveSedeId(): ?int
@@ -75,7 +79,7 @@ class ReporteExportController extends Controller
     // ─── BALANCE DIARIO ───
     public function diarioExcel(Request $request)
     {
-        $this->authorizeGerencia($request);
+        $this->authorizeGerenciaOrPermission($request, 'balance_diario');
 
         $fecha = $request->get('fecha');
         if (!$fecha) { abort(400, 'Fecha no proporcionada'); }
@@ -385,7 +389,7 @@ class ReporteExportController extends Controller
     // ─── CUENTAS CANCELADAS ───
     public function canceladasExcel(Request $request)
     {
-        $this->authorizeGerencia($request);
+        $this->authorizeGerenciaOrPermission($request, 'view_any_reporte::cuentas::canceladas');
 
         $fecha = $request->get('fecha') ? Carbon::createFromFormat('Y-m-d', $request->get('fecha')) : now();
         $sedeId = $this->resolveSedeId();
@@ -468,7 +472,7 @@ class ReporteExportController extends Controller
     // ─── REPORTE DE CARTERA ───
     public function carteraExcel(Request $request)
     {
-        $this->authorizeGerencia($request);
+        $this->authorizeGerenciaOrPermission($request, 'reporte_cartera');
 
         $fecha = $request->get('fecha');
         $tipos = $request->get('tipos', '');
@@ -603,11 +607,7 @@ class ReporteExportController extends Controller
     // ─── CREDITOS VENCIDOS ───
     public function vencidosExcel(Request $request)
     {
-        abort_unless(
-            $request->user()?->puedeAccederAGerencia()
-                || $request->user()?->can('view_any_reporte::creditos::vencidos'),
-            403
-        );
+        $this->authorizeGerenciaOrPermission($request, 'view_any_reporte::creditos::vencidos');
 
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
@@ -682,7 +682,7 @@ class ReporteExportController extends Controller
     // ─── CLIENTES ATRASO ───
     public function atrasoExcel(Request $request)
     {
-        $this->authorizeGerencia($request);
+        $this->authorizeGerenciaOrPermission($request, 'view_any_reporte::clientes::atraso');
 
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
@@ -755,7 +755,7 @@ class ReporteExportController extends Controller
     // ─── CLIENTES INACTIVOS ───
     public function inactivosExcel(Request $request)
     {
-        $this->authorizeGerencia($request);
+        $this->authorizeGerenciaOrPermission($request, 'view_any_reporte::clientes::inactivos');
 
         $nombre = $request->get('nombre');
         $fechaDesde = $request->get('fecha_desde');
@@ -871,7 +871,7 @@ class ReporteExportController extends Controller
     // ─── REPORTE DE CREDITOS ───
     public function creditosExcel(Request $request)
     {
-        $this->authorizeGerencia($request);
+        $this->authorizeGerenciaOrPermission($request, 'reporte_creditos');
 
         $fechaDesde = $request->get('fecha_desde');
         $fechaHasta = $request->get('fecha_hasta');
