@@ -167,7 +167,7 @@ class SolicitudExoneracionResource extends Resource
                             $sub->whereRaw('MoraAcumulada > COALESCE(
                                 (SELECT SUM(p.MontoPagado) FROM pago p
                                  WHERE p.CreditoID = mora.CreditoID
-                                   AND p.TipoConcepto = ?
+                                   AND (p.TipoConcepto = ? OR p.EsMora = 1)
                                    AND p.Activo = 1
                                 ), 0
                             )', ['M']);
@@ -221,4 +221,3 @@ class SolicitudExoneracionResource extends Resource
         return [];
     }
 }
-

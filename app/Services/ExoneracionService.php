@@ -39,7 +39,11 @@ class ExoneracionService
 
         // Restar la mora que ya fue exonerada/pagada
         $moraExonerada = Pago::where('CreditoID', $creditoID)
-            ->where('TipoConcepto', 'M')
+            ->where('Activo', 1)
+            ->where(function ($q) {
+                $q->where('TipoConcepto', 'M')
+                    ->orWhere('EsMora', 1);
+            })
             ->sum('MontoPagado');
 
         return max(0, (float) $moraAcumulada - (float) $moraExonerada);

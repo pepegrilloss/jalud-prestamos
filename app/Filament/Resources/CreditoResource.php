@@ -206,7 +206,10 @@ class CreditoResource extends Resource
                     ->money('PEN')
                     // OPTIMIZACIÓN N+1: leer el atributo precalculado por la subquery
                     // en modifyQueryUsing en vez de moras()->latest()->first() por fila.
-                    ->getStateUsing(fn ($record) => (float) ($record->ultima_mora_acumulada ?? 0))
+                    ->getStateUsing(fn ($record) => max(
+                        0,
+                        (float) ($record->ultima_mora_acumulada ?? 0) - (float) ($record->mora_pagada ?? 0)
+                    ))
                     ->color(function ($state) {
                         return $state > 0 ? 'danger' : 'success';
                     })
@@ -326,6 +329,13 @@ class CreditoResource extends Resource
                             ->whereColumn('mora.CreditoID', '=', 'Credito.CreditoID')
                             ->orderByDesc('FechaMora')
                             ->limit(1),
+                        'mora_pagada' => \App\Models\Pago::selectRaw('COALESCE(SUM(MontoPagado), 0)')
+                            ->whereColumn('pago.CreditoID', '=', 'Credito.CreditoID')
+                            ->where('Activo', 1)
+                            ->where(function ($q) {
+                                $q->where('TipoConcepto', 'M')
+                                    ->orWhere('EsMora', 1);
+                            }),
                     ])
                     // Excluir créditos de proposiciones refinanciadas
                     ->whereHas('proposicion', function (Builder $q) {
@@ -547,11 +557,14 @@ class CreditoResource extends Resource
                                 ->money('PEN')
                                 ->getStateUsing(function ($record) {
                                     $ultimaMora = $record->moras()->latest('FechaMora')->first(['MoraAcumulada']);
-                                    $moraExonerada = (float) \App\Models\Pago::where('CreditoID', $record->CreditoID)
-                                        ->where('TipoConcepto', 'M')
+                                    $moraPagada = (float) \App\Models\Pago::where('CreditoID', $record->CreditoID)
                                         ->where('Activo', 1)
+                                        ->where(function ($q) {
+                                            $q->where('TipoConcepto', 'M')
+                                                ->orWhere('EsMora', 1);
+                                        })
                                         ->sum('MontoPagado');
-                                    return max(0, (float)($ultimaMora?->MoraAcumulada ?? 0) - $moraExonerada);
+                                    return max(0, (float)($ultimaMora?->MoraAcumulada ?? 0) - $moraPagada);
                                 })
                                 ->color('danger')
                                 ->weight(\Filament\Support\Enums\FontWeight::Bold),
@@ -633,16 +646,19 @@ class CreditoResource extends Resource
                     $ultimaMora = $record->moras()->latest('FechaMora')->first();
                     if (!$ultimaMora) return 'Sin moras registradas';
 
-                    $moraExonerada = \App\Models\Pago::where('CreditoID', $record->CreditoID)
-                        ->where('TipoConcepto', 'M')
+                    $moraPagada = \App\Models\Pago::where('CreditoID', $record->CreditoID)
                         ->where('Activo', 1)
+                        ->where(function ($q) {
+                            $q->where('TipoConcepto', 'M')
+                                ->orWhere('EsMora', 1);
+                        })
                         ->sum('MontoPagado');
-                    $neta = (float)$ultimaMora->MoraAcumulada - (float)$moraExonerada;
+                    $neta = (float)$ultimaMora->MoraAcumulada - (float)$moraPagada;
                     $neta = max(0, $neta);
 
                     $texto = "Mora histórica: S/ " . number_format($ultimaMora->MoraAcumulada, 2);
-                    if ($moraExonerada > 0) {
-                        $texto .= " | Exonerada: S/ " . number_format($moraExonerada, 2);
+                    if ($moraPagada > 0) {
+                        $texto .= " | Pagada/Exonerada: S/ " . number_format($moraPagada, 2);
                         $texto .= " | Pendiente: S/ " . number_format($neta, 2);
                     }
                     return $texto;
