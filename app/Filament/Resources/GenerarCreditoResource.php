@@ -445,9 +445,10 @@ class GenerarCreditoResource extends Resource
                             return;
                         }
 
-                        // Verificar mora pendiente del cliente en la misma sede
+                        // Verificar mora pendiente solo en el mismo tipo de credito
                         $moraPendiente = ProposicionCredito::where('ClienteID', $record->ClienteID)
                             ->where('SedeID', $sedeId)
+                            ->where('TipoCreditoID', $record->TipoCreditoID)
                             ->where('Activo', true)
                             ->where('Estado', 'APROBADO')
                             ->where('FueRefinanciada', 0)
@@ -469,7 +470,7 @@ class GenerarCreditoResource extends Resource
                             Notification::make()
                                 ->danger()
                                 ->title('Cliente con mora pendiente')
-                                ->body("No se puede generar el crédito. El cliente tiene mora pendiente en: {$lista}")
+                                ->body("No se puede generar el crédito. El cliente tiene mora pendiente en el mismo tipo de crédito: {$lista}")
                                 ->persistent()
                                 ->send();
                             return;
