@@ -66,12 +66,16 @@ class CreatePago extends CreateRecord
             ];
         }
 
+        $esPagoMora = !empty($data['EsMora']);
+
         // Verificar si es pago inicial
         $esPagoInicial = false;
-        try {
-            $esPagoInicial = $this->esPagoInicial();
-        } catch (\Exception $e) {
-            $esPagoInicial = false;
+        if (!$esPagoMora) {
+            try {
+                $esPagoInicial = $this->esPagoInicial();
+            } catch (\Exception $e) {
+                $esPagoInicial = false;
+            }
         }
 
         // Verificar si es crédito saldado
@@ -84,7 +88,7 @@ class CreatePago extends CreateRecord
             }
         }
 
-        if ($esCreditoSaldado) {
+        if ($esCreditoSaldado && !$esPagoMora) {
             $user = auth()->user();
             $opciones = [];
 
