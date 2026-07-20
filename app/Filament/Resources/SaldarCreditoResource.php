@@ -162,15 +162,19 @@ class SaldarCreditoResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Confirmar Saldar Crédito')
-                    ->modalDescription(fn($record) => "Revise el monto para {$record->CodigoCredito}. Si no cubre todo el saldo, se registrara como pago parcial.")
+                    ->modalDescription(fn($record) => match (true) {
+                        (float) ($record->SaldoPendiente ?? 0) > 0 => "Revise el monto para {$record->CodigoCredito}. Si no cubre todo el saldo, se registrara como pago parcial.",
+                        default => "El credito {$record->CodigoCredito} ya tiene saldo S/ 0.00. Solo se eliminara la mora acumulada.",
+                    })
                     ->form([
                         Forms\Components\TextInput::make('MontoSaldar')
                             ->label('Monto a saldar')
                             ->prefix('S/')
                             ->numeric()
                             ->required()
-                            ->minValue(0.01)
+                            ->minValue(fn($record) => (float) ($record->SaldoPendiente ?? 0) > 0 ? 0.01 : 0)
                             ->default(fn($record) => (float) ($record->SaldoPendiente ?? 0))
+                            ->helperText(fn($record) => (float) ($record->SaldoPendiente ?? 0) <= 0 ? 'Saldo pendiente: S/ 0.00. Solo se eliminara la mora.' : null)
                             ->extraAttributes(['onwheel' => 'return false;']),
 
                         Forms\Components\DatePicker::make('FechaSaldamiento')
@@ -195,33 +199,35 @@ class SaldarCreditoResource extends Resource
 
                         DB::beginTransaction();
                         try {
-                            $pago = Pago::create([
-                                'CreditoID' => $creditoID,
-                                'CuotaID' => null,
-                                'MontoPagado' => $montoSaldar,
-                                'FechaPago' => $fechaSaldamiento,
-                                'TipoPago' => Pago::TIPO_EFECTIVO,
-                                'TipoConcepto' => 'C',
-                                'EsMora' => false,
-                                'EsPagoAMayor' => $montoSaldar > $saldoAnterior,
-                                'EsPagoForzado' => true,
-                                'EsPagoAutomatico' => false,
-                                'Comentario' => $comentario ?: "Saldamiento manual de {$codigo}",
-                                'UsuarioRegistro' => auth()->user()?->name ?? (string) auth()->id(),
-                                'Activo' => true,
-                                'SedeID' => $record->SedeID,
-                            ]);
+                            if ($montoSaldar > 0) {
+                                $pago = Pago::create([
+                                    'CreditoID' => $creditoID,
+                                    'CuotaID' => null,
+                                    'MontoPagado' => $montoSaldar,
+                                    'FechaPago' => $fechaSaldamiento,
+                                    'TipoPago' => Pago::TIPO_EFECTIVO,
+                                    'TipoConcepto' => 'C',
+                                    'EsMora' => false,
+                                    'EsPagoAMayor' => $montoSaldar > $saldoAnterior,
+                                    'EsPagoForzado' => true,
+                                    'EsPagoAutomatico' => false,
+                                    'Comentario' => $comentario ?: "Saldamiento manual de {$codigo}",
+                                    'UsuarioRegistro' => auth()->user()?->name ?? (string) auth()->id(),
+                                    'Activo' => true,
+                                    'SedeID' => $record->SedeID,
+                                ]);
 
-                            app(FondoSedeService::class)->registrarIngresoRecaudo(
-                                $record->SedeID,
-                                $montoSaldar,
-                                $pago->PagoID,
-                                auth()->id()
-                            );
+                                app(FondoSedeService::class)->registrarIngresoRecaudo(
+                                    $record->SedeID,
+                                    $montoSaldar,
+                                    $pago->PagoID,
+                                    auth()->id()
+                                );
+                            }
 
-                            $saldoRestante = (float) DB::table('ProposicionCredito')
+                            $saldoRestante = max(0, (float) (DB::table('ProposicionCredito')
                                 ->where('ProposicionCreditoID', $record->ProposicionCreditoID)
-                                ->value('SaldoPendiente');
+                                ->value('SaldoPendiente') ?? 0) - $montoSaldar);
 
                             if ($saldoRestante > 0) {
                                 AuditLog::registrar(
@@ -234,7 +240,7 @@ class SaldarCreditoResource extends Resource
                                         'MontoSaldar' => $montoSaldar,
                                         'FechaPago' => $fechaSaldamiento->toDateTimeString(),
                                         'Comentario' => $comentario,
-                                        'PagoID' => $pago->PagoID,
+                                        'PagoID' => isset($pago) ? $pago->PagoID : null,
                                     ]
                                 );
 
@@ -277,17 +283,21 @@ class SaldarCreditoResource extends Resource
                                     'MontoSaldar' => $montoSaldar,
                                     'FechaSaldamiento' => $fechaSaldamiento->toDateTimeString(),
                                     'Comentario' => $comentario,
-                                    'PagoID' => $pago->PagoID,
+                                    'PagoID' => isset($pago) ? $pago->PagoID : null,
                                     'MorasEliminadas' => $morasElim,
                                 ]
                             );
 
                             DB::commit();
 
+                            $mensaje = $montoSaldar > 0
+                                ? "Pago registrado: S/ " . number_format($montoSaldar, 2) . ". Mora eliminada: {$morasElim} registros."
+                                : "Mora eliminada: {$morasElim} registros. Credito ya estaba saldado.";
+
                             Notification::make()
                                 ->success()
                                 ->title("{$codigo} saldado")
-                                ->body("Pago registrado: S/ " . number_format($montoSaldar, 2) . ". Mora eliminada: {$morasElim} registros.")
+                                ->body($mensaje)
                                 ->send();
                         } catch (\Exception $e) {
                             DB::rollBack();
