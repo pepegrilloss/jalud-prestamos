@@ -6,18 +6,11 @@
  * Ejecutar: php corregir_montos.php
  */
 
-$db_host = '127.0.0.1';
-$db_port = '3306';
-$db_name = 'jvcso1ub_jalud_prestamos';
-$db_user = 'root';
-$db_pass = '';
+require __DIR__ . '/vendor/autoload.php';
+$app = require_once __DIR__ . '/bootstrap/app.php';
+$app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-try {
-    $pdo = new PDO("mysql:host=$db_host;port=$db_port;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("ERROR de conexion: " . $e->getMessage() . "\n");
-}
+$pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
 
 $codigos = [
     'C-005957', 'C-006057', 'C-006095', 'C-006106',
