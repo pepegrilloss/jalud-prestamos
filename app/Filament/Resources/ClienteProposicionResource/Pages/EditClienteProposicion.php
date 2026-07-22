@@ -34,6 +34,25 @@ class EditClienteProposicion extends EditRecord
             }
         }
 
+        $valoresCredito = ClienteProposicionResource::calcularValoresCredito(
+            $data['MontoTotal'] ?? $this->record->MontoTotal,
+            $data['TasaInteres'] ?? $this->record->TasaInteres,
+            $data['NumeroCuotas'] ?? $this->record->NumeroCuotas
+        );
+
+        $data = array_merge($data, $valoresCredito);
+
+        if (!$this->record->credito) {
+            $data['SaldoPendiente'] = $data['MontoTotalPagar'];
+        }
+
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        if ($this->record->credito) {
+            \App\Services\SaldoPendienteService::recalcular($this->record->ProposicionCreditoID);
+        }
     }
 }

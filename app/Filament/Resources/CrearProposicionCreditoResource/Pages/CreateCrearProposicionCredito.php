@@ -133,10 +133,14 @@ class CreateCrearProposicionCredito extends CreateRecord
         $data['Estado'] = 'PENDIENTE';
         $data['Activo'] = true;
 
-        // SIEMPRE recalcular MontoTotalPagar y SaldoPendiente en servidor
-        $montoTotal = (float) ($data['MontoTotal'] ?? 0);
-        $montoInteres = (float) ($data['MontoInteres'] ?? 0);
-        $data['MontoTotalPagar'] = $montoTotal + $montoInteres;
+        // SIEMPRE recalcular montos financieros en servidor.
+        $valoresCredito = CrearProposicionCreditoResource::calcularValoresCredito(
+            $data['MontoTotal'] ?? 0,
+            $data['TasaInteres'] ?? 0,
+            $data['NumeroCuotas'] ?? 1
+        );
+
+        $data = array_merge($data, $valoresCredito);
         $data['SaldoPendiente'] = $data['MontoTotalPagar'];
 
         return $data;

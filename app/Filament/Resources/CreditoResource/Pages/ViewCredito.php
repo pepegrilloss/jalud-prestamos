@@ -103,8 +103,8 @@ class ViewCredito extends ViewRecord
                             Forms\Components\Placeholder::make('info_recalculo')
                                 ->label('Valores Recalculados')
                                 ->content(function (Get $get) {
-                                    $monto = (float)$get('MontoTotal');
-                                    $tasa = (float)$get('TasaInteres');
+                                    $monto = self::normalizarNumero($get('MontoTotal'));
+                                    $tasa = self::normalizarNumero($get('TasaInteres'));
                                     $cuotas = (int)$get('NumeroCuotas');
                                     if ($monto <= 0 || $tasa <= 0 || $cuotas <= 0) return 'Ingrese valores válidos';
 
@@ -138,8 +138,8 @@ class ViewCredito extends ViewRecord
                         return;
                     }
 
-                    $monto = (float)$data['MontoTotal'];
-                    $tasa = (float)$data['TasaInteres'];
+                    $monto = self::normalizarNumero($data['MontoTotal'] ?? 0);
+                    $tasa = self::normalizarNumero($data['TasaInteres'] ?? 0);
                     $tasaID = (int)($data['TasaID'] ?? $prop->TasaID);
                     $cuotas = (int)$data['NumeroCuotas'];
                     $zonaID = (int)($data['ZonaID'] ?? $prop->ZonaID);
@@ -163,7 +163,7 @@ class ViewCredito extends ViewRecord
                         return;
                     }
 
-                    DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID) {
+                    $nuevoSaldo = DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID) {
                         // 1. Actualizar ProposicionCredito
                         DB::table('ProposicionCredito')
                             ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
@@ -179,16 +179,14 @@ class ViewCredito extends ViewRecord
                                 'Plazo' => $cuotas,
                             ]);
 
-                        // 2. Recalcular SaldoPendiente
-                        $totalPagado = DB::table('pago')
+                        // 2. Recalcular SaldoPendiente con la regla central del sistema
+                        $nuevoSaldo = \App\Services\SaldoPendienteService::recalcular($prop->ProposicionCreditoID);
+
+                        $tienePagos = DB::table('pago')
                             ->where('CreditoID', $creditoID)
                             ->where('Activo', 1)
-                            ->sum('MontoPagado');
-                        $nuevoSaldo = max(0, $totalPagar - (float)$totalPagado);
-
-                        DB::table('ProposicionCredito')
-                            ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
-                            ->update(['SaldoPendiente' => $nuevoSaldo]);
+                            ->where('EsMora', 0)
+                            ->exists();
 
                         // 3. Actualizar cuotas existentes
                         $cuotasExistentes = DB::table('cuota')
@@ -227,7 +225,7 @@ class ViewCredito extends ViewRecord
                         }
 
                         // 4. Si el nuevo saldo es 0, marcar como SALDADO
-                        if ($nuevoSaldo <= 0 && (float)$totalPagado > 0) {
+                        if ($nuevoSaldo <= 0 && $tienePagos) {
                             DB::table('Credito')
                                 ->where('CreditoID', $creditoID)
                                 ->update([
@@ -246,6 +244,8 @@ class ViewCredito extends ViewRecord
                                     'FechaSaldamiento' => null,
                                 ]);
                         }
+
+                        return $nuevoSaldo;
                     });
 
                     \App\Models\Log::registrar(
@@ -359,14 +359,43 @@ class ViewCredito extends ViewRecord
 
     private static function recalcularTotales(Set $set, Get $get): void
     {
-        $monto = (float)$get('MontoTotal');
-        $tasa = (float)$get('TasaInteres');
+        $monto = self::normalizarNumero($get('MontoTotal'));
+        $tasa = self::normalizarNumero($get('TasaInteres'));
         $cuotas = (int)$get('NumeroCuotas');
 
         if ($monto > 0 && $tasa > 0 && $cuotas > 0) {
             $interes = round($monto * ($tasa / 100), 2);
             // El Placeholder se actualiza solo via live()
         }
+    }
+
+    private static function normalizarNumero(mixed $valor): float
+    {
+        if (is_numeric($valor)) {
+            return (float) $valor;
+        }
+
+        $valor = trim((string) $valor);
+        if ($valor === '') {
+            return 0.0;
+        }
+
+        $valor = preg_replace('/[^\d,.\-]/', '', $valor) ?? '';
+        $ultimaComa = strrpos($valor, ',');
+        $ultimoPunto = strrpos($valor, '.');
+
+        if ($ultimaComa !== false && $ultimoPunto !== false) {
+            if ($ultimaComa > $ultimoPunto) {
+                $valor = str_replace('.', '', $valor);
+                $valor = str_replace(',', '.', $valor);
+            } else {
+                $valor = str_replace(',', '', $valor);
+            }
+        } elseif ($ultimaComa !== false) {
+            $valor = str_replace(',', '.', $valor);
+        }
+
+        return is_numeric($valor) ? (float) $valor : 0.0;
     }
 
     public function infolist(Infolist $infolist): Infolist

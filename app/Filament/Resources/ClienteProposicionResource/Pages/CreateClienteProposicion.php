@@ -44,6 +44,15 @@ class CreateClienteProposicion extends CreateRecord
         $data['Estado'] = 'PENDIENTE';
         $data['Activo'] = true;
 
+        $valoresCredito = ClienteProposicionResource::calcularValoresCredito(
+            $data['MontoTotal'] ?? 0,
+            $data['TasaInteres'] ?? 0,
+            $data['NumeroCuotas'] ?? 1
+        );
+
+        $data = array_merge($data, $valoresCredito);
+        $data['SaldoPendiente'] = $data['MontoTotalPagar'];
+
         // Crear ProposicionCredito en lugar de Cliente
         return ProposicionCredito::create($data);
     }

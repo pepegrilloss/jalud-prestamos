@@ -520,6 +520,23 @@ class CrearProposicionCreditoResource extends Resource
         }
     }
 
+    public static function calcularValoresCredito(mixed $monto, mixed $tasa, mixed $cuotas): array
+    {
+        $montoVal = static::normalizarNumero($monto);
+        $tasaVal = static::normalizarNumero($tasa);
+        $cuotasVal = max(1, (int) $cuotas);
+        $interes = round($montoVal * ($tasaVal / 100), 2);
+        $total = round($montoVal + $interes, 2);
+
+        return [
+            'MontoTotal' => $montoVal,
+            'TasaInteres' => $tasaVal,
+            'MontoInteres' => $interes,
+            'MontoTotalPagar' => $total,
+            'MontoCuota' => round($total / $cuotasVal, 2),
+        ];
+    }
+
     protected static function normalizarNumero(mixed $valor): float
     {
         if (is_numeric($valor)) {
