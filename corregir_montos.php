@@ -11,6 +11,7 @@ $app = require_once __DIR__ . '/bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $codigos = [
     'C-005957', 'C-006057', 'C-006095', 'C-006106',
