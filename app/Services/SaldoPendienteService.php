@@ -75,6 +75,8 @@ class SaldoPendienteService
             ->where('ProposicionCreditoID', $proposicionCreditoID)
             ->update(['SaldoPendiente' => $saldo]);
 
+        self::sincronizarEstadoCredito($credito, $saldo);
+
         if ($saldoAnterior != $saldo) {
             \App\Models\Log::registrar(
                 'ACTUALIZAR',
@@ -86,6 +88,36 @@ class SaldoPendienteService
         }
 
         return (float) $saldo;
+    }
+
+    private static function sincronizarEstadoCredito(Credito $credito, float $saldo): void
+    {
+        $estadoActual = $credito->EstatusCreditoFinal;
+
+        if ($saldo <= 0 && !in_array($estadoActual, ['SALDADO', 'REFINANCIADO', 'ELIMINADO'], true)) {
+            $fechaUltimoPago = Pago::where('CreditoID', $credito->CreditoID)
+                ->where('Activo', 1)
+                ->where('EsMora', 0)
+                ->max('FechaPago');
+
+            DB::table('Credito')
+                ->where('CreditoID', $credito->CreditoID)
+                ->update([
+                    'EstatusCreditoFinal' => 'SALDADO',
+                    'FechaSaldamiento' => $fechaUltimoPago ?: now(),
+                ]);
+
+            return;
+        }
+
+        if ($saldo > 0 && $estadoActual === 'SALDADO') {
+            DB::table('Credito')
+                ->where('CreditoID', $credito->CreditoID)
+                ->update([
+                    'EstatusCreditoFinal' => 'ACTIVO',
+                    'FechaSaldamiento' => null,
+                ]);
+        }
     }
 
     /**
