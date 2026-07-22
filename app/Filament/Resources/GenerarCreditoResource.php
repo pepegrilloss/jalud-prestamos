@@ -195,8 +195,8 @@ class GenerarCreditoResource extends Resource
 
     protected static function calcularTotales(Set $set, Get $get, $monto): void
     {
-        $montoVal = (float) $monto;
-        $tasaVal = (float) $get('TasaInteres');
+        $montoVal = static::normalizarNumero($monto);
+        $tasaVal = static::normalizarNumero($get('TasaInteres'));
         $cuotasVal = (int) $get('NumeroCuotas');
 
         if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
@@ -210,8 +210,8 @@ class GenerarCreditoResource extends Resource
 
     protected static function recalcularTotales(Set $set, Get $get): void
     {
-        $montoVal = (float) ($get('MontoTotal') ?? 0);
-        $tasaVal = (float) ($get('TasaInteres') ?? 0);
+        $montoVal = static::normalizarNumero($get('MontoTotal') ?? 0);
+        $tasaVal = static::normalizarNumero($get('TasaInteres') ?? 0);
         $cuotasVal = (int) ($get('NumeroCuotas') ?? 0);
 
         if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
@@ -221,6 +221,35 @@ class GenerarCreditoResource extends Resource
             $set('MontoTotalPagar', round($total, 2));
             $set('MontoCuota', round($total / $cuotasVal, 2));
         }
+    }
+
+    protected static function normalizarNumero(mixed $valor): float
+    {
+        if (is_numeric($valor)) {
+            return (float) $valor;
+        }
+
+        $valor = trim((string) $valor);
+        if ($valor === '') {
+            return 0.0;
+        }
+
+        $valor = preg_replace('/[^\d,.\-]/', '', $valor) ?? '';
+        $ultimaComa = strrpos($valor, ',');
+        $ultimoPunto = strrpos($valor, '.');
+
+        if ($ultimaComa !== false && $ultimoPunto !== false) {
+            if ($ultimaComa > $ultimoPunto) {
+                $valor = str_replace('.', '', $valor);
+                $valor = str_replace(',', '.', $valor);
+            } else {
+                $valor = str_replace(',', '', $valor);
+            }
+        } elseif ($ultimaComa !== false) {
+            $valor = str_replace(',', '.', $valor);
+        }
+
+        return is_numeric($valor) ? (float) $valor : 0.0;
     }
 
     public static function table(Table $table): Table
@@ -236,13 +265,11 @@ class GenerarCreditoResource extends Resource
                 Tables\Columns\TextColumn::make('MontoInteres')
                     ->label('Intereses')
                     ->sortable()
-                    ->getStateUsing(fn($record) => (float) (($record->MontoTotal ?? 0) * (($record->TasaInteres ?? 0) / 100)))
                     ->formatStateUsing(fn($state) => 'S/ ' . number_format((float) $state, 2, '.', '')),
 
                 Tables\Columns\TextColumn::make('MontoTotalPagar')
                     ->label('Monto Total')
                     ->sortable()
-                    ->getStateUsing(fn($record) => (float) (($record->MontoTotal ?? 0) + (($record->MontoTotal ?? 0) * (($record->TasaInteres ?? 0) / 100))))
                     ->formatStateUsing(fn($state) => 'S/ ' . number_format((float) $state, 2, '.', '')),
                 Tables\Columns\TextColumn::make('NumeroCuotas')->label('Cuotas')->sortable(),
                 Tables\Columns\TextColumn::make('Plazo')->label('Días')->sortable(),
@@ -364,8 +391,8 @@ class GenerarCreditoResource extends Resource
                         'MontoCuota' => $record->MontoCuota,
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
-                        $monto = (float) ($data['MontoTotal'] ?? $record->MontoTotal);
-                        $tasa = (float) ($data['TasaInteres'] ?? $record->TasaInteres);
+                        $monto = static::normalizarNumero($data['MontoTotal'] ?? $record->MontoTotal);
+                        $tasa = static::normalizarNumero($data['TasaInteres'] ?? $record->TasaInteres);
                         $interesCalculado = $monto * ($tasa / 100);
                         $totalCalculado = $monto + $interesCalculado;
 
@@ -377,6 +404,7 @@ class GenerarCreditoResource extends Resource
                             'NumeroCuotas' => $data['NumeroCuotas'] ?? $record->NumeroCuotas,
                             'MontoInteres' => $interesCalculado,
                             'MontoTotalPagar' => $totalCalculado,
+                            'SaldoPendiente' => $totalCalculado,
                             'MontoCuota' => $data['MontoCuota'] ?? $record->MontoCuota,
                         ]);
 

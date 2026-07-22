@@ -507,8 +507,8 @@ class CrearProposicionCreditoResource extends Resource
 
     protected static function calcularTotales(Set $set, Get $get, $monto): void
     {
-        $montoVal = (float) $monto;
-        $tasaVal = (float) $get('TasaInteres');
+        $montoVal = static::normalizarNumero($monto);
+        $tasaVal = static::normalizarNumero($get('TasaInteres'));
         $cuotasVal = (int) $get('NumeroCuotas');
 
         if ($montoVal > 0 && $tasaVal > 0 && $cuotasVal > 0) {
@@ -518,6 +518,35 @@ class CrearProposicionCreditoResource extends Resource
             $set('MontoTotalPagar', round($total, 2));
             $set('MontoCuota', round($total / $cuotasVal, 2));
         }
+    }
+
+    protected static function normalizarNumero(mixed $valor): float
+    {
+        if (is_numeric($valor)) {
+            return (float) $valor;
+        }
+
+        $valor = trim((string) $valor);
+        if ($valor === '') {
+            return 0.0;
+        }
+
+        $valor = preg_replace('/[^\d,.\-]/', '', $valor) ?? '';
+        $ultimaComa = strrpos($valor, ',');
+        $ultimoPunto = strrpos($valor, '.');
+
+        if ($ultimaComa !== false && $ultimoPunto !== false) {
+            if ($ultimaComa > $ultimoPunto) {
+                $valor = str_replace('.', '', $valor);
+                $valor = str_replace(',', '.', $valor);
+            } else {
+                $valor = str_replace(',', '', $valor);
+            }
+        } elseif ($ultimaComa !== false) {
+            $valor = str_replace(',', '.', $valor);
+        }
+
+        return is_numeric($valor) ? (float) $valor : 0.0;
     }
 
     /**
