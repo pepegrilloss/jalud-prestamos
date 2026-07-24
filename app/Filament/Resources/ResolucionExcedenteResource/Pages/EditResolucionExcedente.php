@@ -14,7 +14,10 @@ class EditResolucionExcedente extends EditRecord
     {
         if (($data['TipoResolucion'] ?? null) === 'DEVOLUCION_EFECTIVO') {
             $data['ClienteOrigenID'] = null;
+            $data['PagoOrigenID'] = $data['PagoMayorOrigenID'] ?? $data['PagoOrigenID'] ?? null;
+            $data['ExcedenteID'] = null;
         }
+        unset($data['PagoMayorOrigenID']);
 
         $data['SedeID'] = $this->record->SedeID;
 

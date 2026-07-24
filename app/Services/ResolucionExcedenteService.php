@@ -27,6 +27,8 @@ class ResolucionExcedenteService
             if ($solicitud->TipoResolucion === 'TRASLADO_DE_PAGO') {
                 // ========== FLUJO TRASLADO DE PAGO ==========
                 $this->procesarTrasladoPago($solicitud, $aprobador);
+            } elseif ($solicitud->TipoResolucion === 'DEVOLUCION_EFECTIVO' && $solicitud->PagoOrigenID) {
+                $this->procesarDevolucionPagoMayor($solicitud, $aprobador);
             } else {
                 // ========== FLUJO EXCEDENTE (otros tipos) ==========
                 $this->procesarExcedente($solicitud, $aprobador);
@@ -93,6 +95,57 @@ class ResolucionExcedenteService
             $this->recalcularEstadoCuota($nuevoPago->CuotaID);
         }
         $this->verificarCreditoCancelado($nuevoPago->CreditoID);
+    }
+
+    private function procesarDevolucionPagoMayor(SolicitudResolucionExcedente $solicitud, $aprobador): void
+    {
+        app(SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
+
+        $pagoOrigen = Pago::lockForUpdate()->find($solicitud->PagoOrigenID);
+        if (!$pagoOrigen) {
+            throw new \Exception('El pago a mayor seleccionado ya no existe.');
+        }
+
+        if (!$pagoOrigen->EsPagoAMayor) {
+            throw new \Exception('El pago seleccionado no es un pago a mayor.');
+        }
+
+        if ($pagoOrigen->EstadoTraslado) {
+            throw new \Exception('El pago a mayor seleccionado ya fue resuelto.');
+        }
+
+        $montoAplicar = (float) ($solicitud->MontoAplicar ?? 0);
+        if (round($montoAplicar, 2) !== round((float) $pagoOrigen->MontoPagado, 2)) {
+            throw new \Exception(
+                'La devolucion debe realizarse por el monto completo del pago a mayor: S/ '
+                . number_format((float) $pagoOrigen->MontoPagado, 2)
+            );
+        }
+
+        $credito = \App\Models\Credito::withoutGlobalScope('sede')
+            ->with('proposicion')
+            ->find($solicitud->CreditoDestinoID);
+
+        app(\App\Services\FondoSedeService::class)->registrarEgresoDevolucionEfectivo(
+            $solicitud->SedeID,
+            $montoAplicar,
+            $solicitud->SolicitudID,
+            $solicitud->CreditoDestinoID,
+            $aprobador->id,
+            'Devolucion en efectivo de pago a mayor #'
+                . $pagoOrigen->PagoID
+                . ' a '
+                . ($solicitud->clienteDestino?->NombresApellidos ?? 'cliente')
+                . ' por solicitud #'
+                . $solicitud->SolicitudID
+                . ($credito?->proposicion?->CodigoCredito ? ' - credito ' . $credito->proposicion->CodigoCredito : '')
+                . ($solicitud->DatosValeCaja ? ' - vale: ' . $solicitud->DatosValeCaja : '')
+        );
+
+        $pagoOrigen->EstadoTraslado = 'DEVUELTO';
+        $pagoOrigen->Comentario = ($pagoOrigen->Comentario ? $pagoOrigen->Comentario . ' | ' : '')
+            . "DEVUELTO EN EFECTIVO - Solicitud #{$solicitud->SolicitudID}";
+        $pagoOrigen->save();
     }
 
     /**

@@ -70,6 +70,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 $set('CreditoOrigenID', null);
                                 $set('CreditoDestinoID', null);
                                 $set('PagoOrigenID', null);
+                                $set('PagoMayorOrigenID', null);
                                 $set('MontoAplicar', null);
                             }),
 
@@ -83,6 +84,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 $set('ExcedenteID', null);
                                 $set('CreditoOrigenID', null);
                                 $set('PagoOrigenID', null);
+                                $set('PagoMayorOrigenID', null);
                                 $set('MontoAplicar', null);
                             })
                             ->visible(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'APLICACION_NUEVO_CREDITO'])),
@@ -159,8 +161,8 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                         Forms\Components\DatePicker::make('FiltroFechaExcedente')
                             ->label('Fecha del Excedente (Filtro)')
                             ->prefixIcon('heroicon-m-calendar-days')
-                            ->required(fn(Get $get) => $get('TipoResolucion') !== null && $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
-                            ->visible(fn(Get $get) => $get('TipoResolucion') !== null && $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
+                            ->required(fn(Get $get) => $get('TipoResolucion') !== null && !in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'DEVOLUCION_EFECTIVO']))
+                            ->visible(fn(Get $get) => $get('TipoResolucion') !== null && !in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'DEVOLUCION_EFECTIVO']))
                             ->live()
                             ->native(false)
                             ->displayFormat('d/m/Y')
@@ -192,7 +194,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     return [$ex->ExcedenteID => "S/ {$ex->Monto} - {$tipoLabel}{$op} - {$fecha}"];
                                 });
                             })
-                            ->required(fn(Get $get) => $get('TipoResolucion') !== 'TRASLADO_DE_PAGO')
+                            ->required(fn(Get $get) => $get('TipoResolucion') !== null && !in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'DEVOLUCION_EFECTIVO']))
                             ->disabled(fn(Get $get) => !$get('FiltroFechaExcedente'))
                             ->searchable()
                             ->live()
@@ -207,7 +209,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     $set('MontoAplicar', null);
                                 }
                             })
-                            ->visible(fn(Get $get) => $get('TipoResolucion') !== null && $get('TipoResolucion') !== 'TRASLADO_DE_PAGO'),
+                            ->visible(fn(Get $get) => $get('TipoResolucion') !== null && !in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'DEVOLUCION_EFECTIVO'])),
 
                         // Monto del pago seleccionado (solo informativo para traslado)
                         Forms\Components\TextInput::make('MontoAplicar')
@@ -219,6 +221,10 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->maxValue(function (Get $get) {
                                 if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $get('PagoOrigenID')) {
                                     $pago = \App\Models\Pago::find($get('PagoOrigenID'));
+                                    if ($pago) return (float)$pago->MontoPagado;
+                                }
+                                if ($get('TipoResolucion') === 'DEVOLUCION_EFECTIVO' && $get('PagoMayorOrigenID')) {
+                                    $pago = \App\Models\Pago::find($get('PagoMayorOrigenID'));
                                     if ($pago) return (float)$pago->MontoPagado;
                                 }
                                 return 999999999;
@@ -233,6 +239,16 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 }
                                 if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO') {
                                     return 'Seleccione un pago. El monto se puede ajustar.';
+                                }
+                                if ($get('TipoResolucion') === 'DEVOLUCION_EFECTIVO') {
+                                    $pagoID = $get('PagoMayorOrigenID');
+                                    if ($pagoID) {
+                                        $pago = \App\Models\Pago::find($pagoID);
+                                        if ($pago) {
+                                            return 'Se devolverá el pago a mayor seleccionado por S/ ' . number_format($pago->MontoPagado, 2) . '. No se creará excedente.';
+                                        }
+                                    }
+                                    return 'Seleccione el pago a mayor que origina la devolución.';
                                 }
                                 $excedenteID = $get('ExcedenteID');
                                 if ($excedenteID) {
@@ -252,10 +268,28 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                             if ($pago && $value > $pago->MontoPagado) {
                                                 $fail("El monto no puede exceder S/ " . number_format($pago->MontoPagado, 2) . " (valor del pago).");
                                             }
-                                        }
+                                    }
+                                    return;
+                                }
+                                if ($get('TipoResolucion') === 'DEVOLUCION_EFECTIVO') {
+                                    $pagoID = $get('PagoMayorOrigenID');
+                                    if (!$pagoID) {
+                                        $fail('Debe seleccionar el pago a mayor que se devolverá.');
                                         return;
                                     }
-                                    $excedenteID = $get('ExcedenteID');
+
+                                    $pago = \App\Models\Pago::find($pagoID);
+                                    if (!$pago) {
+                                        $fail('El pago a mayor seleccionado ya no existe.');
+                                        return;
+                                    }
+
+                                    if ((float) $value !== (float) $pago->MontoPagado) {
+                                        $fail('La devolución debe ser por el monto completo del pago a mayor: S/ ' . number_format($pago->MontoPagado, 2) . '.');
+                                    }
+                                    return;
+                                }
+                                $excedenteID = $get('ExcedenteID');
                                     if ($excedenteID) {
                                         $excedente = Excedente::find($excedenteID);
                                         if ($excedente && $value > $excedente->Monto) {
@@ -265,7 +299,9 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 },
                             ])
                             ->live(debounce: 500)
-                            ->visible(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO' ? $get('PagoOrigenID') !== null : true),
+                            ->visible(fn(Get $get) => $get('TipoResolucion') === 'TRASLADO_DE_PAGO'
+                                ? $get('PagoOrigenID') !== null
+                                : $get('TipoResolucion') !== 'DEVOLUCION_EFECTIVO'),
 
                         // ========== CAMPOS COMUNES ==========
                         Forms\Components\Select::make('ClienteDestinoID')
@@ -284,7 +320,11 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->required(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO', 'APLICACION_NUEVO_CREDITO']))
                             ->searchable()
                             ->live()
-                            ->afterStateUpdated(fn(Set $set) => $set('CreditoDestinoID', null))
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('CreditoDestinoID', null);
+                                $set('PagoMayorOrigenID', null);
+                                $set('MontoAplicar', null);
+                            })
                             ->rules([
                                 fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
                                     if ($get('TipoResolucion') === 'TRASLADO_DE_PAGO' && $value == $get('ClienteOrigenID')) {
@@ -309,7 +349,90 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             })
                             ->required(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO', 'APLICACION_NUEVO_CREDITO']))
                             ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set) {
+                                $set('PagoMayorOrigenID', null);
+                                $set('MontoAplicar', null);
+                            })
                             ->visible(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO', 'APLICACION_NUEVO_CREDITO'])),
+
+                        Forms\Components\Select::make('PagoMayorOrigenID')
+                            ->label('Pago a mayor a devolver')
+                            ->prefixIcon('heroicon-m-banknotes')
+                            ->options(function (Get $get) {
+                                $creditoID = $get('CreditoDestinoID');
+                                if (!$creditoID) {
+                                    return [];
+                                }
+
+                                return Pago::where('CreditoID', $creditoID)
+                                    ->where('Activo', 1)
+                                    ->where('EsPagoAMayor', 1)
+                                    ->where(function ($query) {
+                                        $query->whereNull('EstadoTraslado')
+                                            ->orWhere('EstadoTraslado', '');
+                                    })
+                                    ->orderByDesc('FechaPago')
+                                    ->orderByDesc('PagoID')
+                                    ->get()
+                                    ->mapWithKeys(function ($pago) {
+                                        $fecha = \Carbon\Carbon::parse($pago->FechaPago)->format('d/m/Y');
+
+                                        return [
+                                            $pago->PagoID => 'S/ ' . number_format($pago->MontoPagado, 2) . " - {$fecha} - {$pago->TipoPago}",
+                                        ];
+                                    });
+                            })
+                            ->required(fn(Get $get) => $get('TipoResolucion') === 'DEVOLUCION_EFECTIVO')
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                $pago = $get('PagoMayorOrigenID') ? Pago::find($get('PagoMayorOrigenID')) : null;
+                                $set('MontoAplicar', $pago?->MontoPagado);
+                            })
+                            ->helperText('Use esta opción cuando el dinero ya ingresó como pago a mayor y solo falta devolverlo en efectivo.')
+                            ->visible(fn(Get $get) => $get('TipoResolucion') === 'DEVOLUCION_EFECTIVO' && $get('CreditoDestinoID')),
+
+                        Forms\Components\TextInput::make('MontoAplicar')
+                            ->label('Monto a Aplicar (S/)')
+                            ->prefixIcon('heroicon-m-currency-dollar')
+                            ->required(fn(Get $get) => $get('TipoResolucion') === 'DEVOLUCION_EFECTIVO')
+                            ->numeric()
+                            ->minValue(0.01)
+                            ->maxValue(function (Get $get) {
+                                $pago = $get('PagoMayorOrigenID') ? Pago::find($get('PagoMayorOrigenID')) : null;
+
+                                return $pago ? (float) $pago->MontoPagado : 999999999;
+                            })
+                            ->prefix('S/')
+                            ->helperText(function (Get $get) {
+                                $pago = $get('PagoMayorOrigenID') ? Pago::find($get('PagoMayorOrigenID')) : null;
+
+                                if ($pago) {
+                                    return 'Se devolvera el pago a mayor seleccionado por S/ ' . number_format($pago->MontoPagado, 2) . '. No se creara excedente.';
+                                }
+
+                                return 'Seleccione el pago a mayor que origina la devolucion.';
+                            })
+                            ->rules([
+                                fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    if ($get('TipoResolucion') !== 'DEVOLUCION_EFECTIVO') {
+                                        return;
+                                    }
+
+                                    $pago = $get('PagoMayorOrigenID') ? Pago::find($get('PagoMayorOrigenID')) : null;
+                                    if (!$pago) {
+                                        $fail('Debe seleccionar el pago a mayor que se devolvera.');
+                                        return;
+                                    }
+
+                                    if (round((float) $value, 2) !== round((float) $pago->MontoPagado, 2)) {
+                                        $fail('La devolucion debe ser por el monto completo del pago a mayor: S/ ' . number_format($pago->MontoPagado, 2) . '.');
+                                    }
+                                },
+                            ])
+                            ->live(debounce: 500)
+                            ->visible(fn(Get $get) => $get('TipoResolucion') === 'DEVOLUCION_EFECTIVO' && $get('PagoMayorOrigenID')),
 
                         Forms\Components\Textarea::make('DatosValeCaja')
                             ->label('Datos de Vale de Egreso (Nro, Detalles)')
@@ -396,11 +519,11 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     ->placeholder('N/A')
                                     ->visible(fn($record) => $record->TipoResolucion !== 'TRASLADO_DE_PAGO'),
                                 Infolists\Components\TextEntry::make('pagoOrigen.MontoPagado')
-                                    ->label('Pago Original')
+                                    ->label(fn($record) => $record->TipoResolucion === 'DEVOLUCION_EFECTIVO' ? 'Pago a mayor devuelto' : 'Pago Original')
                                     ->icon('heroicon-m-banknotes')
                                     ->money('PEN')
                                     ->helperText(fn($record) => $record->pagoOrigen ? "{$record->pagoOrigen->TipoPago} - " . \Carbon\Carbon::parse($record->pagoOrigen->FechaPago)->format('d/m/Y') : '')
-                                    ->visible(fn($record) => $record->TipoResolucion === 'TRASLADO_DE_PAGO' && $record->pagoOrigen),
+                                    ->visible(fn($record) => in_array($record->TipoResolucion, ['TRASLADO_DE_PAGO', 'DEVOLUCION_EFECTIVO']) && $record->pagoOrigen),
                                 Infolists\Components\TextEntry::make('creditoDestino.proposicion.CodigoCredito')
                                     ->label('Crédito Aplicado')
                                     ->badge()
