@@ -110,15 +110,21 @@ class ResolucionExcedenteService
             throw new \Exception('El pago seleccionado no es un pago a mayor.');
         }
 
-        if ($pagoOrigen->EstadoTraslado) {
+        if ($pagoOrigen->EstadoTraslado === 'DEVUELTO') {
             throw new \Exception('El pago a mayor seleccionado ya fue resuelto.');
         }
 
         $montoAplicar = (float) ($solicitud->MontoAplicar ?? 0);
-        if (round($montoAplicar, 2) !== round((float) $pagoOrigen->MontoPagado, 2)) {
+        $montoDisponible = $this->montoDisponiblePagoMayor($pagoOrigen, $solicitud->SolicitudID);
+
+        if ($montoAplicar <= 0) {
+            throw new \Exception('El monto a devolver debe ser mayor a 0.');
+        }
+
+        if (round($montoAplicar, 2) > round($montoDisponible, 2)) {
             throw new \Exception(
-                'La devolucion debe realizarse por el monto completo del pago a mayor: S/ '
-                . number_format((float) $pagoOrigen->MontoPagado, 2)
+                'La devolucion no puede superar el monto disponible del pago a mayor: S/ '
+                . number_format($montoDisponible, 2)
             );
         }
 
@@ -138,14 +144,35 @@ class ResolucionExcedenteService
                 . ($solicitud->clienteDestino?->NombresApellidos ?? 'cliente')
                 . ' por solicitud #'
                 . $solicitud->SolicitudID
+                . ' por S/ '
+                . number_format($montoAplicar, 2)
                 . ($credito?->proposicion?->CodigoCredito ? ' - credito ' . $credito->proposicion->CodigoCredito : '')
                 . ($solicitud->DatosValeCaja ? ' - vale: ' . $solicitud->DatosValeCaja : '')
         );
 
-        $pagoOrigen->EstadoTraslado = 'DEVUELTO';
+        $nuevoDisponible = $montoDisponible - $montoAplicar;
+        if ($nuevoDisponible <= 0.009) {
+            $pagoOrigen->EstadoTraslado = 'DEVUELTO';
+        }
+
         $pagoOrigen->Comentario = ($pagoOrigen->Comentario ? $pagoOrigen->Comentario . ' | ' : '')
-            . "DEVUELTO EN EFECTIVO - Solicitud #{$solicitud->SolicitudID}";
+            . "DEVOLUCION EFECTIVO A MAYOR S/ " . number_format($montoAplicar, 2) . " - Solicitud #{$solicitud->SolicitudID}";
         $pagoOrigen->save();
+    }
+
+    private function montoDisponiblePagoMayor(Pago $pagoOrigen, ?int $solicitudActualId = null): float
+    {
+        $query = SolicitudResolucionExcedente::where('TipoResolucion', 'DEVOLUCION_PAGO_MAYOR')
+            ->where('PagoOrigenID', $pagoOrigen->PagoID)
+            ->where('Estado', '!=', 'RECHAZADA');
+
+        if ($solicitudActualId) {
+            $query->where('SolicitudID', '!=', $solicitudActualId);
+        }
+
+        $montoComprometido = (float) $query->sum('MontoAplicar');
+
+        return max(0, (float) $pagoOrigen->MontoPagado - $montoComprometido);
     }
 
     /**

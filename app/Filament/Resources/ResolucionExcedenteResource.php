@@ -246,7 +246,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     if ($pagoID) {
                                         $pago = \App\Models\Pago::find($pagoID);
                                         if ($pago) {
-                                            return 'Se devolverá el pago a mayor seleccionado por S/ ' . number_format($pago->MontoPagado, 2) . '. No se creará excedente.';
+                                            return 'Disponible para devolver: S/ ' . number_format(self::montoDisponiblePagoMayor($pago), 2) . '. No se creará excedente.';
                                         }
                                     }
                                     return 'Seleccione el pago a mayor que origina la devolución.';
@@ -285,8 +285,9 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                         return;
                                     }
 
-                                    if ((float) $value !== (float) $pago->MontoPagado) {
-                                        $fail('La devolución debe ser por el monto completo del pago a mayor: S/ ' . number_format($pago->MontoPagado, 2) . '.');
+                                    $disponible = self::montoDisponiblePagoMayor($pago);
+                                    if (round((float) $value, 2) > round($disponible, 2)) {
+                                        $fail('La devolución no puede superar el monto disponible del pago a mayor: S/ ' . number_format($disponible, 2) . '.');
                                     }
                                     return;
                                 }
@@ -376,11 +377,13 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     ->orderByDesc('FechaPago')
                                     ->orderByDesc('PagoID')
                                     ->get()
+                                    ->filter(fn($pago) => self::montoDisponiblePagoMayor($pago) > 0)
                                     ->mapWithKeys(function ($pago) {
                                         $fecha = \Carbon\Carbon::parse($pago->FechaPago)->format('d/m/Y');
+                                        $disponible = self::montoDisponiblePagoMayor($pago);
 
                                         return [
-                                            $pago->PagoID => 'S/ ' . number_format($pago->MontoPagado, 2) . " - {$fecha} - {$pago->TipoPago}",
+                                            $pago->PagoID => 'Disponible S/ ' . number_format($disponible, 2) . ' de S/ ' . number_format($pago->MontoPagado, 2) . " - {$fecha} - {$pago->TipoPago}",
                                         ];
                                     });
                             })
@@ -389,7 +392,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set) {
                                 $pago = $get('PagoMayorOrigenID') ? Pago::find($get('PagoMayorOrigenID')) : null;
-                                $set('MontoAplicar', $pago?->MontoPagado);
+                                $set('MontoAplicar', $pago ? self::montoDisponiblePagoMayor($pago) : null);
                             })
                             ->helperText('Use esta opción cuando el dinero ya ingresó como pago a mayor y solo falta devolverlo en efectivo.')
                             ->visible(fn(Get $get) => $get('TipoResolucion') === 'DEVOLUCION_PAGO_MAYOR' && $get('CreditoDestinoID')),
@@ -410,7 +413,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 $pago = $get('PagoMayorOrigenID') ? Pago::find($get('PagoMayorOrigenID')) : null;
 
                                 if ($pago) {
-                                    return 'Se devolvera el pago a mayor seleccionado por S/ ' . number_format($pago->MontoPagado, 2) . '. No se creara excedente.';
+                                    return 'Disponible para devolver: S/ ' . number_format(self::montoDisponiblePagoMayor($pago), 2) . '. No se creara excedente.';
                                 }
 
                                 return 'Seleccione el pago a mayor que origina la devolucion.';
@@ -427,8 +430,9 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                         return;
                                     }
 
-                                    if (round((float) $value, 2) !== round((float) $pago->MontoPagado, 2)) {
-                                        $fail('La devolucion debe ser por el monto completo del pago a mayor: S/ ' . number_format($pago->MontoPagado, 2) . '.');
+                                    $disponible = self::montoDisponiblePagoMayor($pago);
+                                    if (round((float) $value, 2) > round($disponible, 2)) {
+                                        $fail('La devolucion no puede superar el monto disponible del pago a mayor: S/ ' . number_format($disponible, 2) . '.');
                                     }
                                 },
                             ])
@@ -655,6 +659,16 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
     public static function canDelete($record): bool
     {
         return parent::canDelete($record) && \App\Models\AperturaCierreDia::estaAbierto() && $record->FechaCierre === null;
+    }
+
+    private static function montoDisponiblePagoMayor(Pago $pago): float
+    {
+        $montoComprometido = SolicitudResolucionExcedente::where('TipoResolucion', 'DEVOLUCION_PAGO_MAYOR')
+            ->where('PagoOrigenID', $pago->PagoID)
+            ->where('Estado', '!=', 'RECHAZADA')
+            ->sum('MontoAplicar');
+
+        return max(0, (float) $pago->MontoPagado - (float) $montoComprometido);
     }
 
     public static function getPages(): array
