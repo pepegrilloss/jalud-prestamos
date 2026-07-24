@@ -27,7 +27,7 @@ class ResolucionExcedenteService
             if ($solicitud->TipoResolucion === 'TRASLADO_DE_PAGO') {
                 // ========== FLUJO TRASLADO DE PAGO ==========
                 $this->procesarTrasladoPago($solicitud, $aprobador);
-            } elseif ($solicitud->TipoResolucion === 'DEVOLUCION_EFECTIVO' && $solicitud->PagoOrigenID) {
+            } elseif ($solicitud->TipoResolucion === 'DEVOLUCION_PAGO_MAYOR') {
                 $this->procesarDevolucionPagoMayor($solicitud, $aprobador);
             } else {
                 // ========== FLUJO EXCEDENTE (otros tipos) ==========
