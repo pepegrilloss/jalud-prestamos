@@ -160,6 +160,11 @@ class ViewCredito extends ViewRecord
                     $montoCuota = round($totalPagar / $cuotas, 2);
 
                     $creditoID = $this->record->CreditoID;
+                    $rangoFechas = \App\Services\CreditoFechaService::calcularRangoPorCuotasLaborables(
+                        $this->record->FechaGeneracion,
+                        $cuotas,
+                        $this->record->SedeID
+                    );
                     $valoresAnteriores = [
                         'MontoTotal' => (float) $prop->MontoTotal,
                         'TasaID' => (int) $prop->TasaID,
@@ -168,6 +173,8 @@ class ViewCredito extends ViewRecord
                         'Plazo' => (int) $prop->Plazo,
                         'NumeroCuotas' => (int) $prop->NumeroCuotas,
                         'SaldoPendiente' => (float) $prop->SaldoPendiente,
+                        'FechaInicio' => $this->record->FechaInicio?->toDateString(),
+                        'FechaVencimiento' => $this->record->FechaVencimiento?->toDateString(),
                     ];
 
                     $zona = Zona::withoutGlobalScope('sede')->find($zonaID);
@@ -177,7 +184,7 @@ class ViewCredito extends ViewRecord
                         return;
                     }
 
-                    $nuevoSaldo = DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $plazo, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID) {
+                    $nuevoSaldo = DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $plazo, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID, $rangoFechas) {
                         // 1. Actualizar ProposicionCredito
                         DB::table('ProposicionCredito')
                             ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
@@ -191,6 +198,13 @@ class ViewCredito extends ViewRecord
                                 'MontoInteres' => $interes,
                                 'MontoTotalPagar' => $totalPagar,
                                 'MontoCuota' => $montoCuota,
+                            ]);
+
+                        DB::table('Credito')
+                            ->where('CreditoID', $creditoID)
+                            ->update([
+                                'FechaInicio' => $rangoFechas['FechaInicio']->toDateString(),
+                                'FechaVencimiento' => $rangoFechas['FechaVencimiento']->toDateString(),
                             ]);
 
                         // 2. Recalcular SaldoPendiente con la regla central del sistema
@@ -277,6 +291,8 @@ class ViewCredito extends ViewRecord
                             'MontoTotalPagar' => $totalPagar,
                             'MontoCuota' => $montoCuota,
                             'SaldoPendiente' => $nuevoSaldo,
+                            'FechaInicio' => $rangoFechas['FechaInicio']->toDateString(),
+                            'FechaVencimiento' => $rangoFechas['FechaVencimiento']->toDateString(),
                         ],
                         $prop->SedeID
                     );

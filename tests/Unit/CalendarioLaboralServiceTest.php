@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\CalendarioNoMoroso;
 use App\Services\CalendarioLaboralService;
+use App\Services\CreditoFechaService;
 use ReflectionClass;
 use Tests\TestCase;
 
@@ -71,6 +72,19 @@ class CalendarioLaboralServiceTest extends TestCase
         ]);
 
         $this->assertTrue(CalendarioLaboralService::esLaborable('2026-07-26', 1));
+    }
+
+    public function test_fecha_de_credito_usa_numero_de_cuotas_laborables(): void
+    {
+        $this->setStaticProperty('feriadosNagerPorAnio', [
+            2026 => [],
+        ]);
+        $this->setStaticProperty('reglasLocales', []);
+
+        $rango = CreditoFechaService::calcularRangoPorCuotasLaborables('2026-07-09', 3, 1);
+
+        $this->assertSame('2026-07-10', $rango['FechaInicio']->toDateString());
+        $this->assertSame('2026-07-13', $rango['FechaVencimiento']->toDateString());
     }
 
     private function setStaticProperty(string $property, mixed $value): void

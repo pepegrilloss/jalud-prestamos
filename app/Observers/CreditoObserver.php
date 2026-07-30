@@ -17,7 +17,7 @@ class CreditoObserver
         try {
             \App\Services\SaldoPendienteService::recalcular($credito->ProposicionCreditoID);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver: '.$e->getMessage());
         }
 
         try {
@@ -45,7 +45,7 @@ class CreditoObserver
             try {
                 \App\Services\SaldoPendienteService::recalcular($credito->ProposicionCreditoID);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver@updated: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver@updated: '.$e->getMessage());
             }
         }
     }
@@ -55,7 +55,7 @@ class CreditoObserver
         try {
             \App\Services\SaldoPendienteService::recalcular($credito->ProposicionCreditoID);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver@deleted: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Error al recalcular saldo en CreditoObserver@deleted: '.$e->getMessage());
         }
     }
 
@@ -63,7 +63,7 @@ class CreditoObserver
     {
         $proposicion = $credito->proposicion;
 
-        if (!$proposicion) {
+        if (! $proposicion) {
             return;
         }
 
@@ -95,7 +95,7 @@ class CreditoObserver
         $cuotasRequeridas = $proposicion->NumeroCuotas;
 
         while ($cuotasGeneradas < $cuotasRequeridas) {
-            if (!CalendarioLaboralService::esLaborable($fechaActual, $credito->SedeID)) {
+            if (! CalendarioLaboralService::esLaborable($fechaActual, $credito->SedeID)) {
                 $estado = $fechaActual->dayOfWeek === Carbon::SUNDAY
                     ? Cuota::ESTADO_DOMINGO
                     : Cuota::ESTADO_FERIADO;

@@ -3,40 +3,43 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\GenerarCreditoResource\Pages;
-use App\Filament\Resources\GenerarCreditoResource\Widgets;
-use App\Models\ProposicionCredito;
 use App\Models\Cliente;
-use App\Models\TipoCredito;
-use App\Models\Tasa;
-use App\Models\Zona;
 use App\Models\Credito;
-use App\Models\TipoPago;
 use App\Models\Pago;
+use App\Models\ProposicionCredito;
+use App\Models\Sede;
+use App\Models\Tasa;
+use App\Models\TipoCredito;
+use App\Models\TipoPago;
+use App\Models\Zona;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
-use Filament\Resources\Resource;
-use Filament\Support\RawJs;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\HtmlString;
-use Illuminate\Database\Eloquent\Builder;
 
-use App\Models\Sede;
 class GenerarCreditoResource extends Resource
 {
     protected static ?string $model = ProposicionCredito::class;
+
     protected static ?string $navigationGroup = 'Créditos';
+
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
+
     protected static ?int $navigationSort = 6;
+
     protected static ?string $navigationLabel = 'Generar Crédito';
+
     protected static ?string $modelLabel = 'Generar Crédito';
+
     protected static ?string $pluralModelLabel = 'Generar Crédito';
 
     public static function getNavigationBadge(): ?string
@@ -44,6 +47,7 @@ class GenerarCreditoResource extends Resource
         $count = \App\Models\ProposicionCredito::where('Estado', 'APROBADO')
             ->whereDoesntHave('credito')
             ->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -67,21 +71,27 @@ class GenerarCreditoResource extends Resource
 
     public static function canEdit($record): bool
     {
-        if (!(auth()->user()?->can('update_generar::credito') ?? false)) { return false; }
+        if (! (auth()->user()?->can('update_generar::credito') ?? false)) {
+            return false;
+        }
 
         if ($record->FechaCierre !== null) {
             return false;
         }
+
         return true;
     }
 
     public static function canDelete($record): bool
     {
-        if (!(auth()->user()?->can('delete_generar::credito') ?? false)) { return false; }
+        if (! (auth()->user()?->can('delete_generar::credito') ?? false)) {
+            return false;
+        }
 
         if ($record->FechaCierre !== null) {
             return false;
         }
+
         return true;
     }
 
@@ -97,8 +107,8 @@ class GenerarCreditoResource extends Resource
                                 Cliente::where('Activo', true)
                                     ->orderBy('NombresApellidos')
                                     ->get()
-                                    ->mapWithKeys(fn($cliente) => [
-                                        $cliente->ClienteID => "{$cliente->NombresApellidos} (DNI: {$cliente->DNI})"
+                                    ->mapWithKeys(fn ($cliente) => [
+                                        $cliente->ClienteID => "{$cliente->NombresApellidos} (DNI: {$cliente->DNI})",
                                     ])
                             )
                             ->required()
@@ -110,13 +120,14 @@ class GenerarCreditoResource extends Resource
                                 try {
                                     if ($encrypted = request()->query('cliente')) {
                                         session()->put('cliente_predefinido', true);
+
                                         return Crypt::decrypt($encrypted);
                                     }
                                 } catch (\Exception $e) {
                                     return null;
                                 }
                             })
-                            ->disabled(fn() => session()->has('cliente_predefinido'))
+                            ->disabled(fn () => session()->has('cliente_predefinido'))
                             ->dehydrated()
                             ->live(debounce: 0)
                             ->afterStateUpdated(function (Set $set, $state) {
@@ -133,7 +144,7 @@ class GenerarCreditoResource extends Resource
                             ->label('Código de Crédito')
                             ->disabled()
                             ->dehydrated()
-                            ->default(fn() => ProposicionCredito::generarCodigoCredito())
+                            ->default(fn () => ProposicionCredito::generarCodigoCredito())
                             ->columnSpanFull(),
 
                         Forms\Components\Select::make('TipoCreditoID')
@@ -148,11 +159,11 @@ class GenerarCreditoResource extends Resource
                             ->required()
                             ->numeric()
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn(Set $set, Get $get, $state) => static::calcularTotales($set, $get, $state)),
+                            ->afterStateUpdated(fn (Set $set, Get $get, $state) => static::calcularTotales($set, $get, $state)),
 
                         Forms\Components\Select::make('TasaID')
                             ->label('Tasa de Interés')
-                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
+                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn ($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
                             ->required()
                             ->searchable()
                             ->live()
@@ -171,10 +182,10 @@ class GenerarCreditoResource extends Resource
                             ->numeric()
                             ->step(0.01)
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
+                            ->afterStateUpdated(fn (Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
                         Forms\Components\TextInput::make('Plazo')->label('Plazo (días)')->required()->numeric(),
                         Forms\Components\TextInput::make('NumeroCuotas')->label('N° Cuotas')->required()->numeric()
-                            ->live(onBlur: true)->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
+                            ->live(onBlur: true)->afterStateUpdated(fn (Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal'))),
 
                         Forms\Components\TextInput::make('MontoCuota')->label('Monto por Cuota')->disabled()->dehydrated(),
                         Forms\Components\TextInput::make('MontoInteres')->label('Monto Total Interés')->disabled()->dehydrated(),
@@ -261,19 +272,19 @@ class GenerarCreditoResource extends Resource
                 Tables\Columns\TextColumn::make('CodigoCredito')->label('Código')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('cliente.NombresApellidos')->label('Cliente')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('MontoTotal')->label('Monto')->money('PEN')->sortable(),
-                Tables\Columns\TextColumn::make('TasaInteres')->label('Tasa (%)')->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', '') . ' %')->sortable(),
+                Tables\Columns\TextColumn::make('TasaInteres')->label('Tasa (%)')->formatStateUsing(fn ($state) => number_format((float) $state, 2, '.', '').' %')->sortable(),
                 Tables\Columns\TextColumn::make('MontoInteres')
                     ->label('Intereses')
                     ->sortable()
-                    ->formatStateUsing(fn($state) => 'S/ ' . number_format((float) $state, 2, '.', '')),
+                    ->formatStateUsing(fn ($state) => 'S/ '.number_format((float) $state, 2, '.', '')),
 
                 Tables\Columns\TextColumn::make('MontoTotalPagar')
                     ->label('Monto Total')
                     ->sortable()
-                    ->formatStateUsing(fn($state) => 'S/ ' . number_format((float) $state, 2, '.', '')),
+                    ->formatStateUsing(fn ($state) => 'S/ '.number_format((float) $state, 2, '.', '')),
                 Tables\Columns\TextColumn::make('NumeroCuotas')->label('Cuotas')->sortable(),
                 Tables\Columns\TextColumn::make('Plazo')->label('Días')->sortable(),
-                Tables\Columns\TextColumn::make('Estado')->badge()->color(fn(string $state): string => match ($state) {
+                Tables\Columns\TextColumn::make('Estado')->badge()->color(fn (string $state): string => match ($state) {
                     'APROBADO' => 'success',
                     default => 'gray',
                 })->sortable(),
@@ -300,7 +311,7 @@ class GenerarCreditoResource extends Resource
                     ->modalSubmitAction(false)
                     ->form([
                         Forms\Components\ViewField::make('evaluaciones')
-                            ->view('filament.components.evaluaciones-credito')
+                            ->view('filament.components.evaluaciones-credito'),
                     ]),
 
                 Action::make('editar_datos')
@@ -319,11 +330,11 @@ class GenerarCreditoResource extends Resource
                                             ->step(0.01)
                                             ->required()
                                             ->live(debounce: 300)
-                                            ->afterStateUpdated(fn(Set $set, Get $get) => static::recalcularTotales($set, $get)),
+                                            ->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularTotales($set, $get)),
 
                                         Forms\Components\Select::make('TasaID')
                                             ->label('Tasa de Interés')
-                                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
+                                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn ($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
                                             ->required()
                                             ->searchable()
                                             ->live()
@@ -345,7 +356,7 @@ class GenerarCreditoResource extends Resource
                                             ->step(0.01)
                                             ->required()
                                             ->live(debounce: 300)
-                                            ->afterStateUpdated(fn(Set $set, Get $get) => static::recalcularTotales($set, $get)),
+                                            ->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularTotales($set, $get)),
 
                                         Forms\Components\TextInput::make('Plazo')
                                             ->label('Plazo (días)')
@@ -357,7 +368,7 @@ class GenerarCreditoResource extends Resource
                                             ->numeric()
                                             ->required()
                                             ->live(debounce: 300)
-                                            ->afterStateUpdated(fn(Set $set, Get $get) => static::recalcularTotales($set, $get)),
+                                            ->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularTotales($set, $get)),
                                     ]),
 
                                 Forms\Components\Grid::make(3)
@@ -380,7 +391,7 @@ class GenerarCreditoResource extends Resource
                                     ]),
                             ]),
                     ])
-                    ->fillForm(fn(ProposicionCredito $record) => [
+                    ->fillForm(fn (ProposicionCredito $record) => [
                         'MontoTotal' => $record->MontoTotal,
                         'TasaID' => Tasa::where('Valor', $record->TasaInteres)->where('Activo', true)->first()?->TasaID,
                         'TasaInteres' => $record->TasaInteres,
@@ -435,7 +446,7 @@ class GenerarCreditoResource extends Resource
                                     ->rows(2)
                                     ->columnSpanFull(),
                             ])
-                            ->columns(1)
+                            ->columns(1),
                     ])
                     ->action(function (ProposicionCredito $record, array $data) {
                         $montoDesembolso = $record->MontoTotal;
@@ -459,17 +470,19 @@ class GenerarCreditoResource extends Resource
                                     ->body($e->getMessage())
                                     ->persistent()
                                     ->send();
+
                                 return;
                             }
                         }
 
-                        if (!$sedeId) {
+                        if (! $sedeId) {
                             Notification::make()
                                 ->danger()
                                 ->title('No se puede generar crédito')
                                 ->body('No tienes una sede asignada. Selecciona una sede activa.')
                                 ->persistent()
                                 ->send();
+
                             return;
                         }
 
@@ -482,14 +495,14 @@ class GenerarCreditoResource extends Resource
                             ->where('FueRefinanciada', 0)
                             ->whereHas('credito', function ($q) {
                                 $q->where('Activo', true)
-                                  ->whereHas('moras', function ($sub) {
-                                      $sub->whereRaw('MoraAcumulada > COALESCE(
+                                    ->whereHas('moras', function ($sub) {
+                                        $sub->whereRaw('MoraAcumulada > COALESCE(
                                           (SELECT SUM(p.MontoPagado) FROM pago p
                                            WHERE p.CreditoID = mora.CreditoID
                                              AND (p.TipoConcepto = ? OR p.EsMora = 1)
                                              AND p.Activo = 1), 0
                                       )', ['M']);
-                                  });
+                                    });
                             })
                             ->pluck('CodigoCredito');
 
@@ -501,6 +514,7 @@ class GenerarCreditoResource extends Resource
                                 ->body("No se puede generar el crédito. El cliente tiene mora pendiente en el mismo tipo de crédito: {$lista}")
                                 ->persistent()
                                 ->send();
+
                             return;
                         }
 
@@ -516,6 +530,7 @@ class GenerarCreditoResource extends Resource
                                 ->body($e->getMessage())
                                 ->persistent()
                                 ->send();
+
                             return;
                         }
 
@@ -524,7 +539,7 @@ class GenerarCreditoResource extends Resource
                             DB::transaction(function () use ($record, $data, $sedeId, $montoDesembolso, $fondoService) {
                                 $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                                 $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
-                                
+
                                 $credito = Credito::create([
                                     'ProposicionCreditoID' => $record->ProposicionCreditoID,
                                     'TipoPagoID' => $data['TipoPagoID'],
@@ -543,7 +558,7 @@ class GenerarCreditoResource extends Resource
                                 );
 
                                 // Calcular fechas y cuotas (fuera del lock de fondo)
-                            self::calcularFechasCredito($credito, $record);
+                                self::calcularFechasCredito($credito, $record);
 
                                 // Pago automático si es refinanciamiento
                                 if ($record->EsRefinanciamiento && $record->ProposicionCreditoAnteriorID) {
@@ -554,7 +569,7 @@ class GenerarCreditoResource extends Resource
                         } catch (\Exception $e) {
                             \Log::error('GenerarCredito: Error en transacción', [
                                 'ProposicionID' => $record->ProposicionCreditoID,
-                                'error' => $e->getMessage()
+                                'error' => $e->getMessage(),
                             ]);
                             Notification::make()
                                 ->danger()
@@ -562,6 +577,7 @@ class GenerarCreditoResource extends Resource
                                 ->body($e->getMessage())
                                 ->persistent()
                                 ->send();
+
                             return;
                         }
 
@@ -596,7 +612,7 @@ class GenerarCreditoResource extends Resource
                 ->where('SedeID', $record->SedeID)
                 ->first();
 
-            if (!$proposicionAnterior) {
+            if (! $proposicionAnterior) {
                 return;
             }
 
@@ -611,7 +627,7 @@ class GenerarCreditoResource extends Resource
                 ->where('Activo', true)
                 ->first();
 
-            if (!$creditoAnterior) {
+            if (! $creditoAnterior) {
                 return;
             }
 
@@ -638,7 +654,7 @@ class GenerarCreditoResource extends Resource
             $promotorCobradorID = $cliente?->PromotorCobradorID;
 
             // Fallback: Si el cliente no tiene promotor, intentar usar el del usuario actual
-            if (!$promotorCobradorID) {
+            if (! $promotorCobradorID) {
                 $promotorCobradorID = Auth::user()?->PromotorCobradorID;
             }
 
@@ -657,7 +673,7 @@ class GenerarCreditoResource extends Resource
                 'EsPagoAMayor' => false,
                 'EsPagoForzado' => false,
                 'EsPagoAutomatico' => 1,
-                'Comentario' => "Pago automático por refinanciamiento. Proposición #{$record->ProposicionCreditoID}. Saldo total: S/ " . number_format($saldoTotalPendiente, 2),
+                'Comentario' => "Pago automático por refinanciamiento. Proposición #{$record->ProposicionCreditoID}. Saldo total: S/ ".number_format($saldoTotalPendiente, 2),
                 'UsuarioRegistro' => Auth::user()?->name ?? 'Sistema',
                 'Activo' => true,
             ]);
@@ -672,7 +688,7 @@ class GenerarCreditoResource extends Resource
 
             // Marcar la proposición anterior como refinanciada
             $proposicionAnterior->update([
-                'FueRefinanciada' => 1
+                'FueRefinanciada' => 1,
             ]);
 
             // Marcar el crédito anterior como SALDADO
@@ -681,7 +697,7 @@ class GenerarCreditoResource extends Resource
                 'FechaSaldamiento' => $fechaPago,
             ]);
 
-            $mensaje = "Pago automático de S/ " . number_format($saldoTotalPendiente, 2) . " para cerrar el crédito anterior.";
+            $mensaje = 'Pago automático de S/ '.number_format($saldoTotalPendiente, 2).' para cerrar el crédito anterior.';
 
             Notification::make()
                 ->success()
@@ -691,9 +707,9 @@ class GenerarCreditoResource extends Resource
                 ->send();
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error generando pago automático refinanciamiento en GenerarCredito: ' . $e->getMessage(), [
+            \Illuminate\Support\Facades\Log::error('Error generando pago automático refinanciamiento en GenerarCredito: '.$e->getMessage(), [
                 'exception' => $e,
-                'proposicionID' => $record->ProposicionCreditoID
+                'proposicionID' => $record->ProposicionCreditoID,
             ]);
 
             Notification::make()
@@ -715,29 +731,16 @@ class GenerarCreditoResource extends Resource
 
     protected static function calcularFechasCredito(Credito $credito, ProposicionCredito $record): void
     {
-        $fechaActual = \Carbon\Carbon::parse($credito->FechaGeneracion)->addDay();
-        $cuotasContadas = 0;
-        $fechaInicio = null;
-        $fechaVencimiento = null;
+        $rango = \App\Services\CreditoFechaService::calcularRangoPorCuotasLaborables(
+            $credito->FechaGeneracion,
+            (int) ($record->NumeroCuotas ?: 1),
+            $credito->SedeID
+        );
 
-        while ($cuotasContadas < $record->NumeroCuotas) {
-            if (\App\Services\CalendarioLaboralService::esLaborable($fechaActual, $credito->SedeID)) {
-                if ($fechaInicio === null) {
-                    $fechaInicio = $fechaActual->clone();
-                }
-                $fechaVencimiento = $fechaActual->clone();
-                $cuotasContadas++;
-            }
-
-            $fechaActual->addDay();
-        }
-
-        if ($fechaInicio && $fechaVencimiento) {
-            $credito->update([
-                'FechaInicio' => $fechaInicio->format('Y-m-d'),
-                'FechaVencimiento' => $fechaVencimiento->format('Y-m-d'),
-            ]);
-        }
+        $credito->update([
+            'FechaInicio' => $rango['FechaInicio']->toDateString(),
+            'FechaVencimiento' => $rango['FechaVencimiento']->toDateString(),
+        ]);
     }
 
     public static function getPages(): array
@@ -750,17 +753,21 @@ class GenerarCreditoResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!(auth()->user()?->can('create_generar::credito') ?? false)) { return false; }
+        if (! (auth()->user()?->can('create_generar::credito') ?? false)) {
+            return false;
+        }
 
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
+        if (! \App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
                 ->title('❌ Día Cerrado')
                 ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
                 ->danger()
                 ->persistent()
                 ->send();
+
             return false;
         }
+
         return true;
     }
 }
