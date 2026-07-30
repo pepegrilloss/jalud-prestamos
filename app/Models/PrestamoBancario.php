@@ -9,9 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class PrestamoBancario extends Model
 {
     public const ESTADO_VIGENTE = 'VIGENTE';
+
     public const ESTADO_CANCELADO = 'CANCELADO';
 
+    public const ESTADO_CANCELADO_ANTICIPADO = 'CANCELADO_ANTICIPADO';
+
     protected $table = 'tesoreria_prestamos_bancarios';
+
     protected $primaryKey = 'PrestamoBancarioID';
 
     protected $fillable = [
@@ -43,5 +47,17 @@ class PrestamoBancario extends Model
     public function getNombreBancoAttribute(): string
     {
         return $this->Banco ?? $this->cuentaTesoreria?->Banco ?? 'Banco no disponible';
+    }
+
+    public function getFuentePagoAttribute(): string
+    {
+        return $this->cuentaTesoreria?->NombreCompleto ?? 'Caja Abierta - Gerencia';
+    }
+
+    public function getCapitalPendienteAttribute(): float
+    {
+        return round((float) $this->cuotas()
+            ->where('Estado', CuotaPrestamoBancario::ESTADO_PENDIENTE)
+            ->sum('Capital'), 2);
     }
 }

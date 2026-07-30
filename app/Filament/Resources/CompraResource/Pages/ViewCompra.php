@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\CompraResource\Pages;
 
 use App\Filament\Resources\CompraResource;
-use Filament\Resources\Pages\ViewRecord;
-use Filament\Infolists\Infolist;
 use Filament\Infolists\Components;
+use Filament\Infolists\Infolist;
+use Filament\Resources\Pages\ViewRecord;
 
 class ViewCompra extends ViewRecord
 {
@@ -59,10 +59,11 @@ class ViewCompra extends ViewRecord
                         Components\TextEntry::make('TipoIGV')
                             ->label('Tipo IGV')
                             ->badge()
-                            ->color(fn(string $state): string => $state === 'EXONERADO' ? 'success' : 'warning')
+                            ->color(fn (string $state): string => $state === 'EXONERADO' ? 'success' : 'warning')
                             ->formatStateUsing(function (string $state): string {
                                 $tipo = \App\Models\TipoIgv::where('Codigo', $state)->first();
-                                return $tipo ? $tipo->Nombre . ' (' . number_format($tipo->Porcentaje, 1) . '%)' : $state;
+
+                                return $tipo ? $tipo->Nombre.' ('.number_format($tipo->Porcentaje, 1).'%)' : $state;
                             }),
                         Components\TextEntry::make('MontoIGV')
                             ->label('IGV')
@@ -75,17 +76,20 @@ class ViewCompra extends ViewRecord
                         Components\TextEntry::make('TipoCompra')
                             ->label('Tipo Compra')
                             ->badge()
-                            ->color(fn(string $state): string => $state === 'CREDITO' ? 'info' : 'gray')
-                            ->formatStateUsing(fn(string $state): string => $state === 'CREDITO' ? 'Crédito' : 'Contado'),
+                            ->color(fn (string $state): string => $state === 'CREDITO' ? 'info' : 'gray')
+                            ->formatStateUsing(fn (string $state): string => $state === 'CREDITO' ? 'Crédito' : 'Contado'),
                         Components\TextEntry::make('EstadoPago')
                             ->label('Estado Pago')
                             ->badge()
-                            ->color(fn(string $state): string => $state === 'PENDIENTE' ? 'danger' : 'success')
-                            ->formatStateUsing(fn(string $state): string => $state === 'PENDIENTE' ? 'Pendiente' : 'Pagado'),
+                            ->color(fn (string $state): string => $state === 'PENDIENTE' ? 'danger' : 'success')
+                            ->formatStateUsing(fn (string $state): string => $state === 'PENDIENTE' ? 'Pendiente' : 'Pagado'),
                         Components\TextEntry::make('FechaPago')
                             ->label('Fecha Pago')
                             ->date('d/m/Y H:i')
-                            ->visible(fn($record): bool => filled($record->FechaPago)),
+                            ->visible(fn ($record): bool => filled($record->FechaPago)),
+                        Components\TextEntry::make('FuenteTesoreria')
+                            ->label('Origen del dinero')
+                            ->visible(fn ($record) => filled($record->OrigenTesoreriaTipo)),
                     ])->columns(4),
 
                 Components\Section::make('Observaciones')
@@ -94,7 +98,7 @@ class ViewCompra extends ViewRecord
                             ->label('Observaciones')
                             ->default('Sin observaciones'),
                     ])
-                    ->visible(fn($record) => !empty($record->Observaciones)),
+                    ->visible(fn ($record) => ! empty($record->Observaciones)),
             ]);
     }
 }

@@ -8,11 +8,20 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class PagoPrestamoBancario extends Model
 {
+    public const TIPO_PAGO_CUOTA = 'PAGO_CUOTA';
+
+    public const TIPO_EXTORNO_CUOTA = 'EXTORNO_CUOTA';
+
+    public const TIPO_CANCELACION_ANTICIPADA = 'CANCELACION_ANTICIPADA';
+
+    public const TIPO_EXTORNO_CANCELACION = 'EXTORNO_CANCELACION';
+
     protected $table = 'tesoreria_prestamo_pagos';
+
     protected $primaryKey = 'PagoPrestamoBancarioID';
 
     protected $fillable = [
-        'PrestamoBancarioID', 'CuotaPrestamoBancarioID', 'MovimientoTesoreriaID', 'Monto',
+        'Tipo', 'PrestamoBancarioID', 'CuotaPrestamoBancarioID', 'MovimientoTesoreriaID', 'Monto',
         'FechaContable', 'FechaRegistro', 'Concepto', 'Observaciones', 'UsuarioID', 'PagoOriginalID',
     ];
 

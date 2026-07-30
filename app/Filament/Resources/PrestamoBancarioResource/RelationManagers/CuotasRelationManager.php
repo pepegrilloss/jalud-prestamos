@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 class CuotasRelationManager extends RelationManager
 {
     protected static string $relationship = 'cuotas';
+
     protected static ?string $title = 'Cronograma de pagos';
 
     public function table(Table $table): Table
@@ -29,19 +30,32 @@ class CuotasRelationManager extends RelationManager
             Tables\Columns\BadgeColumn::make('Estado')->colors([
                 'success' => CuotaPrestamoBancario::ESTADO_CANCELADA,
                 'warning' => CuotaPrestamoBancario::ESTADO_PENDIENTE,
-            ]),
+                'gray' => CuotaPrestamoBancario::ESTADO_ANULADA_ANTICIPADA,
+            ])->formatStateUsing(fn (string $state) => match ($state) {
+                CuotaPrestamoBancario::ESTADO_CANCELADA => 'Cancelada',
+                CuotaPrestamoBancario::ESTADO_PENDIENTE => 'Por pagar',
+                CuotaPrestamoBancario::ESTADO_ANULADA_ANTICIPADA => 'Anulada por cancelación anticipada',
+                default => $state,
+            }),
             Tables\Columns\TextColumn::make('FechaPago')->label('Pagada el')->date('d/m/Y')->placeholder('-'),
         ])->actions([
             Tables\Actions\Action::make('pagar')
-                ->label('Pagar desde Caja Gerencia')
+                ->label('Pagar cuota')
                 ->icon('heroicon-o-banknotes')
                 ->color('success')
                 ->visible(fn (CuotaPrestamoBancario $record) => $record->Estado === CuotaPrestamoBancario::ESTADO_PENDIENTE)
                 ->requiresConfirmation()
                 ->modalHeading('Confirmar pago de cuota')
-                ->modalDescription(fn (CuotaPrestamoBancario $record) => 'Se descontará S/ ' . number_format((float) $record->MontoCuota, 2) . ' de Caja Abierta - Gerencia y se registrará como pago completo.')
+                ->modalDescription(fn (CuotaPrestamoBancario $record) => 'Se descontará S/ '
+                    .number_format((float) $record->MontoCuota, 2)
+                    .' de '.$record->prestamo->FuentePago
+                    .' y se registrará como pago completo.')
                 ->form([
-                    Forms\Components\DatePicker::make('FechaContable')->label('Fecha contable')->default(now())->maxDate(now())->required(),
+                    Forms\Components\DatePicker::make('FechaContable')
+                        ->label('Fecha contable')
+                        ->default(now())
+                        ->maxDate(now())
+                        ->required(),
                     Forms\Components\TextInput::make('Concepto')->maxLength(255),
                     Forms\Components\Textarea::make('Observaciones')->maxLength(1000),
                 ])

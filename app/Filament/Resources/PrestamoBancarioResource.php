@@ -21,18 +21,43 @@ use Illuminate\Database\Eloquent\Builder;
 class PrestamoBancarioResource extends Resource
 {
     protected static ?string $model = PrestamoBancario::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?string $navigationGroup = 'Tesorería';
+
     protected static ?string $navigationLabel = 'Préstamos Bancarios';
+
     protected static ?string $modelLabel = 'Préstamo bancario';
+
     protected static ?string $pluralModelLabel = 'Préstamos bancarios';
+
     protected static ?int $navigationSort = 3;
 
-    public static function shouldRegisterNavigation(): bool { return self::enGerencia(); }
-    public static function canAccess(): bool { return self::enGerencia(); }
-    public static function canCreate(): bool { return self::enGerencia(); }
-    public static function canEdit($record): bool { return false; }
-    public static function canDelete($record): bool { return false; }
+    public static function shouldRegisterNavigation(): bool
+    {
+        return self::enGerencia();
+    }
+
+    public static function canAccess(): bool
+    {
+        return self::enGerencia();
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::enGerencia();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -49,7 +74,23 @@ class PrestamoBancarioResource extends Resource
                         ->options(fn () => CuentaTesoreria::query()
                             ->where('Estado', CuentaTesoreria::ESTADO_ACTIVA)
                             ->orderBy('Banco')->distinct()->pluck('Banco', 'Banco'))
-                        ->searchable()->required(),
+                        ->searchable()
+                        ->live()
+                        ->afterStateUpdated(fn (Set $set) => $set('CuentaTesoreriaID', null))
+                        ->required(),
+                    Forms\Components\Select::make('CuentaTesoreriaID')
+                        ->label('Cuenta bancaria de débito')
+                        ->options(fn (Get $get) => CuentaTesoreria::query()
+                            ->where('Estado', CuentaTesoreria::ESTADO_ACTIVA)
+                            ->when($get('Banco'), fn (Builder $query, string $banco) => $query->where('Banco', $banco))
+                            ->orderBy('NumeroCuenta')
+                            ->get()
+                            ->mapWithKeys(fn (CuentaTesoreria $cuenta) => [
+                                $cuenta->CuentaTesoreriaID => $cuenta->NumeroCuenta,
+                            ]))
+                        ->searchable()
+                        ->placeholder('Caja Abierta - Gerencia')
+                        ->helperText('Si no selecciona una cuenta, las cuotas se descontarán de Caja Abierta - Gerencia.'),
                     Forms\Components\TextInput::make('Cliente')->label('Cliente / deudor')->required()->maxLength(255),
                     Forms\Components\TextInput::make('CuentaPrestamo')->label('Cuenta del préstamo')->required()->maxLength(100),
                     Forms\Components\TextInput::make('Operacion')->label('Operación')->maxLength(100),
@@ -64,7 +105,8 @@ class PrestamoBancarioResource extends Resource
                     Forms\Components\TextInput::make('TEA')->label('TEA')->numeric()->suffix('%')->minValue(0)->required()
                         ->live(onBlur: true)->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularCronograma($set, $get)),
                     Forms\Components\TextInput::make('TED')->label('TED')->numeric()->suffix('%')->minValue(0)->required(),
-                    Forms\Components\TextInput::make('PagoMensual')->label('Pago mensual')->numeric()->prefix('S/')->minValue(0)->required(),
+                    Forms\Components\TextInput::make('PagoMensual')->label('Pago mensual')->numeric()->prefix('S/')->minValue(0)->required()
+                        ->live(onBlur: true)->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularCronograma($set, $get, true)),
                     Forms\Components\DatePicker::make('FechaVencimiento')->label('Fecha de vencimiento')->required(),
                     Forms\Components\Textarea::make('Observaciones')->maxLength(1000)->columnSpanFull(),
                 ])->columns(3),
@@ -93,19 +135,27 @@ class PrestamoBancarioResource extends Resource
             Tables\Columns\TextColumn::make('Banco')->searchable()->sortable(),
             Tables\Columns\TextColumn::make('Cliente')->searchable()->wrap(),
             Tables\Columns\TextColumn::make('CuentaPrestamo')->label('Cuenta')->searchable(),
+            Tables\Columns\TextColumn::make('FuentePago')->label('Origen de pago')->toggleable(),
             Tables\Columns\TextColumn::make('Operacion')->searchable()->placeholder('-'),
             Tables\Columns\TextColumn::make('MontoPrestamo')->label('Préstamo')->money('PEN')->weight('bold')->sortable(),
             Tables\Columns\TextColumn::make('FechaVencimiento')->label('Vencimiento')->date('d/m/Y')->sortable(),
             Tables\Columns\BadgeColumn::make('Estado')->colors([
                 'success' => PrestamoBancario::ESTADO_VIGENTE,
                 'gray' => PrestamoBancario::ESTADO_CANCELADO,
-            ]),
+                'warning' => PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO,
+            ])->formatStateUsing(fn (string $state) => match ($state) {
+                PrestamoBancario::ESTADO_VIGENTE => 'Vigente',
+                PrestamoBancario::ESTADO_CANCELADO => 'Cancelado',
+                PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO => 'Cancelado anticipadamente',
+                default => $state,
+            }),
         ])->filters([
             Tables\Filters\SelectFilter::make('Banco')->options(fn () => CuentaTesoreria::query()
                 ->where('Estado', CuentaTesoreria::ESTADO_ACTIVA)->orderBy('Banco')->distinct()->pluck('Banco', 'Banco')),
             Tables\Filters\SelectFilter::make('Estado')->options([
                 PrestamoBancario::ESTADO_VIGENTE => 'Vigente',
                 PrestamoBancario::ESTADO_CANCELADO => 'Cancelado',
+                PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO => 'Cancelado anticipadamente',
             ]),
         ])->actions([Tables\Actions\ViewAction::make()])->bulkActions([]);
     }
@@ -118,6 +168,7 @@ class PrestamoBancarioResource extends Resource
                     Infolists\Components\TextEntry::make('NombreBanco')->label('Banco'),
                     Infolists\Components\TextEntry::make('Cliente')->label('Cliente'),
                     Infolists\Components\TextEntry::make('CuentaPrestamo')->label('Cuenta'),
+                    Infolists\Components\TextEntry::make('FuentePago')->label('Origen de pago'),
                     Infolists\Components\TextEntry::make('Operacion')->placeholder('-'),
                     Infolists\Components\TextEntry::make('MontoPrestamo')->label('Préstamo')->money('PEN'),
                     Infolists\Components\TextEntry::make('FechaDesembolso')->label('Desembolso')->date('d/m/Y'),
@@ -127,7 +178,14 @@ class PrestamoBancarioResource extends Resource
                     Infolists\Components\TextEntry::make('PagoMensual')->label('Pago mensual')->money('PEN'),
                     Infolists\Components\TextEntry::make('TEA')->suffix('%'),
                     Infolists\Components\TextEntry::make('TED')->suffix('%'),
-                    Infolists\Components\TextEntry::make('Estado')->badge(),
+                    Infolists\Components\TextEntry::make('Estado')->badge()
+                        ->formatStateUsing(fn (string $state) => match ($state) {
+                            PrestamoBancario::ESTADO_VIGENTE => 'Vigente',
+                            PrestamoBancario::ESTADO_CANCELADO => 'Cancelado',
+                            PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO => 'Cancelado anticipadamente',
+                            default => $state,
+                        }),
+                    Infolists\Components\TextEntry::make('CapitalPendiente')->label('Capital pendiente')->money('PEN'),
                     Infolists\Components\TextEntry::make('Observaciones')->placeholder('Sin observaciones')->columnSpanFull(),
                 ])->columns(4),
         ]);
@@ -152,7 +210,7 @@ class PrestamoBancarioResource extends Resource
         ];
     }
 
-    private static function recalcularCronograma(Set $set, Get $get): void
+    private static function recalcularCronograma(Set $set, Get $get, bool $usarPagoMensualManual = false): void
     {
         $data = [
             'MontoPrestamo' => $get('MontoPrestamo'),
@@ -161,6 +219,10 @@ class PrestamoBancarioResource extends Resource
             'FechaDesembolso' => $get('FechaDesembolso'),
             'DiaPago' => $get('DiaPago'),
         ];
+        if ($usarPagoMensualManual) {
+            $data['PagoMensual'] = $get('PagoMensual');
+        }
+
         $service = app(PrestamoBancarioService::class);
         $cronograma = $service->generarCronograma($data);
         if ($cronograma === []) {

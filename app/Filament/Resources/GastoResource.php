@@ -4,10 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\GastoResource\Pages;
 use App\Models\Gasto;
-use App\Models\TipoComprobanteGasto;
 use App\Models\Motivo;
 use App\Models\Proveedor;
-use App\Models\AperturaCierreDia;
+use App\Models\Sede;
+use App\Models\TipoComprobanteGasto;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -15,7 +15,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-use App\Models\Sede;
 class GastoResource extends Resource
 {
     protected static ?string $model = Gasto::class;
@@ -23,8 +22,11 @@ class GastoResource extends Resource
     protected static ?string $navigationGroup = 'Compras y Gastos';
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?int $navigationSort = 2003;
+
     protected static ?string $label = 'Gasto';
+
     protected static ?string $pluralLabel = 'Gastos';
 
     public static function form(Form $form): Form
@@ -48,6 +50,7 @@ class GastoResource extends Resource
                             ->createOptionUsing(function (array $data): string {
                                 $data['Activo'] = true;
                                 $comprobante = TipoComprobanteGasto::create($data);
+
                                 return $comprobante->TipoComprobanteGastoID;
                             }),
                         Forms\Components\TextInput::make('Numero')
@@ -92,6 +95,7 @@ class GastoResource extends Resource
                             ])
                             ->createOptionUsing(function (array $data): string {
                                 $proveedor = Proveedor::create($data);
+
                                 return $proveedor->ProveedorID;
                             }),
                         Forms\Components\Select::make('MotivoID')
@@ -102,6 +106,23 @@ class GastoResource extends Resource
                             ->searchable(),
                         Forms\Components\Hidden::make('MetodoGasto')
                             ->default('CAJA CHICA'),
+                        Forms\Components\Select::make('OrigenTesoreria')
+                            ->label('Origen del dinero')
+                            ->options(fn () => app(\App\Services\TesoreriaGerenciaService::class)->opcionesCuentas())
+                            ->default(\App\Services\TesoreriaGerenciaService::CAJA_GERENCIA_KEY)
+                            ->afterStateHydrated(function (Forms\Components\Select $component, ?Gasto $record): void {
+                                if (! $record) {
+                                    return;
+                                }
+                                $referencia = app(\App\Services\TesoreriaGerenciaService::class)
+                                    ->referenciaDocumento($record->OrigenTesoreriaTipo, $record->CuentaTesoreriaID);
+                                $component->state($referencia);
+                            })
+                            ->searchable()
+                            ->required(fn (?Gasto $record) => ! $record || (bool) $record->OrigenTesoreriaTipo)
+                            ->disabled(fn (?Gasto $record) => $record && ! $record->OrigenTesoreriaTipo)
+                            ->visible(fn () => static::esPanelGerencia())
+                            ->helperText('El gasto se descontará de esta cuenta. Los registros anteriores conservan su caja original.'),
                         Forms\Components\Toggle::make('EsGasto')
                             ->label('¿Es gasto?')
                             ->inline(false)
@@ -144,8 +165,9 @@ class GastoResource extends Resource
                             ->label('TOTAL')
                             ->content(function (Get $get): string {
                                 $detalles = $get('detalles') ?? [];
-                                $total = collect($detalles)->sum(fn($item) => floatval($item['Monto'] ?? 0));
-                                return 'S/. ' . number_format($total, 2);
+                                $total = collect($detalles)->sum(fn ($item) => floatval($item['Monto'] ?? 0));
+
+                                return 'S/. '.number_format($total, 2);
                             })
                             ->extraAttributes(['class' => 'text-xl font-bold']),
                     ]),
@@ -163,7 +185,7 @@ class GastoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn($query) => $query->activos()->with('proveedor', 'detalles', 'tipoComprobanteGasto', 'motivo'))
+            ->modifyQueryUsing(fn ($query) => $query->activos()->with('proveedor', 'detalles', 'tipoComprobanteGasto', 'motivo', 'cuentaTesoreria'))
             ->columns([
                 Tables\Columns\TextColumn::make('FechaEmision')
                     ->label('Fecha Emisión')
@@ -190,7 +212,8 @@ class GastoResource extends Resource
                     ->getStateUsing(function ($record) {
                         $descripciones = $record->detalles->pluck('Descripcion')->toArray();
                         $resumen = implode(', ', $descripciones);
-                        return strlen($resumen) > 50 ? substr($resumen, 0, 50) . '...' : $resumen;
+
+                        return strlen($resumen) > 50 ? substr($resumen, 0, 50).'...' : $resumen;
                     })
                     ->wrap(),
                 Tables\Columns\TextColumn::make('Total')
@@ -198,6 +221,10 @@ class GastoResource extends Resource
                     ->numeric(2)
                     ->prefix('S/. ')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('FuenteTesoreria')
+                    ->label('Origen del dinero')
+                    ->visible(fn () => static::esPanelGerencia())
+                    ->toggleable(),
                 Tables\Columns\IconColumn::make('EsGasto')
                     ->label('¿Gasto?')
                     ->boolean()
@@ -232,19 +259,19 @@ class GastoResource extends Resource
                         $query
                             ->when(
                                 $data['fecha_desde'],
-                                fn($q) => $q->whereDate('FechaEmision', '>=', $data['fecha_desde'])
+                                fn ($q) => $q->whereDate('FechaEmision', '>=', $data['fecha_desde'])
                             )
                             ->when(
                                 $data['fecha_hasta'],
-                                fn($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
+                                fn ($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
                             );
                     }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make()->visible(fn($record) => static::canEdit($record)),
+                Tables\Actions\EditAction::make()->visible(fn ($record) => static::canEdit($record)),
                 Tables\Actions\Action::make('delete')
-                    ->visible(fn($record) => static::canDelete($record))
+                    ->visible(fn ($record) => static::canDelete($record))
                     ->label('Eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
@@ -252,7 +279,24 @@ class GastoResource extends Resource
                     ->modalHeading('Eliminar Gasto')
                     ->modalDescription('¿Está seguro que desea eliminar este gasto?')
                     ->modalSubmitActionLabel('Sí, eliminar')
-                    ->action(fn($record) => $record->update(['Activo' => false]))
+                    ->action(function (Gasto $record): void {
+                        if ($record->OrigenTesoreriaTipo && (float) $record->Total > 0) {
+                            $service = app(\App\Services\TesoreriaGerenciaService::class);
+                            $service->revertirEgresoDocumento([
+                                'Origen' => $service->referenciaDocumento(
+                                    $record->OrigenTesoreriaTipo,
+                                    $record->CuentaTesoreriaID
+                                ),
+                                'Monto' => $record->Total,
+                                'FechaContable' => (\App\Services\DateFieldResolver::getFechaAbierta() ?? now())->toDateString(),
+                                'TipoDocumento' => \App\Models\MovimientoTesoreria::GASTO,
+                                'DocumentoID' => $record->GastoID,
+                                'Concepto' => "Extorno por eliminación de gasto #{$record->GastoID}",
+                                'Observaciones' => $record->Observaciones,
+                            ], auth()->id());
+                        }
+                        $record->update(['Activo' => false]);
+                    })
                     ->successNotificationTitle('Gasto eliminado correctamente'),
             ])
             ->bulkActions([
@@ -264,22 +308,42 @@ class GastoResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) return false;
-        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        if (! parent::canCreate()) {
+            return false;
+        }
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+
         return \App\Models\AperturaCierreDia::estaAbierto();
+    }
+
+    public static function esPanelGerencia(): bool
+    {
+        return filament()->getCurrentPanel()?->getId() === 'gerencia';
     }
 
     public static function canEdit($record): bool
     {
-        if (!parent::canEdit($record)) return false;
-        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        if (! parent::canEdit($record)) {
+            return false;
+        }
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+
         return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        if (!parent::canDelete($record)) return false;
-        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        if (! parent::canDelete($record)) {
+            return false;
+        }
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+
         return \App\Models\AperturaCierreDia::estaAbierto();
     }
 

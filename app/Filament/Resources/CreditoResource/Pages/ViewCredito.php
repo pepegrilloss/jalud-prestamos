@@ -3,19 +3,17 @@
 namespace App\Filament\Resources\CreditoResource\Pages;
 
 use App\Filament\Resources\CreditoResource;
-use Filament\Resources\Pages\ViewRecord;
-use Filament\Infolists;
-use Filament\Infolists\Infolist;
-use Filament\Actions;
+use App\Models\Tasa;
+use App\Models\Zona;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
-use Carbon\Carbon;
+use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\DB;
-use App\Models\Tasa;
-use App\Models\Zona;
 
 class ViewCredito extends ViewRecord
 {
@@ -24,6 +22,7 @@ class ViewCredito extends ViewRecord
     public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
     {
         $url = static::getResource()::getUrl('index');
+
         return new \Illuminate\Support\HtmlString("
             <div class='flex items-center gap-x-3'>
                 <a href='{$url}' class='flex items-center justify-center rounded-full p-2 hover:bg-gray-500/5 focus:outline-none focus:ring-2 focus:ring-primary-500/70 transition'>
@@ -43,7 +42,7 @@ class ViewCredito extends ViewRecord
                 ->label('Editar Capital / Tasa')
                 ->icon('heroicon-o-pencil-square')
                 ->color('warning')
-                ->visible(fn() => auth()->user()?->can('editar_capital_tasa') ?? false)
+                ->visible(fn () => auth()->user()?->can('editar_capital_tasa') ?? false)
                 ->modalHeading('Editar Capital y Tasa de Interés')
                 ->modalDescription('Modificar el capital solicitado y la tasa de interés. Se recalcularán los montos automáticamente.')
                 ->form([
@@ -69,8 +68,9 @@ class ViewCredito extends ViewRecord
                                 ->live()
                                 ->afterStateUpdated(function (Set $set, Get $get, $state) {
                                     if ($state && $tasa = Tasa::find($state)) {
-                                        $set('TasaInteres', (float)$tasa->Valor);
-                                        $set('NumeroCuotas', (int)$tasa->Cuotas);
+                                        $set('TasaInteres', (float) $tasa->Valor);
+                                        $set('Plazo', (int) $tasa->Dias);
+                                        $set('NumeroCuotas', (int) $tasa->Cuotas);
                                         self::recalcularTotales($set, $get);
                                     }
                                 }),
@@ -81,15 +81,21 @@ class ViewCredito extends ViewRecord
                             $sedeId = $this->record->proposicion?->SedeID;
 
                             return Zona::where('Activo', true)
-                                ->when($sedeId, fn($query) => $query->where('SedeID', $sedeId))
+                                ->when($sedeId, fn ($query) => $query->where('SedeID', $sedeId))
                                 ->orderBy('Nombre')
                                 ->pluck('Nombre', 'ZonaID');
                         })
                         ->searchable()
                         ->preload()
                         ->required(),
-                    Forms\Components\Grid::make(2)
+                    Forms\Components\Grid::make(3)
                         ->schema([
+                            Forms\Components\TextInput::make('Plazo')
+                                ->label('Plazo (dias)')
+                                ->numeric()
+                                ->integer()
+                                ->required()
+                                ->minValue(1),
                             Forms\Components\TextInput::make('NumeroCuotas')
                                 ->label('N° Cuotas')
                                 ->numeric()
@@ -105,8 +111,10 @@ class ViewCredito extends ViewRecord
                                 ->content(function (Get $get) {
                                     $monto = self::normalizarNumero($get('MontoTotal'));
                                     $tasa = self::normalizarNumero($get('TasaInteres'));
-                                    $cuotas = (int)$get('NumeroCuotas');
-                                    if ($monto <= 0 || $tasa <= 0 || $cuotas <= 0) return 'Ingrese valores válidos';
+                                    $cuotas = (int) $get('NumeroCuotas');
+                                    if ($monto <= 0 || $tasa <= 0 || $cuotas <= 0) {
+                                        return 'Ingrese valores válidos';
+                                    }
 
                                     $interes = round($monto * ($tasa / 100), 2);
                                     $total = round($monto + $interes, 2);
@@ -123,26 +131,30 @@ class ViewCredito extends ViewRecord
                 ])
                 ->fillForm(function () {
                     $prop = $this->record->proposicion;
+
                     return [
                         'MontoTotal' => (float) ($prop->MontoTotal ?? 0),
                         'TasaID' => (int) ($prop->TasaID ?? 0),
                         'TasaInteres' => (float) ($prop->TasaInteres ?? 0),
+                        'Plazo' => (int) ($prop->Plazo ?? 1),
                         'NumeroCuotas' => (int) ($prop->NumeroCuotas ?? 1),
                         'ZonaID' => (int) ($prop->ZonaID ?? 0),
                     ];
                 })
                 ->action(function (array $data) {
                     $prop = $this->record->proposicion;
-                    if (!$prop) {
+                    if (! $prop) {
                         Notification::make()->danger()->title('Error')->body('No se encontró la proposición de crédito.')->send();
+
                         return;
                     }
 
                     $monto = self::normalizarNumero($data['MontoTotal'] ?? 0);
                     $tasa = self::normalizarNumero($data['TasaInteres'] ?? 0);
-                    $tasaID = (int)($data['TasaID'] ?? $prop->TasaID);
-                    $cuotas = (int)$data['NumeroCuotas'];
-                    $zonaID = (int)($data['ZonaID'] ?? $prop->ZonaID);
+                    $tasaID = (int) ($data['TasaID'] ?? $prop->TasaID);
+                    $plazo = (int) ($data['Plazo'] ?? $prop->Plazo);
+                    $cuotas = (int) $data['NumeroCuotas'];
+                    $zonaID = (int) ($data['ZonaID'] ?? $prop->ZonaID);
                     $interes = round($monto * ($tasa / 100), 2);
                     $totalPagar = round($monto + $interes, 2);
                     $montoCuota = round($totalPagar / $cuotas, 2);
@@ -153,17 +165,19 @@ class ViewCredito extends ViewRecord
                         'TasaID' => (int) $prop->TasaID,
                         'TasaInteres' => (float) $prop->TasaInteres,
                         'ZonaID' => (int) $prop->ZonaID,
+                        'Plazo' => (int) $prop->Plazo,
                         'NumeroCuotas' => (int) $prop->NumeroCuotas,
                         'SaldoPendiente' => (float) $prop->SaldoPendiente,
                     ];
 
                     $zona = Zona::withoutGlobalScope('sede')->find($zonaID);
-                    if (!$zona || (int) $zona->SedeID !== (int) $prop->SedeID) {
+                    if (! $zona || (int) $zona->SedeID !== (int) $prop->SedeID) {
                         Notification::make()->danger()->title('Zona invÃ¡lida')->body('La zona seleccionada no pertenece a la sede del crÃ©dito.')->send();
+
                         return;
                     }
 
-                    $nuevoSaldo = DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID) {
+                    $nuevoSaldo = DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $plazo, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID) {
                         // 1. Actualizar ProposicionCredito
                         DB::table('ProposicionCredito')
                             ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
@@ -172,11 +186,11 @@ class ViewCredito extends ViewRecord
                                 'TasaID' => $tasaID,
                                 'TasaInteres' => $tasa,
                                 'ZonaID' => $zonaID,
+                                'Plazo' => $plazo,
                                 'NumeroCuotas' => $cuotas,
                                 'MontoInteres' => $interes,
                                 'MontoTotalPagar' => $totalPagar,
                                 'MontoCuota' => $montoCuota,
-                                'Plazo' => $cuotas,
                             ]);
 
                         // 2. Recalcular SaldoPendiente con la regla central del sistema
@@ -258,6 +272,7 @@ class ViewCredito extends ViewRecord
                             'TasaID' => $tasaID,
                             'TasaInteres' => $tasa,
                             'ZonaID' => $zonaID,
+                            'Plazo' => $plazo,
                             'NumeroCuotas' => $cuotas,
                             'MontoTotalPagar' => $totalPagar,
                             'MontoCuota' => $montoCuota,
@@ -273,14 +288,14 @@ class ViewCredito extends ViewRecord
             Action::make('descargar_pagos')
                 ->label('Descargar Pagos (PDF)')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->url(fn() => route('descargar-pagos.pdf', $this->record->CreditoID))
+                ->url(fn () => route('descargar-pagos.pdf', $this->record->CreditoID))
                 ->openUrlInNewTab(),
 
             Action::make('eliminar_credito')
                 ->label('Eliminar Crédito')
                 ->icon('heroicon-o-trash')
                 ->color('danger')
-                ->visible(fn() => auth()->user()?->esAdmin() ?? false)
+                ->visible(fn () => auth()->user()?->esAdmin() ?? false)
                 ->requiresConfirmation()
                 ->modalHeading('⚠️ Eliminar Crédito')
                 ->modalDescription('Esta acción eliminará el crédito permanentemente de todos los reportes y listados. El registro queda marcado para trazabilidad.')
@@ -304,6 +319,7 @@ class ViewCredito extends ViewRecord
                             ->body("El crédito tiene {$totalPagos} pago(s) registrado(s). No se puede eliminar.")
                             ->persistent()
                             ->send();
+
                         return;
                     }
 
@@ -361,7 +377,7 @@ class ViewCredito extends ViewRecord
     {
         $monto = self::normalizarNumero($get('MontoTotal'));
         $tasa = self::normalizarNumero($get('TasaInteres'));
-        $cuotas = (int)$get('NumeroCuotas');
+        $cuotas = (int) $get('NumeroCuotas');
 
         if ($monto > 0 && $tasa > 0 && $cuotas > 0) {
             $interes = round($monto * ($tasa / 100), 2);

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSede;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Traits\BelongsToSede;
 
 class Compra extends Model
 {
@@ -34,9 +34,13 @@ class Compra extends Model
     }
 
     protected $table = 'Compra';
+
     protected $primaryKey = 'CompraID';
+
     public $timestamps = true;
+
     const CREATED_AT = 'FechaCreacion';
+
     const UPDATED_AT = 'FechaModificacion';
 
     protected $fillable = [
@@ -52,6 +56,8 @@ class Compra extends Model
         'EstadoPago',
         'FechaPago',
         'UsuarioPagoID',
+        'OrigenTesoreriaTipo',
+        'CuentaTesoreriaID',
         'Observaciones',
         'Activo',
         'SedeID',
@@ -105,5 +111,19 @@ class Compra extends Model
     public function usuarioPago(): BelongsTo
     {
         return $this->belongsTo(User::class, 'UsuarioPagoID', 'id');
+    }
+
+    public function cuentaTesoreria(): BelongsTo
+    {
+        return $this->belongsTo(CuentaTesoreria::class, 'CuentaTesoreriaID', 'CuentaTesoreriaID');
+    }
+
+    public function getFuenteTesoreriaAttribute(): string
+    {
+        return match ($this->OrigenTesoreriaTipo) {
+            MovimientoTesoreria::CAJA_GERENCIA => 'Caja Abierta - Gerencia',
+            MovimientoTesoreria::CUENTA_BANCARIA => $this->cuentaTesoreria?->NombreCompleto ?? 'Cuenta bancaria',
+            default => 'Caja Chica / registro anterior',
+        };
     }
 }

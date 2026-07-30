@@ -4,8 +4,10 @@ namespace App\Filament\Resources\CompraResource\Pages;
 
 use App\Filament\Resources\CompraResource;
 use App\Models\FondoSede;
-use App\Models\Sede;
+use App\Models\MovimientoTesoreria;
+use App\Services\DateFieldResolver;
 use App\Services\FondoSedeService;
+use App\Services\TesoreriaGerenciaService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -17,9 +19,25 @@ class EditCompra extends EditRecord
 
     private ?float $totalAnterior = null;
 
+    private string|int|null $origenAnterior = null;
+
+    private string|int|null $origenNuevo = null;
+
+    private ?string $estadoPagoAnterior = null;
+
+    private bool $usaTesoreria = false;
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $this->totalAnterior = (float) ($this->record->Total ?? 0);
+        $this->estadoPagoAnterior = $this->record->EstadoPago;
+
+        if ($this->record->OrigenTesoreriaTipo) {
+            $this->origenAnterior = app(TesoreriaGerenciaService::class)->referenciaDocumento(
+                $this->record->OrigenTesoreriaTipo,
+                $this->record->CuentaTesoreriaID
+            );
+        }
 
         if (isset($data['detalles'])) {
             foreach ($data['detalles'] as &$detalle) {
@@ -29,7 +47,7 @@ class EditCompra extends EditRecord
             }
         }
 
-        $subtotalBase = collect($data['detalles'] ?? [])->sum(fn($item) => floatval($item['Subtotal'] ?? 0));
+        $subtotalBase = collect($data['detalles'] ?? [])->sum(fn ($item) => floatval($item['Subtotal'] ?? 0));
 
         if (empty($data['SubtotalBase']) || floatval($data['SubtotalBase']) == 0) {
             $data['SubtotalBase'] = $subtotalBase;
@@ -46,15 +64,43 @@ class EditCompra extends EditRecord
         }
 
         // Si es CRÉDITO, poner como pendiente
-        if (($data['TipoCompra'] ?? 'CONTADO') === 'CREDITO') {
-            $data['EstadoPago'] = $data['EstadoPago'] ?? 'PENDIENTE';
+        $tipoCompraNuevo = $data['TipoCompra'] ?? 'CONTADO';
+        if ($tipoCompraNuevo === 'CREDITO') {
+            $data['EstadoPago'] = $this->record->TipoCompra === 'CREDITO'
+                ? $this->record->EstadoPago
+                : 'PENDIENTE';
+        } else {
+            $data['EstadoPago'] = 'PAGADO';
+        }
+
+        $this->usaTesoreria = (bool) $this->record->OrigenTesoreriaTipo
+            || (CompraResource::esPanelGerencia() && filled($data['OrigenTesoreria'] ?? null));
+
+        if ($this->usaTesoreria) {
+            $this->origenNuevo = $data['EstadoPago'] === 'PAGADO'
+                ? ($data['OrigenTesoreria'] ?? $this->origenAnterior)
+                : null;
+            unset($data['OrigenTesoreria']);
+            if ($this->origenNuevo !== null) {
+                $data = array_merge(
+                    $data,
+                    app(TesoreriaGerenciaService::class)->descomponerReferencia($this->origenNuevo)
+                );
+            } else {
+                $data['OrigenTesoreriaTipo'] = null;
+                $data['CuentaTesoreriaID'] = null;
+            }
+        } else {
+            unset($data['OrigenTesoreria']);
         }
 
         // Validar saldo si es CONTADO y el total sube
         $totalNuevo = (float) ($data['Total'] ?? 0);
         $totalViejo = (float) ($this->record->Total ?? 0);
         $delta = $totalNuevo - $totalViejo;
-        if (($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO' && $delta > 0) {
+        if (! $this->usaTesoreria
+            && ($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO'
+            && $delta > 0) {
             $sedeId = $this->record->SedeID ?? auth()->user()->getEffectiveSedeId();
             if ($sedeId) {
                 $fondo = FondoSede::withoutGlobalScope('sede')
@@ -66,7 +112,7 @@ class EditCompra extends EditRecord
                     Notification::make()
                         ->danger()
                         ->title('Saldo insuficiente en Caja Chica')
-                        ->body("Saldo disponible: S/ " . number_format($saldo, 2) . ". Incremento requerido: S/ " . number_format($delta, 2))
+                        ->body('Saldo disponible: S/ '.number_format($saldo, 2).'. Incremento requerido: S/ '.number_format($delta, 2))
                         ->persistent()
                         ->send();
                     $this->halt();
@@ -75,6 +121,7 @@ class EditCompra extends EditRecord
         }
 
         $data['UsuarioModificacion'] = auth()->id();
+
         return $data;
     }
 
@@ -86,7 +133,19 @@ class EditCompra extends EditRecord
         $delta = $totalNuevo - $totalViejo;
 
         // Solo ajusta Caja Chica si es CONTADO
-        if ($record->TipoCompra === 'CONTADO' && $delta != 0) {
+        if ($this->usaTesoreria) {
+            app(TesoreriaGerenciaService::class)->ajustarEgresoDocumento([
+                'OrigenAnterior' => $this->origenAnterior,
+                'OrigenNuevo' => $this->origenNuevo,
+                'MontoAnterior' => $this->estadoPagoAnterior === 'PAGADO' ? $totalViejo : 0,
+                'MontoNuevo' => $record->EstadoPago === 'PAGADO' ? $totalNuevo : 0,
+                'FechaContable' => (DateFieldResolver::getFechaAbierta() ?? now())->toDateString(),
+                'TipoDocumento' => MovimientoTesoreria::COMPRA,
+                'DocumentoID' => $record->CompraID,
+                'Concepto' => "Ajuste de compra #{$record->CompraID}",
+                'Observaciones' => $record->Observaciones,
+            ], auth()->id());
+        } elseif ($record->TipoCompra === 'CONTADO' && $delta != 0) {
             $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
             if ($sedeId) {
                 $service = app(FondoSedeService::class);
@@ -114,10 +173,24 @@ class EditCompra extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->action(function ($record) {
-                    $record->update(['Activo' => false]);
-
                     $totalCompra = (float) ($record->Total ?? 0);
-                    if ($totalCompra > 0) {
+                    if ($record->OrigenTesoreriaTipo
+                        && $record->EstadoPago === 'PAGADO'
+                        && $totalCompra > 0) {
+                        $service = app(TesoreriaGerenciaService::class);
+                        $service->revertirEgresoDocumento([
+                            'Origen' => $service->referenciaDocumento(
+                                $record->OrigenTesoreriaTipo,
+                                $record->CuentaTesoreriaID
+                            ),
+                            'Monto' => $totalCompra,
+                            'FechaContable' => (DateFieldResolver::getFechaAbierta() ?? now())->toDateString(),
+                            'TipoDocumento' => MovimientoTesoreria::COMPRA,
+                            'DocumentoID' => $record->CompraID,
+                            'Concepto' => "Extorno por eliminación de compra #{$record->CompraID}",
+                            'Observaciones' => $record->Observaciones,
+                        ], auth()->id());
+                    } elseif ($record->EstadoPago === 'PAGADO' && $totalCompra > 0) {
                         $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
                         if ($sedeId) {
                             app(FondoSedeService::class)->inyectarCapitalCajaChica(
@@ -128,6 +201,7 @@ class EditCompra extends EditRecord
                             );
                         }
                     }
+                    $record->update(['Activo' => false]);
                 }),
         ];
     }

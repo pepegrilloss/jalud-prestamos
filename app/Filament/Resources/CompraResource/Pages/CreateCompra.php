@@ -3,14 +3,17 @@
 namespace App\Filament\Resources\CompraResource\Pages;
 
 use App\Filament\Resources\CompraResource;
+use App\Models\MovimientoTesoreria;
 use App\Services\FondoSedeService;
-use App\Models\Sede;
-use Filament\Resources\Pages\CreateRecord;
+use App\Services\TesoreriaGerenciaService;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
 
 class CreateCompra extends CreateRecord
 {
     protected static string $resource = CompraResource::class;
+
+    private string|int|null $origenTesoreria = null;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -26,7 +29,7 @@ class CreateCompra extends CreateRecord
             }
         }
 
-        $subtotalBase = collect($data['detalles'] ?? [])->sum(fn($item) => floatval($item['Subtotal'] ?? 0));
+        $subtotalBase = collect($data['detalles'] ?? [])->sum(fn ($item) => floatval($item['Subtotal'] ?? 0));
 
         if (empty($data['SubtotalBase']) || floatval($data['SubtotalBase']) == 0) {
             $data['SubtotalBase'] = $subtotalBase;
@@ -34,7 +37,7 @@ class CreateCompra extends CreateRecord
 
         // Tomar MontoIGV del formulario (calculado por calcularTotales)
         $data['MontoIGV'] = floatval($data['MontoIGV'] ?? 0);
-        
+
         // Si el usuario proporcionó un Total manualmente, respetarlo
         // Solo recalcular si viene vacío o es 0
         $totalManual = floatval($data['Total'] ?? 0);
@@ -47,7 +50,23 @@ class CreateCompra extends CreateRecord
         // Si es CRÉDITO, no validar ni descontar de Caja Chica
         $data['EstadoPago'] = ($data['TipoCompra'] ?? 'CONTADO') === 'CREDITO' ? 'PENDIENTE' : 'PAGADO';
 
-        if (($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO') {
+        if (CompraResource::esPanelGerencia()) {
+            $this->origenTesoreria = ($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO'
+                ? ($data['OrigenTesoreria'] ?? TesoreriaGerenciaService::CAJA_GERENCIA_KEY)
+                : null;
+            unset($data['OrigenTesoreria']);
+            if ($this->origenTesoreria !== null) {
+                $data = array_merge(
+                    $data,
+                    app(TesoreriaGerenciaService::class)->descomponerReferencia($this->origenTesoreria)
+                );
+            } else {
+                $data['OrigenTesoreriaTipo'] = null;
+                $data['CuentaTesoreriaID'] = null;
+            }
+        }
+
+        if (! CompraResource::esPanelGerencia() && ($data['TipoCompra'] ?? 'CONTADO') === 'CONTADO') {
             $totalCompra = floatval($data['Total']);
 
             // Validar saldo en Caja Chica ANTES de crear la compra (con lockForUpdate)
@@ -65,7 +84,7 @@ class CreateCompra extends CreateRecord
                         Notification::make()
                             ->danger()
                             ->title('Saldo insuficiente en Caja Chica')
-                            ->body("Saldo disponible: S/ " . number_format($saldoDisponible, 2) . ". Monto requerido: S/ " . number_format($totalCompra, 2))
+                            ->body('Saldo disponible: S/ '.number_format($saldoDisponible, 2).'. Monto requerido: S/ '.number_format($totalCompra, 2))
                             ->persistent()
                             ->send();
 
@@ -84,7 +103,17 @@ class CreateCompra extends CreateRecord
         $total = floatval($record->Total);
 
         // Solo descuenta de Caja Chica si es CONTADO
-        if ($record->TipoCompra === 'CONTADO' && $total > 0) {
+        if (CompraResource::esPanelGerencia() && $record->TipoCompra === 'CONTADO' && $total > 0) {
+            app(TesoreriaGerenciaService::class)->registrarEgresoDocumento([
+                'Origen' => $this->origenTesoreria,
+                'Monto' => $total,
+                'FechaContable' => $record->FechaEmision->toDateString(),
+                'TipoDocumento' => MovimientoTesoreria::COMPRA,
+                'DocumentoID' => $record->CompraID,
+                'Concepto' => "Compra #{$record->CompraID} - {$record->Numero}",
+                'Observaciones' => $record->Observaciones,
+            ], auth()->id());
+        } elseif ($record->TipoCompra === 'CONTADO' && $total > 0) {
             $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
@@ -113,7 +142,7 @@ class CreateCompra extends CreateRecord
             $proveedor = $record->proveedor?->Nombre ?? 'N/A';
             $monto = number_format($record->Total, 2);
             $usuario = auth()->user()->name ?? 'Sistema';
-            
+
             \App\Models\User::notificarAdmin(
                 "Compra registrada — S/ {$monto}",
                 "Proveedor: {$proveedor} en {$sede} (por {$usuario})",

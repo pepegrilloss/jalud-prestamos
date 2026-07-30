@@ -3,10 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CuentaTesoreriaResource\Pages;
+use App\Filament\Resources\CuentaTesoreriaResource\RelationManagers;
 use App\Filament\Widgets\CajaAbiertaGerenciaTesoreriaWidget;
 use App\Models\CuentaTesoreria;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -14,11 +17,17 @@ use Filament\Tables\Table;
 class CuentaTesoreriaResource extends Resource
 {
     protected static ?string $model = CuentaTesoreria::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
+
     protected static ?string $navigationGroup = 'Tesorería';
+
     protected static ?string $navigationLabel = 'Cuentas Bancarias';
+
     protected static ?string $modelLabel = 'Cuenta bancaria';
+
     protected static ?string $pluralModelLabel = 'Cuentas bancarias';
+
     protected static ?int $navigationSort = 1;
 
     public static function shouldRegisterNavigation(): bool
@@ -101,9 +110,35 @@ class CuentaTesoreriaResource extends Resource
                 ]),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make()->label('Movimientos'),
                 Tables\Actions\EditAction::make(),
             ])
+            ->recordUrl(fn (CuentaTesoreria $record) => static::getUrl('view', ['record' => $record]))
             ->bulkActions([]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist->schema([
+            Infolists\Components\Section::make('Cuenta bancaria')
+                ->schema([
+                    Infolists\Components\TextEntry::make('Banco'),
+                    Infolists\Components\TextEntry::make('NumeroCuenta')->label('Número de cuenta'),
+                    Infolists\Components\TextEntry::make('SaldoActual')->label('Saldo actual')->money('PEN'),
+                    Infolists\Components\TextEntry::make('FechaUltimoMovimiento')
+                        ->label('Último movimiento')
+                        ->dateTime('d/m/Y H:i:s')
+                        ->placeholder('Sin movimientos'),
+                    Infolists\Components\TextEntry::make('Estado')->badge(),
+                ])->columns(3),
+        ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\MovimientosRelationManager::class,
+        ];
     }
 
     public static function getHeaderWidgets(): array
@@ -115,6 +150,7 @@ class CuentaTesoreriaResource extends Resource
     {
         return [
             'index' => Pages\ListCuentaTesorerias::route('/'),
+            'view' => Pages\ViewCuentaTesoreria::route('/{record}'),
             'edit' => Pages\EditCuentaTesoreria::route('/{record}/edit'),
         ];
     }

@@ -3,14 +3,17 @@
 namespace App\Filament\Resources\GastoResource\Pages;
 
 use App\Filament\Resources\GastoResource;
+use App\Models\MovimientoTesoreria;
 use App\Services\FondoSedeService;
-use App\Models\Sede;
-use Filament\Resources\Pages\CreateRecord;
+use App\Services\TesoreriaGerenciaService;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
 
 class CreateGasto extends CreateRecord
 {
     protected static string $resource = GastoResource::class;
+
+    private string|int|null $origenTesoreria = null;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -20,7 +23,17 @@ class CreateGasto extends CreateRecord
 
         // Calcular total anticipado desde los detalles del formulario
         $detalles = $data['detalles'] ?? [];
-        $totalAnticipado = collect($detalles)->sum(fn($item) => floatval($item['Monto'] ?? 0));
+        $totalAnticipado = collect($detalles)->sum(fn ($item) => floatval($item['Monto'] ?? 0));
+
+        if (GastoResource::esPanelGerencia()) {
+            $this->origenTesoreria = $data['OrigenTesoreria'] ?? TesoreriaGerenciaService::CAJA_GERENCIA_KEY;
+            unset($data['OrigenTesoreria']);
+            $data = array_merge(
+                $data,
+                app(TesoreriaGerenciaService::class)->descomponerReferencia($this->origenTesoreria)
+            );
+            $data['MetodoGasto'] = 'TESORERIA_GERENCIA';
+        }
 
         // Si el método de gasto es CAJA CHICA, validar saldo ANTES de crear (con lockForUpdate)
         if (($data['MetodoGasto'] ?? '') === 'CAJA CHICA' && $totalAnticipado > 0) {
@@ -37,7 +50,7 @@ class CreateGasto extends CreateRecord
                     Notification::make()
                         ->danger()
                         ->title('Saldo insuficiente en Caja Chica')
-                        ->body("Saldo disponible: S/ " . number_format($saldoDisponible, 2) . ". Monto requerido: S/ " . number_format($totalAnticipado, 2))
+                        ->body('Saldo disponible: S/ '.number_format($saldoDisponible, 2).'. Monto requerido: S/ '.number_format($totalAnticipado, 2))
                         ->persistent()
                         ->send();
 
@@ -57,7 +70,17 @@ class CreateGasto extends CreateRecord
         $record->update(['Total' => $total]);
 
         // Descontar de Caja Chica si el método es CAJA CHICA
-        if ($record->MetodoGasto === 'CAJA CHICA' && $total > 0) {
+        if (GastoResource::esPanelGerencia() && $total > 0) {
+            app(TesoreriaGerenciaService::class)->registrarEgresoDocumento([
+                'Origen' => $this->origenTesoreria,
+                'Monto' => $total,
+                'FechaContable' => $record->FechaEmision->toDateString(),
+                'TipoDocumento' => MovimientoTesoreria::GASTO,
+                'DocumentoID' => $record->GastoID,
+                'Concepto' => "Gasto #{$record->GastoID} - {$record->Numero}",
+                'Observaciones' => $record->Observaciones,
+            ], auth()->id());
+        } elseif ($record->MetodoGasto === 'CAJA CHICA' && $total > 0) {
             $sedeId = auth()->user()->getEffectiveSedeId();
 
             if ($sedeId) {
@@ -86,7 +109,7 @@ class CreateGasto extends CreateRecord
             $motivo = $record->motivo?->Nombre ?? 'N/A';
             $monto = number_format($record->Total, 2);
             $usuario = auth()->user()->name ?? 'Sistema';
-            
+
             \App\Models\User::notificarAdmin(
                 "Gasto registrado — S/ {$monto}",
                 "{$motivo} en {$sede} (por {$usuario})",

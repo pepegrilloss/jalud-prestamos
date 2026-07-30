@@ -4,8 +4,10 @@ namespace App\Filament\Resources\GastoResource\Pages;
 
 use App\Filament\Resources\GastoResource;
 use App\Models\FondoSede;
-use App\Models\Sede;
+use App\Models\MovimientoTesoreria;
+use App\Services\DateFieldResolver;
 use App\Services\FondoSedeService;
+use App\Services\TesoreriaGerenciaService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -17,15 +19,33 @@ class EditGasto extends EditRecord
 
     private ?float $totalAnterior = null;
 
+    private string|int|null $origenAnterior = null;
+
+    private string|int|null $origenNuevo = null;
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['UsuarioModificacion'] = auth()->id();
         $this->totalAnterior = (float) ($this->record->Total ?? 0);
 
+        if ($this->record->OrigenTesoreriaTipo) {
+            $service = app(TesoreriaGerenciaService::class);
+            $this->origenAnterior = $service->referenciaDocumento(
+                $this->record->OrigenTesoreriaTipo,
+                $this->record->CuentaTesoreriaID
+            );
+            $this->origenNuevo = $data['OrigenTesoreria'] ?? $this->origenAnterior;
+            unset($data['OrigenTesoreria']);
+            $data = array_merge($data, $service->descomponerReferencia($this->origenNuevo));
+            $data['MetodoGasto'] = 'TESORERIA_GERENCIA';
+        } else {
+            unset($data['OrigenTesoreria']);
+        }
+
         // Validar saldo si es CAJA CHICA y el total podría subir
         if (($data['MetodoGasto'] ?? '') === 'CAJA CHICA') {
             $detalles = $data['detalles'] ?? [];
-            $nuevoTotal = collect($detalles)->sum(fn($item) => floatval($item['Monto'] ?? 0));
+            $nuevoTotal = collect($detalles)->sum(fn ($item) => floatval($item['Monto'] ?? 0));
             $delta = $nuevoTotal - $this->totalAnterior;
             if ($delta > 0) {
                 $sedeId = $this->record->SedeID ?? auth()->user()->getEffectiveSedeId();
@@ -39,7 +59,7 @@ class EditGasto extends EditRecord
                         Notification::make()
                             ->danger()
                             ->title('Saldo insuficiente en Caja Chica')
-                            ->body("Saldo disponible: S/ " . number_format($saldo, 2) . ". Incremento requerido: S/ " . number_format($delta, 2))
+                            ->body('Saldo disponible: S/ '.number_format($saldo, 2).'. Incremento requerido: S/ '.number_format($delta, 2))
                             ->persistent()
                             ->send();
                         $this->halt();
@@ -56,20 +76,40 @@ class EditGasto extends EditRecord
         $record = $this->record;
         $totalNuevo = $record->detalles()->sum('Monto');
         $record->update(['Total' => $totalNuevo]);
-        $this->ajustarCajaChica($record, $totalNuevo);
+        if ($record->OrigenTesoreriaTipo) {
+            app(TesoreriaGerenciaService::class)->ajustarEgresoDocumento([
+                'OrigenAnterior' => $this->origenAnterior,
+                'OrigenNuevo' => $this->origenNuevo,
+                'MontoAnterior' => $this->totalAnterior,
+                'MontoNuevo' => $totalNuevo,
+                'FechaContable' => (DateFieldResolver::getFechaAbierta() ?? now())->toDateString(),
+                'TipoDocumento' => MovimientoTesoreria::GASTO,
+                'DocumentoID' => $record->GastoID,
+                'Concepto' => "Ajuste de gasto #{$record->GastoID}",
+                'Observaciones' => $record->Observaciones,
+            ], auth()->id());
+        } else {
+            $this->ajustarCajaChica($record, $totalNuevo);
+        }
     }
 
     private function ajustarCajaChica($record, float $totalNuevo): void
     {
-        if ($record->MetodoGasto !== 'CAJA CHICA') return;
+        if ($record->MetodoGasto !== 'CAJA CHICA') {
+            return;
+        }
 
         $totalViejo = $this->totalAnterior ?? 0;
         $delta = $totalNuevo - $totalViejo;
 
-        if ($delta == 0) return;
+        if ($delta == 0) {
+            return;
+        }
 
         $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
-        if (!$sedeId) return;
+        if (! $sedeId) {
+            return;
+        }
 
         $service = app(FondoSedeService::class);
         try {
@@ -94,9 +134,21 @@ class EditGasto extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->action(function ($record) {
-                    $record->update(['Activo' => false]);
-
-                    if ($record->MetodoGasto === 'CAJA CHICA' && (float) $record->Total > 0) {
+                    if ($record->OrigenTesoreriaTipo && (float) $record->Total > 0) {
+                        $service = app(TesoreriaGerenciaService::class);
+                        $service->revertirEgresoDocumento([
+                            'Origen' => $service->referenciaDocumento(
+                                $record->OrigenTesoreriaTipo,
+                                $record->CuentaTesoreriaID
+                            ),
+                            'Monto' => $record->Total,
+                            'FechaContable' => (DateFieldResolver::getFechaAbierta() ?? now())->toDateString(),
+                            'TipoDocumento' => MovimientoTesoreria::GASTO,
+                            'DocumentoID' => $record->GastoID,
+                            'Concepto' => "Extorno por eliminación de gasto #{$record->GastoID}",
+                            'Observaciones' => $record->Observaciones,
+                        ], auth()->id());
+                    } elseif ($record->MetodoGasto === 'CAJA CHICA' && (float) $record->Total > 0) {
                         $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
                         if ($sedeId) {
                             app(FondoSedeService::class)->inyectarCapitalCajaChica(
@@ -107,6 +159,8 @@ class EditGasto extends EditRecord
                             );
                         }
                     }
+
+                    $record->update(['Activo' => false]);
                 }),
         ];
     }

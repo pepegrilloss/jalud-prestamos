@@ -9,9 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CuotaPrestamoBancario extends Model
 {
     public const ESTADO_PENDIENTE = 'PENDIENTE';
+
     public const ESTADO_CANCELADA = 'CANCELADA';
 
+    public const ESTADO_ANULADA_ANTICIPADA = 'ANULADA_ANTICIPADA';
+
     protected $table = 'tesoreria_prestamo_cuotas';
+
     protected $primaryKey = 'CuotaPrestamoBancarioID';
 
     protected $fillable = [

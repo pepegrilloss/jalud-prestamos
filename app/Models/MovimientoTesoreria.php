@@ -9,17 +9,45 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class MovimientoTesoreria extends Model
 {
     public const TIPO_APERTURA = 'APERTURA';
+
     public const TIPO_TRANSFERENCIA = 'TRANSFERENCIA';
+
     public const TIPO_EXTORNO = 'EXTORNO';
+
     public const TIPO_PAGO_PRESTAMO_BANCARIO = 'PAGO_PRESTAMO_BANCARIO';
+
     public const TIPO_EXTORNO_PAGO_PRESTAMO = 'EXTORNO_PAGO_PRESTAMO';
 
+    public const TIPO_CANCELACION_ANTICIPADA = 'CANCELACION_ANTICIPADA';
+
+    public const TIPO_EXTORNO_CANCELACION_ANTICIPADA = 'EXTORNO_CANCELACION_ANTICIPADA';
+
+    public const TIPO_EGRESO_COMPRA = 'EGRESO_COMPRA';
+
+    public const TIPO_AJUSTE_COMPRA = 'AJUSTE_COMPRA';
+
+    public const TIPO_EXTORNO_COMPRA = 'EXTORNO_COMPRA';
+
+    public const TIPO_EGRESO_GASTO = 'EGRESO_GASTO';
+
+    public const TIPO_AJUSTE_GASTO = 'AJUSTE_GASTO';
+
+    public const TIPO_EXTORNO_GASTO = 'EXTORNO_GASTO';
+
     public const CUENTA_BANCARIA = 'CUENTA_BANCARIA';
+
     public const CAJA_GERENCIA = 'CAJA_GERENCIA';
+
     public const PRESTAMO_BANCARIO = 'PRESTAMO_BANCARIO';
+
     public const APERTURA = 'APERTURA';
 
+    public const COMPRA = 'COMPRA';
+
+    public const GASTO = 'GASTO';
+
     protected $table = 'tesoreria_movimientos';
+
     protected $primaryKey = 'MovimientoTesoreriaID';
 
     protected $fillable = [
@@ -29,6 +57,8 @@ class MovimientoTesoreria extends Model
         'MovimientoOriginalID', 'SaldoAnteriorOrigen', 'SaldoNuevoOrigen',
         'SaldoAnteriorDestino', 'SaldoNuevoDestino', 'PrestamoBancarioID',
         'CuotaPrestamoBancarioID',
+        'CompraID',
+        'GastoID',
     ];
 
     protected $casts = [
@@ -85,5 +115,15 @@ class MovimientoTesoreria extends Model
     public function cuotaPrestamoBancario(): BelongsTo
     {
         return $this->belongsTo(CuotaPrestamoBancario::class, 'CuotaPrestamoBancarioID', 'CuotaPrestamoBancarioID');
+    }
+
+    public function compra(): BelongsTo
+    {
+        return $this->belongsTo(Compra::class, 'CompraID', 'CompraID');
+    }
+
+    public function gasto(): BelongsTo
+    {
+        return $this->belongsTo(Gasto::class, 'GastoID', 'GastoID');
     }
 }

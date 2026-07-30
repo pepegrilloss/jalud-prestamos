@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\MovimientoTesoreriaResource\Pages;
-use App\Models\CuentaTesoreria;
 use App\Models\MovimientoTesoreria;
 use App\Services\TesoreriaGerenciaService;
 use Filament\Forms;
@@ -17,18 +16,43 @@ use Illuminate\Database\Eloquent\Builder;
 class MovimientoTesoreriaResource extends Resource
 {
     protected static ?string $model = MovimientoTesoreria::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
+
     protected static ?string $navigationGroup = 'Tesorería';
+
     protected static ?string $navigationLabel = 'Movimientos';
+
     protected static ?string $modelLabel = 'Movimiento de Tesorería';
+
     protected static ?string $pluralModelLabel = 'Movimientos de Tesorería';
+
     protected static ?int $navigationSort = 2;
 
-    public static function shouldRegisterNavigation(): bool { return self::enGerencia(); }
-    public static function canAccess(): bool { return self::enGerencia(); }
-    public static function canCreate(): bool { return false; }
-    public static function canEdit($record): bool { return false; }
-    public static function canDelete($record): bool { return false; }
+    public static function shouldRegisterNavigation(): bool
+    {
+        return self::enGerencia();
+    }
+
+    public static function canAccess(): bool
+    {
+        return self::enGerencia();
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -49,8 +73,24 @@ class MovimientoTesoreriaResource extends Resource
                 Tables\Columns\BadgeColumn::make('Tipo')
                     ->colors([
                         'info' => MovimientoTesoreria::TIPO_APERTURA,
-                        'success' => fn (string $state): bool => in_array($state, [MovimientoTesoreria::TIPO_TRANSFERENCIA, MovimientoTesoreria::TIPO_PAGO_PRESTAMO_BANCARIO], true),
-                        'warning' => fn (string $state): bool => in_array($state, [MovimientoTesoreria::TIPO_EXTORNO, MovimientoTesoreria::TIPO_EXTORNO_PAGO_PRESTAMO], true),
+                        'success' => fn (string $state): bool => in_array($state, [
+                            MovimientoTesoreria::TIPO_TRANSFERENCIA,
+                            MovimientoTesoreria::TIPO_PAGO_PRESTAMO_BANCARIO,
+                            MovimientoTesoreria::TIPO_CANCELACION_ANTICIPADA,
+                        ], true),
+                        'warning' => fn (string $state): bool => in_array($state, [
+                            MovimientoTesoreria::TIPO_EXTORNO,
+                            MovimientoTesoreria::TIPO_EXTORNO_PAGO_PRESTAMO,
+                            MovimientoTesoreria::TIPO_EXTORNO_CANCELACION_ANTICIPADA,
+                            MovimientoTesoreria::TIPO_AJUSTE_COMPRA,
+                            MovimientoTesoreria::TIPO_AJUSTE_GASTO,
+                            MovimientoTesoreria::TIPO_EXTORNO_COMPRA,
+                            MovimientoTesoreria::TIPO_EXTORNO_GASTO,
+                        ], true),
+                        'danger' => fn (string $state): bool => in_array($state, [
+                            MovimientoTesoreria::TIPO_EGRESO_COMPRA,
+                            MovimientoTesoreria::TIPO_EGRESO_GASTO,
+                        ], true),
                     ]),
                 Tables\Columns\TextColumn::make('FechaContable')->label('Fecha contable')->date('d/m/Y')->sortable(),
                 Tables\Columns\TextColumn::make('FechaMovimiento')->label('Registrado')->dateTime('d/m/Y H:i:s')->sortable(),
@@ -65,6 +105,14 @@ class MovimientoTesoreriaResource extends Resource
                     MovimientoTesoreria::TIPO_APERTURA => 'Apertura',
                     MovimientoTesoreria::TIPO_TRANSFERENCIA => 'Transferencia',
                     MovimientoTesoreria::TIPO_EXTORNO => 'Extorno',
+                    MovimientoTesoreria::TIPO_EGRESO_COMPRA => 'Egreso por compra',
+                    MovimientoTesoreria::TIPO_AJUSTE_COMPRA => 'Ajuste de compra',
+                    MovimientoTesoreria::TIPO_EXTORNO_COMPRA => 'Extorno de compra',
+                    MovimientoTesoreria::TIPO_EGRESO_GASTO => 'Egreso por gasto',
+                    MovimientoTesoreria::TIPO_AJUSTE_GASTO => 'Ajuste de gasto',
+                    MovimientoTesoreria::TIPO_EXTORNO_GASTO => 'Extorno de gasto',
+                    MovimientoTesoreria::TIPO_CANCELACION_ANTICIPADA => 'Cancelación anticipada',
+                    MovimientoTesoreria::TIPO_EXTORNO_CANCELACION_ANTICIPADA => 'Extorno cancelación anticipada',
                     MovimientoTesoreria::TIPO_PAGO_PRESTAMO_BANCARIO => 'Pago préstamo bancario',
                     MovimientoTesoreria::TIPO_EXTORNO_PAGO_PRESTAMO => 'Extorno pago préstamo',
                 ]),
@@ -76,7 +124,7 @@ class MovimientoTesoreriaResource extends Resource
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         $referencia = $data['referencia'] ?? null;
-                        if (!$referencia) {
+                        if (! $referencia) {
                             return $query;
                         }
 
@@ -108,7 +156,7 @@ class MovimientoTesoreriaResource extends Resource
                     ->label('Extornar')
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('warning')
-                    ->visible(fn (MovimientoTesoreria $record) => $record->Tipo === MovimientoTesoreria::TIPO_TRANSFERENCIA && !$record->extorno()->exists())
+                    ->visible(fn (MovimientoTesoreria $record) => $record->Tipo === MovimientoTesoreria::TIPO_TRANSFERENCIA && ! $record->extorno()->exists())
                     ->requiresConfirmation()
                     ->modalHeading('Extornar transferencia')
                     ->modalDescription('Se registrará una transferencia inversa. El movimiento original no se modificará.')
@@ -140,6 +188,8 @@ class MovimientoTesoreriaResource extends Resource
                     Infolists\Components\TextEntry::make('Observaciones')->placeholder('Sin observaciones')->columnSpanFull(),
                     Infolists\Components\TextEntry::make('usuario.name')->label('Usuario'),
                     Infolists\Components\TextEntry::make('MovimientoOriginalID')->label('Movimiento original')->placeholder('No aplica'),
+                    Infolists\Components\TextEntry::make('CompraID')->label('Compra')->placeholder('No aplica'),
+                    Infolists\Components\TextEntry::make('GastoID')->label('Gasto')->placeholder('No aplica'),
                 ])->columns(3),
             Infolists\Components\Section::make('Saldos registrados')
                 ->schema([

@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\GastoResource\Pages;
 
 use App\Filament\Resources\GastoResource;
-use Filament\Resources\Pages\ViewRecord;
-use Filament\Infolists\Infolist;
 use Filament\Infolists\Components;
+use Filament\Infolists\Infolist;
+use Filament\Resources\Pages\ViewRecord;
 
 class ViewGasto extends ViewRecord
 {
@@ -37,6 +37,9 @@ class ViewGasto extends ViewRecord
                             ->boolean()
                             ->trueIcon('heroicon-o-check-badge')
                             ->falseIcon('heroicon-o-x-circle'),
+                        Components\TextEntry::make('FuenteTesoreria')
+                            ->label('Origen del dinero')
+                            ->visible(fn ($record) => filled($record->OrigenTesoreriaTipo)),
                     ])->columns(3),
 
                 Components\Section::make('Detalle del Gasto')
@@ -68,7 +71,7 @@ class ViewGasto extends ViewRecord
                             ->label('Observaciones')
                             ->default('Sin observaciones'),
                     ])
-                    ->visible(fn($record) => !empty($record->Observaciones)),
+                    ->visible(fn ($record) => ! empty($record->Observaciones)),
             ]);
     }
 }

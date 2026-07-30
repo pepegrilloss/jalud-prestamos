@@ -4,9 +4,9 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CompraResource\Pages;
 use App\Models\Compra;
-use App\Models\TipoComprobante;
 use App\Models\Proveedor;
-use App\Models\AperturaCierreDia;
+use App\Models\Sede;
+use App\Models\TipoComprobante;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -15,8 +15,6 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-use App\Models\Sede;
-use Illuminate\Support\Facades\DB;
 class CompraResource extends Resource
 {
     protected static ?string $model = Compra::class;
@@ -24,8 +22,11 @@ class CompraResource extends Resource
     protected static ?string $navigationGroup = 'Compras y Gastos';
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+
     protected static ?int $navigationSort = 2001;
+
     protected static ?string $label = 'Compra';
+
     protected static ?string $pluralLabel = 'Compras';
 
     public static function form(Form $form): Form
@@ -49,6 +50,7 @@ class CompraResource extends Resource
                             ->createOptionUsing(function (array $data): string {
                                 $data['Activo'] = true;
                                 $comprobante = TipoComprobante::create($data);
+
                                 return $comprobante->TipoComprobanteID;
                             }),
                         Forms\Components\TextInput::make('Numero')
@@ -93,6 +95,7 @@ class CompraResource extends Resource
                             ])
                             ->createOptionUsing(function (array $data): string {
                                 $proveedor = Proveedor::create($data);
+
                                 return $proveedor->ProveedorID;
                             }),
                     ]),
@@ -133,12 +136,12 @@ class CompraResource extends Resource
                             ])
                             ->columns(5)
                             ->defaultItems(1)
-->addActionLabel('Agregar producto')
-                             ->reorderable(false)
-                             ->required()
-                             ->minItems(1)
-                             ->columnSpanFull()
-                             ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
+                            ->addActionLabel('Agregar producto')
+                            ->reorderable(false)
+                            ->required()
+                            ->minItems(1)
+                            ->columnSpanFull()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
 
                         Forms\Components\Grid::make(5)
                             ->schema([
@@ -146,10 +149,10 @@ class CompraResource extends Resource
                                     ->label('Tipo IGV')
                                     ->options(fn () => \App\Models\TipoIgv::where('Activo', true)
                                         ->get()
-                                        ->mapWithKeys(fn ($t) => [$t->Codigo => $t->Nombre . ' (' . number_format($t->Porcentaje, 1) . '%)']))
-->default('GRAVADO')
-                                     ->live()
-                                     ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
+                                        ->mapWithKeys(fn ($t) => [$t->Codigo => $t->Nombre.' ('.number_format($t->Porcentaje, 1).'%)']))
+                                    ->default('GRAVADO')
+                                    ->live()
+                                    ->afterStateUpdated(fn (Get $get, Set $set) => static::calcularTotales($get, $set)),
                                 Forms\Components\Select::make('TipoCompra')
                                     ->label('Tipo Compra')
                                     ->options([
@@ -158,6 +161,26 @@ class CompraResource extends Resource
                                     ])
                                     ->default('CONTADO')
                                     ->live(),
+                                Forms\Components\Select::make('OrigenTesoreria')
+                                    ->label('Origen del dinero')
+                                    ->options(fn () => app(\App\Services\TesoreriaGerenciaService::class)->opcionesCuentas())
+                                    ->default(\App\Services\TesoreriaGerenciaService::CAJA_GERENCIA_KEY)
+                                    ->afterStateHydrated(function (Forms\Components\Select $component, ?Compra $record): void {
+                                        if (! $record) {
+                                            return;
+                                        }
+                                        $referencia = app(\App\Services\TesoreriaGerenciaService::class)
+                                            ->referenciaDocumento($record->OrigenTesoreriaTipo, $record->CuentaTesoreriaID);
+                                        $component->state($referencia);
+                                    })
+                                    ->searchable()
+                                    ->required(fn (Get $get, ?Compra $record) => ($get('TipoCompra') ?? 'CONTADO') === 'CONTADO'
+                                        && (! $record || (bool) $record->OrigenTesoreriaTipo))
+                                    ->disabled(fn (?Compra $record) => $record
+                                        && $record->EstadoPago === 'PAGADO'
+                                        && ! $record->OrigenTesoreriaTipo)
+                                    ->visible(fn () => static::esPanelGerencia())
+                                    ->helperText('Las compras al crédito seleccionan el origen al momento de pagarse.'),
                                 Forms\Components\TextInput::make('SubtotalBase')
                                     ->label('Subtotal Base')
                                     ->numeric()
@@ -202,7 +225,7 @@ class CompraResource extends Resource
             $set("detalles.{$key}.Subtotal", number_format($cantidad * $precio, 2, '.', ''));
         }
 
-        $subtotalBase = collect($detalles)->sum(fn($item) => floatval($item['Cantidad'] ?? 0) * floatval($item['PrecioUnitario'] ?? 0));
+        $subtotalBase = collect($detalles)->sum(fn ($item) => floatval($item['Cantidad'] ?? 0) * floatval($item['PrecioUnitario'] ?? 0));
         $set('SubtotalBase', number_format($subtotalBase, 2, '.', ''));
 
         $tipoIGV = \App\Models\TipoIgv::where('Codigo', $get('TipoIGV'))->first();
@@ -215,7 +238,7 @@ class CompraResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn($query) => $query->activos()->with('tipoComprobante', 'proveedor', 'detalles'))
+            ->modifyQueryUsing(fn ($query) => $query->activos()->with('tipoComprobante', 'proveedor', 'detalles', 'cuentaTesoreria'))
             ->columns([
                 Tables\Columns\TextColumn::make('FechaEmision')
                     ->label('Fecha Emisión')
@@ -238,36 +261,42 @@ class CompraResource extends Resource
                     ->getStateUsing(function ($record) {
                         $nombres = $record->detalles->pluck('ProductoServicio')->toArray();
                         $resumen = implode(', ', $nombres);
-                        return strlen($resumen) > 50 ? substr($resumen, 0, 50) . '...' : $resumen;
+
+                        return strlen($resumen) > 50 ? substr($resumen, 0, 50).'...' : $resumen;
                     })
                     ->wrap(),
                 Tables\Columns\TextColumn::make('detalles_count')
                     ->label('Ítems')
-                    ->getStateUsing(fn($record) => $record->detalles->count())
+                    ->getStateUsing(fn ($record) => $record->detalles->count())
                     ->alignCenter(),
                 Tables\Columns\TextColumn::make('Total')
                     ->label('Total')
                     ->numeric(2)
                     ->prefix('S/. ')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('FuenteTesoreria')
+                    ->label('Origen del dinero')
+                    ->visible(fn () => static::esPanelGerencia())
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('TipoIGV')
                     ->label('IGV')
                     ->badge()
-                    ->color(fn(string $state): string => $state === 'EXONERADO' ? 'success' : 'warning')
+                    ->color(fn (string $state): string => $state === 'EXONERADO' ? 'success' : 'warning')
                     ->formatStateUsing(function (string $state): string {
                         $tipo = \App\Models\TipoIgv::where('Codigo', $state)->first();
-                        return $tipo ? $tipo->Nombre . ' (' . number_format($tipo->Porcentaje, 1) . '%)' : $state;
+
+                        return $tipo ? $tipo->Nombre.' ('.number_format($tipo->Porcentaje, 1).'%)' : $state;
                     }),
                 Tables\Columns\TextColumn::make('TipoCompra')
                     ->label('Tipo')
                     ->badge()
-                    ->color(fn(string $state): string => $state === 'CREDITO' ? 'info' : 'gray')
-                    ->formatStateUsing(fn(string $state): string => $state === 'CREDITO' ? 'Crédito' : 'Contado'),
+                    ->color(fn (string $state): string => $state === 'CREDITO' ? 'info' : 'gray')
+                    ->formatStateUsing(fn (string $state): string => $state === 'CREDITO' ? 'Crédito' : 'Contado'),
                 Tables\Columns\TextColumn::make('EstadoPago')
                     ->label('Pago')
                     ->badge()
-                    ->color(fn(string $state): string => $state === 'PENDIENTE' ? 'danger' : 'success')
-                    ->formatStateUsing(fn(string $state): string => $state === 'PENDIENTE' ? 'Pendiente' : 'Pagado'),
+                    ->color(fn (string $state): string => $state === 'PENDIENTE' ? 'danger' : 'success')
+                    ->formatStateUsing(fn (string $state): string => $state === 'PENDIENTE' ? 'Pendiente' : 'Pagado'),
                 Tables\Columns\IconColumn::make('Activo')
                     ->label('Activo')
                     ->boolean()
@@ -304,19 +333,19 @@ class CompraResource extends Resource
                         $query
                             ->when(
                                 $data['fecha_desde'],
-                                fn($q) => $q->whereDate('FechaEmision', '>=', $data['fecha_desde'])
+                                fn ($q) => $q->whereDate('FechaEmision', '>=', $data['fecha_desde'])
                             )
                             ->when(
                                 $data['fecha_hasta'],
-                                fn($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
+                                fn ($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
                             );
                     }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make()->visible(fn($record) => static::canEdit($record)),
+                Tables\Actions\EditAction::make()->visible(fn ($record) => static::canEdit($record)),
                 Tables\Actions\Action::make('delete')
-                    ->visible(fn($record) => static::canDelete($record))
+                    ->visible(fn ($record) => static::canDelete($record))
                     ->label('Eliminar')
                     ->color('danger')
                     ->icon('heroicon-o-trash')
@@ -325,8 +354,23 @@ class CompraResource extends Resource
                     ->modalDescription('¿Está seguro que desea eliminar esta compra?')
                     ->modalSubmitActionLabel('Sí, eliminar')
                     ->action(function ($record) {
-                        // Si estaba pagada, revertir Caja Chica
-                        if ($record->EstadoPago === 'PAGADO' && (float) $record->Total > 0) {
+                        if ($record->OrigenTesoreriaTipo
+                            && $record->EstadoPago === 'PAGADO'
+                            && (float) $record->Total > 0) {
+                            $service = app(\App\Services\TesoreriaGerenciaService::class);
+                            $service->revertirEgresoDocumento([
+                                'Origen' => $service->referenciaDocumento(
+                                    $record->OrigenTesoreriaTipo,
+                                    $record->CuentaTesoreriaID
+                                ),
+                                'Monto' => $record->Total,
+                                'FechaContable' => (\App\Services\DateFieldResolver::getFechaAbierta() ?? now())->toDateString(),
+                                'TipoDocumento' => \App\Models\MovimientoTesoreria::COMPRA,
+                                'DocumentoID' => $record->CompraID,
+                                'Concepto' => "Extorno por eliminación de compra #{$record->CompraID}",
+                                'Observaciones' => $record->Observaciones,
+                            ], auth()->id());
+                        } elseif ($record->EstadoPago === 'PAGADO' && (float) $record->Total > 0) {
                             $sedeId = $record->SedeID ?? auth()->user()->getEffectiveSedeId();
                             if ($sedeId) {
                                 app(\App\Services\FondoSedeService::class)->inyectarCapitalCajaChica(
@@ -350,22 +394,42 @@ class CompraResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) return false;
-        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        if (! parent::canCreate()) {
+            return false;
+        }
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+
         return \App\Models\AperturaCierreDia::estaAbierto();
+    }
+
+    public static function esPanelGerencia(): bool
+    {
+        return filament()->getCurrentPanel()?->getId() === 'gerencia';
     }
 
     public static function canEdit($record): bool
     {
-        if (!parent::canEdit($record)) return false;
-        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        if (! parent::canEdit($record)) {
+            return false;
+        }
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+
         return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
-        if (!parent::canDelete($record)) return false;
-        if (filament()->getCurrentPanel()?->getId() === 'gerencia') return true;
+        if (! parent::canDelete($record)) {
+            return false;
+        }
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+            return true;
+        }
+
         return \App\Models\AperturaCierreDia::estaAbierto();
     }
 

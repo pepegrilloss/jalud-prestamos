@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSede;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Traits\BelongsToSede;
 
 class Gasto extends Model
 {
@@ -34,9 +34,13 @@ class Gasto extends Model
     }
 
     protected $table = 'Gasto';
+
     protected $primaryKey = 'GastoID';
+
     public $timestamps = true;
+
     const CREATED_AT = 'FechaCreacion';
+
     const UPDATED_AT = 'FechaModificacion';
 
     protected $fillable = [
@@ -46,6 +50,8 @@ class Gasto extends Model
         'ProveedorID',
         'MotivoID',
         'MetodoGasto',
+        'OrigenTesoreriaTipo',
+        'CuentaTesoreriaID',
         'EsGasto',
         'Total',
         'Observaciones',
@@ -99,5 +105,19 @@ class Gasto extends Model
     public function usuarioModificacion(): BelongsTo
     {
         return $this->belongsTo(User::class, 'UsuarioModificacion', 'id');
+    }
+
+    public function cuentaTesoreria(): BelongsTo
+    {
+        return $this->belongsTo(CuentaTesoreria::class, 'CuentaTesoreriaID', 'CuentaTesoreriaID');
+    }
+
+    public function getFuenteTesoreriaAttribute(): string
+    {
+        return match ($this->OrigenTesoreriaTipo) {
+            MovimientoTesoreria::CAJA_GERENCIA => 'Caja Abierta - Gerencia',
+            MovimientoTesoreria::CUENTA_BANCARIA => $this->cuentaTesoreria?->NombreCompleto ?? 'Cuenta bancaria',
+            default => 'Caja Chica / registro anterior',
+        };
     }
 }
