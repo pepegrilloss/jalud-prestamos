@@ -76,8 +76,18 @@ class AprobacionResolucionResource extends Resource implements HasShieldPermissi
                     ->sortable(),
                 Tables\Columns\TextColumn::make('clienteOrigen.NombresApellidos')
                     ->label('Origen')
+                    ->getStateUsing(fn($record) => match ($record->TipoResolucion) {
+                        'DEVOLUCION_PAGO_MAYOR' => 'Pago a mayor #' . ($record->PagoOrigenID ?? '-'),
+                        'DEVOLUCION_EFECTIVO' => 'Excedente',
+                        default => $record->clienteOrigen?->NombresApellidos ?? 'Excedente',
+                    })
                     ->searchable()
                     ->default('Excedente'),
+                Tables\Columns\TextColumn::make('creditoDestino.proposicion.CodigoCredito')
+                    ->label('Crédito')
+                    ->badge()
+                    ->placeholder('-')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('clienteDestino.NombresApellidos')
                     ->label('Destino')
                     ->searchable(),

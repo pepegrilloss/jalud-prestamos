@@ -548,7 +548,7 @@ class CreditoResource extends Resource
                             Infolists\Components\TextEntry::make('TotalPagado')
                                 ->label('Total Pagado')
                                 ->money('PEN')
-                                ->getStateUsing(fn($record) => max(0, (float)($record->proposicion?->MontoTotalPagar ?? 0) - (float)($record->proposicion?->SaldoPendiente ?? 0)))
+                                ->getStateUsing(fn($record) => self::calcularTotalPagadoNeto($record))
                                 ->color('success')
                                 ->weight(\Filament\Support\Enums\FontWeight::Bold),
 
@@ -698,5 +698,81 @@ class CreditoResource extends Resource
                         ->contained(true)
                 ]),
         ];
+    }
+
+    private static function calcularTotalPagadoNeto(Credito $credito): float
+    {
+        $capitalAplicado = max(
+            0,
+            (float) ($credito->proposicion?->MontoTotalPagar ?? 0)
+            - (float) ($credito->proposicion?->SaldoPendiente ?? 0)
+        );
+
+        $pagosAMayor = (float) \App\Models\Pago::where('CreditoID', $credito->CreditoID)
+            ->where('Activo', 1)
+            ->where('EsMora', 0)
+            ->where('EsPagoAMayor', 1)
+            ->where('EsPagoAMayorPorMora', 0)
+            ->where(function ($query) {
+                $query->whereNull('TipoConcepto')
+                    ->orWhere('TipoConcepto', '!=', 'M');
+            })
+            ->sum('MontoPagado');
+
+        $trasladosAprobados = (float) \Illuminate\Support\Facades\DB::table('solicitudes_resolucion_excedente as sre')
+            ->join('pago as p', 'sre.PagoOrigenID', '=', 'p.PagoID')
+            ->where('p.CreditoID', $credito->CreditoID)
+            ->where('sre.Estado', 'APROBADA')
+            ->where('sre.TipoResolucion', 'TRASLADO_DE_PAGO')
+            ->sum('sre.MontoAplicar');
+
+        $devolucionesAMayorComprometidas = (float) \Illuminate\Support\Facades\DB::table('solicitudes_resolucion_excedente as sre')
+            ->join('pago as p', 'sre.PagoOrigenID', '=', 'p.PagoID')
+            ->where('p.CreditoID', $credito->CreditoID)
+            ->where('sre.Estado', '!=', 'RECHAZADA')
+            ->where('sre.TipoResolucion', 'DEVOLUCION_PAGO_MAYOR')
+            ->sum('sre.MontoAplicar');
+
+        $aMayorAntesDeMora = max(0, $pagosAMayor - $trasladosAprobados - $devolucionesAMayorComprometidas);
+        $pagosAMayorPorMoraAplicados = self::calcularMayorPorMoraAplicado($credito->CreditoID, $aMayorAntesDeMora);
+
+        $aMayorDisponible = max(
+            0,
+            $aMayorAntesDeMora - $pagosAMayorPorMoraAplicados
+        );
+
+        return $capitalAplicado + $aMayorDisponible;
+    }
+
+    private static function calcularMayorPorMoraAplicado(int $creditoId, float $aMayorDisponible): float
+    {
+        if ($aMayorDisponible <= 0) {
+            return 0;
+        }
+
+        $aplicado = 0.0;
+        $restante = $aMayorDisponible;
+
+        $pagosPorMora = \App\Models\Pago::where('CreditoID', $creditoId)
+            ->where('Activo', 1)
+            ->where('EsPagoAMayorPorMora', 1)
+            ->orderByDesc('FechaPago')
+            ->orderByDesc('PagoID')
+            ->get(['MontoPagado']);
+
+        foreach ($pagosPorMora as $pago) {
+            $monto = (float) $pago->MontoPagado;
+
+            if ($monto <= $restante + 0.009) {
+                $aplicado += $monto;
+                $restante -= $monto;
+            }
+
+            if ($restante <= 0.009) {
+                break;
+            }
+        }
+
+        return $aplicado;
     }
 }
