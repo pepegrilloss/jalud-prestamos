@@ -283,6 +283,10 @@ class FondoSedeService
             return $this->aceptarSolicitudCapital($transferencia, $usuarioId, $montoEfectivo);
         }
 
+        if ($transferencia->EsSolicitudGerencia) {
+            return $this->ejecutarTransferenciaSolicitada($transferencia, $usuarioId, $montoEfectivo);
+        }
+
         return DB::transaction(function () use ($transferencia, $usuarioId, $montoEfectivo) {
             $cuentaOrigen = $transferencia->CuentaOrigen ?? 'CAJA_ABIERTA';
             $cuentaDestino = $transferencia->CuentaDestino ?? 'CAJA_ABIERTA';
@@ -604,7 +608,7 @@ class FondoSedeService
     /**
      * Ejecutar una transferencia solicitada por Gerencia: Sede → Gerencia, directo sin aprobación.
      */
-    public function ejecutarTransferenciaSolicitada(TransferenciaSede $transferencia, $usuarioId): TransferenciaSede
+    public function ejecutarTransferenciaSolicitada(TransferenciaSede $transferencia, $usuarioId, $montoAprobado = null): TransferenciaSede
     {
         if ($transferencia->Estado !== 'PENDIENTE') {
             throw ValidationException::withMessages(['estado' => 'La solicitud ya fue procesada.']);
@@ -614,21 +618,32 @@ class FondoSedeService
             throw ValidationException::withMessages(['tipo' => 'Esta transferencia no es una solicitud de Gerencia.']);
         }
 
-        return DB::transaction(function () use ($transferencia, $usuarioId) {
+        $montoEfectivo = $montoAprobado ?? $transferencia->Monto;
+
+        if ($montoEfectivo <= 0) {
+            throw ValidationException::withMessages(['Monto' => 'El monto aprobado debe ser mayor a 0.']);
+        }
+
+        if ($montoEfectivo > $transferencia->Monto) {
+            throw ValidationException::withMessages(['Monto' => 'El monto aprobado no puede exceder el monto solicitado.']);
+        }
+
+        return DB::transaction(function () use ($transferencia, $usuarioId, $montoEfectivo) {
             $fondoSede = FondoSede::withoutGlobalScope('sede')->lockForUpdate()->where('SedeID', $transferencia->SedeDestinoID)->first();
-            if (!$fondoSede || $fondoSede->Saldo < $transferencia->Monto) {
-                throw ValidationException::withMessages(['saldo' => 'Saldo insuficiente en Caja Abierta para realizar la transferencia.']);
+            if (!$fondoSede || $fondoSede->Saldo < $montoEfectivo) {
+                $nombreSede = $transferencia->sedeDestino?->Nombre ?? 'La sede solicitada';
+                throw ValidationException::withMessages(['saldo' => "{$nombreSede} no cuenta con saldo suficiente en Caja Abierta para realizar la transferencia a Gerencia."]);
             }
 
             $saldoAntSede = $fondoSede->Saldo;
-            $saldoNuevoSede = $saldoAntSede - $transferencia->Monto;
+            $saldoNuevoSede = $saldoAntSede - $montoEfectivo;
             $fondoSede->Saldo = $saldoNuevoSede;
             $fondoSede->save();
 
             MovimientoFondo::create([
                 'SedeID' => $transferencia->SedeDestinoID,
                 'Tipo' => 'ENVIO_TRANSFERENCIA',
-                'Monto' => -$transferencia->Monto,
+                'Monto' => -$montoEfectivo,
                 'SaldoAnterior' => $saldoAntSede,
                 'SaldoNuevo' => $saldoNuevoSede,
                 'TransferenciaID' => $transferencia->TransferenciaID,
@@ -642,14 +657,14 @@ class FondoSedeService
             );
 
             $saldoAntGerencia = $fondoGerencia->Saldo;
-            $saldoNuevoGerencia = $saldoAntGerencia + $transferencia->Monto;
+            $saldoNuevoGerencia = $saldoAntGerencia + $montoEfectivo;
             $fondoGerencia->Saldo = $saldoNuevoGerencia;
             $fondoGerencia->save();
 
             MovimientoFondo::create([
                 'SedeID' => $transferencia->SedeOrigenID,
                 'Tipo' => 'RECEPCION_TRANSFERENCIA',
-                'Monto' => $transferencia->Monto,
+                'Monto' => $montoEfectivo,
                 'SaldoAnterior' => $saldoAntGerencia,
                 'SaldoNuevo' => $saldoNuevoGerencia,
                 'TransferenciaID' => $transferencia->TransferenciaID,
@@ -660,7 +675,7 @@ class FondoSedeService
             $transferencia->update([
                 'Estado' => 'ACEPTADO',
                 'UsuarioRespondeID' => $usuarioId,
-                'MontoAprobado' => $transferencia->Monto,
+                'MontoAprobado' => $montoEfectivo,
                 'FechaRespuesta' => now(),
             ]);
 
