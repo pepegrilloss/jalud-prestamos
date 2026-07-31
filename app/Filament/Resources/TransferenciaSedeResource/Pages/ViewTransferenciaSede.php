@@ -77,16 +77,25 @@ class ViewTransferenciaSede extends ViewRecord
                                     ->schema([
                                         Components\TextEntry::make('sedeOrigen.Nombre')
                                             ->label('Sede Origen')
+                                            ->getStateUsing(fn($record) => $record->EsSolicitudGerencia
+                                                ? ($record->sedeDestino?->Nombre ?? '-')
+                                                : ($record->sedeOrigen?->Nombre ?? '-'))
                                             ->icon('heroicon-m-arrow-up-circle')
                                             ->color('info')
                                             ->weight(FontWeight::SemiBold),
                                         Components\TextEntry::make('sedeDestino.Nombre')
                                             ->label('Sede Destino')
+                                            ->getStateUsing(fn($record) => $record->EsSolicitudGerencia
+                                                ? ($record->sedeOrigen?->Nombre ?? '-')
+                                                : ($record->sedeDestino?->Nombre ?? '-'))
                                             ->icon('heroicon-m-arrow-down-circle')
                                             ->color('success')
                                             ->weight(FontWeight::SemiBold),
                                         Components\TextEntry::make('CuentaOrigen')
                                             ->label('Cuenta Origen')
+                                            ->getStateUsing(fn($record) => $record->EsSolicitudGerencia
+                                                ? ($record->CuentaDestino ?? 'CAJA_ABIERTA')
+                                                : ($record->CuentaOrigen ?? 'CAJA_ABIERTA'))
                                             ->formatStateUsing(fn(string $state): string => match ($state) {
                                                 'CAJA_ABIERTA' => 'Caja Abierta',
                                                 'CAJA_CHICA' => 'Caja Chica',
@@ -95,6 +104,9 @@ class ViewTransferenciaSede extends ViewRecord
                                             ->icon('heroicon-m-credit-card'),
                                         Components\TextEntry::make('CuentaDestino')
                                             ->label('Cuenta Destino')
+                                            ->getStateUsing(fn($record) => $record->EsSolicitudGerencia
+                                                ? ($record->CuentaOrigen ?? 'CAJA_ABIERTA')
+                                                : ($record->CuentaDestino ?? 'CAJA_ABIERTA'))
                                             ->formatStateUsing(fn(string $state): string => match ($state) {
                                                 'CAJA_ABIERTA' => 'Caja Abierta',
                                                 'CAJA_CHICA' => 'Caja Chica',

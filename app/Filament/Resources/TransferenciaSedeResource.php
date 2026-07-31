@@ -124,9 +124,15 @@ class TransferenciaSedeResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('sedeOrigen.Nombre')
                     ->label('Origen')
+                    ->getStateUsing(fn (?TransferenciaSede $record) => $record?->EsSolicitudGerencia
+                        ? ($record->sedeDestino?->Nombre ?? '-')
+                        : ($record->sedeOrigen?->Nombre ?? '-'))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('CuentaOrigen')
                     ->label('Cta. Origen')
+                    ->getStateUsing(fn (?TransferenciaSede $record) => $record?->EsSolicitudGerencia
+                        ? ($record->CuentaDestino ?? 'CAJA_ABIERTA')
+                        : ($record->CuentaOrigen ?? 'CAJA_ABIERTA'))
                     ->formatStateUsing(fn (string $state) => match ($state) {
                         'CAJA_ABIERTA' => 'Caja Abierta',
                         'CAJA_CHICA' => 'Caja Chica',
@@ -136,9 +142,15 @@ class TransferenciaSedeResource extends Resource
                     ->color(fn (string $state) => $state === 'CAJA_CHICA' ? 'info' : 'primary'),
                 Tables\Columns\TextColumn::make('sedeDestino.Nombre')
                     ->label('Destino')
+                    ->getStateUsing(fn (?TransferenciaSede $record) => $record?->EsSolicitudGerencia
+                        ? ($record->sedeOrigen?->Nombre ?? '-')
+                        : ($record->sedeDestino?->Nombre ?? '-'))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('CuentaDestino')
                     ->label('Cta. Destino')
+                    ->getStateUsing(fn (?TransferenciaSede $record) => $record?->EsSolicitudGerencia
+                        ? ($record->CuentaOrigen ?? 'CAJA_ABIERTA')
+                        : ($record->CuentaDestino ?? 'CAJA_ABIERTA'))
                     ->formatStateUsing(fn (string $state) => match ($state) {
                         'CAJA_ABIERTA' => 'Caja Abierta',
                         'CAJA_CHICA' => 'Caja Chica',
