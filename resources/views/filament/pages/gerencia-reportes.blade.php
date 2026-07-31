@@ -255,6 +255,8 @@
 <div x-data="{
     sedeId: '0',
     fechaDiario: '{{ now()->format('Y-m-d') }}',
+    fechaEficienciaDesde: '{{ now()->startOfMonth()->format('Y-m-d') }}',
+    fechaEficienciaHasta: '{{ now()->format('Y-m-d') }}',
     fechaCreditosDesde: '{{ now()->startOfMonth()->format('Y-m-d') }}',
     fechaCreditosHasta: '{{ now()->format('Y-m-d') }}',
     fechaCanceladas: '{{ now()->format('Y-m-d') }}',
@@ -275,6 +277,20 @@
     validarRangoCreditos() {
         const desde = new Date(this.fechaCreditosDesde);
         const hasta = new Date(this.fechaCreditosHasta);
+        if (desde > hasta) {
+            alert('La fecha Desde no puede ser mayor que Hasta.');
+            return false;
+        }
+        const diff = (hasta - desde) / (1000 * 60 * 60 * 24);
+        if (diff > 365) {
+            alert('El rango maximo permitido es de 1 ano (365 dias). Reduzca el rango de fechas.');
+            return false;
+        }
+        return true;
+    },
+    validarRangoEficiencia() {
+        const desde = new Date(this.fechaEficienciaDesde);
+        const hasta = new Date(this.fechaEficienciaHasta);
         if (desde > hasta) {
             alert('La fecha Desde no puede ser mayor que Hasta.');
             return false;
@@ -321,6 +337,36 @@
                         PDF
                     </button>
                     <button type="button" class="btn-excel" x-on:click="openReport('{{ route('reporte-diario.excel') }}?sede_id=' + sedeId + '&fecha=' + fechaDiario)">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+                        Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- Eficiencia de Cobranza --}}
+        <div class="reporte-card">
+            <div class="card-bar" style="background:#92D050;"></div>
+            <div class="card-body">
+                <div class="card-header">
+                    <div class="card-icon" style="background:#edf7dc;">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#6ea820"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M7.5 15.75l3-3 2.25 2.25 4.5-6"/></svg>
+                    </div>
+                    <h3 class="card-title">Eficiencia de cobranza</h3>
+                </div>
+                <p class="card-desc">Resumen diario por cobrador: clientes activos, cobranza, no pagos, SCR y porcentajes.</p>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label class="field-label">Desde</label>
+                        <input type="date" x-model="fechaEficienciaDesde" class="field-input">
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Hasta</label>
+                        <input type="date" x-model="fechaEficienciaHasta" class="field-input">
+                    </div>
+                </div>
+                <div class="card-actions">
+                    <button type="button" class="btn-excel" x-on:click="if(validarRangoEficiencia()) openReport('{{ route('reporte-eficiencia-cobranza.excel') }}?sede_id=' + sedeId + '&fecha_desde=' + fechaEficienciaDesde + '&fecha_hasta=' + fechaEficienciaHasta)">
                         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
                         Excel
                     </button>

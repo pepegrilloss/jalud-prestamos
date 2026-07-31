@@ -13,6 +13,7 @@ use App\Models\SolicitudExoneracion;
 use App\Models\SolicitudResolucionExcedente;
 use App\Models\FondoSede;
 use App\Models\AperturaCierreDia;
+use App\Models\PromotorCobrador;
 use App\Services\SedeAccessService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -21,6 +22,7 @@ use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReporteExportController extends Controller
 {
@@ -966,6 +968,253 @@ class ReporteExportController extends Controller
         ));
 
         $writer->close();
+    }
+
+    public function eficienciaCobranzaExcel(Request $request)
+    {
+        $this->authorizeGerenciaOrPermission($request, 'eficiencia_cobranza');
+
+        $fechaDesde = $request->get('fecha_desde');
+        $fechaHasta = $request->get('fecha_hasta');
+
+        if (! $fechaDesde || ! $fechaHasta) {
+            abort(400, 'Rango de fechas no proporcionado');
+        }
+
+        $desde = Carbon::createFromFormat('Y-m-d', $fechaDesde)->startOfDay();
+        $hasta = Carbon::createFromFormat('Y-m-d', $fechaHasta)->startOfDay();
+
+        if ($hasta->lt($desde)) {
+            abort(400, 'La fecha hasta no puede ser menor a la fecha desde');
+        }
+
+        if ($desde->diffInDays($hasta) > 365) {
+            abort(400, 'El rango maximo permitido es de 1 ano (365 dias).');
+        }
+
+        $sedeId = $this->resolveSedeId();
+
+        $promotores = PromotorCobrador::withoutGlobalScopes()
+            ->with(['zona.ciudad'])
+            ->where('Activo', true)
+            ->whereNotNull('ZonaID')
+            ->when($sedeId, fn($query) => $query->where('SedeID', $sedeId))
+            ->orderBy('ZonaID')
+            ->orderBy('Descripcion')
+            ->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Eficiencia Cobranza');
+        $spreadsheet->getDefaultStyle()->getFont()->setName('Arial')->setSize(10);
+
+        $titleStyle = [
+            'font' => ['bold' => false, 'size' => 16, 'color' => ['rgb' => '000000']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '92D050']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ];
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => '000000']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFC000']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ];
+        $dataStyle = [
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+        ];
+        $realStyle = [
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFF00']],
+        ];
+
+        $headers = [
+            'FECHA',
+            'CLIENTES ACTIVOS',
+            'MONTO DE COBR',
+            'CLTS Q CANCEL',
+            'NP',
+            'SCR',
+            'TOTAL',
+            '% SCR',
+            'PROMD',
+            '% REAL',
+        ];
+
+        $row = 1;
+
+        if ($promotores->isEmpty()) {
+            $sheet->mergeCells('A1:J1');
+            $sheet->setCellValue('A1', 'NO HAY PROMOTORES COBRADORES ACTIVOS PARA EL RANGO SELECCIONADO');
+            $sheet->getStyle('A1:J1')->applyFromArray($titleStyle);
+
+            return $this->downloadSpreadsheet($spreadsheet, "Eficiencia_Cobranza_{$fechaDesde}_{$fechaHasta}");
+        }
+
+        foreach ($promotores as $promotor) {
+            $titulo = mb_strtoupper(trim(($promotor->zona?->Nombre ?? 'SIN ZONA') . ' - ' . $promotor->Descripcion));
+
+            $sheet->mergeCells("A{$row}:J{$row}");
+            $sheet->setCellValue("A{$row}", $titulo);
+            $sheet->getStyle("A{$row}:J{$row}")->applyFromArray($titleStyle);
+            $sheet->getRowDimension($row)->setRowHeight(24);
+            $row++;
+
+            foreach ($headers as $index => $header) {
+                $col = chr(65 + $index);
+                $sheet->setCellValue("{$col}{$row}", $header);
+                $sheet->getStyle("{$col}{$row}")->applyFromArray($headerStyle);
+            }
+            $sheet->getStyle("J{$row}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F8CBAD');
+            $row++;
+
+            $inicioDatos = $row;
+            $fecha = $desde->copy();
+
+            while ($fecha->lte($hasta)) {
+                if (! \App\Services\CalendarioLaboralService::esLaborable($fecha, $promotor->SedeID)) {
+                    $fecha->addDay();
+                    continue;
+                }
+
+                $clientesActivos = $this->contarClientesActivosEficiencia((int) $promotor->PromotorCobradorID, (int) $promotor->ZonaID, $fecha, $sedeId);
+                $montoCobrado = $this->sumarMontoCobradoEficiencia((int) $promotor->PromotorCobradorID, (int) $promotor->ZonaID, $fecha, $sedeId);
+                $clientesCancelaron = $this->contarClientesConPagoEficiencia((int) $promotor->PromotorCobradorID, (int) $promotor->ZonaID, $fecha, $sedeId);
+                $scr = $this->contarSalidasCreditoEficiencia((int) $promotor->PromotorCobradorID, (int) $promotor->ZonaID, $fecha, $sedeId);
+                $np = max(0, $clientesActivos - $clientesCancelaron - $scr);
+                $total = $clientesCancelaron + $np + $scr;
+                $porcentajeScr = $clientesActivos > 0 && $scr > 0 ? round(($scr / $clientesActivos) * 100, 2) : null;
+                $promedio = $clientesActivos > 0 ? round(($clientesCancelaron / $clientesActivos) * 100, 2) : 0;
+                $real = round(($porcentajeScr ?? 0) + $promedio, 2);
+
+                $valores = [
+                    $fecha->format('j/n/Y'),
+                    $clientesActivos,
+                    $montoCobrado,
+                    $clientesCancelaron,
+                    $np,
+                    $scr,
+                    $total,
+                    $porcentajeScr ?? '-',
+                    $promedio,
+                    $real,
+                ];
+
+                foreach ($valores as $index => $valor) {
+                    $col = chr(65 + $index);
+                    $sheet->setCellValue("{$col}{$row}", $valor);
+                    $sheet->getStyle("{$col}{$row}")->applyFromArray($dataStyle);
+                }
+
+                $sheet->getStyle("A{$row}")->getFont()->getColor()->setRGB('0000FF');
+                $sheet->getStyle("A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle("B{$row}")->getFont()->setBold(true);
+                $sheet->getStyle("C{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getStyle("H{$row}:J{$row}")->getNumberFormat()->setFormatCode('0.00');
+                $sheet->getStyle("J{$row}")->applyFromArray($realStyle);
+
+                $row++;
+                $fecha->addDay();
+            }
+
+            if ($row > $inicioDatos) {
+                $sheet->setCellValue("I{$row}", 'PROMEDIO % REAL');
+                $sheet->setCellValue("J{$row}", "=AVERAGE(J{$inicioDatos}:J" . ($row - 1) . ')');
+                $sheet->getStyle("I{$row}:J{$row}")->getFont()->setBold(true);
+                $sheet->getStyle("J{$row}")->getNumberFormat()->setFormatCode('0.00');
+            }
+
+            $row += 4;
+        }
+
+        foreach (range('A', 'J') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        return $this->downloadSpreadsheet($spreadsheet, "Eficiencia_Cobranza_{$fechaDesde}_{$fechaHasta}");
+    }
+
+    private function baseCreditosEficiencia(int $promotorId, int $zonaId, ?int $sedeId)
+    {
+        return DB::table('Credito')
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->where('ProposicionCredito.ZonaID', $zonaId)
+            ->where('Cliente.PromotorCobradorID', $promotorId)
+            ->where('ProposicionCredito.Activo', 1)
+            ->where('ProposicionCredito.Estado', 'APROBADO')
+            ->where('ProposicionCredito.FueRefinanciada', 0)
+            ->where('ProposicionCredito.Eliminado', 0)
+            ->where('Credito.Activo', 1)
+            ->when($sedeId, fn($query) => $query->where('Credito.SedeID', $sedeId));
+    }
+
+    private function contarClientesActivosEficiencia(int $promotorId, int $zonaId, Carbon $fecha, ?int $sedeId): int
+    {
+        $limiteSalida = $fecha->copy()->subDays(6)->toDateString();
+
+        return (int) $this->baseCreditosEficiencia($promotorId, $zonaId, $sedeId)
+            ->whereDate('Credito.FechaGeneracion', '<=', $fecha->toDateString())
+            ->where(function ($query) use ($limiteSalida) {
+                $query->whereNotIn('Credito.EstatusCreditoFinal', ['SALDADO', 'REFINANCIADO', 'ELIMINADO'])
+                    ->orWhereDate('Credito.FechaSaldamiento', '>=', $limiteSalida);
+            })
+            ->distinct('ProposicionCredito.ClienteID')
+            ->count('ProposicionCredito.ClienteID');
+    }
+
+    private function basePagosEficiencia(int $promotorId, int $zonaId, Carbon $fecha, ?int $sedeId)
+    {
+        return DB::table('pago')
+            ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->where('pago.Activo', 1)
+            ->where('ProposicionCredito.ZonaID', $zonaId)
+            ->where(function ($query) use ($promotorId, $zonaId) {
+                // Pagos asignados explícitamente a este promotor
+                $query->where('pago.PromotorCobradorID', $promotorId)
+                      // Pagos sin promotor en el pago → usar el promotor asignado al cliente
+                      ->orWhere(function ($sub) use ($promotorId) {
+                          $sub->whereNull('pago.PromotorCobradorID')
+                              ->where('Cliente.PromotorCobradorID', $promotorId);
+                      })
+                      // Pagos que no tienen promotor en ningún lado → amarrar por zona como última regla
+                      ->orWhere(function ($sub) use ($zonaId) {
+                          $sub->whereNull('pago.PromotorCobradorID')
+                              ->whereNull('Cliente.PromotorCobradorID')
+                              ->where('ProposicionCredito.ZonaID', $zonaId);
+                      });
+            })
+            ->whereDate('pago.FechaPago', $fecha->toDateString())
+            ->where(function ($query) {
+                $query->where('pago.EsPagoAutomatico', 0)
+                    ->orWhereNull('pago.EsPagoAutomatico');
+            })
+            ->when($sedeId, fn($query) => $query->where('pago.SedeID', $sedeId));
+    }
+
+    private function sumarMontoCobradoEficiencia(int $promotorId, int $zonaId, Carbon $fecha, ?int $sedeId): float
+    {
+        return (float) $this->basePagosEficiencia($promotorId, $zonaId, $fecha, $sedeId)->sum('pago.MontoPagado');
+    }
+
+    private function contarClientesConPagoEficiencia(int $promotorId, int $zonaId, Carbon $fecha, ?int $sedeId): int
+    {
+        return (int) $this->basePagosEficiencia($promotorId, $zonaId, $fecha, $sedeId)
+            ->distinct('ProposicionCredito.ClienteID')
+            ->count('ProposicionCredito.ClienteID');
+    }
+
+    private function contarSalidasCreditoEficiencia(int $promotorId, int $zonaId, Carbon $fecha, ?int $sedeId): int
+    {
+        return (int) $this->baseCreditosEficiencia($promotorId, $zonaId, $sedeId)
+            ->where('Credito.EstatusCreditoFinal', 'SALDADO')
+            ->whereBetween('Credito.FechaSaldamiento', [
+                $fecha->copy()->subDays(6)->startOfDay(),
+                $fecha->copy()->endOfDay(),
+            ])
+            ->distinct('ProposicionCredito.ClienteID')
+            ->count('ProposicionCredito.ClienteID');
     }
 
     private function downloadSpreadsheet(Spreadsheet $spreadsheet, string $filename)

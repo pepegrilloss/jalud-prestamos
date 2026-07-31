@@ -173,6 +173,12 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(3)
                     ->url('#reporte-creditos')
                     ->visible(fn(): bool => auth()->user()?->can('reporte_creditos') ?? false),
+                \Filament\Navigation\NavigationItem::make('Eficiencia de cobranza')
+                    ->icon('heroicon-o-chart-bar-square')
+                    ->group('Reportes')
+                    ->sort(4)
+                    ->url('#eficiencia-cobranza')
+                    ->visible(fn(): bool => auth()->user()?->can('eficiencia_cobranza') ?? false),
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
@@ -185,6 +191,10 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn(): string => Blade::render('@livewire(\App\Livewire\ReporteCreditosModal::class)')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn(): string => Blade::render('@livewire(\App\Livewire\EficienciaCobranzaModal::class)')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->databaseTransactions()
