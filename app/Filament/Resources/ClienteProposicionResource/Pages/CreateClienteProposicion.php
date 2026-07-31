@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ClienteProposicionResource\Pages;
 use App\Filament\Resources\ClienteProposicionResource;
 use App\Models\Cliente;
 use App\Models\ProposicionCredito;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Crypt;
 
@@ -29,6 +30,16 @@ class CreateClienteProposicion extends CreateRecord
         if (!empty($data['ClienteID'])) {
             $cliente = Cliente::find($data['ClienteID']);
             if ($cliente) {
+                if ($cliente->Estado === 'OBSERVADO') {
+                    Notification::make()
+                        ->title('Cliente Observado')
+                        ->body("El cliente '{$cliente->NombresApellidos}' se encuentra OBSERVADO. No se puede crear una nueva proposicion de credito.")
+                        ->danger()
+                        ->send();
+
+                    $this->halt();
+                }
+
                 $data['CodigoCliente'] = $cliente->DNI;
             }
         }

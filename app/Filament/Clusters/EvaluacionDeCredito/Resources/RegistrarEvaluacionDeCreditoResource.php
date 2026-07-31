@@ -68,6 +68,16 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                     ->weight('semibold')
                     ->wrap(),
 
+                Tables\Columns\TextColumn::make('Estado')
+                    ->label('Observado')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => $state === 'OBSERVADO' ? 'Si' : 'No')
+                    ->color(fn (?string $state) => $state === 'OBSERVADO' ? 'danger' : 'success')
+                    ->icon(fn (?string $state) => $state === 'OBSERVADO'
+                        ? 'heroicon-m-exclamation-triangle'
+                        : 'heroicon-m-check-circle')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('negocio.ciudad.Nombre')
                     ->label('Ciudad')
                     ->searchable()

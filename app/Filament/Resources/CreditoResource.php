@@ -484,6 +484,15 @@ class CreditoResource extends Resource
                                 ->columnSpan(1),
                         ]),
 
+                    Infolists\Components\TextEntry::make('proposicion.cliente.Estado')
+                        ->label('Cliente Observado')
+                        ->badge()
+                        ->formatStateUsing(fn (?string $state) => $state === 'OBSERVADO' ? 'Si' : 'No')
+                        ->color(fn (?string $state) => $state === 'OBSERVADO' ? 'danger' : 'success')
+                        ->icon(fn (?string $state) => $state === 'OBSERVADO'
+                            ? 'heroicon-m-exclamation-triangle'
+                            : 'heroicon-m-check-circle'),
+
                     Infolists\Components\Grid::make(4)
                         ->schema([
                             Infolists\Components\TextEntry::make('proposicion.zona.Nombre')
