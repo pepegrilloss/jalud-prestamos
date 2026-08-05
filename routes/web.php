@@ -9,6 +9,18 @@ Route::get('/', function () {
     return redirect('/admin/login');
 });
 
+// Cumplimiento SBS vive en la aplicacion independiente.
+Route::get('/cumplimiento/{path?}', function (?string $path = null) {
+    $base = rtrim(env('CUMPLIMIENTO_URL', 'http://localhost:8085'), '/') . '/cumplimiento';
+    $url = $path ? $base . '/' . ltrim($path, '/') : $base;
+
+    if ($query = request()->getQueryString()) {
+        $url .= '?' . $query;
+    }
+
+    return redirect()->away($url);
+})->where('path', '.*')->name('cumplimiento.redirect');
+
 Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/pdf/acta-creditos', function () {
         $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
