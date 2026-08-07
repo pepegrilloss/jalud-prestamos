@@ -179,6 +179,12 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(4)
                     ->url('#eficiencia-cobranza')
                     ->visible(fn(): bool => auth()->user()?->can('eficiencia_cobranza') ?? false),
+                \Filament\Navigation\NavigationItem::make('Cartera General')
+                    ->icon('heroicon-o-bars-3-bottom-left')
+                    ->group('Reportes')
+                    ->sort(5)
+                    ->url('#cartera-general')
+                    ->visible(fn(): bool => auth()->user()?->can('reporte_cartera_general') ?? false),
             ])
             ->renderHook(
                 PanelsRenderHook::BODY_END,
@@ -195,6 +201,10 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn(): string => Blade::render('@livewire(\App\Livewire\EficienciaCobranzaModal::class)')
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn(): string => Blade::render('@livewire(\App\Livewire\CarteraGeneralModal::class)')
             )
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->databaseTransactions()

@@ -1006,20 +1006,21 @@ class ReporteExportController extends Controller
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Eficiencia Cobranza');
-        $spreadsheet->getDefaultStyle()->getFont()->setName('Arial')->setSize(10);
+        $spreadsheet->getDefaultStyle()->getFont()->setName('Arial')->setSize(8);
 
         $titleStyle = [
-            'font' => ['bold' => false, 'size' => 16, 'color' => ['rgb' => '000000']],
+            'font' => ['bold' => false, 'name' => 'Calibri', 'size' => 14, 'color' => ['rgb' => '000000']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '92D050']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ];
         $headerStyle = [
-            'font' => ['bold' => true, 'color' => ['rgb' => '000000']],
+            'font' => ['bold' => true, 'name' => 'Tahoma', 'size' => 8, 'color' => ['rgb' => '000000']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFC000']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
         $dataStyle = [
+            'font' => ['name' => 'Arial', 'size' => 8],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
         ];
@@ -1111,6 +1112,7 @@ class ReporteExportController extends Controller
                 $sheet->getStyle("C{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
                 $sheet->getStyle("H{$row}:J{$row}")->getNumberFormat()->setFormatCode('0.00');
                 $sheet->getStyle("J{$row}")->applyFromArray($realStyle);
+                $sheet->getStyle("A{$row}:J{$row}")->getFont()->setName('Arial')->setSize(8);
 
                 $row++;
                 $fecha->addDay();
@@ -1119,7 +1121,7 @@ class ReporteExportController extends Controller
             if ($row > $inicioDatos) {
                 $sheet->setCellValue("I{$row}", 'PROMEDIO % REAL');
                 $sheet->setCellValue("J{$row}", "=AVERAGE(J{$inicioDatos}:J" . ($row - 1) . ')');
-                $sheet->getStyle("I{$row}:J{$row}")->getFont()->setBold(true);
+                $sheet->getStyle("I{$row}:J{$row}")->getFont()->setBold(true)->setName('Arial')->setSize(8);
                 $sheet->getStyle("J{$row}")->getNumberFormat()->setFormatCode('0.00');
             }
 
@@ -1139,7 +1141,6 @@ class ReporteExportController extends Controller
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
             ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
             ->where('ProposicionCredito.ZonaID', $zonaId)
-            ->where('Cliente.PromotorCobradorID', $promotorId)
             ->where('ProposicionCredito.Activo', 1)
             ->where('ProposicionCredito.Estado', 'APROBADO')
             ->where('ProposicionCredito.FueRefinanciada', 0)
@@ -1170,21 +1171,6 @@ class ReporteExportController extends Controller
             ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
             ->where('pago.Activo', 1)
             ->where('ProposicionCredito.ZonaID', $zonaId)
-            ->where(function ($query) use ($promotorId, $zonaId) {
-                // Pagos asignados explícitamente a este promotor
-                $query->where('pago.PromotorCobradorID', $promotorId)
-                      // Pagos sin promotor en el pago → usar el promotor asignado al cliente
-                      ->orWhere(function ($sub) use ($promotorId) {
-                          $sub->whereNull('pago.PromotorCobradorID')
-                              ->where('Cliente.PromotorCobradorID', $promotorId);
-                      })
-                      // Pagos que no tienen promotor en ningún lado → amarrar por zona como última regla
-                      ->orWhere(function ($sub) use ($zonaId) {
-                          $sub->whereNull('pago.PromotorCobradorID')
-                              ->whereNull('Cliente.PromotorCobradorID')
-                              ->where('ProposicionCredito.ZonaID', $zonaId);
-                      });
-            })
             ->whereDate('pago.FechaPago', $fecha->toDateString())
             ->where(function ($query) {
                 $query->where('pago.EsPagoAutomatico', 0)
@@ -1342,6 +1328,269 @@ class ReporteExportController extends Controller
         }
 
         return $this->downloadSpreadsheet($spreadsheet, "Reporte_Proyeccion_{$fechaCarbonDesde->format('d-m-Y')}_{$fechaCarbonHasta->format('d-m-Y')}");
+    }
+
+    public function carteraGeneralExcel(Request $request)
+    {
+        $this->authorizeGerenciaOrPermission($request, 'reporte_cartera_general');
+
+        $fechaDesde = $request->get('fecha_desde');
+        $fechaHasta = $request->get('fecha_hasta');
+        if (!$fechaDesde || !$fechaHasta) {
+            abort(400, 'Debe especificar un rango de fechas.');
+        }
+
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
+
+        $fechaCarbonDesde = Carbon::createFromFormat('Y-m-d', $fechaDesde)->startOfDay();
+        $fechaCarbonHasta = Carbon::createFromFormat('Y-m-d', $fechaHasta)->endOfDay();
+
+        if ($fechaCarbonDesde->gt($fechaCarbonHasta)) {
+            abort(400, 'La fecha desde no puede ser mayor a la fecha hasta.');
+        }
+
+        $sedeId = $this->resolveSedeId();
+        if (!$sedeId) {
+            abort(400, 'Debe seleccionar una sede.');
+        }
+        $sede = Sede::find($sedeId);
+        $sedeNombre = $sede?->Nombre ?? 'SEDE';
+
+        $ciudadId = $request->get('ciudad_id') ? (int) $request->get('ciudad_id') : null;
+        $zonaId = $request->get('zona_id') ? (int) $request->get('zona_id') : null;
+
+        // ─── Query base: creditos activos con saldo de la sede ───
+        $query = Credito::withoutGlobalScopes()
+            ->where('Credito.Activo', 1)
+            ->where('Credito.SedeID', $sedeId)
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->leftJoin('Zona', 'ProposicionCredito.ZonaID', '=', 'Zona.ZonaID')
+            ->where('ProposicionCredito.SaldoPendiente', '>', 0)
+            ->where('ProposicionCredito.FueRefinanciada', 0)
+            ->whereBetween('Credito.FechaGeneracion', [$fechaCarbonDesde, $fechaCarbonHasta])
+            ->when($ciudadId, fn($q) => $q->where('Zona.CiudadID', $ciudadId))
+            ->when($zonaId, fn($q) => $q->where('ProposicionCredito.ZonaID', $zonaId))
+            ->select(
+                'Credito.CreditoID',
+                'Credito.FechaVencimiento',
+                'ProposicionCredito.MontoTotalPagar',
+                'ProposicionCredito.SaldoPendiente',
+                'ProposicionCredito.ZonaID',
+                'Zona.Nombre as ZonaNombre',
+                'Zona.CiudadID'
+            )
+            ->orderBy('Credito.FechaVencimiento')
+            ->get();
+
+        // Pre-agregar pagos (evita N+1): total pagado por credito (sin mora)
+        $creditoIds = $query->pluck('CreditoID')->toArray();
+        $pagosSums = Pago::withoutGlobalScopes()
+            ->whereIn('CreditoID', $creditoIds)
+            ->where('Activo', 1)
+            ->where('EsMora', 0)
+            ->selectRaw('CreditoID, SUM(MontoPagado) as total_pagado')
+            ->groupBy('CreditoID')
+            ->pluck('total_pagado', 'CreditoID');
+
+        $hoy = Carbon::today();
+
+        // ─── Clasificar cada credito ───
+        $carteras = [
+            'castigada' => ['titulo' => 'CARTERA CASTIGADA', 'deuda' => 0.0],
+            'morosa'    => ['titulo' => 'CARTERA MOROSA', 'deuda' => 0.0],
+            'vencida'   => ['titulo' => 'CARTERA VENCIDA', 'deuda' => 0.0],
+            'no_vencida' => ['titulo' => 'CARTERA NO VENCIDA', 'deuda' => 0.0],
+        ];
+
+        $porZona = [];
+
+        foreach ($query as $credito) {
+            $saldo = (float) ($credito->SaldoPendiente ?? 0);
+            if ($saldo <= 0) {
+                continue;
+            }
+
+            $fechaVenc = $credito->FechaVencimiento ? Carbon::parse($credito->FechaVencimiento) : null;
+            if (!$fechaVenc) {
+                continue;
+            }
+
+            // Dias vencido (negativo = aun no vence)
+            $diasVencido = (int) $hoy->diffInDays($fechaVenc, false);
+
+            $tipo = match (true) {
+                $diasVencido >= 120 => 'castigada',
+                $diasVencido >= 31 => 'morosa',
+                $diasVencido >= 1 => 'vencida',
+                default => 'no_vencida',
+            };
+
+            $carteras[$tipo]['deuda'] += $saldo;
+
+            $zonaNombre = $credito->ZonaNombre ?? 'SIN ZONA';
+            if (!isset($porZona[$zonaNombre])) {
+                $porZona[$zonaNombre] = [
+                    'castigada' => 0.0,
+                    'morosa' => 0.0,
+                    'vencida' => 0.0,
+                    'no_vencida' => 0.0,
+                ];
+            }
+            $porZona[$zonaNombre][$tipo] += $saldo;
+        }
+
+        $ciudadNombre = null;
+        if ($ciudadId) {
+            $ciudadNombre = \App\Models\Ciudad::withoutGlobalScopes()->find($ciudadId)?->Nombre;
+        }
+
+        // ─── Construir Excel ───
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Cartera General');
+        $row = 1;
+
+        // ===== TITULO PRINCIPAL =====
+        $sheet->mergeCells('A1:C1');
+        $sheet->setCellValue('A1', 'CARTERA GENERAL TOTAL');
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '1F4E78']],
+            'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(30);
+        $row = 3;
+
+        // ===== INFORMACION DEL REPORTE =====
+        $detalle = "Sede: {$sedeNombre}"
+            . ($ciudadNombre ? "  |  Ciudad: {$ciudadNombre}" : '  |  Ciudad: TODAS')
+            . ($zonaId ? "  |  Zona: " . (\App\Models\Zona::withoutGlobalScopes()->find($zonaId)?->Nombre ?? '') : '  |  Zona: TODAS');
+        $sheet->setCellValue('A' . $row, $detalle);
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(11);
+        $row++;
+        $sheet->setCellValue('A' . $row, "Giros: {$fechaCarbonDesde->format('d/m/Y')} al {$fechaCarbonHasta->format('d/m/Y')}  |  Emitido: " . now()->format('d/m/Y H:i'));
+        $sheet->getStyle('A' . $row)->getFont()->setSize(10)->setColor(new Color('666666'));
+        $row += 2;
+
+        // ===== ESTILOS POR CARTERA =====
+        $estilosCartera = [
+            'castigada' => ['fill' => 'FFFFFF', 'font' => '000000'],
+            'morosa'    => ['fill' => 'FFFFFF', 'font' => '000000'],
+            'vencida'   => ['fill' => 'FFFFFF', 'font' => '000000'],
+            'no_vencida' => ['fill' => 'FFFFFF', 'font' => '000000'],
+        ];
+
+        $titulosCartera = [
+            'castigada' => 'CARTERA CASTIGADA',
+            'morosa'    => 'CARTERA MOROSA',
+            'vencida'   => 'CARTERA VENCIDA',
+            'no_vencida' => 'CARTERA NO VENCIDA',
+        ];
+
+        // ===== FUNCION: escribir un bloque completo (titulo + tabla) =====
+        $escribirBloque = function (string $tituloBloque, array $deudas, int &$row) use ($sheet, $estilosCartera, $titulosCartera) {
+            // Titulo del bloque
+            $sheet->mergeCells('A' . $row . ':C' . $row);
+            $sheet->setCellValue('A' . $row, $tituloBloque);
+            $sheet->getStyle('A' . $row)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => '1F4E78']],
+                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'D9E2F3']],
+                'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
+            ]);
+            $sheet->getRowDimension($row)->setRowHeight(22);
+            $row++;
+
+            // Cabecera de la tabla
+            $headers = ['CARTERA', 'DEUDA', 'PROPORCION %'];
+            foreach ($headers as $i => $h) {
+                $cell = chr(65 + $i) . $row;
+                $sheet->setCellValue($cell, $h);
+                $sheet->getStyle($cell)->applyFromArray([
+                    'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => 'FFFFFF']],
+                    'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '4472C4']],
+                    'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+                ]);
+            }
+            $row++;
+
+            // Filas de carteras
+            $totalDeuda = 0;
+            foreach ($deudas as $tipo => $deuda) {
+                $totalDeuda += (float) $deuda;
+            }
+
+            $orden = ['castigada', 'morosa', 'vencida', 'no_vencida'];
+            foreach ($orden as $tipo) {
+                $deuda = (float) ($deudas[$tipo] ?? 0.0);
+                $porc = $totalDeuda > 0 ? round($deuda * 100 / $totalDeuda, 2) : 0.0;
+                $estilo = $estilosCartera[$tipo];
+
+                $sheet->setCellValue('A' . $row, $titulosCartera[$tipo]);
+                $sheet->setCellValue('B' . $row, $deuda);
+                $sheet->setCellValue('C' . $row, $porc);
+
+                $sheet->getStyle('A' . $row)->applyFromArray([
+                    'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => $estilo['font']]],
+                    'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => $estilo['fill']]],
+                    'alignment' => ['horizontal' => 'left', 'vertical' => 'center'],
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+                ]);
+                $sheet->getStyle('B' . $row)->applyFromArray([
+                    'font' => ['size' => 10, 'color' => ['rgb' => $estilo['font']]],
+                    'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => $estilo['fill']]],
+                    'alignment' => ['horizontal' => 'right', 'vertical' => 'center'],
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+                    'numberFormat' => ['formatCode' => '#,##0.00'],
+                ]);
+                $sheet->getStyle('C' . $row)->applyFromArray([
+                    'font' => ['size' => 10, 'color' => ['rgb' => $estilo['font']]],
+                    'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => $estilo['fill']]],
+                    'alignment' => ['horizontal' => 'right', 'vertical' => 'center'],
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+                    'numberFormat' => ['formatCode' => '0.00"%"'],
+                ]);
+                $row++;
+            }
+
+            // Fila TOTAL
+            $sheet->setCellValue('A' . $row, 'TOTAL');
+            $sheet->setCellValue('B' . $row, round($totalDeuda, 2));
+            $sheet->setCellValue('C' . $row, 100.00);
+            $sheet->getStyle('A' . $row . ':C' . $row)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 11],
+                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E8F0FE']],
+                'alignment' => ['vertical' => 'center'],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
+            ]);
+            $sheet->getStyle('B' . $row)->getAlignment()->setHorizontal('right');
+            $sheet->getStyle('B' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle('C' . $row)->getAlignment()->setHorizontal('right');
+            $sheet->getStyle('C' . $row)->getNumberFormat()->setFormatCode('0.00"%"');
+            $row += 2; // espacio entre bloques
+        };
+
+        // ===== BLOQUE GENERAL (o zona seleccionada) =====
+        $zonaSeleccionada = $zonaId ? (\App\Models\Zona::withoutGlobalScopes()->find($zonaId)?->Nombre ?? 'CARTERA GENERAL') : null;
+        $tituloBloque = $zonaSeleccionada ?: 'CARTERA GENERAL';
+        $deudasGenerales = array_map(fn($c) => $c['deuda'], $carteras);
+        $escribirBloque($tituloBloque, $deudasGenerales, $row);
+
+        // ===== BLOQUES POR ZONA (solo si no se selecciono una zona especifica) =====
+        if (!$zonaId) {
+            ksort($porZona);
+            foreach ($porZona as $zonaNombre => $deudas) {
+                $escribirBloque($zonaNombre, $deudas, $row);
+            }
+        }
+
+        // ===== FORMATO DE COLUMNAS =====
+        $sheet->getColumnDimension('A')->setWidth(50);
+        $sheet->getColumnDimension('B')->setWidth(16);
+        $sheet->getColumnDimension('C')->setWidth(16);
+
+        return $this->downloadSpreadsheet($spreadsheet, "Cartera_General_{$fechaCarbonDesde->format('d-m-Y')}_{$fechaCarbonHasta->format('d-m-Y')}");
     }
 
     private function downloadSpreadsheet(Spreadsheet $spreadsheet, string $filename)
