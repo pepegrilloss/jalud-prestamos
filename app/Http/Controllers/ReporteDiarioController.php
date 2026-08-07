@@ -76,14 +76,15 @@ class ReporteDiarioController extends Controller
 
         $saldoCuentaAMayor = 0;
         if ($sedeId) {
+            // Cta. a Mayor = SOLO pagos a mayor REALES (sin SolicitudResolucionID).
+            // Los pagos generados por Extornos/Excedentes no son dinero devolvible:
+            // son asientos virtuales de resolucion de reclamos/traslados.
             $saldoCuentaAMayor = Pago::withoutGlobalScopes()
                 ->where('SedeID', $sedeId)
                 ->where('Activo', true)
                 ->where('EsPagoAMayor', true)
+                ->whereNull('SolicitudResolucionID')
                 ->where('FechaPago', '<=', $fechaFinDia)
-                ->whereHas('solicitudResolucion', function($q) {
-                    $q->where('TipoResolucion', '!=', 'TRASLADO_DE_PAGO');
-                })
                 ->sum('MontoPagado');
         }
 

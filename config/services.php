@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'calendarific' => [
+        'api_key' => env('CALENDARIFIC_API_KEY'),
+        'country' => 'PE',
+        'type' => 'national',
+    ],
+
 ];

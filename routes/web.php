@@ -326,6 +326,8 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
         ->name('reporte-creditos.excel');
     Route::get('/reportes/eficiencia-cobranza/excel', [App\Http\Controllers\ReporteExportController::class, 'eficienciaCobranzaExcel'])
         ->name('reporte-eficiencia-cobranza.excel');
+    Route::get('/reportes/proyeccion/excel', [App\Http\Controllers\ReporteExportController::class, 'proyeccionExcel'])
+        ->name('reporte-proyeccion.excel');
     Route::get('/pdf/reporte-creditos', [App\Http\Controllers\ReporteCreditosController::class, 'descargar'])
         ->name('reporte-creditos.pdf');
 

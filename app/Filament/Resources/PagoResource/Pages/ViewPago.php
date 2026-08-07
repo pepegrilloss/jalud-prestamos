@@ -143,6 +143,7 @@ class ViewPago extends ViewRecord
                                     ->icon('heroicon-m-plus-circle')
                                     ->badge()
                                     ->color('info')
+                                    ->state(fn($record) => $record->SolicitudResolucionID ? 'EXTORNO (no devolvible)' : 'SI')
                                     ->visible(fn($record) => $record->EsPagoAMayor),
 
                                 Components\TextEntry::make('EsPagoAMayorPorMora')

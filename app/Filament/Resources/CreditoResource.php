@@ -717,11 +717,15 @@ class CreditoResource extends Resource
             - (float) ($credito->proposicion?->SaldoPendiente ?? 0)
         );
 
+        // Solo pagos a mayor REALES (sin SolicitudResolucionID) cuentan como disponible.
+        // Los pagos generados por Extornos/Excedentes (SolicitudResolucionID != null)
+        // NO son dinero devolvible: son asientos virtuales de resolucion de reclamos.
         $pagosAMayor = (float) \App\Models\Pago::where('CreditoID', $credito->CreditoID)
             ->where('Activo', 1)
             ->where('EsMora', 0)
             ->where('EsPagoAMayor', 1)
             ->where('EsPagoAMayorPorMora', 0)
+            ->whereNull('SolicitudResolucionID')
             ->where(function ($query) {
                 $query->whereNull('TipoConcepto')
                     ->orWhere('TipoConcepto', '!=', 'M');

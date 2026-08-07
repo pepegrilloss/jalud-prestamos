@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\CalendarioNoMoroso;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Http;
 
 class CalendarioLaboralService
 {
@@ -128,19 +127,9 @@ class CalendarioLaboralService
             return self::$feriadosNagerPorAnio[$anio];
         }
 
-        self::$feriadosNagerPorAnio[$anio] = [];
-
-        try {
-            $response = Http::timeout(5)->retry(2, 100)
-                ->get("https://date.nager.at/api/v3/PublicHolidays/{$anio}/PE");
-
-            foreach (($response->json() ?: []) as $feriado) {
-                if (isset($feriado['date'])) {
-                    self::$feriadosNagerPorAnio[$anio][$feriado['date']] = $feriado['localName'] ?? 'Feriado nacional';
-                }
-            }
-        } catch (\Exception $e) {
-        }
+        // Fuente local de feriados nacionales (sincronizada desde Calendarific,
+        // maximo 1 llamada externa cada 24 horas por anio).
+        self::$feriadosNagerPorAnio[$anio] = FeriadoService::obtenerFeriados($anio);
 
         return self::$feriadosNagerPorAnio[$anio];
     }

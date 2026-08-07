@@ -251,7 +251,7 @@ class ReporteExportController extends Controller
         $saldoInicialReal = $saldoInicialCajaAbierta - 150000;
         $totalCajaAbiertaReal = $saldoInicialReal + $totalAmortizaciones + $totalMoras - $totalCreditosEmitidos + $remesasNetCajaAbierta + $totalExcedentesDia - $devolucionesDia;
         $saldoCuentaAMayor = \App\Models\Pago::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)->where('EsPagoAMayor', true)
-            ->where('FechaPago', '<=', $fechaFinDia)->whereHas('solicitudResolucion', fn($q) => $q->where('TipoResolucion', '!=', 'TRASLADO_DE_PAGO'))->sum('MontoPagado');
+            ->whereNull('SolicitudResolucionID')->where('FechaPago', '<=', $fechaFinDia)->sum('MontoPagado');
 
         // ─── Excel ───
         $spreadsheet = new Spreadsheet();
@@ -1215,6 +1215,133 @@ class ReporteExportController extends Controller
             ])
             ->distinct('ProposicionCredito.ClienteID')
             ->count('ProposicionCredito.ClienteID');
+    }
+
+    public function proyeccionExcel(Request $request)
+    {
+        $this->authorizeGerenciaOrPermission($request, 'reporte_proyeccion');
+
+        $fechaDesde = $request->get('fecha_desde');
+        $fechaHasta = $request->get('fecha_hasta');
+        if (!$fechaDesde || !$fechaHasta) {
+            abort(400, 'Debe especificar un rango de fechas.');
+        }
+
+        set_time_limit(300);
+        ini_set('memory_limit', '512M');
+
+        $fechaCarbonDesde = Carbon::createFromFormat('Y-m-d', $fechaDesde)->startOfDay();
+        $fechaCarbonHasta = Carbon::createFromFormat('Y-m-d', $fechaHasta)->endOfDay();
+
+        if ($fechaCarbonDesde->diffInDays($fechaCarbonHasta) > 365) {
+            abort(400, 'El rango maximo permitido es de 1 ano (365 dias).');
+        }
+
+        $sedeId = $this->resolveSedeId();
+        $sedeNombre = $sedeId ? (Sede::find($sedeId)?->Nombre ?? 'SEDE') : 'TODAS LAS SEDES';
+
+        $query = Credito::withoutGlobalScopes()
+            ->where('Credito.Activo', 1)
+            ->whereBetween('Credito.FechaGeneracion', [$fechaCarbonDesde, $fechaCarbonHasta])
+            ->when($sedeId, fn($q) => $q->where('Credito.SedeID', $sedeId))
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
+            ->leftJoin('TipoCredito', 'ProposicionCredito.TipoCreditoID', '=', 'TipoCredito.TipoCreditoID')
+            ->select(
+                'Cliente.DNI', 'Cliente.NombresApellidos',
+                'ProposicionCredito.MontoTotal', 'ProposicionCredito.TasaInteres',
+                'ProposicionCredito.MontoTotalPagar', 'ProposicionCredito.SaldoPendiente',
+                'ProposicionCredito.Plazo', 'ProposicionCredito.MontoInteres',
+                'Credito.FechaGeneracion', 'Credito.FechaVencimiento',
+                'TipoCredito.Descripcion as TipoCreditoDescripcion',
+                DB::raw("(SELECT COALESCE(SUM(p.MontoPagado), 0) FROM pago p
+                          WHERE p.CreditoID = Credito.CreditoID AND p.Activo = 1 AND p.EsMora = 0) as total_pagado")
+            )
+            ->orderBy('Credito.FechaGeneracion');
+
+        $creditostotal = $query->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Proyeccion');
+        $styles = $this->getStyles();
+        $row = 1;
+
+        $sheet->mergeCells('A1:L1');
+        $sheet->setCellValue('A1', "REPORTE PROYECCION - {$sedeNombre} - {$fechaCarbonDesde->format('d/m/Y')} AL {$fechaCarbonHasta->format('d/m/Y')}");
+        $sheet->getStyle('A1')->applyFromArray($styles['title']);
+        $row = 3;
+
+        $headers = [
+            'DNI', 'Nombres y Apellidos', 'Monto Prestado', '% Interes',
+            'Total (Monto + Interes)', 'Fecha de Giro', 'Total Pagado', 'Saldo',
+            'Fecha de Vencimiento', 'Tipo de Credito', 'Dias (Plazo)', 'Interes Ganado',
+        ];
+        $colCount = count($headers);
+        foreach ($headers as $i => $h) {
+            $sheet->setCellValue(chr(65 + $i) . $row, $h);
+            $sheet->getStyle(chr(65 + $i) . $row)->applyFromArray($styles['header']);
+        }
+        $row++;
+
+        $totalMonto = 0; $totalMontoPagar = 0; $totalPagado = 0; $totalSaldo = 0; $totalInteres = 0; $count = 0;
+
+        foreach ($creditostotal as $c) {
+            $montoTotal    = (float) ($c->MontoTotal ?? 0);
+            $montoTotalPagar = (float) ($c->MontoTotalPagar ?? 0);
+            $totalPagadoC  = (float) ($c->total_pagado ?? 0);
+            $saldo         = (float) ($c->SaldoPendiente ?? 0);
+            $montoInteres  = (float) ($c->MontoInteres ?? 0);
+
+            $this->writeDataRow($sheet, $row, [
+                $c->DNI ?? '-',
+                $c->NombresApellidos ?? '-',
+                $montoTotal,
+                ($c->TasaInteres ?? 0) . '%',
+                $montoTotalPagar,
+                $c->FechaGeneracion ? Carbon::parse($c->FechaGeneracion)->format('d/m/Y') : '-',
+                $totalPagadoC,
+                $saldo,
+                $c->FechaVencimiento ? Carbon::parse($c->FechaVencimiento)->format('d/m/Y') : '-',
+                $c->TipoCreditoDescripcion ?? '-',
+                $c->Plazo ?? '-',
+                $montoInteres,
+            ], $colCount);
+
+            $sheet->getStyle('C' . $row)->getAlignment()->setHorizontal('right');
+            $sheet->getStyle('E' . $row)->getAlignment()->setHorizontal('right');
+            $sheet->getStyle('G' . $row)->getAlignment()->setHorizontal('right');
+            $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
+            $sheet->getStyle('L' . $row)->getAlignment()->setHorizontal('right');
+
+            $totalMonto += $montoTotal;
+            $totalMontoPagar += $montoTotalPagar;
+            $totalPagado += $totalPagadoC;
+            $totalSaldo += $saldo;
+            $totalInteres += $montoInteres;
+            $count++;
+            $row++;
+        }
+
+        $sheet->setCellValue('A' . $row, "TOTAL: {$count} creditos");
+        $sheet->setCellValue('C' . $row, $totalMonto);
+        $sheet->setCellValue('E' . $row, $totalMontoPagar);
+        $sheet->setCellValue('G' . $row, $totalPagado);
+        $sheet->setCellValue('H' . $row, $totalSaldo);
+        $sheet->setCellValue('L' . $row, $totalInteres);
+        $sheet->getStyle('A' . $row . ':L' . $row)->applyFromArray($styles['total']);
+        $sheet->getStyle('C' . $row)->getAlignment()->setHorizontal('right');
+        $sheet->getStyle('E' . $row)->getAlignment()->setHorizontal('right');
+        $sheet->getStyle('G' . $row)->getAlignment()->setHorizontal('right');
+        $sheet->getStyle('H' . $row)->getAlignment()->setHorizontal('right');
+        $sheet->getStyle('L' . $row)->getAlignment()->setHorizontal('right');
+
+        $widths = [12, 30, 15, 10, 18, 13, 13, 12, 15, 18, 12, 14];
+        foreach ($widths as $i => $w) {
+            $sheet->getColumnDimension(chr(65 + $i))->setWidth($w);
+        }
+
+        return $this->downloadSpreadsheet($spreadsheet, "Reporte_Proyeccion_{$fechaCarbonDesde->format('d-m-Y')}_{$fechaCarbonHasta->format('d-m-Y')}");
     }
 
     private function downloadSpreadsheet(Spreadsheet $spreadsheet, string $filename)
