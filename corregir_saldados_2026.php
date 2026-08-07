@@ -93,10 +93,10 @@ foreach ($creditos as $c) {
     $dias = (int) (new Carbon($actual))->diffInDays(new Carbon($esperado), false);
     if ($dias < 1 || $dias > 30) continue;
 
-    // Cruza el 06-ago?
-    $inicio = Carbon::parse($c->FechaGeneracion)->addDay();
-    $fin = Carbon::parse($actual);
-    $cruza6ago = Carbon::parse('2026-08-06')->between($inicio, $fin);
+    // Cruza el 06-ago? (comparar solo fechas, sin horas)
+    $inicio = Carbon::parse($c->FechaGeneracion)->addDay()->startOfDay();
+    $fin = Carbon::parse($actual)->startOfDay();
+    $cruza6ago = Carbon::parse('2026-08-06')->startOfDay()->between($inicio, $fin);
 
     if ($cruza6ago && $dias >= 1 && $dias <= 3) {
         $aCorregir[] = [
