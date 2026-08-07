@@ -65,11 +65,11 @@ try {
 // ─── 2. CalendarioNoMoroso ───
 echo "\n=== 2. CALENDARIO NO MOROSO (reglas locales) ===\n";
 try {
-    $cols = DB::getSchemaBuilder()->getColumnListing('CalendarioNoMoroso');
-    echo "Columnas: " . implode(', ', $cols) . "\n";
-    $reglas = DB::table('CalendarioNoMoroso')->orderByDesc('FechaRegistro')->limit(30)->get();
+    $cols = DB::getSchemaBuilder()->getColumnListing('calendario_no_morosos');
+    echo "Tabla: calendario_no_morosos | Columnas: " . implode(', ', $cols) . "\n";
+    $reglas = DB::table('calendario_no_morosos')->orderBy('Fecha')->get();
     if (count($reglas) === 0) {
-        echo "  SIN REGISTROS\n";
+        echo "  SIN REGISTROS (la tabla existe pero vacia)\n";
     }
     foreach ($reglas as $r) {
         $line = [];
@@ -81,6 +81,10 @@ try {
         }
         echo "  " . implode(' | ', $line) . "\n";
     }
+    $tiene23 = DB::table('calendario_no_morosos')->whereDate('Fecha', '2026-07-23')->where('Activo', 1)->exists();
+    $tiene27 = DB::table('calendario_no_morosos')->whereDate('Fecha', '2026-07-27')->where('Activo', 1)->exists();
+    echo ($tiene23 ? "  >>> 23-jul LABORABLE_FORZADO PRESENTE <<<\n" : "  >>> FALTA 23-jul LABORABLE_FORZADO <<<\n");
+    echo ($tiene27 ? "  >>> 27-jul NO_LABORABLE PRESENTE <<<\n" : "  >>> FALTA 27-jul NO_LABORABLE <<<\n");
 } catch (\Exception $e) {
     echo "  ERROR: " . $e->getMessage() . "\n";
 }
