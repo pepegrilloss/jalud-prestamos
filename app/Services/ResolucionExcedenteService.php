@@ -293,6 +293,11 @@ class ResolucionExcedenteService
             $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now();
         }
 
+        // REGLA (confirmada): el pago generado por el extorno se marca como A MAYOR
+        // solo si el credito destino tiene saldo 0 (saldado) al momento de la solicitud.
+        // Si tiene saldo pendiente, es una regularizacion (no a mayor).
+        $esPagoAMayor = $this->creditoDestinoSaldadoAlMomento($solicitud);
+
         $nuevoPago = Pago::create([
             'CreditoID' => $solicitud->CreditoDestinoID,
             'CuotaID' => null,
@@ -302,7 +307,7 @@ class ResolucionExcedenteService
             'TipoConcepto' => 'C',
             'EsMora' => false,
             'EsPagoAutomatico' => true,
-            'EsPagoAMayor' => false,
+            'EsPagoAMayor' => $esPagoAMayor,
             'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}.\nTipo: {$solicitud->TipoResolucion}.\nMonto aplicado: S/ " . number_format($montoAplicar, 2),
             'UsuarioRegistro' => $aprobador->name,
             'Activo' => true,
@@ -316,6 +321,39 @@ class ResolucionExcedenteService
             $this->recalcularEstadoCuota($nuevoPago->CuotaID);
         }
         $this->verificarCreditoCancelado($nuevoPago->CreditoID);
+    }
+
+    /**
+     * Determina si el credito destino estaba saldado (saldo 0) al momento
+     * de crearse la solicitud de resolucion. Suma los pagos normales activos
+     * (no a mayor, no mora, no trasladados) con FechaPago <= created_at de la
+     * solicitud y compara contra MontoTotalPagar.
+     */
+    private function creditoDestinoSaldadoAlMomento(SolicitudResolucionExcedente $solicitud): bool
+    {
+        $credito = \App\Models\Credito::withoutGlobalScope('sede')
+            ->with('proposicion')
+            ->find($solicitud->CreditoDestinoID);
+
+        if (! $credito || ! $credito->proposicion) {
+            return false;
+        }
+
+        $montoTotalPagar = (float) ($credito->proposicion->MontoTotalPagar ?? 0);
+
+        $pagadoNormal = (float) Pago::where('CreditoID', $credito->CreditoID)
+            ->where('Activo', 1)
+            ->where('EsMora', 0)
+            ->where('EsPagoAMayor', 0)
+            ->where('EsPagoAMayorPorMora', 0)
+            ->where('FechaPago', '<=', $solicitud->created_at)
+            ->where(function ($q) {
+                $q->whereNull('EstadoTraslado')
+                  ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+            })
+            ->sum('MontoPagado');
+
+        return ($montoTotalPagar - $pagadoNormal) <= 0.009;
     }
     
     private function recalcularEstadoCuota($cuotaID): void
