@@ -322,10 +322,16 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->required(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO', 'DEVOLUCION_PAGO_MAYOR', 'APLICACION_NUEVO_CREDITO']))
                             ->searchable()
                             ->live()
-                            ->afterStateUpdated(function (Set $set) {
+                            ->afterStateUpdated(function (Get $get, Set $set) {
                                 $set('CreditoDestinoID', null);
+                                $pagoMayorSeleccionado = $get('PagoMayorOrigenID');
                                 $set('PagoMayorOrigenID', null);
-                                $set('MontoAplicar', null);
+                                // Conservar el monto si su fuente es un excedente o pago origen
+                                // (no dependen del cliente/crédito destino). Solo se limpia cuando
+                                // no hay fuente que lo determine o esta cambió.
+                                if (! $pagoMayorSeleccionado && ! $get('ExcedenteID') && ! $get('PagoOrigenID')) {
+                                    $set('MontoAplicar', null);
+                                }
                             })
                             ->rules([
                                 fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
@@ -352,9 +358,15 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->required(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO', 'DEVOLUCION_PAGO_MAYOR', 'APLICACION_NUEVO_CREDITO']))
                             ->searchable()
                             ->live()
-                            ->afterStateUpdated(function (Set $set) {
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                $pagoMayorSeleccionado = $get('PagoMayorOrigenID');
                                 $set('PagoMayorOrigenID', null);
-                                $set('MontoAplicar', null);
+                                // Conservar el monto si su fuente es un excedente o pago origen
+                                // (no dependen del crédito destino). Solo se limpia cuando no hay
+                                // fuente que lo determine o esta cambió.
+                                if (! $pagoMayorSeleccionado && ! $get('ExcedenteID') && ! $get('PagoOrigenID')) {
+                                    $set('MontoAplicar', null);
+                                }
                             })
                             ->visible(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO', 'DEVOLUCION_PAGO_MAYOR', 'APLICACION_NUEVO_CREDITO'])),
 

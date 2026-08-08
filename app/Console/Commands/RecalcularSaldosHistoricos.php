@@ -39,9 +39,12 @@ class RecalcularSaldosHistoricos extends Command
             }
         }
 
-        // 1. Regularizar pagos antiguos: asegurar que todos los extornos históricos sean "Cuenta a Mayor"
-        Pago::whereNotNull('SolicitudResolucionID')->update(['EsPagoAMayor' => true]);
-        $this->line("Pagos de extornos regularizados a Cuenta a Mayor.");
+        // 1. Regularizar pagos antiguos: los pagos generados por Extornos/Resoluciones
+        // (SolicitudResolucionID != null) NO son pagos a mayor reales. Solo los pagos
+        // registrados manualmente como MAYOR son "Cuenta a Mayor" devolvible.
+        // No se modifica EsPagoAMayor aqui: los asientos de resolucion se identifican
+        // por SolicitudResolucionID en reportes y saldos.
+        $this->line("Pagos de extornos: identificados por SolicitudResolucionID (sin tocar EsPagoAMayor).");
 
         // 2. Inyectar o corregir la transferencia inicial de 200,000 hacia Trujillo
         // Buscamos si ya existe la transferencia inicial para no duplicarla ni borrar otras reales
@@ -128,10 +131,13 @@ class RecalcularSaldosHistoricos extends Command
         );
 
         // 5. Calcular pagos recaudados en Trujillo (SOLO DINERO FÍSICO REAL)
-        // Ignoramos los pagos virtuales generados por Extornos/Excedentes (EsPagoAMayor = true)
+        // Ignoramos los pagos virtuales generados por Extornos/Excedentes (SolicitudResolucionID != null)
+        // y los pagos a mayor (reales y virtuales): no son amortización aplicada a cuotas.
         $pagosRecaudados = Pago::where('SedeID', $trujilloSedeId)
             ->where('Activo', true)
+            ->whereNull('SolicitudResolucionID')
             ->where('EsPagoAMayor', false)
+            ->where('EsPagoAMayorPorMora', false)
             ->sum('MontoPagado');
 
         // Calcular los Pagos a Mayor solo para reporte en consola

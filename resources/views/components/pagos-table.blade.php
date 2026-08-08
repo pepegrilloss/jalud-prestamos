@@ -25,6 +25,10 @@
             if ($pago->EsPagoAMayor || $pago->EsPagoAMayorPorMora) {
                 $key = $fechaStr . '_amayor_' . $pago->PagoID;
                 $pagosAgrupados[$key] = [$pago];
+            // Los pagos de extornos/regularizaciones (SolicitudResolucionID) van como filas independientes
+            } elseif ($pago->SolicitudResolucionID) {
+                $key = $fechaStr . '_extorno_' . $pago->PagoID;
+                $pagosAgrupados[$key] = [$pago];
             // Los pagos trasladados también van como filas independientes
             } elseif ($pago->EstadoTraslado === 'TRASLADADO') {
                 $key = $fechaStr . '_trasladado_' . $pago->PagoID;
@@ -51,6 +55,7 @@
             $esPagoAMayor = false;
             $esPagoAMayorPorMora = false;
             $esPagoAutomatico = false;
+            $esExtorno = false;
 
             foreach ($pagosDelDia as $p) {
                 $esTrasladado = $p->EstadoTraslado === 'TRASLADADO';
@@ -70,6 +75,7 @@
                 if ($p->EsPagoAMayor) $esPagoAMayor = true;
                 if ($p->EsPagoAMayorPorMora) $esPagoAMayorPorMora = true;
                 if ($p->EsPagoAutomatico) $esPagoAutomatico = true;
+                if ($p->SolicitudResolucionID) $esExtorno = true;
                 
                 $tiposPago[] = $p->TipoPago ?? 'Efectivo';
                 if ($p->UsuarioRegistro) $usuarios[] = $p->UsuarioRegistro;
@@ -88,6 +94,8 @@
                         $prefix = "Pago A Mayor Por Mora";
                     } elseif ($p->EsPagoAMayor) {
                         $prefix = "Pago A Mayor";
+                    } elseif ($p->SolicitudResolucionID) {
+                        $prefix = "Extorno/Regularización";
                     } else {
                         $prefix = "Pago Normal";
                     }
@@ -106,6 +114,7 @@
             $pagoMock->EsPagoAMayor = $esPagoAMayor;
             $pagoMock->EsPagoAMayorPorMora = $esPagoAMayorPorMora;
             $pagoMock->EsPagoAutomatico = $esPagoAutomatico;
+            $pagoMock->SolicitudResolucionID = $esExtorno ? 1 : null;
             $pagoMock->UsuarioRegistro = collect($usuarios)->unique()->implode(', ');
             $pagoMock->Comentario = implode("\n\n", $observaciones);
             $pagoMock->solicitudResolucion = null;
@@ -201,13 +210,16 @@
                                         }
                                     }
                                 @endphp
-                                @if($pago->EsPagoAMayor)
+                                @if($pago->SolicitudResolucionID)
+                                    <span class="bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded border border-primary-200 dark:border-primary-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">EXTORNO / REGULARIZACIÓN</span>
+                                @endif
+                                @if($pago->EsPagoAMayor && !$pago->SolicitudResolucionID)
                                     <span class="bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400 px-1.5 py-0.5 rounded border border-warning-200 dark:border-warning-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">PAGO A MAYOR</span>
                                 @endif
                                 @if($pago->EsPagoAMayorPorMora)
                                     <span class="bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400 px-1.5 py-0.5 rounded border border-danger-200 dark:border-danger-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">A MAYOR POR MORA</span>
                                 @endif
-                                @if(!$pago->EsPagoAMayor && !$pago->EsPagoAMayorPorMora && !$pago->EsMora && $pago->EsPagoAutomatico)
+                                @if(!$pago->EsPagoAMayor && !$pago->EsPagoAMayorPorMora && !$pago->EsMora && $pago->EsPagoAutomatico && !$pago->SolicitudResolucionID)
                                     <span class="bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">AUTOMÁTICO</span>
                                 @endif
                                 {!! nl2br(e($obs)) !!}

@@ -398,7 +398,7 @@
                 <tr>
                     <td>{{ $rem->TransferenciaID }}</td>
                     <td>{{ ($rem->FechaRespuesta ?? $rem->FechaTransferencia) ? \Carbon\Carbon::parse($rem->FechaRespuesta ?? $rem->FechaTransferencia)->format('d/m/Y') : '' }}</td>
-                    <td>{{ mb_strtoupper($rem->sedeOrigen?->Nombre ?? 'N/A') }}</td>
+                    <td>{{ mb_strtoupper(($rem->EsSolicitudGerencia ? ($rem->sedeDestino?->Nombre ?? 'N/A') : ($rem->sedeOrigen?->Nombre ?? 'N/A'))) }}</td>
                     <td>{{ $rem->CuentaDestino ?? 'CAJA_ABIERTA' }}</td>
                     <td class="monto">{{ number_format($rem->Monto, 2) }}</td>
                 </tr>
@@ -442,7 +442,7 @@
                 <tr>
                     <td>{{ $rem->TransferenciaID }}</td>
                     <td>{{ ($rem->FechaRespuesta ?? $rem->FechaTransferencia) ? \Carbon\Carbon::parse($rem->FechaRespuesta ?? $rem->FechaTransferencia)->format('d/m/Y') : '' }}</td>
-                    <td>{{ mb_strtoupper($rem->sedeDestino?->Nombre ?? 'N/A') }}</td>
+                    <td>{{ mb_strtoupper(($rem->EsSolicitudGerencia ? ($rem->sedeOrigen?->Nombre ?? 'N/A') : ($rem->sedeDestino?->Nombre ?? 'N/A'))) }}</td>
                     <td>{{ $rem->CuentaOrigen ?? 'CAJA_ABIERTA' }}</td>
                     <td class="monto">{{ number_format($rem->Monto, 2) }}</td>
                 </tr>

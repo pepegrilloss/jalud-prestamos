@@ -121,6 +121,9 @@ class ReporteDiarioController extends Controller
         $totalCompras = $compras->sum('Total');
 
         // ─── 2. INGRESO DE REMESAS (transferencias recibidas y aceptadas) ───
+        // Para EsSolicitudGerencia la sede que RECIBE es SedeOrigenID (Gerencia solicita
+        // y la sede SedeDestinoID le envía el dinero). Para remesas normales quien
+        // recibe es SedeDestinoID.
         $ingresosRemesasQuery = TransferenciaSede::withoutGlobalScopes()
             ->where('Estado', 'ACEPTADO')
             ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
@@ -131,7 +134,14 @@ class ReporteDiarioController extends Controller
             });
 
         if ($sedeId) {
-            $ingresosRemesasQuery->where('SedeDestinoID', $sedeId);
+            $ingresosRemesasQuery->where(function ($q) use ($sedeId) {
+                $q->where('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId)
+                  ->orWhere(function ($q2) use ($sedeId) {
+                      $q2->where(function ($q3) {
+                          $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia');
+                      })->where('SedeDestinoID', $sedeId);
+                  });
+            });
         }
 
         $ingresosRemesas = $ingresosRemesasQuery
@@ -142,6 +152,8 @@ class ReporteDiarioController extends Controller
         $totalIngresosRemesas = $ingresosRemesas->sum('Monto');
 
         // ─── 3. SALIDA DE REMESAS (transferencias enviadas y aceptadas) ───
+        // Para EsSolicitudGerencia la sede que ENVÍA es SedeDestinoID (la sede entrega
+        // el dinero a Gerencia). Para remesas normales quien envía es SedeOrigenID.
         $salidasRemesasQuery = TransferenciaSede::withoutGlobalScopes()
             ->where('Estado', 'ACEPTADO')
             ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
@@ -152,7 +164,14 @@ class ReporteDiarioController extends Controller
             });
 
         if ($sedeId) {
-            $salidasRemesasQuery->where('SedeOrigenID', $sedeId);
+            $salidasRemesasQuery->where(function ($q) use ($sedeId) {
+                $q->where('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId)
+                  ->orWhere(function ($q2) use ($sedeId) {
+                      $q2->where(function ($q3) {
+                          $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia');
+                      })->where('SedeOrigenID', $sedeId);
+                  });
+            });
         }
 
         $salidasRemesas = $salidasRemesasQuery
@@ -212,12 +231,12 @@ class ReporteDiarioController extends Controller
             ->get();
 
         // ─── 4d. CAJA ABIERTA - AMORTIZACIONES (Pagos Físicos, excluye exoneraciones) ───
+        // Solo pagos REALES (sin SolicitudResolucionID). Los pagos generados por
+        // Extornos/Excedentes son asientos virtuales: el dinero ya se contabilizó
+        // como excedente cuando ingresó.
         $pagosQuery = Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)
-            ->where(function($q) {
-                $q->where('pago.EsPagoAMayor', false)
-                  ->orWhereNull('pago.SolicitudResolucionID');
-            })
+            ->whereNull('pago.SolicitudResolucionID')
             ->where('pago.EsPagoAMayorPorMora', false)
             ->where(function($q) {
                 $q->whereNull('pago.TipoConcepto')
@@ -328,10 +347,19 @@ class ReporteDiarioController extends Controller
             // Función auxiliar para calcular el saldo real hasta un momento dado
             $calcularSaldoHasta = function ($fechaLimite) use ($sedeId) {
                 // 1. Transferencias Recibidas (Entrada)
+                // Para EsSolicitudGerencia quien recibe es SedeOrigenID (Gerencia solicita).
                 $transferenciasRecibidas = \App\Models\TransferenciaSede::withoutGlobalScopes()
-                    ->where('SedeDestinoID', $sedeId)
                     ->where('Estado', 'ACEPTADO')
                     ->where('CuentaDestino', 'CAJA_ABIERTA')
+                    ->where(function($q) use ($sedeId) {
+                        $q->where(function ($q2) use ($sedeId) {
+                            $q2->where('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId);
+                        })->orWhere(function ($q2) use ($sedeId) {
+                            $q2->where(function ($q3) {
+                                $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia');
+                            })->where('SedeDestinoID', $sedeId);
+                        });
+                    })
                     ->where(function($q) use ($fechaLimite) {
                         $q->where('FechaRespuesta', '<=', $fechaLimite)
                           ->orWhere(function($q2) use ($fechaLimite) {
@@ -341,10 +369,19 @@ class ReporteDiarioController extends Controller
                     ->sum('Monto');
 
                 // 2. Transferencias Enviadas (Salida)
+                // Para EsSolicitudGerencia quien envía es SedeDestinoID (la sede entrega a Gerencia).
                 $transferenciasEnviadas = \App\Models\TransferenciaSede::withoutGlobalScopes()
-                    ->where('SedeOrigenID', $sedeId)
                     ->where('Estado', 'ACEPTADO')
                     ->where('CuentaOrigen', 'CAJA_ABIERTA')
+                    ->where(function($q) use ($sedeId) {
+                        $q->where(function ($q2) use ($sedeId) {
+                            $q2->where('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId);
+                        })->orWhere(function ($q2) use ($sedeId) {
+                            $q2->where(function ($q3) {
+                                $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia');
+                            })->where('SedeOrigenID', $sedeId);
+                        });
+                    })
                     ->where(function($q) use ($fechaLimite) {
                         $q->where('FechaRespuesta', '<=', $fechaLimite)
                           ->orWhere(function($q2) use ($fechaLimite) {
@@ -356,10 +393,7 @@ class ReporteDiarioController extends Controller
                 // 3. Pagos / Amortizaciones (Entrada física) — descontando porciones aplicadas por excedentes
                 $pagosRaw = \App\Models\Pago::withoutGlobalScopes()
                     ->where('Activo', true)
-                    ->where(function($q) {
-                        $q->where('EsPagoAMayor', false)
-                          ->orWhereNull('SolicitudResolucionID');
-                    })
+                    ->whereNull('SolicitudResolucionID')
                     ->where('EsPagoAMayorPorMora', false)
                     ->where(function($q) {
                         $q->whereNull('TipoConcepto')

@@ -725,11 +725,11 @@ class CreatePago extends CreateRecord
                 } // fin if (!$pagoOriginal->EsMora)
 
                 if ($pagoOriginal->SedeID && $pagoOriginal->MontoPagado > 0) {
-                    // Pago a Mayor proveniente de resolución de excedente (SolicitudResolucionID != null)
+                    // Pago generado por resolución de excedente/traslado (SolicitudResolucionID != null)
                     // NO va a la caja abierta porque el dinero ya fue contabilizado como excedente.
-                    $esPagoAMayorDeExcedente = $pagoOriginal->EsPagoAMayor && $pagoOriginal->SolicitudResolucionID;
+                    $esPagoDeResolucion = (bool) $pagoOriginal->SolicitudResolucionID;
                     // Pago a Mayor por Mora NO va a la caja abierta (se contabiliza como Mora en el balance).
-                    if (!$esPagoAMayorDeExcedente && !$pagoOriginal->EsPagoAMayorPorMora) {
+                    if (!$esPagoDeResolucion && !$pagoOriginal->EsPagoAMayorPorMora) {
                         app(FondoSedeService::class)->registrarIngresoRecaudo(
                             $pagoOriginal->SedeID,
                             $pagoOriginal->MontoPagado,

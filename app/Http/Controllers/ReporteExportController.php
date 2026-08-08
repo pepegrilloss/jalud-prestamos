@@ -113,10 +113,7 @@ class ReporteExportController extends Controller
 
         $pagos = \App\Models\Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)->where('pago.EsPagoAMayorPorMora', false)
-            ->where(function($q) {
-                $q->where('pago.EsPagoAMayor', false)
-                  ->orWhereNull('pago.SolicitudResolucionID');
-            })
+            ->whereNull('pago.SolicitudResolucionID')
             ->whereDate('pago.FechaPago', $fecha)->when($sedeId, fn($q) => $q->where('pago.SedeID', $sedeId))
             ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
@@ -164,13 +161,23 @@ class ReporteExportController extends Controller
             ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
                 $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
                   ->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]));
-            })->when($sedeId, fn($q) => $q->where('SedeDestinoID', $sedeId))->with('sedeOrigen')->orderBy('TransferenciaID')->get();
+            })
+            ->when($sedeId, fn($q) => $q->where(function ($q2) use ($sedeId) {
+                $q2->where('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId)
+                   ->orWhere(fn($q3) => $q3->where(fn($q4) => $q4->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->where('SedeDestinoID', $sedeId));
+            }))
+            ->with('sedeOrigen', 'sedeDestino')->orderBy('TransferenciaID')->get();
 
         $salidasRemesas = TransferenciaSede::withoutGlobalScopes()->where('Estado', 'ACEPTADO')
             ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
                 $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
                   ->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]));
-            })->when($sedeId, fn($q) => $q->where('SedeOrigenID', $sedeId))->with('sedeDestino')->orderBy('TransferenciaID')->get();
+            })
+            ->when($sedeId, fn($q) => $q->where(function ($q2) use ($sedeId) {
+                $q2->where('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId)
+                   ->orWhere(fn($q3) => $q3->where(fn($q4) => $q4->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->where('SedeOrigenID', $sedeId));
+            }))
+            ->with('sedeOrigen', 'sedeDestino')->orderBy('TransferenciaID')->get();
 
         $devolucionesDia = \App\Models\MovimientoFondo::withoutGlobalScopes()
             ->where('SedeID', $sedeId)->where('Tipo', 'EGRESO_DEVOLUCION_EFECTIVO')
@@ -179,17 +186,21 @@ class ReporteExportController extends Controller
         // Remesas netas CA
         $ingRemCA = TransferenciaSede::withoutGlobalScopes()->where('SedeDestinoID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_ABIERTA')
             ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
+            ->where(fn($q) => $q->where(fn($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->orWhere('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId))
             ->sum('Monto');
         $salRemCA = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_ABIERTA')
             ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
+            ->where(fn($q) => $q->where(fn($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->orWhere('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId))
             ->sum('Monto');
         $remesasNetCajaAbierta = $ingRemCA - $salRemCA;
 
         $ingRemCC = TransferenciaSede::withoutGlobalScopes()->where('SedeDestinoID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_CHICA')
             ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
+            ->where(fn($q) => $q->where(fn($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->orWhere('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId))
             ->sum('Monto');
         $salRemCC = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_CHICA')
             ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
+            ->where(fn($q) => $q->where(fn($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->orWhere('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId))
             ->sum('Monto');
         $remesasNetCajaChica = $ingRemCC - $salRemCC;
 
@@ -220,14 +231,29 @@ class ReporteExportController extends Controller
         if ($sedeId) {
             $calcularSaldo = function($limite) use ($sedeId) {
                 $tr = TransferenciaSede::withoutGlobalScopes()->where('SedeDestinoID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_ABIERTA')
-                    ->where(fn($q) => $q->where('FechaRespuesta', '<=', $limite)->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite)))->sum('Monto');
-                $te = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_ABIERTA')
-                    ->where(fn($q) => $q->where('FechaRespuesta', '<=', $limite)->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite)))->sum('Monto');
-                $pg = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayorPorMora', false)
-                    ->where(function($q) {
-                        $q->where('EsPagoAMayor', false)
-                          ->orWhereNull('SolicitudResolucionID');
+                    ->where(function($q) use ($limite) {
+                        $q->where('FechaRespuesta', '<=', $limite)->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite));
                     })
+                    ->where(function($q) use ($sedeId) {
+                        $q->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia')
+                          ->orWhere(function($q2) use ($sedeId) {
+                              $q2->where('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId);
+                          });
+                    })
+                    ->sum('Monto');
+                $te = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_ABIERTA')
+                    ->where(function($q) use ($limite) {
+                        $q->where('FechaRespuesta', '<=', $limite)->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite));
+                    })
+                    ->where(function($q) use ($sedeId) {
+                        $q->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia')
+                          ->orWhere(function($q2) use ($sedeId) {
+                              $q2->where('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId);
+                          });
+                    })
+                    ->sum('Monto');
+                $pg = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayorPorMora', false)
+                    ->whereNull('SolicitudResolucionID')
                     ->where('FechaPago', '<=', $limite)->where('SedeID', $sedeId)->sum('MontoPagado');
                 $cr = Credito::withoutGlobalScopes()->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
                     ->where('Credito.Activo', true)->where('Credito.SedeID', $sedeId)->where('Credito.FechaGeneracion', '<=', $limite)->sum('ProposicionCredito.MontoTotal');
@@ -303,13 +329,13 @@ class ReporteExportController extends Controller
         // 5. INGRESO DE REMESAS
         $sheet->setCellValue('A'.$row, 'INGRESO DE REMESAS'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
         foreach (['Nro.','Fecha','Sede Origen','Cuenta','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
-        $tIng=0; foreach ($ingresosRemesas as $r) { $this->writeDataRow($sheet, $row, [$r->TransferenciaID, ($r->FechaRespuesta??$r->FechaTransferencia)?->format('d/m/Y'), $r->sedeOrigen?->Nombre, $r->CuentaDestino?:'CAJA_ABIERTA', $r->Monto], 5); $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $tIng+=$r->Monto; $row++; }
+        $tIng=0; foreach ($ingresosRemesas as $r) { $this->writeDataRow($sheet, $row, [$r->TransferenciaID, ($r->FechaRespuesta??$r->FechaTransferencia)?->format('d/m/Y'), $r->EsSolicitudGerencia ? ($r->sedeDestino?->Nombre ?? '-') : ($r->sedeOrigen?->Nombre ?? '-'), $r->CuentaDestino?:'CAJA_ABIERTA', $r->Monto], 5); $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $tIng+=$r->Monto; $row++; }
         $sheet->setCellValue('D'.$row, 'TOTAL INGRESOS:'); $sheet->setCellValue('E'.$row, $tIng); $sheet->getStyle('D'.$row.':E'.$row)->applyFromArray($styles['total']); $row += 2;
 
         // 6. SALIDA DE REMESAS
         $sheet->setCellValue('A'.$row, 'SALIDA DE REMESAS'); $sheet->getStyle('A'.$row)->getFont()->setBold(true); $row++;
         foreach (['Nro.','Fecha','Sede Destino','Cuenta','Monto'] as $i=>$h) { $c=chr(65+$i); $sheet->setCellValue($c.$row, $h); $sheet->getStyle($c.$row)->applyFromArray($styles['header']); } $row++;
-        $tSal=0; foreach ($salidasRemesas as $r) { $this->writeDataRow($sheet, $row, [$r->TransferenciaID, ($r->FechaRespuesta??$r->FechaTransferencia)?->format('d/m/Y'), $r->sedeDestino?->Nombre, $r->CuentaOrigen?:'CAJA_ABIERTA', $r->Monto], 5); $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $tSal+=$r->Monto; $row++; }
+        $tSal=0; foreach ($salidasRemesas as $r) { $this->writeDataRow($sheet, $row, [$r->TransferenciaID, ($r->FechaRespuesta??$r->FechaTransferencia)?->format('d/m/Y'), $r->EsSolicitudGerencia ? ($r->sedeOrigen?->Nombre ?? '-') : ($r->sedeDestino?->Nombre ?? '-'), $r->CuentaOrigen?:'CAJA_ABIERTA', $r->Monto], 5); $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $tSal+=$r->Monto; $row++; }
         $sheet->setCellValue('D'.$row, 'TOTAL SALIDAS:'); $sheet->setCellValue('E'.$row, $tSal); $sheet->getStyle('D'.$row.':E'.$row)->applyFromArray($styles['total']); $row += 2;
 
         // 7. EXTORNOS Y DEVOLUCIONES
