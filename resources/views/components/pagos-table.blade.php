@@ -210,14 +210,14 @@
                                         }
                                     }
                                 @endphp
-                                @if($pago->SolicitudResolucionID)
-                                    <span class="bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded border border-primary-200 dark:border-primary-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">EXTORNO / REGULARIZACIÓN</span>
-                                @endif
-                                @if($pago->EsPagoAMayor && !$pago->SolicitudResolucionID)
-                                    <span class="bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400 px-1.5 py-0.5 rounded border border-warning-200 dark:border-warning-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">PAGO A MAYOR</span>
-                                @endif
                                 @if($pago->EsPagoAMayorPorMora)
                                     <span class="bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400 px-1.5 py-0.5 rounded border border-danger-200 dark:border-danger-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">A MAYOR POR MORA</span>
+                                @endif
+                                @if($pago->EsPagoAMayor && !$pago->EsPagoAMayorPorMora)
+                                    <span class="bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400 px-1.5 py-0.5 rounded border border-warning-200 dark:border-warning-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">PAGO A MAYOR</span>
+                                @endif
+                                @if($pago->SolicitudResolucionID && !$pago->EsPagoAMayor && !$pago->EsPagoAMayorPorMora)
+                                    <span class="bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 px-1.5 py-0.5 rounded border border-primary-200 dark:border-primary-800 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">EXTORNO / REGULARIZACIÓN</span>
                                 @endif
                                 @if(!$pago->EsPagoAMayor && !$pago->EsPagoAMayorPorMora && !$pago->EsMora && $pago->EsPagoAutomatico && !$pago->SolicitudResolucionID)
                                     <span class="bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 font-bold mr-1 inline-block mb-1 not-italic text-[10px]">AUTOMÁTICO</span>

@@ -513,8 +513,8 @@ class PagoResource extends Resource
                     ->sortable()
                     ->formatStateUsing(function ($state, $record) {
                         if ($record->EsPagoAMayorPorMora) return 'A MAYOR X MORA';
-                        if ($record->SolicitudResolucionID) return 'EXTORNO';
                         if ($record->EsPagoAMayor) return 'A MAYOR';
+                        if ($record->SolicitudResolucionID) return 'EXTORNO';
                         if ($record->EsMora) return 'MORA';
                         if ($record->EsPagoAutomatico) return 'AUTO';
                         if ($state) return "Pago #{$state}";
