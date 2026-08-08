@@ -21,26 +21,11 @@ class PagoObserver
     {
         if (!$pago->EsMora) {
             DB::transaction(function () use ($pago) {
+                // El estado del credito (SALDADO/ACTIVO) lo sincroniza
+                // SaldoPendienteService::recalcular -> sincronizarEstadoCredito,
+                // que es la UNICA fuente de verdad. No duplicar la logica aqui
+                // (causaba reversiones erroneas con pagos retroactivos).
                 $this->actualizarSaldoPendiente($pago);
-
-                $credito = $pago->credito;
-                if ($credito && $credito->proposicion) {
-                    $saldoActual = (float) DB::table('ProposicionCredito')
-                        ->where('ProposicionCreditoID', $credito->proposicion->ProposicionCreditoID)
-                        ->value('SaldoPendiente');
-
-                    if ($saldoActual <= 0 && $credito->EstatusCreditoFinal !== 'SALDADO') {
-                        $credito->update([
-                            'EstatusCreditoFinal' => 'SALDADO',
-                            'FechaSaldamiento' => now(),
-                        ]);
-                    } elseif ($saldoActual > 0 && $credito->EstatusCreditoFinal === 'SALDADO') {
-                        $credito->update([
-                            'EstatusCreditoFinal' => 'ACTIVO',
-                            'FechaSaldamiento' => null,
-                        ]);
-                    }
-                }
             });
         }
     }

@@ -94,7 +94,10 @@ class SaldoPendienteService
     {
         $estadoActual = $credito->EstatusCreditoFinal;
 
-        if ($saldo <= 0 && !in_array($estadoActual, ['SALDADO', 'REFINANCIADO', 'ELIMINADO'], true)) {
+        // Unica fuente de verdad para el estado del credito.
+        // 1. Saldo <= 0 (o despreciable por redondeo) -> SALDADO
+        // 2. Saldo > 0 y estaba SALDADO -> ACTIVO (solo si la deuda es REAL)
+        if ($saldo <= 0.009 && !in_array($estadoActual, ['SALDADO', 'REFINANCIADO', 'ELIMINADO'], true)) {
             $fechaUltimoPago = Pago::where('CreditoID', $credito->CreditoID)
                 ->where('Activo', 1)
                 ->where('EsMora', 0)
@@ -110,7 +113,7 @@ class SaldoPendienteService
             return;
         }
 
-        if ($saldo > 0 && $estadoActual === 'SALDADO') {
+        if ($saldo > 0.009 && $estadoActual === 'SALDADO') {
             DB::table('Credito')
                 ->where('CreditoID', $credito->CreditoID)
                 ->update([
