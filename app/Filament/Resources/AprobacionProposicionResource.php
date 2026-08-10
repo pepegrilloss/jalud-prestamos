@@ -161,6 +161,11 @@ class AprobacionProposicionResource extends Resource
                     ->view('filament.columns.approval-status-column')
                     ->sortable(false),
 
+                Tables\Columns\ViewColumn::make('alertas_proposicion')
+                    ->label('Alertas')
+                    ->view('filament.columns.proposicion-alertas-column')
+                    ->sortable(false),
+
                 Tables\Columns\BadgeColumn::make('Estado')
                     ->label('Estado General')
                     ->colors([
@@ -213,13 +218,57 @@ class AprobacionProposicionResource extends Resource
                     )
                     ->requiresConfirmation()
                     ->modalHeading('Aprobar Proposición')
-                    ->form([
-                        Forms\Components\Textarea::make('comentario')
-                            ->label('Comentario')
-                            ->rows(3)
-                            ->maxLength(500),
-                    ])
+                    ->form(function ($record) {
+                        $alertas = app(\App\Services\ProposicionAprobacionValidatorService::class)->obtenerAlertas($record);
+                        $advertencias = $alertas['advertencias'] ?? [];
+
+                        $campos = [
+                            Forms\Components\Textarea::make('comentario')
+                                ->label('Comentario')
+                                ->rows(3)
+                                ->maxLength(500),
+                        ];
+
+                        if (count($advertencias) > 0) {
+                            $campos[] = Forms\Components\Placeholder::make('advertencias_info')
+                                ->label('⚠️ Advertencias a revisar')
+                                ->content(fn () => view('filament.components.proposicion-advertencias', ['advertencias' => $advertencias]));
+                            $campos[] = Forms\Components\Checkbox::make('confirmo_advertencias')
+                                ->label('He revisado las advertencias y deseo aprobar de todos modos')
+                                ->required()
+                                ->default(false);
+                        }
+
+                        return $campos;
+                    })
                     ->action(function ($record, array $data) {
+                        $validator = app(\App\Services\ProposicionAprobacionValidatorService::class);
+                        $alertas = $validator->obtenerAlertas($record);
+
+                        // BLOQUEANTES: no se puede aprobar
+                        if (count($alertas['bloqueantes']) > 0) {
+                            \Filament\Notifications\Notification::make()
+                                ->danger()
+                                ->title('No se puede aprobar la proposición')
+                                ->body(implode(' ', $alertas['bloqueantes']))
+                                ->persistent()
+                                ->send();
+
+                            return;
+                        }
+
+                        // ADVERTENCIAS: requieren confirmación extra
+                        if (count($alertas['advertencias']) > 0 && empty($data['confirmo_advertencias'])) {
+                            \Filament\Notifications\Notification::make()
+                                ->danger()
+                                ->title('Debe confirmar las advertencias')
+                                ->body('Marque la casilla de confirmación para aprobar la proposición con advertencias.')
+                                ->persistent()
+                                ->send();
+
+                            return;
+                        }
+
                         if (auth()->user()->aprobarProposicion($record, $data['comentario'] ?? null)) {
                             \Filament\Notifications\Notification::make()
                                 ->success()

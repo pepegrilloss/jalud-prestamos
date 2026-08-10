@@ -297,20 +297,11 @@ class CrearProposicionCreditoResource extends Resource
 
                                 return $montoActual > $disponible['montoDisponible'] ? 'heroicon-s-exclamation-circle' : 'heroicon-s-check-circle';
                             })
-                            ->rules([
-                                function (Get $get) {
-                                    return function ($attribute, $value, $fail) use ($get) {
-                                        $clienteID = $get('ClienteID');
-                                        if ($clienteID) {
-                                            $exclusionID = self::obtenerExclusionMMR($get);
-                                            $disponible = self::calcularMontoDisponible($clienteID, $exclusionID);
-                                            if ((float) $value > (float) $disponible['montoDisponible']) {
-                                                $fail("Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo recomendado: S/ {$disponible['montoMaximoRecomendado']}, Ya utilizado: S/ {$disponible['montoUtilizado']})");
-                                            }
-                                        }
-                                    };
-                                }
-                            ]),
+                            // NOTA: El exceso de MMR ya NO bloquea la creacion de la proposicion.
+                            // Solo se muestra como advertencia (helperText + icono). La decision
+                            // de aprobar/rechazar con este riesgo recae en la APROBACION
+                            // (ProposicionAprobacionValidatorService -> advertencia).
+                        ,
 
                         Forms\Components\Select::make('TasaID')
                             ->label('Tasa de Interés')

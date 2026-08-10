@@ -183,24 +183,28 @@ class ReporteExportController extends Controller
             ->where('SedeID', $sedeId)->where('Tipo', 'EGRESO_DEVOLUCION_EFECTIVO')
             ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])->sum(\DB::raw('ABS(Monto)'));
 
-        // Remesas netas CA
-        $ingRemCA = TransferenciaSede::withoutGlobalScopes()->where('SedeDestinoID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_ABIERTA')
+        // Remesas netas CA (con compensacion EsSolicitudGerencia)
+        $ingRemCA = TransferenciaSede::withoutGlobalScopes()->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_ABIERTA')
             ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
-            ->where(fn($q) => $q->where(fn($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->orWhere('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId))
+            ->where(fn($q) => $q->where('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId)
+                ->orWhere(fn($q2) => $q2->where(fn($q3) => $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->where('SedeDestinoID', $sedeId)))
             ->sum('Monto');
-        $salRemCA = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_ABIERTA')
+        $salRemCA = TransferenciaSede::withoutGlobalScopes()->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_ABIERTA')
             ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
-            ->where(fn($q) => $q->where(fn($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->orWhere('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId))
+            ->where(fn($q) => $q->where('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId)
+                ->orWhere(fn($q2) => $q2->where(fn($q3) => $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->where('SedeOrigenID', $sedeId)))
             ->sum('Monto');
         $remesasNetCajaAbierta = $ingRemCA - $salRemCA;
 
-        $ingRemCC = TransferenciaSede::withoutGlobalScopes()->where('SedeDestinoID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_CHICA')
+        $ingRemCC = TransferenciaSede::withoutGlobalScopes()->where('Estado', 'ACEPTADO')->where('CuentaDestino', 'CAJA_CHICA')
             ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
-            ->where(fn($q) => $q->where(fn($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->orWhere('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId))
+            ->where(fn($q) => $q->where('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId)
+                ->orWhere(fn($q2) => $q2->where(fn($q3) => $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->where('SedeDestinoID', $sedeId)))
             ->sum('Monto');
-        $salRemCC = TransferenciaSede::withoutGlobalScopes()->where('SedeOrigenID', $sedeId)->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_CHICA')
+        $salRemCC = TransferenciaSede::withoutGlobalScopes()->where('Estado', 'ACEPTADO')->where('CuentaOrigen', 'CAJA_CHICA')
             ->where(fn($q) => $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])->orWhere(fn($q2) => $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia])))
-            ->where(fn($q) => $q->where(fn($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->orWhere('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId))
+            ->where(fn($q) => $q->where('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId)
+                ->orWhere(fn($q2) => $q2->where(fn($q3) => $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))->where('SedeOrigenID', $sedeId)))
             ->sum('Monto');
         $remesasNetCajaChica = $ingRemCC - $salRemCC;
 

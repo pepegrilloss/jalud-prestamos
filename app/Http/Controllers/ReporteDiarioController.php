@@ -585,8 +585,9 @@ class ReporteDiarioController extends Controller
             });
 
             // Remesas netas del día para Caja Abierta
+            // COMPENSACION EsSolicitudGerencia: cuando Gerencia solicita, quien
+            // ENVIA es SedeDestinoID (la sede entrega) y quien RECIBE es SedeOrigenID.
             $ingresosRemesasCA = \App\Models\TransferenciaSede::withoutGlobalScopes()
-                ->where('SedeDestinoID', $sedeId)
                 ->where('Estado', 'ACEPTADO')
                 ->where('CuentaDestino', 'CAJA_ABIERTA')
                 ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
@@ -595,9 +596,16 @@ class ReporteDiarioController extends Controller
                           $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
                       });
                 })
+                ->where(function ($q) use ($sedeId) {
+                    $q->where('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId)
+                      ->orWhere(function ($q2) use ($sedeId) {
+                          $q2->where(function ($q3) {
+                              $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia');
+                          })->where('SedeDestinoID', $sedeId);
+                      });
+                })
                 ->sum('Monto');
             $salidasRemesasCA = \App\Models\TransferenciaSede::withoutGlobalScopes()
-                ->where('SedeOrigenID', $sedeId)
                 ->where('Estado', 'ACEPTADO')
                 ->where('CuentaOrigen', 'CAJA_ABIERTA')
                 ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
@@ -606,12 +614,19 @@ class ReporteDiarioController extends Controller
                           $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
                       });
                 })
+                ->where(function ($q) use ($sedeId) {
+                    $q->where('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId)
+                      ->orWhere(function ($q2) use ($sedeId) {
+                          $q2->where(function ($q3) {
+                              $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia');
+                          })->where('SedeOrigenID', $sedeId);
+                      });
+                })
                 ->sum('Monto');
             $remesasNetCajaAbierta = $ingresosRemesasCA - $salidasRemesasCA;
 
             // Remesas netas del día para Caja Chica
             $ingresosRemesasCC = \App\Models\TransferenciaSede::withoutGlobalScopes()
-                ->where('SedeDestinoID', $sedeId)
                 ->where('Estado', 'ACEPTADO')
                 ->where('CuentaDestino', 'CAJA_CHICA')
                 ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
@@ -620,15 +635,30 @@ class ReporteDiarioController extends Controller
                           $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
                       });
                 })
+                ->where(function ($q) use ($sedeId) {
+                    $q->where('EsSolicitudGerencia', true)->where('SedeOrigenID', $sedeId)
+                      ->orWhere(function ($q2) use ($sedeId) {
+                          $q2->where(function ($q3) {
+                              $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia');
+                          })->where('SedeDestinoID', $sedeId);
+                      });
+                })
                 ->sum('Monto');
             $salidasRemesasCC = \App\Models\TransferenciaSede::withoutGlobalScopes()
-                ->where('SedeOrigenID', $sedeId)
                 ->where('Estado', 'ACEPTADO')
                 ->where('CuentaOrigen', 'CAJA_CHICA')
                 ->where(function($q) use ($fechaInicioDia, $fechaFinDia) {
                     $q->whereBetween('FechaRespuesta', [$fechaInicioDia, $fechaFinDia])
                       ->orWhere(function($q2) use ($fechaInicioDia, $fechaFinDia) {
                           $q2->whereNull('FechaRespuesta')->whereBetween('FechaTransferencia', [$fechaInicioDia, $fechaFinDia]);
+                      });
+                })
+                ->where(function ($q) use ($sedeId) {
+                    $q->where('EsSolicitudGerencia', true)->where('SedeDestinoID', $sedeId)
+                      ->orWhere(function ($q2) use ($sedeId) {
+                          $q2->where(function ($q3) {
+                              $q3->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia');
+                          })->where('SedeOrigenID', $sedeId);
                       });
                 })
                 ->sum('Monto');

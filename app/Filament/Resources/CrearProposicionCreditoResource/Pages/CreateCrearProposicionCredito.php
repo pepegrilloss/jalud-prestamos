@@ -6,12 +6,9 @@ use App\Filament\Resources\CrearProposicionCreditoResource;
 use App\Filament\Resources\ClienteProposicionResource;
 use App\Models\Cliente;
 use App\Models\ProposicionCredito;
-use App\Models\Credito;
-use App\Models\Pago;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Auth;
 
 class CreateCrearProposicionCredito extends CreateRecord
 {
@@ -36,46 +33,10 @@ class CreateCrearProposicionCredito extends CreateRecord
         $clienteID = $data['ClienteID'] ?? null;
         $esRefinanciamiento = isset($data['ProposicionCreditoAnteriorID']) && $data['ProposicionCreditoAnteriorID'];
 
-        // Validar que el cliente no tenga más de 2 proposiciones activas (EXCEPTO si es refinanciamiento)
-        if ($clienteID) {
-            $proposicionesActivas = ProposicionCredito::contarProposicionesActivas($clienteID);
-
-            // Si NO es refinanciamiento, aplicar el límite de 2
-            if (!$esRefinanciamiento && $proposicionesActivas >= 2) {
-                $cliente = Cliente::find($clienteID);
-                Notification::make()
-                    ->title('❌ No se puede crear proposición')
-                    ->body("El cliente '{$cliente->NombresApellidos}' ya tiene 2 proposiciones activas. Se permite un máximo de 2 proposiciones simultáneas.")
-                    ->danger()
-                    ->send();
-
-                $this->halt();
-            }
-
-            // NUEVA VALIDACIÓN: Verificar si el cliente está al día en sus cuotas
-            if (!$esRefinanciamiento && !\App\Services\ProposicionValidatorService::clienteEstaAlDiaEnSusCuotas($clienteID)) {
-                $cliente = Cliente::find($clienteID);
-                Notification::make()
-                    ->title('❌ Cliente no está al día')
-                    ->body("El cliente '{$cliente->NombresApellidos}' no está al día en el pago de sus cuotas. No se puede crear una nueva proposición hasta que regularice sus pagos.")
-                    ->danger()
-                    ->send();
-
-                $this->halt();
-            }
-
-            // NUEVA VALIDACIÓN: Bloquear si el cliente está OBSERVADO
-            $cliente = Cliente::find($clienteID);
-            if ($cliente && $cliente->Estado === 'OBSERVADO') {
-                Notification::make()
-                    ->title('❌ Cliente Observado')
-                    ->body("El cliente '{$cliente->NombresApellidos}' se encuentra OBSERVADO. No se puede crear una nueva proposición de crédito.")
-                    ->danger()
-                    ->send();
-
-                $this->halt();
-            }
-        }
+        // NOTA: Las restricciones de negocio (credito activo mismo tipo, mora,
+        // cliente observado, al dia, MMR, proposiciones pendientes) se validan
+        // en la APROBACION (ProposicionAprobacionValidatorService), no al proponer.
+        // Se permite proponer y el aprobador decide (con advertencias/confirmacion).
 
         // Manejar Refinanciamiento
         if ($esRefinanciamiento) {
