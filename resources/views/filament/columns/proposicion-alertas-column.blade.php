@@ -1,68 +1,121 @@
-<style>
-    .jalud-alerta-icono {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        cursor: help;
-        flex-shrink: 0;
-        vertical-align: middle;
-    }
-    .jalud-alerta-icono svg {
-        width: 15px;
-        height: 15px;
-    }
-    .jalud-alerta-bloqueante {
-        background-color: #fde8e8;
-        border: 1px solid #f5b5b5;
-        color: #c81e1e;
-    }
-    .jalud-alerta-advertencia {
-        background-color: #fef9e7;
-        border: 1px solid #f7dc6f;
-        color: #b7950b;
-    }
-    .jalud-alerta-ok {
-        background-color: #eafaf1;
-        border: 1px solid #82e0aa;
-        color: #1e8449;
-    }
-</style>
+@once
+    <style>
+        .jalud-alerta-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-width: 92px;
+            height: 30px;
+            padding: 0 10px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: help;
+            transition: border-color 150ms ease, background-color 150ms ease;
+        }
 
-<div style="display:flex; align-items:center; gap:6px;">
-    @php
-        $record = $getRecord();
-        $alertas = app(\App\Services\ProposicionAprobacionValidatorService::class)->obtenerAlertas($record);
-        $bloqueantes = $alertas['bloqueantes'] ?? [];
-        $advertencias = $alertas['advertencias'] ?? [];
-        $tooltip = implode("\n", array_merge($bloqueantes, $advertencias));
-        $hayBloqueantes = count($bloqueantes) > 0;
-        $hayAdvertencias = count($advertencias) > 0;
-    @endphp
+        .jalud-alerta-chip:focus-visible {
+            outline: 2px solid currentColor;
+            outline-offset: 2px;
+        }
 
+        .jalud-alerta-chip svg {
+            width: 16px;
+            height: 16px;
+            flex: 0 0 auto;
+        }
+
+        .jalud-alerta-chip--bloqueante {
+            color: #b91c1c;
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
+        .jalud-alerta-chip--bloqueante:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+        }
+
+        .jalud-alerta-chip--advertencia {
+            color: #a16207;
+            background: #fffbeb;
+            border-color: #fde68a;
+        }
+
+        .jalud-alerta-chip--advertencia:hover {
+            background: #fef3c7;
+            border-color: #fcd34d;
+        }
+
+        .jalud-alerta-chip--ok {
+            color: #15803d;
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            cursor: default;
+        }
+
+        .dark .jalud-alerta-chip--bloqueante {
+            color: #fca5a5;
+            background: rgba(127, 29, 29, 0.28);
+            border-color: #7f1d1d;
+        }
+
+        .dark .jalud-alerta-chip--advertencia {
+            color: #fcd34d;
+            background: rgba(120, 53, 15, 0.28);
+            border-color: #78350f;
+        }
+
+        .dark .jalud-alerta-chip--ok {
+            color: #86efac;
+            background: rgba(20, 83, 45, 0.28);
+            border-color: #14532d;
+        }
+    </style>
+@endonce
+
+@php
+    $record = $getRecord();
+    $alertas = app(\App\Services\ProposicionAprobacionValidatorService::class)->obtenerAlertas($record);
+    $bloqueantes = $alertas['bloqueantes'] ?? [];
+    $advertencias = $alertas['advertencias'] ?? [];
+    $hayBloqueantes = count($bloqueantes) > 0;
+    $hayAdvertencias = count($advertencias) > 0;
+    $mensajes = array_merge($bloqueantes, $advertencias);
+    $detalle = implode(' ', $mensajes);
+@endphp
+
+<div class="flex items-center justify-center">
     @if($hayBloqueantes)
-        <span class="jalud-alerta-icono jalud-alerta-bloqueante" title="{{ $tooltip }}">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-            </svg>
-        </span>
-    @endif
-
-    @if($hayAdvertencias)
-        <span class="jalud-alerta-icono jalud-alerta-advertencia" title="{{ $tooltip }}">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-            </svg>
-        </span>
-    @endif
-
-    @if(! $hayBloqueantes && ! $hayAdvertencias)
-        <span class="jalud-alerta-icono jalud-alerta-ok" title="Sin alertas">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
-            </svg>
+        <button
+            type="button"
+            class="jalud-alerta-chip jalud-alerta-chip--bloqueante"
+            aria-label="{{ $detalle }}"
+            x-on:click.stop
+            x-tooltip="{ content: @js($detalle), maxWidth: 380 }"
+        >
+            <x-filament::icon icon="heroicon-m-x-circle" />
+            <span>{{ count($bloqueantes) }} {{ count($bloqueantes) === 1 ? 'bloqueo' : 'bloqueos' }}</span>
+        </button>
+    @elseif($hayAdvertencias)
+        <button
+            type="button"
+            class="jalud-alerta-chip jalud-alerta-chip--advertencia"
+            aria-label="{{ $detalle }}"
+            x-on:click.stop
+            x-tooltip="{ content: @js($detalle), maxWidth: 380 }"
+        >
+            <x-filament::icon icon="heroicon-m-exclamation-triangle" />
+            <span>{{ count($advertencias) }} {{ count($advertencias) === 1 ? 'aviso' : 'avisos' }}</span>
+        </button>
+    @else
+        <span class="jalud-alerta-chip jalud-alerta-chip--ok" aria-label="Sin alertas">
+            <x-filament::icon icon="heroicon-m-check-circle" />
+            <span>Sin alertas</span>
         </span>
     @endif
 </div>
