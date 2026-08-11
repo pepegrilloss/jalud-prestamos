@@ -94,7 +94,6 @@ class ResolucionExcedenteService
         if ($nuevoPago->CuotaID) {
             $this->recalcularEstadoCuota($nuevoPago->CuotaID);
         }
-        $this->verificarCreditoCancelado($nuevoPago->CreditoID);
     }
 
     private function procesarDevolucionPagoMayor(SolicitudResolucionExcedente $solicitud, $aprobador): void
@@ -320,7 +319,6 @@ class ResolucionExcedenteService
         if ($nuevoPago->CuotaID) {
             $this->recalcularEstadoCuota($nuevoPago->CuotaID);
         }
-        $this->verificarCreditoCancelado($nuevoPago->CreditoID);
     }
 
     /**
@@ -381,29 +379,4 @@ class ResolucionExcedenteService
         $cuota->update(['Estado' => $nuevoEstado]);
     }
     
-    private function verificarCreditoCancelado($creditoID): void
-    {
-        $credito = \App\Models\Credito::find($creditoID);
-        if (!$credito) return;
-
-        $montoCuotasTotal = $credito->cuotas()->where('Activo', 1)->sum('MontoCuota');
-        $totalPagado = Pago::where('Activo', 1)
-            ->where(function ($q) {
-                $q->whereNull('EstadoTraslado')->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
-            })
-            ->whereHas('cuota', fn($q) => $q->where('CreditoID', $credito->CreditoID))
-            ->sum('MontoPagado');
-
-        if ($totalPagado >= $montoCuotasTotal) {
-            $credito->update([
-                'EstatusCreditoFinal' => 'SALDADO',
-                'FechaSaldamiento' => now(),
-            ]);
-        } elseif ($credito->EstatusCreditoFinal === 'SALDADO') {
-            $credito->update([
-                'EstatusCreditoFinal' => 'ACTIVO',
-                'FechaSaldamiento' => null,
-            ]);
-        }
-    }
 }
