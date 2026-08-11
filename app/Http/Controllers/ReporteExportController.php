@@ -152,8 +152,8 @@ class ReporteExportController extends Controller
         $excedentesDia = \App\Models\Excedente::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)
             ->where(function($q) { $q->where('Cuenta', 'Caja Abierta')->orWhereNull('Cuenta'); })
             ->whereBetween('Fecha', [$fechaInicioDia, $fechaFinDia])
-            ->with(['resoluciones' => fn($q) => $q->where('Estado', 'APROBADA')->with('creditoDestino.proposicion.cliente')])
-            ->withSum(['resoluciones as monto_aplicado' => function($q) { $q->where('Estado', 'APROBADA'); }], 'MontoAplicar')
+            ->with(['resoluciones' => fn($q) => $q->withoutGlobalScopes()->where('Estado', 'APROBADA')->with('creditoDestino.proposicion.cliente')])
+            ->withSum(['resoluciones as monto_aplicado' => function($q) { $q->withoutGlobalScopes()->where('Estado', 'APROBADA'); }], 'MontoAplicar')
             ->orderBy('ExcedenteID')->get();
         $totalExcedentesDia = $excedentesDia->sum(fn($e) => (float)$e->Monto + (float)($e->monto_aplicado ?? 0));
 
@@ -211,18 +211,18 @@ class ReporteExportController extends Controller
         // Saldos Caja Chica
         $saldoInicialCajaChica = 0; $totalGastosCC = $gastos->sum('Total') + $compras->sum('Total');
         if ($sedeId) {
-            $ingCC = \App\Models\MovimientoFondo::where('SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
+            $ingCC = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
                 ->where(fn($q) => $q->where('Tipo', 'INGRESO_CAJA_CHICA')->orWhere('Tipo', 'TRASLADO_CA_A_CC'))
                 ->where('Observacion', 'NOT LIKE', '%Ajuste%')->where('Observacion', 'NOT LIKE', '%Reversión%')
                 ->get()->sum(fn($m) => $m->Tipo === 'TRASLADO_CA_A_CC' ? abs($m->Monto) : $m->Monto);
-            $ingCC += \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
+            $ingCC += \App\Models\MovimientoFondo::withoutGlobalScopes()->where('movimientos_fondo.SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
                 ->where('movimientos_fondo.Tipo', 'RECEPCION_TRANSFERENCIA')
                 ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
                 ->where('transferencia_sedes.CuentaDestino', 'CAJA_CHICA')->sum('movimientos_fondo.Monto');
             $dedCC = Gasto::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)->where('MetodoGasto', 'CAJA CHICA')->whereDate('FechaEmision', '<', $fecha)->sum('Total');
             $dedCC += Compra::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)->where('TipoCompra', 'CONTADO')->whereDate('FechaEmision', '<', $fecha)->sum('Total');
-            $dedCC += \App\Models\MovimientoFondo::where('SedeID', $sedeId)->where('Tipo', 'TRASLADO_CC_A_CA')->where('FechaMovimiento', '<', $fechaInicioDia)->sum(\DB::raw('ABS(Monto)'));
-            $dedCC += \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
+            $dedCC += \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Tipo', 'TRASLADO_CC_A_CA')->where('FechaMovimiento', '<', $fechaInicioDia)->sum(\DB::raw('ABS(Monto)'));
+            $dedCC += \App\Models\MovimientoFondo::withoutGlobalScopes()->where('movimientos_fondo.SedeID', $sedeId)->where('FechaMovimiento', '<', $fechaInicioDia)
                 ->where('movimientos_fondo.Tipo', 'ENVIO_TRANSFERENCIA')
                 ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
                 ->where('transferencia_sedes.CuentaOrigen', 'CAJA_CHICA')->sum(\DB::raw('ABS(movimientos_fondo.Monto)'));
@@ -258,10 +258,23 @@ class ReporteExportController extends Controller
                     ->sum('Monto');
                 $pg = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayorPorMora', false)
                     ->whereNull('SolicitudResolucionID')
-                    ->where('FechaPago', '<=', $limite)->where('SedeID', $sedeId)->sum('MontoPagado');
+                    ->where(function($q) {
+                        $q->whereNull('TipoConcepto')
+                          ->orWhere('TipoConcepto', 'C');
+                    })
+                    ->where('FechaPago', '<=', $limite)->where('SedeID', $sedeId)
+                    ->select('MontoPagado', 'Comentario')
+                    ->get()
+                    ->sum(function ($p) {
+                        if ($p->Comentario && preg_match('/Pago original:\s*S\/\s*([\d,]+(?:\.\d{2})?)/', $p->Comentario, $m)) {
+                            return (float) str_replace(',', '', $m[1]);
+                        }
+
+                        return (float) $p->MontoPagado;
+                    });
                 $cr = Credito::withoutGlobalScopes()->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
                     ->where('Credito.Activo', true)->where('Credito.SedeID', $sedeId)->where('Credito.FechaGeneracion', '<=', $limite)->sum('ProposicionCredito.MontoTotal');
-                $ot = \App\Models\MovimientoFondo::where('SedeID', $sedeId)->where('FechaMovimiento', '<=', $limite)
+                $ot = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)->where('FechaMovimiento', '<=', $limite)
                     ->whereIn('Tipo', ['INGRESO_CAPITAL', 'TRASLADO_CA_A_CC', 'TRASLADO_CC_A_CA', 'EGRESO_DEVOLUCION_EFECTIVO'])->get();
                 $in = $ot->where('Tipo', 'INGRESO_CAPITAL')->sum('Monto');
                 $teCc = $ot->where('Tipo', 'TRASLADO_CC_A_CA')->sum(fn($m) => abs($m->Monto));
@@ -269,7 +282,7 @@ class ReporteExportController extends Controller
                 $devEf = $ot->where('Tipo', 'EGRESO_DEVOLUCION_EFECTIVO')->sum(fn($m) => abs($m->Monto));
                 $ex = \App\Models\Excedente::withoutGlobalScopes()->where('SedeID', $sedeId)->where('Activo', true)
                     ->where(fn($q) => $q->where('Cuenta', 'Caja Abierta')->orWhereNull('Cuenta'))->where('Fecha', '<=', $limite)
-                    ->withSum(['resoluciones as ma' => fn($q) => $q->where('Estado', 'APROBADA')], 'MontoAplicar')->get()
+                    ->withSum(['resoluciones as ma' => fn($q) => $q->withoutGlobalScopes()->where('Estado', 'APROBADA')], 'MontoAplicar')->get()
                     ->sum(fn($e) => (float)$e->Monto + (float)($e->ma ?? 0));
                 $mo = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayorPorMora', true)
                     ->where('FechaPago', '<=', $limite)->where('SedeID', $sedeId)->sum('MontoPagado');

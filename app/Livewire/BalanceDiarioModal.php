@@ -31,7 +31,7 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
     {
         return Action::make('generarReporte')
             ->modalHeading('BALANCE DIARIO')
-            ->modalDescription('Seleccione la fecha y el formato para generar el reporte.')
+            ->modalDescription('Seleccione la fecha y el formato para generar el reporte de su sede.')
             ->form([
                 DatePicker::make('fecha')
                     ->label('Día a Procesar')
@@ -55,7 +55,6 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
             ->action(function (array $data) {
                 $fecha = $data['fecha'];
                 $formato = $data['formato'] ?? 'pdf';
-
                 $user = auth()->user();
                 $sedeId = $user->getEffectiveSedeId();
 
@@ -68,8 +67,9 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
                     $params = ['fecha' => \Carbon\Carbon::parse($fecha)->format('Y-m-d')];
                     if ($apertura) {
                         $params['id'] = $apertura->AperturaCierreDiaID;
-                    } elseif ($sedeId) {
-                        $params['sede'] = $sedeId;
+                        $params['sede_id'] = $sedeId;
+                    } else {
+                        $params['sede_id'] = $sedeId ?? '0';
                     }
 
                     $url = route('reporte-diario.pdf', $params);

@@ -69,7 +69,7 @@ class ReporteDiarioController extends Controller
         $sede = $sedeId ? Sede::find($sedeId) : null;
         $sedeNombre = $sede?->Nombre ?? 'SEDE NO ESPECIFICADA';
 
-        $fondo = $sedeId ? FondoSede::where('SedeID', $sedeId)->first() : null;
+        $fondo = $sedeId ? FondoSede::withoutGlobalScopes()->where('SedeID', $sedeId)->first() : null;
         $saldoCajaAbierta = $fondo ? $fondo->Saldo : 0;
         $saldoCajaChica = 0; // Se calculará dinámicamente más abajo
         $saldoInicialCajaChica = 0; // Se calculará dinámicamente más abajo
@@ -224,7 +224,8 @@ class ReporteDiarioController extends Controller
             })
             ->whereBetween('Fecha', [$fechaInicioDia, $fechaFinDia])
             ->with(['resoluciones' => function($q) {
-                $q->where('Estado', 'APROBADA')
+                $q->withoutGlobalScopes()
+                  ->where('Estado', 'APROBADA')
                   ->with(['creditoDestino.proposicion.cliente', 'clienteDestino']);
             }])
             ->orderBy('ExcedenteID', 'asc')
@@ -339,9 +340,15 @@ class ReporteDiarioController extends Controller
         // ─── CÁLCULO DE SALDOS EXACTOS POR DÍA (BASADO EN TABLAS REALES) ───
         $saldoInicialCajaAbierta = 0;
         $saldoCierreCajaAbierta = 0;
+        $saldoCajaChica = 0;
+        $totalCajaChica = 0;
         $totalInyeccionesDia = 0;
         $totalOtrasOperacionesDia = 0;
         $totalIngresosCajaChica = 0;
+        $remesasNetCajaAbierta = 0;
+        $remesasNetCajaChica = 0;
+        $totalExcedentesDia = 0;
+        $devolucionesDia = 0;
 
         if ($sedeId) {
             // Función auxiliar para calcular el saldo real hasta un momento dado
@@ -420,7 +427,7 @@ class ReporteDiarioController extends Controller
                     ->sum('ProposicionCredito.MontoTotal'); // El capital prestado
 
                 // 5. Inyecciones Manuales y Traslados (desde MovimientoFondo, si existen)
-                $otrosMovimientos = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+                $otrosMovimientos = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)
                     ->where('FechaMovimiento', '<=', $fechaLimite)
                     ->whereIn('Tipo', ['INGRESO_CAPITAL', 'TRASLADO_CA_A_CC', 'TRASLADO_CC_A_CA', 'EGRESO_DEVOLUCION_EFECTIVO'])
                     ->get();
@@ -440,7 +447,7 @@ class ReporteDiarioController extends Controller
                     })
                     ->where('Fecha', '<=', $fechaLimite)
                     ->withSum(['resoluciones as monto_aplicado' => function($q) {
-                        $q->where('Estado', 'APROBADA');
+                        $q->withoutGlobalScopes()->where('Estado', 'APROBADA');
                     }], 'MontoAplicar')
                     ->get()
                     ->sum(function($e) {
@@ -469,7 +476,7 @@ class ReporteDiarioController extends Controller
             // Ingresos totales a CC hasta el inicio del día (transferencias, inyecciones)
             // NOTA: Se excluyen movimientos con 'Ajuste' o 'Reversión' para mantener consistencia
             //       con el reporte diario que no los muestra como ingresos del día.
-            $ingresosCCHistoricos = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+            $ingresosCCHistoricos = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)
                 ->where('FechaMovimiento', '<=', $fechaInicioDia->copy()->subSecond())
                 ->where(function($q) {
                     $q->where('Tipo', 'INGRESO_CAJA_CHICA')
@@ -482,7 +489,7 @@ class ReporteDiarioController extends Controller
                     return $m->Tipo === 'TRASLADO_CA_A_CC' ? abs($m->Monto) : $m->Monto;
                 });
 
-            $ingresosCCHistoricos += \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)
+            $ingresosCCHistoricos += \App\Models\MovimientoFondo::withoutGlobalScopes()->where('movimientos_fondo.SedeID', $sedeId)
                 ->where('FechaMovimiento', '<=', $fechaInicioDia->copy()->subSecond())
                 ->where('movimientos_fondo.Tipo', 'RECEPCION_TRANSFERENCIA')
                 ->where('movimientos_fondo.Observacion', 'NOT LIKE', '%Ajuste%')
@@ -507,13 +514,13 @@ class ReporteDiarioController extends Controller
                 ->sum('Total');
 
             // Traslados de CC → CA (dinero que salió de CC, no son gastos)
-            $deduccionesCCHistoricas += \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+            $deduccionesCCHistoricas += \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)
                 ->where('Tipo', 'TRASLADO_CC_A_CA')
                 ->where('FechaMovimiento', '<', $fechaInicioDia)
                 ->sum(\DB::raw('ABS(Monto)'));
 
             // Envíos de transferencia desde CC
-            $deduccionesCCHistoricas += \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)
+            $deduccionesCCHistoricas += \App\Models\MovimientoFondo::withoutGlobalScopes()->where('movimientos_fondo.SedeID', $sedeId)
                 ->where('FechaMovimiento', '<', $fechaInicioDia)
                 ->where('movimientos_fondo.Tipo', 'ENVIO_TRANSFERENCIA')
                 ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
@@ -524,18 +531,18 @@ class ReporteDiarioController extends Controller
             $saldoInicialCajaChica = $ingresosCCHistoricos - $deduccionesCCHistoricas;
 
             // Ingresos a Caja Chica del DÍA
-            $ingresosCCManuales = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+            $ingresosCCManuales = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)
                 ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
                 ->where('Tipo', 'INGRESO_CAJA_CHICA')
                 ->where('Observacion', 'NOT LIKE', '%Ajuste%')
                 ->sum('Monto');
 
-            $trasladosACC = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+            $trasladosACC = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)
                 ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
                 ->where('Tipo', 'TRASLADO_CA_A_CC')
                 ->sum(\DB::raw('ABS(Monto)'));
 
-            $transferenciasCC = \App\Models\MovimientoFondo::where('movimientos_fondo.SedeID', $sedeId)
+            $transferenciasCC = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('movimientos_fondo.SedeID', $sedeId)
                 ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
                 ->where('movimientos_fondo.Tipo', 'RECEPCION_TRANSFERENCIA')
                 ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
@@ -560,7 +567,7 @@ class ReporteDiarioController extends Controller
                 })
                 ->sum('Monto');
                 
-            $inyeccionesManualesDia = \App\Models\MovimientoFondo::where('SedeID', $sedeId)
+            $inyeccionesManualesDia = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)
                 ->whereBetween('FechaMovimiento', [$fechaInicioDia, $fechaFinDia])
                 ->where('Tipo', 'INGRESO_CAPITAL')
                 ->sum('Monto');
@@ -577,7 +584,7 @@ class ReporteDiarioController extends Controller
                 })
                 ->whereBetween('Fecha', [$fechaInicioDia, $fechaFinDia])
                 ->withSum(['resoluciones as monto_aplicado' => function($q) {
-                    $q->where('Estado', 'APROBADA');
+                    $q->withoutGlobalScopes()->where('Estado', 'APROBADA');
                 }], 'MontoAplicar')
                 ->get();
             $totalExcedentesDia = $excedentesDia->sum(function($e) {
