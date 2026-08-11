@@ -17,6 +17,7 @@ class AuditarFechasVencimientoCreditos extends Command
         {--hasta= : Fecha maxima de generacion, formato YYYY-MM-DD}
         {--codigo=* : Uno o mas codigos de credito especificos}
         {--fix : Corrige FechaInicio y FechaVencimiento de creditos activos sin mora}
+        {--reparar-mora : Repara la mora afectada por el vencimiento incorrecto (solo 2026)}
         {--json : Muestra el resultado completo como JSON}
         {--csv : Genera un CSV con todas las diferencias}';
 
@@ -28,6 +29,16 @@ class AuditarFechasVencimientoCreditos extends Command
 
         if ($this->option('fix') && $estado !== 'ACTIVO') {
             $this->error('Por seguridad, --fix solo puede ejecutarse con --estado=ACTIVO.');
+            return self::FAILURE;
+        }
+
+        if ($this->option('reparar-mora') && ! $this->option('fix')) {
+            $this->error('--reparar-mora requiere --fix.');
+            return self::FAILURE;
+        }
+
+        if ($this->option('reparar-mora') && ! $this->rangoLimitadoA2026()) {
+            $this->error('--reparar-mora exige --desde=2026-01-01 y --hasta=2026-12-31.');
             return self::FAILURE;
         }
 
@@ -70,6 +81,7 @@ class AuditarFechasVencimientoCreditos extends Command
                 'pc.NumeroCuotas',
                 'pc.SaldoPendiente',
                 DB::raw('(SELECT COUNT(*) FROM mora m WHERE m.CreditoID = c.CreditoID) as MorasRegistradas'),
+                DB::raw("(SELECT COALESCE(SUM(p.MontoPagado), 0) FROM pago p WHERE p.CreditoID = c.CreditoID AND p.Activo = 1 AND (p.EsMora = 1 OR p.TipoConcepto = 'M')) as MoraPagada"),
             ]);
 
         $diferencias = [];
@@ -103,14 +115,29 @@ class AuditarFechasVencimientoCreditos extends Command
                 'vencimiento_esperado' => $esperada->toDateString(),
                 'dias_diferencia' => (int) $guardada->diffInDays($esperada, false),
                 'moras_registradas' => (int) $credito->MorasRegistradas,
+                'mora_pagada' => (float) $credito->MoraPagada,
+                'moras_eliminadas' => 0,
+                'monto_mora_eliminado' => 0.0,
+                'nuevo_total_mora' => null,
                 'resultado' => 'PENDIENTE',
             ];
         }
 
+        $rutaRespaldo = null;
+
+        if ($this->option('fix') && $this->option('reparar-mora') && $diferencias !== []) {
+            $rutaRespaldo = $this->generarRespaldoMoras($diferencias);
+        }
+
         if ($this->option('fix')) {
             foreach ($diferencias as &$fila) {
-                if ($fila['moras_registradas'] > 0) {
+                if ($fila['moras_registradas'] > 0 && ! $this->option('reparar-mora')) {
                     $fila['resultado'] = 'OMITIDO_CON_MORA';
+                    continue;
+                }
+
+                if ($fila['moras_registradas'] > 0 && $fila['mora_pagada'] > 0.009) {
+                    $fila['resultado'] = 'OMITIDO_MORA_PAGADA';
                     continue;
                 }
 
@@ -125,6 +152,47 @@ class AuditarFechasVencimientoCreditos extends Command
                         return;
                     }
 
+                    $morasEliminadas = [];
+                    $montoMoraEliminado = 0.0;
+
+                    if ($fila['moras_registradas'] > 0) {
+                        $moras = DB::table('mora')
+                            ->where('CreditoID', $fila['credito_id'])
+                            ->orderBy('FechaMora')
+                            ->orderBy('MoraID')
+                            ->lockForUpdate()
+                            ->get();
+
+                        $vencimientoCorrecto = Carbon::parse($fila['vencimiento_esperado'])->startOfDay();
+
+                        foreach ($moras as $mora) {
+                            $fechaMora = Carbon::parse($mora->FechaMora)->startOfDay();
+                            $esValida = $fechaMora->gt($vencimientoCorrecto)
+                                && \App\Services\CalendarioLaboralService::esLaborable(
+                                    $fechaMora,
+                                    (int) $creditoActual->SedeID
+                                );
+
+                            if ($esValida) {
+                                continue;
+                            }
+
+                            $morasEliminadas[] = [
+                                'MoraID' => (int) $mora->MoraID,
+                                'FechaMora' => $fechaMora->toDateString(),
+                                'MontoMora' => (float) $mora->MontoMora,
+                                'MoraAcumulada' => (float) $mora->MoraAcumulada,
+                            ];
+                            $montoMoraEliminado += (float) $mora->MontoMora;
+                        }
+
+                        if ($morasEliminadas !== []) {
+                            DB::table('mora')
+                                ->whereIn('MoraID', array_column($morasEliminadas, 'MoraID'))
+                                ->delete();
+                        }
+                    }
+
                     DB::table('Credito')
                         ->where('CreditoID', $fila['credito_id'])
                         ->update([
@@ -132,23 +200,45 @@ class AuditarFechasVencimientoCreditos extends Command
                             'FechaVencimiento' => $fila['vencimiento_esperado'],
                         ]);
 
+                    $moraAcumulada = 0.0;
+                    $morasConservadas = DB::table('mora')
+                        ->where('CreditoID', $fila['credito_id'])
+                        ->orderBy('FechaMora')
+                        ->orderBy('MoraID')
+                        ->lockForUpdate()
+                        ->get(['MoraID', 'MontoMora']);
+
+                    foreach ($morasConservadas as $mora) {
+                        $moraAcumulada = round($moraAcumulada + (float) $mora->MontoMora, 2);
+                        DB::table('mora')
+                            ->where('MoraID', $mora->MoraID)
+                            ->update(['MoraAcumulada' => $moraAcumulada]);
+                    }
+
                     AuditLog::registrar(
-                        'CORREGIR_FECHA',
+                        $fila['moras_registradas'] > 0 ? 'CORREGIR_MORA' : 'CORREGIR_FECHA',
                         'Credito',
                         $fila['credito_id'],
                         [
                             'FechaInicio' => $creditoActual->FechaInicio,
                             'FechaVencimiento' => $creditoActual->FechaVencimiento,
+                            'MorasEliminadas' => $morasEliminadas,
                         ],
                         [
                             'FechaInicio' => $fila['inicio_esperado'],
                             'FechaVencimiento' => $fila['vencimiento_esperado'],
                             'Motivo' => 'Sincronizacion con cuotas laborables y calendario vigente',
+                            'CantidadMorasEliminadas' => count($morasEliminadas),
+                            'MontoMoraEliminado' => round($montoMoraEliminado, 2),
+                            'NuevaMoraAcumulada' => $moraAcumulada,
                         ],
                         (int) $creditoActual->SedeID,
                         0
                     );
 
+                    $fila['moras_eliminadas'] = count($morasEliminadas);
+                    $fila['monto_mora_eliminado'] = round($montoMoraEliminado, 2);
+                    $fila['nuevo_total_mora'] = $moraAcumulada;
                     $fila['resultado'] = 'CORREGIDO';
                 });
             }
@@ -164,7 +254,11 @@ class AuditarFechasVencimientoCreditos extends Command
                 'fix' => (bool) $this->option('fix'),
                 'corregidos' => count(array_filter($diferencias, fn (array $fila): bool => $fila['resultado'] === 'CORREGIDO')),
                 'omitidos_con_mora' => count(array_filter($diferencias, fn (array $fila): bool => $fila['resultado'] === 'OMITIDO_CON_MORA')),
+                'omitidos_mora_pagada' => count(array_filter($diferencias, fn (array $fila): bool => $fila['resultado'] === 'OMITIDO_MORA_PAGADA')),
+                'moras_eliminadas' => array_sum(array_column($diferencias, 'moras_eliminadas')),
+                'monto_mora_eliminado' => round(array_sum(array_column($diferencias, 'monto_mora_eliminado')), 2),
                 'archivo_csv' => $rutaCsv,
+                'archivo_respaldo' => $rutaRespaldo,
                 'registros' => $diferencias,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
@@ -180,15 +274,25 @@ class AuditarFechasVencimientoCreditos extends Command
             if ($omitidos > 0) {
                 $this->warn("Omitidos por tener mora registrada: {$omitidos}");
             }
+            $omitidosPagados = count(array_filter($diferencias, fn (array $fila): bool => $fila['resultado'] === 'OMITIDO_MORA_PAGADA'));
+            if ($omitidosPagados > 0) {
+                $this->warn("Omitidos por tener pagos de mora: {$omitidosPagados}");
+            }
+            $this->info('Registros de mora eliminados: '.array_sum(array_column($diferencias, 'moras_eliminadas')));
+            $this->info('Monto de mora eliminado: S/ '.number_format(array_sum(array_column($diferencias, 'monto_mora_eliminado')), 2));
         }
 
         if ($rutaCsv) {
             $this->line('CSV: '.$rutaCsv);
         }
 
+        if ($rutaRespaldo) {
+            $this->line('Respaldo previo: '.$rutaRespaldo);
+        }
+
         if ($diferencias !== []) {
             $this->table(
-                ['Crédito', 'Sede', 'Generación', 'Cuotas', 'Guardado', 'Esperado', 'Días', 'Moras', 'Resultado'],
+                ['Crédito', 'Sede', 'Generación', 'Cuotas', 'Guardado', 'Esperado', 'Días', 'Moras', 'Eliminadas', 'Resultado'],
                 array_map(fn (array $fila): array => [
                     $fila['codigo'],
                     $fila['sede'],
@@ -198,6 +302,7 @@ class AuditarFechasVencimientoCreditos extends Command
                     $fila['vencimiento_esperado'],
                     $fila['dias_diferencia'],
                     $fila['moras_registradas'],
+                    $fila['moras_eliminadas'],
                     $fila['resultado'],
                 ], array_slice($diferencias, 0, 50))
             );
@@ -220,7 +325,8 @@ class AuditarFechasVencimientoCreditos extends Command
         fputcsv($archivo, [
             'CreditoID', 'Codigo', 'Cliente', 'Sede', 'Estado', 'SaldoPendiente',
             'FechaGeneracion', 'NumeroCuotas', 'VencimientoGuardado',
-            'VencimientoEsperado', 'DiasDiferencia', 'MorasRegistradas', 'Resultado',
+            'VencimientoEsperado', 'DiasDiferencia', 'MorasRegistradas', 'MoraPagada',
+            'MorasEliminadas', 'MontoMoraEliminado', 'NuevoTotalMora', 'Resultado',
         ], ';');
 
         foreach ($diferencias as $fila) {
@@ -237,11 +343,48 @@ class AuditarFechasVencimientoCreditos extends Command
                 $fila['vencimiento_esperado'],
                 $fila['dias_diferencia'],
                 $fila['moras_registradas'],
+                number_format($fila['mora_pagada'], 2, '.', ''),
+                $fila['moras_eliminadas'],
+                number_format($fila['monto_mora_eliminado'], 2, '.', ''),
+                $fila['nuevo_total_mora'],
                 $fila['resultado'],
             ], ';');
         }
 
         fclose($archivo);
+
+        return $ruta;
+    }
+
+    private function rangoLimitadoA2026(): bool
+    {
+        return $this->option('desde') === '2026-01-01'
+            && $this->option('hasta') === '2026-12-31';
+    }
+
+    private function generarRespaldoMoras(array $diferencias): string
+    {
+        $directorio = storage_path('app/auditorias');
+        File::ensureDirectoryExists($directorio);
+        $ruta = $directorio.'/respaldo_correccion_fechas_mora_'.now()->format('Ymd_His').'.json';
+        $creditoIds = array_column($diferencias, 'credito_id');
+
+        $creditos = DB::table('Credito')
+            ->whereIn('CreditoID', $creditoIds)
+            ->get(['CreditoID', 'FechaInicio', 'FechaVencimiento', 'EstatusCreditoFinal', 'SedeID']);
+
+        $moras = DB::table('mora')
+            ->whereIn('CreditoID', $creditoIds)
+            ->orderBy('CreditoID')
+            ->orderBy('FechaMora')
+            ->orderBy('MoraID')
+            ->get();
+
+        File::put($ruta, json_encode([
+            'generado_en' => now()->toDateTimeString(),
+            'creditos' => $creditos,
+            'moras' => $moras,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         return $ruta;
     }
