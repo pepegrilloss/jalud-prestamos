@@ -103,6 +103,7 @@ class ProposicionAprobacionValidatorService
             ->where('TipoCreditoID', $proposicion->TipoCreditoID)
             ->where('Activo', true)
             ->where('FueRefinanciada', 0)
+            ->where('SaldoPendiente', '>', 0.009)
             ->where('ProposicionCreditoID', '!=', $proposicion->ProposicionCreditoID)
             ->whereHas('credito', function ($q) {
                 $q->where('Activo', true)
