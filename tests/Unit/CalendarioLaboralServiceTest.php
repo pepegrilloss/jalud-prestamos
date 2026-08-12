@@ -87,6 +87,40 @@ class CalendarioLaboralServiceTest extends TestCase
         $this->assertSame('2026-07-13', $rango['FechaVencimiento']->toDateString());
     }
 
+    public function test_cronograma_cuenta_solo_cuotas_laborables(): void
+    {
+        $this->setStaticProperty('feriadosNagerPorAnio', [
+            2026 => [
+                '2026-06-29' => 'San Pedro y San Pablo',
+                '2026-07-23' => 'Dia de la Fuerza Aerea del Peru',
+                '2026-07-28' => 'Fiestas Patrias',
+                '2026-07-29' => 'Fiestas Patrias',
+                '2026-08-06' => 'Batalla de Junin',
+            ],
+        ]);
+        $this->setStaticProperty('reglasLocales', [
+            1 => [
+                '2026-07-23' => [
+                    'tipo' => CalendarioNoMoroso::TIPO_LABORABLE_FORZADO,
+                    'descripcion' => 'Se trabaja por intercambio',
+                ],
+                '2026-07-27' => [
+                    'tipo' => CalendarioNoMoroso::TIPO_NO_LABORABLE,
+                    'descripcion' => 'Descanso por intercambio',
+                ],
+            ],
+        ]);
+
+        $cronograma = CreditoFechaService::generarCronogramaPorCuotasLaborables('2026-06-26', 38, 1);
+        $cuotasNumeradas = collect($cronograma['filas'])->where('NumeroCuota', '>', 0);
+
+        $this->assertCount(38, $cuotasNumeradas);
+        $this->assertSame('2026-06-27', $cronograma['FechaInicio']->toDateString());
+        $this->assertSame('2026-08-15', $cronograma['FechaVencimiento']->toDateString());
+        $this->assertSame(38, $cuotasNumeradas->last()['NumeroCuota']);
+        $this->assertSame('2026-08-15', $cuotasNumeradas->last()['FechaVencimiento']);
+    }
+
     private function setStaticProperty(string $property, mixed $value): void
     {
         $reflection = new ReflectionClass(CalendarioLaboralService::class);

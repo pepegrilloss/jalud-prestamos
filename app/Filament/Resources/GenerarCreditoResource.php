@@ -540,6 +540,11 @@ class GenerarCreditoResource extends Resource
                                 $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
                                 $fechaGeneracion = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : now();
 
+                                \App\Services\CreditoFechaService::validarCatalogoFeriados(
+                                    $fechaGeneracion,
+                                    (int) ($record->NumeroCuotas ?: 1)
+                                );
+
                                 $credito = Credito::create([
                                     'ProposicionCreditoID' => $record->ProposicionCreditoID,
                                     'TipoPagoID' => $data['TipoPagoID'],

@@ -106,11 +106,10 @@ class FeriadoService
             return 0;
         }
 
-        Cache::put($cacheKey, now()->toDateTimeString(), now()->addHours(self::CACHE_TTL_HORAS));
-
         $apiKey = config('services.calendarific.api_key');
         if (empty($apiKey)) {
             Log::error('[Feriados] Calendarific: API key no configurada (CALENDARIFIC_API_KEY).', ['anio' => $anio]);
+
             return 0;
         }
 
@@ -123,16 +122,18 @@ class FeriadoService
                     'type' => config('services.calendarific.type', 'national'),
                 ]);
 
-            if (!$response->successful()) {
-                Log::error('[Feriados] Calendarific: respuesta HTTP ' . $response->status() . '.', ['anio' => $anio]);
+            if (! $response->successful()) {
+                Log::error('[Feriados] Calendarific: respuesta HTTP '.$response->status().'.', ['anio' => $anio]);
+
                 return 0;
             }
 
             $data = $response->json();
             $holidays = $data['response']['holidays'] ?? null;
 
-            if (!is_array($holidays)) {
+            if (! is_array($holidays)) {
                 Log::error('[Feriados] Calendarific: JSON invalido o sin response.holidays.', ['anio' => $anio]);
+
                 return 0;
             }
 
@@ -141,7 +142,7 @@ class FeriadoService
                 $iso = $feriado['date']['iso'] ?? null;
                 $nombre = $feriado['name'] ?? null;
 
-                if (!$iso || !$nombre) {
+                if (! $iso || ! $nombre) {
                     continue;
                 }
 
@@ -157,6 +158,8 @@ class FeriadoService
 
             if ($sincronizados > 0) {
                 self::$feriadosPorAnio[$anio] = self::leerDeBD($anio);
+                CalendarioLaboralService::clearCache();
+                Cache::put($cacheKey, now()->toDateTimeString(), now()->addHours(self::CACHE_TTL_HORAS));
             }
 
             Log::info("[Feriados] Calendarific: {$sincronizados} feriados sincronizados para {$anio}.");
@@ -167,6 +170,7 @@ class FeriadoService
                 'anio' => $anio,
                 'error' => $e->getMessage(),
             ]);
+
             return 0;
         }
     }

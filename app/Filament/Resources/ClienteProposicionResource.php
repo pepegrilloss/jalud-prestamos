@@ -3,38 +3,42 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClienteProposicionResource\Pages;
-
-use App\Models\ProposicionCredito;
 use App\Models\AperturaCierreDia;
-use App\Models\TipoCredito;
+use App\Models\ProposicionCredito;
+use App\Models\Sede;
 use App\Models\Tasa;
+use App\Models\TipoCredito;
 use App\Models\Zona;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
-use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-use App\Models\Sede;
 class ClienteProposicionResource extends Resource
 {
     protected static ?string $model = ProposicionCredito::class;
 
     protected static ?string $navigationGroup = 'Créditos';
+
     protected static ?int $navigationGroupSort = 2;
+
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
+
     protected static ?int $navigationSort = 4;
 
     protected static ?string $navigationLabel = 'Proposiciones';
+
     protected static ?string $modelLabel = 'Proposición';
+
     protected static ?string $pluralModelLabel = 'Proposiciones';
 
     public static function getNavigationBadge(): ?string
     {
         $count = \App\Models\ProposicionCredito::where('Estado', 'PENDIENTE')->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -97,7 +101,7 @@ class ClienteProposicionResource extends Resource
                                 static::validarMontoMaximo($get, $state, $livewire);
                             })
                             ->helperText(function (Get $get, $state, $livewire) {
-                                if (!$state || !$get('ClienteID')) {
+                                if (! $state || ! $get('ClienteID')) {
                                     return '';
                                 }
                                 $exclusionID = static::obtenerExclusionMMR($get);
@@ -110,14 +114,16 @@ class ClienteProposicionResource extends Resource
                                 if ($montoActual > $disponible['montoDisponible']) {
                                     return "Excede el disponible de S/ {$disponible['montoDisponible']}. (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
                                 }
+
                                 return "Disponible: S/ {$disponible['montoDisponible']} (Máximo: S/ {$disponible['montoMaximoRecomendado']}, Utilizado: S/ {$disponible['montoUtilizado']})";
                             })
                             ->suffixIcon(function (Get $get, $state) {
-                                if (!$state || !$get('ClienteID')) {
+                                if (! $state || ! $get('ClienteID')) {
                                     return null;
                                 }
                                 $exclusionID = static::obtenerExclusionMMR($get);
                                 $disponible = \App\Services\ProposicionValidatorService::calcularMontoDisponible((int) $get('ClienteID'), $exclusionID);
+
                                 return (float) $state > $disponible['montoDisponible']
                                     ? 'heroicon-s-exclamation-circle'
                                     : 'heroicon-s-check-circle';
@@ -134,12 +140,12 @@ class ClienteProposicionResource extends Resource
                                             }
                                         }
                                     };
-                                }
+                                },
                             ]),
 
                         Forms\Components\Select::make('TasaID')
                             ->label('Tasa de Interés')
-                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
+                            ->options(Tasa::where('Activo', true)->get()->mapWithKeys(fn ($t) => [$t->TasaID => "{$t->Nombre} - {$t->Valor}%"]))
                             ->required()
                             ->searchable()
                             ->native(false)
@@ -183,7 +189,7 @@ class ClienteProposicionResource extends Resource
                             ->required()
                             ->numeric()
                             ->live(onBlur: true)
-                            ->afterStateUpdated(fn(Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal')))
+                            ->afterStateUpdated(fn (Set $set, Get $get) => static::calcularTotales($set, $get, $get('MontoTotal')))
                             ->columnSpan(4),
 
                         Forms\Components\Fieldset::make('Resumen del Crédito')
@@ -236,7 +242,7 @@ class ClienteProposicionResource extends Resource
                             ])
                             ->required()
                             ->native(false)
-                            ->hidden(fn($record) => $record !== null),
+                            ->hidden(fn ($record) => $record !== null),
                     ])->columns(2),
             ]);
     }
@@ -313,12 +319,12 @@ class ClienteProposicionResource extends Resource
     protected static function validarMontoMaximo(Get $get, $monto, $livewire = null): void
     {
         $clienteID = $get('ClienteID');
-        if (!$clienteID) {
+        if (! $clienteID) {
             return;
         }
 
         $cliente = \App\Models\Cliente::find($clienteID);
-        if (!$cliente || !$cliente->analisisEconomico) {
+        if (! $cliente || ! $cliente->analisisEconomico) {
             return;
         }
 
@@ -339,7 +345,7 @@ class ClienteProposicionResource extends Resource
     {
         return $table
             ->recordUrl(null)
-            ->modifyQueryUsing(fn($query) => $query->whereDoesntHave('credito')
+            ->modifyQueryUsing(fn ($query) => $query->whereDoesntHave('credito')
                 // OPTIMIZACIÓN N+1: eager load cliente (DNI/Nombres) y zona para las columnas.
                 ->with(['cliente', 'zona']))
             ->columns([
@@ -376,7 +382,7 @@ class ClienteProposicionResource extends Resource
 
                 Tables\Columns\TextColumn::make('Estado')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'APROBADO' => 'success',
                         'RECHAZADO' => 'danger',
                         'PENDIENTE' => 'warning',
@@ -409,11 +415,11 @@ class ClienteProposicionResource extends Resource
 
                     Tables\Actions\EditAction::make()
                         ->label('Editar')
-                        ->visible(fn($record) => AperturaCierreDia::estaAbierto() && static::canEdit($record)),
+                        ->visible(fn ($record) => AperturaCierreDia::estaAbierto() && static::canEdit($record)),
 
                     Tables\Actions\DeleteAction::make()
                         ->label('Eliminar')
-                        ->visible(fn($record) => AperturaCierreDia::estaAbierto() && static::canDelete($record)),
+                        ->visible(fn ($record) => AperturaCierreDia::estaAbierto() && static::canDelete($record)),
                 ]),
             ])
             ->headerActions([
@@ -421,8 +427,8 @@ class ClienteProposicionResource extends Resource
                     ->label('Nueva Proposición')
                     ->icon('heroicon-o-plus')
                     ->size('lg')
-                    ->visible(fn() => AperturaCierreDia::estaAbierto() && auth()->user()?->can('create_cliente::proposicion'))
-                    ->url(fn(): string => '/admin/crear-proposicion-creditos/create')
+                    ->visible(fn () => AperturaCierreDia::estaAbierto() && auth()->user()?->can('create_cliente::proposicion'))
+                    ->url(fn (): string => '/admin/crear-proposicion-creditos/create')
                     ->openUrlInNewTab(false),
 
             ])
@@ -434,7 +440,7 @@ class ClienteProposicionResource extends Resource
     public static function getWidgets(): array
     {
         return [
-            ];
+        ];
     }
 
     public static function getPages(): array
@@ -453,7 +459,13 @@ class ClienteProposicionResource extends Resource
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->can('update_cliente::proposicion') ?? false;
+        if (! (auth()->user()?->can('update_cliente::proposicion') ?? false)) {
+            return false;
+        }
+
+        return ! \App\Models\Credito::withoutGlobalScope('sede')
+            ->where('ProposicionCreditoID', $record->ProposicionCreditoID)
+            ->exists();
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool

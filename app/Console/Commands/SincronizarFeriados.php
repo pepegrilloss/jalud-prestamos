@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Services\CalendarioLaboralService;
+use App\Services\CreditoFechaRecalculationService;
 use App\Services\FeriadoService;
 use Illuminate\Console\Command;
 
@@ -17,7 +19,7 @@ class SincronizarFeriados extends Command
 
         if ($this->argument('anio') === null) {
             $anios = [$anio, $anio + 1];
-            $this->info("Sincronizando feriados de Perú para los años: " . implode(', ', $anios));
+            $this->info('Sincronizando feriados de Perú para los años: '.implode(', ', $anios));
         } else {
             $anios = [$anio];
             $this->info("Sincronizando feriados de Perú para el año: {$anio}");
@@ -33,6 +35,16 @@ class SincronizarFeriados extends Command
                 if ($sincronizados > 0) {
                     $this->info("  [OK] {$a}: {$sincronizados} feriados sincronizados.");
                     $total += $sincronizados;
+
+                    CalendarioLaboralService::clearCache();
+                    $recalculo = CreditoFechaRecalculationService::recalcularAnio(
+                        $a,
+                        "Sincronizacion del calendario nacional de feriados {$a}"
+                    );
+                    $this->line(
+                        "       Creditos auditados: {$recalculo['auditados']}; ".
+                        "corregidos: {$recalculo['corregidos']}; errores: {$recalculo['errores']}."
+                    );
                 } else {
                     $existentes = count(FeriadoService::leerDeBD($a));
 
@@ -44,7 +56,7 @@ class SincronizarFeriados extends Command
                     }
                 }
             } catch (\Throwable $e) {
-                $this->error("  [ERROR] {$a}: " . $e->getMessage());
+                $this->error("  [ERROR] {$a}: ".$e->getMessage());
                 $fallos++;
             }
         }
@@ -57,6 +69,7 @@ class SincronizarFeriados extends Command
 
         if ($fallos > 0) {
             $this->error("Hubo {$fallos} año(s) con errores. Revise el log del sistema.");
+
             return self::FAILURE;
         }
 

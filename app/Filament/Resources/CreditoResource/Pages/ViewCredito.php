@@ -5,7 +5,6 @@ namespace App\Filament\Resources\CreditoResource\Pages;
 use App\Filament\Resources\CreditoResource;
 use App\Models\Tasa;
 use App\Models\Zona;
-use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Get;
@@ -160,6 +159,10 @@ class ViewCredito extends ViewRecord
                     $montoCuota = round($totalPagar / $cuotas, 2);
 
                     $creditoID = $this->record->CreditoID;
+                    \App\Services\CreditoFechaService::validarCatalogoFeriados(
+                        $this->record->FechaGeneracion,
+                        $cuotas
+                    );
                     $rangoFechas = \App\Services\CreditoFechaService::calcularRangoPorCuotasLaborables(
                         $this->record->FechaGeneracion,
                         $cuotas,
@@ -184,7 +187,8 @@ class ViewCredito extends ViewRecord
                         return;
                     }
 
-                    $nuevoSaldo = DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $plazo, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID, $rangoFechas) {
+                    $resumenCronograma = [];
+                    $nuevoSaldo = DB::transaction(function () use ($prop, $monto, $tasa, $tasaID, $plazo, $cuotas, $zonaID, $interes, $totalPagar, $montoCuota, $creditoID, $rangoFechas, &$resumenCronograma) {
                         // 1. Actualizar ProposicionCredito
                         DB::table('ProposicionCredito')
                             ->where('ProposicionCreditoID', $prop->ProposicionCreditoID)
@@ -216,41 +220,17 @@ class ViewCredito extends ViewRecord
                             ->where('EsMora', 0)
                             ->exists();
 
-                        // 3. Actualizar cuotas existentes
-                        $cuotasExistentes = DB::table('cuota')
+                        // 3. Sincronizar solo cuotas numeradas. Las filas 0 de
+                        // domingos/feriados no forman parte del numero de cuotas.
+                        $creditoBloqueado = \App\Models\Credito::withoutGlobalScope('sede')
                             ->where('CreditoID', $creditoID)
-                            ->orderBy('NumeroCuota')
-                            ->get();
-
-                        if ($cuotasExistentes->count() >= $cuotas) {
-                            $idsMantener = $cuotasExistentes->take($cuotas)->pluck('CuotaID');
-                            DB::table('cuota')
-                                ->where('CreditoID', $creditoID)
-                                ->whereNotIn('CuotaID', $idsMantener)
-                                ->delete();
-
-                            DB::table('cuota')
-                                ->whereIn('CuotaID', $idsMantener)
-                                ->update(['MontoCuota' => $montoCuota, 'FechaModificacion' => now()]);
-                        } else {
-                            DB::table('cuota')
-                                ->where('CreditoID', $creditoID)
-                                ->update(['MontoCuota' => $montoCuota, 'FechaModificacion' => now()]);
-
-                            $fechaBase = Carbon::parse($this->record->FechaInicio ?? now());
-                            for ($i = $cuotasExistentes->count() + 1; $i <= $cuotas; $i++) {
-                                DB::table('cuota')->insert([
-                                    'CreditoID' => $creditoID,
-                                    'NumeroCuota' => $i,
-                                    'MontoCuota' => $montoCuota,
-                                    'FechaVencimiento' => $fechaBase->copy()->addDays($i),
-                                    'Estado' => 'PENDIENTE',
-                                    'Activo' => 1,
-                                    'SedeID' => $prop->SedeID,
-                                    'FechaCreacion' => now(),
-                                ]);
-                            }
-                        }
+                            ->lockForUpdate()
+                            ->firstOrFail();
+                        $resumenCronograma = \App\Services\CreditoCronogramaService::sincronizarCuotasNumeradas(
+                            $creditoBloqueado,
+                            $cuotas,
+                            $montoCuota
+                        );
 
                         // 4. Si el nuevo saldo es 0, marcar como SALDADO
                         if ($nuevoSaldo <= 0 && $tienePagos) {
@@ -262,7 +242,7 @@ class ViewCredito extends ViewRecord
                                 ]);
                             DB::table('cuota')
                                 ->where('CreditoID', $creditoID)
-                                ->whereIn('Estado', ['PENDIENTE', 'VENCIDA', 'MORA'])
+                                ->whereIn('Estado', ['NORMAL', 'PENDIENTE', 'VENCIDA', 'MORA'])
                                 ->update(['Estado' => 'PAGADA', 'FechaPago' => now()]);
                         } elseif ($nuevoSaldo > 0 && $this->record->EstatusCreditoFinal === 'SALDADO') {
                             DB::table('Credito')
@@ -293,6 +273,7 @@ class ViewCredito extends ViewRecord
                             'SaldoPendiente' => $nuevoSaldo,
                             'FechaInicio' => $rangoFechas['FechaInicio']->toDateString(),
                             'FechaVencimiento' => $rangoFechas['FechaVencimiento']->toDateString(),
+                            'Cronograma' => $resumenCronograma,
                         ],
                         $prop->SedeID
                     );

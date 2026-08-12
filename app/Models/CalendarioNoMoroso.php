@@ -3,19 +3,23 @@
 namespace App\Models;
 
 use App\Services\CalendarioLaboralService;
+use App\Services\CreditoFechaRecalculationService;
 use App\Traits\BelongsToSede;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class CalendarioNoMoroso extends Model
 {
     use BelongsToSede;
 
     public const TIPO_NO_LABORABLE = 'NO_LABORABLE';
+
     public const TIPO_LABORABLE_FORZADO = 'LABORABLE_FORZADO';
 
     protected $primaryKey = 'CalendarioNoMorosoID';
+
     protected $table = 'calendario_no_morosos';
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -54,47 +58,58 @@ class CalendarioNoMoroso extends Model
 
         static::created(function (CalendarioNoMoroso $calendario) {
             CalendarioLaboralService::clearCache();
+            self::recalcularCreditosAfectados(
+                [(int) $calendario->SedeID],
+                "Creacion de regla {$calendario->Tipo} para {$calendario->Fecha?->toDateString()}"
+            );
+        });
 
-            if ($calendario->Activo === false || $calendario->Tipo !== self::TIPO_NO_LABORABLE) {
+        static::updated(function (CalendarioNoMoroso $calendario) {
+            CalendarioLaboralService::clearCache();
+
+            if (! $calendario->wasChanged(['Fecha', 'Tipo', 'Activo', 'SedeID'])) {
                 return;
             }
 
-            self::extenderVencimientosPorNuevaFechaNoLaborable($calendario);
+            self::recalcularCreditosAfectados(
+                array_unique([
+                    (int) $calendario->getOriginal('SedeID'),
+                    (int) $calendario->SedeID,
+                ]),
+                "Edicion de regla de calendario #{$calendario->CalendarioNoMorosoID}"
+            );
         });
 
-        static::updated(fn() => CalendarioLaboralService::clearCache());
-        static::deleted(fn() => CalendarioLaboralService::clearCache());
+        static::deleted(function (CalendarioNoMoroso $calendario) {
+            CalendarioLaboralService::clearCache();
+            self::recalcularCreditosAfectados(
+                [(int) $calendario->SedeID],
+                "Eliminacion de regla de calendario #{$calendario->CalendarioNoMorosoID}"
+            );
+        });
     }
 
-    private static function extenderVencimientosPorNuevaFechaNoLaborable(CalendarioNoMoroso $calendario): void
+    private static function recalcularCreditosAfectados(array $sedes, string $motivo): void
     {
-        $fechaNoLaborable = Carbon::parse($calendario->Fecha)->startOfDay();
+        foreach (array_filter($sedes) as $sedeId) {
+            try {
+                $resultado = CreditoFechaRecalculationService::recalcularSede((int) $sedeId, $motivo);
+                if ($resultado['errores'] > 0) {
+                    Log::warning('El cambio de calendario termino con creditos no recalculados.', [
+                        'SedeID' => $sedeId,
+                        'motivo' => $motivo,
+                        'resultado' => $resultado,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('No se pudieron recalcular los creditos despues de cambiar el calendario.', [
+                    'SedeID' => $sedeId,
+                    'motivo' => $motivo,
+                    'error' => $e->getMessage(),
+                ]);
 
-        $creditos = Credito::where('Activo', 1)
-            ->with('proposicion')
-            ->get();
-
-        foreach ($creditos as $credito) {
-            $inicioStr = $credito->FechaInicio ?: $credito->FechaGeneracion;
-            $fechaInicio = $inicioStr ? Carbon::parse($inicioStr)->startOfDay() : null;
-            $fechaVenc = $credito->FechaVencimiento ? Carbon::parse($credito->FechaVencimiento)->startOfDay() : null;
-
-            if (!$fechaInicio || !$fechaVenc) {
                 continue;
             }
-
-            if (!$fechaNoLaborable->betweenIncluded($fechaInicio, $fechaVenc)) {
-                continue;
-            }
-
-            $saldo = (float) ($credito->proposicion?->SaldoPendiente ?? 0);
-            if ($saldo <= 0) {
-                continue;
-            }
-
-            $fechaVenc->addDay();
-            $credito->FechaVencimiento = CalendarioLaboralService::siguienteDiaLaborable($fechaVenc, $credito->SedeID);
-            $credito->save();
         }
     }
 }

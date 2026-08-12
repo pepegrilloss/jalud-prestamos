@@ -8,11 +8,13 @@ use Carbon\Carbon;
 class CalendarioLaboralService
 {
     private static array $feriadosNagerPorAnio = [];
+
     private static ?array $reglasLocales = null;
 
     public static function clearCache(): void
     {
         self::$reglasLocales = null;
+        self::$feriadosNagerPorAnio = [];
     }
 
     public static function esLaborable(Carbon|string $fecha, ?int $sedeId = null): bool
@@ -32,12 +34,12 @@ class CalendarioLaboralService
             return false;
         }
 
-        return !self::esFeriadoNacional($fecha);
+        return ! self::esFeriadoNacional($fecha);
     }
 
     public static function esNoLaborable(Carbon|string $fecha, ?int $sedeId = null): bool
     {
-        return !self::esLaborable($fecha, $sedeId);
+        return ! self::esLaborable($fecha, $sedeId);
     }
 
     public static function motivoNoLaborable(Carbon|string $fecha, ?int $sedeId = null): ?string
@@ -91,7 +93,7 @@ class CalendarioLaboralService
         self::cargarReglasLocales();
 
         $sedeId = $sedeId ?? self::resolverSedeId();
-        if (!$sedeId) {
+        if (! $sedeId) {
             return null;
         }
 
@@ -110,7 +112,7 @@ class CalendarioLaboralService
             ->where('Activo', true)
             ->get(['Fecha', 'Tipo', 'Descripcion', 'SedeID'])
             ->each(function (CalendarioNoMoroso $item) {
-                if (!$item->SedeID) {
+                if (! $item->SedeID) {
                     return;
                 }
 

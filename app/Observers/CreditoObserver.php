@@ -5,7 +5,7 @@ namespace App\Observers;
 use App\Models\Credito;
 use App\Models\Cuota;
 use App\Models\User;
-use App\Services\CalendarioLaboralService;
+use App\Services\CreditoFechaService;
 use Carbon\Carbon;
 
 class CreditoObserver
@@ -89,53 +89,27 @@ class CreditoObserver
             'SedeID' => $credito->SedeID,
         ]);
 
-        $fechaActual = $fechaGeneracion->copy()->addDay();
-        $numeroCuota = 0;
-        $cuotasGeneradas = 0;
-        $cuotasRequeridas = $proposicion->NumeroCuotas;
+        $cronograma = CreditoFechaService::generarCronogramaPorCuotasLaborables(
+            $fechaGeneracion,
+            (int) $proposicion->NumeroCuotas,
+            $credito->SedeID
+        );
 
-        while ($cuotasGeneradas < $cuotasRequeridas) {
-            if (! CalendarioLaboralService::esLaborable($fechaActual, $credito->SedeID)) {
-                $estado = $fechaActual->dayOfWeek === Carbon::SUNDAY
-                    ? Cuota::ESTADO_DOMINGO
-                    : Cuota::ESTADO_FERIADO;
-
-                Cuota::create([
-                    'CreditoID' => $credito->CreditoID,
-                    'NumeroCuota' => 0,
-                    'FechaVencimiento' => $fechaActual->format('Y-m-d'),
-                    'MontoCuota' => 0.00,
-                    'Estado' => $estado,
-                    'DiasAtraso' => 0,
-                    'MontoMora' => 0.00,
-                    'FechaPago' => null,
-                    'FechaCreacion' => $this->fechaCreacion(),
-                    'FechaModificacion' => null,
-                    'Activo' => 1,
-                    'SedeID' => $credito->SedeID,
-                ]);
-            } else {
-                $numeroCuota++;
-
-                Cuota::create([
-                    'CreditoID' => $credito->CreditoID,
-                    'NumeroCuota' => $numeroCuota,
-                    'FechaVencimiento' => $fechaActual->format('Y-m-d'),
-                    'MontoCuota' => $proposicion->MontoCuota,
-                    'Estado' => Cuota::ESTADO_NORMAL,
-                    'DiasAtraso' => 0,
-                    'MontoMora' => 0.00,
-                    'FechaPago' => null,
-                    'FechaCreacion' => $this->fechaCreacion(),
-                    'FechaModificacion' => null,
-                    'Activo' => 1,
-                    'SedeID' => $credito->SedeID,
-                ]);
-
-                $cuotasGeneradas++;
-            }
-
-            $fechaActual->addDay();
+        foreach ($cronograma['filas'] as $fila) {
+            Cuota::create([
+                'CreditoID' => $credito->CreditoID,
+                'NumeroCuota' => $fila['NumeroCuota'],
+                'FechaVencimiento' => $fila['FechaVencimiento'],
+                'MontoCuota' => $fila['NumeroCuota'] > 0 ? $proposicion->MontoCuota : 0.00,
+                'Estado' => $fila['Estado'],
+                'DiasAtraso' => 0,
+                'MontoMora' => 0.00,
+                'FechaPago' => null,
+                'FechaCreacion' => $this->fechaCreacion(),
+                'FechaModificacion' => null,
+                'Activo' => 1,
+                'SedeID' => $credito->SedeID,
+            ]);
         }
     }
 
