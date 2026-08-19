@@ -11,7 +11,7 @@ Route::get('/', function () {
 
 // Cumplimiento SBS vive en la aplicacion independiente.
 Route::get('/cumplimiento/{path?}', function (?string $path = null) {
-    $base = rtrim(env('CUMPLIMIENTO_URL', 'http://localhost:8085'), '/') . '/cumplimiento';
+    $base = rtrim(config('services.cumplimiento.url'), '/') . '/cumplimiento';
     $url = $path ? $base . '/' . ltrim($path, '/') : $base;
 
     if ($query = request()->getQueryString()) {
@@ -20,6 +20,19 @@ Route::get('/cumplimiento/{path?}', function (?string $path = null) {
 
     return redirect()->away($url);
 })->where('path', '.*')->name('cumplimiento.redirect');
+
+Route::post('/salir-a-cumplimiento', function () {
+    abort_unless(
+        auth()->user()?->hasRole('oficial_cumplimiento_sbs'),
+        403
+    );
+
+    auth()->logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+
+    return redirect()->route('cumplimiento.redirect');
+})->name('cumplimiento.logout-redirect');
 
 Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/pdf/acta-creditos', function () {

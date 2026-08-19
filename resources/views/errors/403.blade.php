@@ -33,12 +33,24 @@
         </p>
 
         <!-- Botón de acción -->
-        <a href="/admin" class="group relative inline-flex items-center justify-center px-8 py-3.5 font-semibold text-white bg-[#a4cb3b] hover:bg-[#8eb032] rounded-2xl shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#a4cb3b]/50">
-            <svg class="w-5 h-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Volver al Panel
-        </a>
+        @if (auth()->user()?->hasRole('oficial_cumplimiento_sbs'))
+            <form method="POST" action="{{ route('cumplimiento.logout-redirect') }}">
+                @csrf
+                <button type="submit" class="group relative inline-flex items-center justify-center px-8 py-3.5 font-semibold text-white bg-[#a4cb3b] hover:bg-[#8eb032] rounded-2xl shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#a4cb3b]/50">
+                    <svg class="w-5 h-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Ir a Cumplimiento SBS
+                </button>
+            </form>
+        @else
+            <a href="/admin" class="group relative inline-flex items-center justify-center px-8 py-3.5 font-semibold text-white bg-[#a4cb3b] hover:bg-[#8eb032] rounded-2xl shadow-lg transition-all duration-200 transform hover:-translate-y-0.5 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#a4cb3b]/50">
+                <svg class="w-5 h-5 mr-2 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Volver al Panel
+            </a>
+        @endif
 
         <!-- Mensaje sutil al pie -->
         <p class="mt-12 text-sm text-gray-400 dark:text-gray-500 italic">
