@@ -4,33 +4,35 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CreditoResource\Pages;
 use App\Models\Credito;
-use App\Models\ProposicionCredito;
-use App\Models\TipoPago;
-use App\Models\Zona;
+use App\Models\Sede;
 use App\Models\TipoCredito;
+use App\Models\Zona;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Infolists;
-use Filament\Infolists\Infolist;
 use Illuminate\Database\Eloquent\Builder;
 
-use App\Models\Sede;
 class CreditoResource extends Resource
 {
     protected static ?string $model = Credito::class;
 
     protected static ?string $navigationGroup = 'Créditos';
+
     protected static ?string $navigationIcon = 'heroicon-o-check-circle';
+
     protected static ?int $navigationSort = 8;
+
     protected static ?string $label = 'Créditos Generados';
+
     protected static ?string $pluralLabel = 'Créditos Generados';
 
     public static function getNavigationBadge(): ?string
     {
         $count = \App\Models\Credito::where('Activo', true)->count();
+
         return $count > 0 ? (string) $count : null;
     }
 
@@ -48,14 +50,14 @@ class CreditoResource extends Resource
 
     public static function getGlobalSearchResultTitle(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return 'Crédito: ' . ($record->proposicion?->CodigoCredito ?? '#' . $record->CreditoID) . ' (' . ($record->proposicion?->cliente?->NombresApellidos ?? 'Sin cliente') . ')';
+        return 'Crédito: '.($record->proposicion?->CodigoCredito ?? '#'.$record->CreditoID).' ('.($record->proposicion?->cliente?->NombresApellidos ?? 'Sin cliente').')';
     }
-
 
     public static function canViewAny(): bool
     {
         return auth()->user()?->can('view_any_credito') ?? false;
     }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -160,7 +162,7 @@ class CreditoResource extends Resource
 
                 Tables\Columns\TextColumn::make('proposicion.TasaInteres')
                     ->label('Tasa (%)')
-                    ->formatStateUsing(fn($state) => number_format((float) $state, 2, '.', '') . ' %')
+                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2, '.', '').' %')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('proposicion.MontoInteres')
@@ -183,13 +185,15 @@ class CreditoResource extends Resource
                     ->date('d/m/Y')
                     ->sortable()
                     ->color(function ($record) {
-                        if (!$record->FechaVencimiento)
+                        if (! $record->FechaVencimiento) {
                             return 'gray';
+                        }
 
                         if ($record->FechaVencimiento < today()) {
                             if (($record->proposicion?->SaldoPendiente ?? 0) <= 0) {
                                 return 'success';
                             }
+
                             return 'danger'; // Vencido (fecha pasada) = Rojo
                         }
 
@@ -251,21 +255,21 @@ class CreditoResource extends Resource
                                     ->label('Sede')
                                     ->options(Sede::where('Activo', true)->pluck('Nombre', 'SedeID'))
                                     ->native(false)
-                                    ->visible(fn(\Filament\Forms\Get $get) => auth()->user()->esAdmin() && in_array('sede', $get('campos_activos') ?? []))
+                                    ->visible(fn (\Filament\Forms\Get $get) => auth()->user()->esAdmin() && in_array('sede', $get('campos_activos') ?? []))
                                     ->live(),
 
                                 Forms\Components\Select::make('TipoPagoID')
                                     ->label('Tipo de Pago')
                                     ->options(\App\Models\TipoPago::where('Activo', true)->pluck('Nombre', 'TipoPagoID'))
                                     ->native(false)
-                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('tipo_pago', $get('campos_activos') ?? []))
+                                    ->visible(fn (\Filament\Forms\Get $get) => in_array('tipo_pago', $get('campos_activos') ?? []))
                                     ->live(),
 
                                 Forms\Components\Select::make('zona')
                                     ->label('Zona')
                                     ->options(Zona::where('Activo', true)->pluck('Nombre', 'ZonaID')->toArray())
                                     ->native(false)
-                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('zona', $get('campos_activos') ?? []))
+                                    ->visible(fn (\Filament\Forms\Get $get) => in_array('zona', $get('campos_activos') ?? []))
                                     ->live(),
 
                                 Forms\Components\Select::make('cliente')
@@ -278,39 +282,40 @@ class CreditoResource extends Resource
                                     })
                                     ->searchable()
                                     ->native(false)
-                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('cliente', $get('campos_activos') ?? []))
+                                    ->visible(fn (\Filament\Forms\Get $get) => in_array('cliente', $get('campos_activos') ?? []))
                                     ->live(),
 
                                 Forms\Components\Select::make('tipoCredito')
                                     ->label('Tipo de Crédito')
                                     ->options(TipoCredito::where('Activo', true)->pluck('Descripcion', 'TipoCreditoID')->toArray())
                                     ->native(false)
-                                    ->visible(fn(\Filament\Forms\Get $get) => in_array('tipo_credito', $get('campos_activos') ?? []))
+                                    ->visible(fn (\Filament\Forms\Get $get) => in_array('tipo_credito', $get('campos_activos') ?? []))
                                     ->live(),
                             ]),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         $activos = $data['campos_activos'] ?? [];
+
                         return $query
                             ->when(
-                                in_array('sede', $activos) && !empty($data['SedeID']),
-                                fn(Builder $q) => $q->where('SedeID', $data['SedeID'])
+                                in_array('sede', $activos) && ! empty($data['SedeID']),
+                                fn (Builder $q) => $q->where('SedeID', $data['SedeID'])
                             )
                             ->when(
-                                in_array('tipo_pago', $activos) && !empty($data['TipoPagoID']),
-                                fn(Builder $q) => $q->where('TipoPagoID', $data['TipoPagoID'])
+                                in_array('tipo_pago', $activos) && ! empty($data['TipoPagoID']),
+                                fn (Builder $q) => $q->where('TipoPagoID', $data['TipoPagoID'])
                             )
                             ->when(
-                                in_array('zona', $activos) && !empty($data['zona']),
-                                fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('ZonaID', $data['zona']))
+                                in_array('zona', $activos) && ! empty($data['zona']),
+                                fn (Builder $q) => $q->whereHas('proposicion', fn (Builder $subQ) => $subQ->where('ZonaID', $data['zona']))
                             )
                             ->when(
-                                in_array('cliente', $activos) && !empty($data['cliente']),
-                                fn(Builder $q) => $q->whereHas('proposicion.cliente', fn(Builder $subQ) => $subQ->where('ClienteID', $data['cliente']))
+                                in_array('cliente', $activos) && ! empty($data['cliente']),
+                                fn (Builder $q) => $q->whereHas('proposicion.cliente', fn (Builder $subQ) => $subQ->where('ClienteID', $data['cliente']))
                             )
                             ->when(
-                                in_array('tipo_credito', $activos) && !empty($data['tipoCredito']),
-                                fn(Builder $q) => $q->whereHas('proposicion', fn(Builder $subQ) => $subQ->where('TipoCreditoID', $data['tipoCredito']))
+                                in_array('tipo_credito', $activos) && ! empty($data['tipoCredito']),
+                                fn (Builder $q) => $q->whereHas('proposicion', fn (Builder $subQ) => $subQ->where('TipoCreditoID', $data['tipoCredito']))
                             );
                     }),
             ])
@@ -318,9 +323,9 @@ class CreditoResource extends Resource
             ->filtersLayout(\Filament\Tables\Enums\FiltersLayout::AboveContent)
             ->modifyQueryUsing(function (Builder $query, \Livewire\Component $livewire) {
                 $query->with([
-                    'proposicion' => fn($q) => $q->with(['cliente', 'zona', 'tipoCredito']),
+                    'proposicion' => fn ($q) => $q->with(['cliente', 'zona', 'tipoCredito']),
                     'tipoPago',
-                    'pagos' => fn($q) => $q->where('Activo', 1),
+                    'pagos' => fn ($q) => $q->where('Activo', 1),
                 ])
                     // OPTIMIZACIÓN N+1: precalcular la última MoraAcumulada por crédito
                     // en una subquery (replica el latest('FechaMora')->first() original).
@@ -342,7 +347,7 @@ class CreditoResource extends Resource
                         $q->where('FueRefinanciada', 0);
                     });
 
-                if (property_exists($livewire, 'fechaFiltro') && !empty($livewire->fechaFiltro)) {
+                if (property_exists($livewire, 'fechaFiltro') && ! empty($livewire->fechaFiltro)) {
                     $query->whereDate('FechaGeneracion', $livewire->fechaFiltro);
                 }
 
@@ -354,19 +359,19 @@ class CreditoResource extends Resource
                     ->label('Excel')
                     ->tooltip('Descargar Libreta de Pagos (Excel)')
                     ->icon('heroicon-o-document-arrow-down')
-                    ->url(fn($record) => route('libreta-pagos.descargar', $record->CreditoID))
+                    ->url(fn ($record) => route('libreta-pagos.descargar', $record->CreditoID))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('descargar_libreta_html')
                     ->label('Imprimir')
                     ->tooltip('Ver Libreta de Pagos para Imprimir')
                     ->icon('heroicon-o-printer')
-                    ->url(fn($record) => route('libreta-pagos.html', $record->CreditoID))
+                    ->url(fn ($record) => route('libreta-pagos.html', $record->CreditoID))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('descargar_ticket')
                     ->label('Descargar Ticket')
                     ->icon('heroicon-o-ticket')
                     ->color('danger')
-                    ->url(fn($record) => route('ticket.descargar', $record->CreditoID))
+                    ->url(fn ($record) => route('ticket.descargar', $record->CreditoID))
                     ->openUrlInNewTab(),
             ])
             ->bulkActions([])
@@ -392,25 +397,27 @@ class CreditoResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) {
+        if (! parent::canCreate()) {
             return false;
         }
 
-        if (!\App\Models\AperturaCierreDia::estaAbierto()) {
+        if (! \App\Models\AperturaCierreDia::estaAbierto()) {
             \Filament\Notifications\Notification::make()
                 ->title('❌ Día Cerrado')
                 ->body('El día de operaciones está cerrado. No se pueden realizar operaciones. Contacte con administración.')
                 ->danger()
                 ->persistent()
                 ->send();
+
             return false;
         }
+
         return true;
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!parent::canEdit($record)) {
+        if (! parent::canEdit($record)) {
             return false;
         }
 
@@ -429,12 +436,13 @@ class CreditoResource extends Resource
                 return false;
             }
         }
+
         return true;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        if (!parent::canDelete($record)) {
+        if (! parent::canDelete($record)) {
             return false;
         }
 
@@ -453,6 +461,7 @@ class CreditoResource extends Resource
                 return false;
             }
         }
+
         return true;
     }
 
@@ -543,13 +552,13 @@ class CreditoResource extends Resource
                             Infolists\Components\TextEntry::make('SaldoActual')
                                 ->label('Saldo Actual')
                                 ->money('PEN')
-                                ->getStateUsing(fn($record) => $record->proposicion?->SaldoPendiente ?? 0)
+                                ->getStateUsing(fn ($record) => $record->proposicion?->SaldoPendiente ?? 0)
                                 ->color('danger')
                                 ->weight(\Filament\Support\Enums\FontWeight::Bold),
 
                             Infolists\Components\TextEntry::make('PagosRealizados')
                                 ->label('N° Pagos')
-                                ->getStateUsing(fn($record) => $record->relationLoaded('pagos') ? $record->pagos->count() : $record->pagos()->where('Activo', 1)->count())
+                                ->getStateUsing(fn ($record) => $record->relationLoaded('pagos') ? $record->pagos->count() : $record->pagos()->where('Activo', 1)->count())
                                 ->icon('heroicon-m-check-circle')
                                 ->badge()
                                 ->color('success'),
@@ -557,7 +566,7 @@ class CreditoResource extends Resource
                             Infolists\Components\TextEntry::make('TotalPagado')
                                 ->label('Total Pagado')
                                 ->money('PEN')
-                                ->getStateUsing(fn($record) => self::calcularTotalPagadoNeto($record))
+                                ->getStateUsing(fn ($record) => self::calcularTotalPagadoNeto($record))
                                 ->color('success')
                                 ->weight(\Filament\Support\Enums\FontWeight::Bold),
 
@@ -573,7 +582,8 @@ class CreditoResource extends Resource
                                                 ->orWhere('EsMora', 1);
                                         })
                                         ->sum('MontoPagado');
-                                    return max(0, (float)($ultimaMora?->MoraAcumulada ?? 0) - $moraPagada);
+
+                                    return max(0, (float) ($ultimaMora?->MoraAcumulada ?? 0) - $moraPagada);
                                 })
                                 ->color('danger')
                                 ->weight(\Filament\Support\Enums\FontWeight::Bold),
@@ -589,29 +599,31 @@ class CreditoResource extends Resource
                                 ->date('d/m/Y')
                                 ->icon('heroicon-m-calendar')
                                 ->color(function ($record) {
-                                    if (!$record->FechaVencimiento?->isPast()) {
+                                    if (! $record->FechaVencimiento?->isPast()) {
                                         return 'success';
                                     }
+
                                     return ($record->proposicion?->SaldoPendiente ?? 0) > 0 ? 'danger' : 'success';
                                 }),
 
                             Infolists\Components\TextEntry::make('DiasVencimiento')
                                 ->label('Días Vencido')
                                 ->getStateUsing(function ($record) {
-                                    if (!$record->FechaVencimiento || !$record->FechaVencimiento->isPast()) {
+                                    if (! $record->FechaVencimiento || ! $record->FechaVencimiento->isPast()) {
                                         return null;
                                     }
                                     if (($record->proposicion?->SaldoPendiente ?? 0) <= 0) {
                                         return null;
                                     }
                                     $dias = $record->FechaVencimiento->diffInDays(today());
-                                    return $dias . ' día' . ($dias !== 1 ? 's' : '');
+
+                                    return $dias.' día'.($dias !== 1 ? 's' : '');
                                 })
                                 ->icon('heroicon-m-exclamation-circle')
                                 ->color('danger')
-                                ->visible(fn($record) => ($record->FechaVencimiento?->isPast() ?? false) && ($record->proposicion?->SaldoPendiente ?? 0) > 0)
+                                ->visible(fn ($record) => ($record->FechaVencimiento?->isPast() ?? false) && ($record->proposicion?->SaldoPendiente ?? 0) > 0)
                                 ->badge(),
-                        ])->columns(4)
+                        ])->columns(4),
                 ]),
 
             Infolists\Components\Section::make('Datos de Aprobación y Generación')
@@ -653,7 +665,9 @@ class CreditoResource extends Resource
                 ->collapsed()
                 ->description(function ($record) {
                     $ultimaMora = $record->moras()->latest('FechaMora')->first();
-                    if (!$ultimaMora) return 'Sin moras registradas';
+                    if (! $ultimaMora) {
+                        return 'Sin moras registradas';
+                    }
 
                     $moraPagada = \App\Models\Pago::where('CreditoID', $record->CreditoID)
                         ->where('Activo', 1)
@@ -662,14 +676,15 @@ class CreditoResource extends Resource
                                 ->orWhere('EsMora', 1);
                         })
                         ->sum('MontoPagado');
-                    $neta = (float)$ultimaMora->MoraAcumulada - (float)$moraPagada;
+                    $neta = (float) $ultimaMora->MoraAcumulada - (float) $moraPagada;
                     $neta = max(0, $neta);
 
-                    $texto = "Mora histórica: S/ " . number_format($ultimaMora->MoraAcumulada, 2);
+                    $texto = 'Mora histórica: S/ '.number_format($ultimaMora->MoraAcumulada, 2);
                     if ($moraPagada > 0) {
-                        $texto .= " | Pagada/Exonerada: S/ " . number_format($moraPagada, 2);
-                        $texto .= " | Pendiente: S/ " . number_format($neta, 2);
+                        $texto .= ' | Pagada/Exonerada: S/ '.number_format($moraPagada, 2);
+                        $texto .= ' | Pendiente: S/ '.number_format($neta, 2);
                     }
+
                     return $texto;
                 })
                 ->schema([
@@ -702,9 +717,9 @@ class CreditoResource extends Resource
                                         ->money('PEN')
                                         ->color('danger')
                                         ->weight(\Filament\Support\Enums\FontWeight::Bold),
-                                ])
+                                ]),
                         ])
-                        ->contained(true)
+                        ->contained(true),
                 ]),
         ];
     }
@@ -726,10 +741,6 @@ class CreditoResource extends Resource
             ->where('EsPagoAMayor', 1)
             ->where('EsPagoAMayorPorMora', 0)
             ->whereNull('SolicitudResolucionID')
-            ->where(function ($query) {
-                $query->whereNull('TipoConcepto')
-                    ->orWhere('TipoConcepto', '!=', 'M');
-            })
             ->sum('MontoPagado');
 
         $trasladosAprobados = (float) \Illuminate\Support\Facades\DB::table('solicitudes_resolucion_excedente as sre')
@@ -739,14 +750,14 @@ class CreditoResource extends Resource
             ->where('sre.TipoResolucion', 'TRASLADO_DE_PAGO')
             ->sum('sre.MontoAplicar');
 
-        $devolucionesAMayorComprometidas = (float) \Illuminate\Support\Facades\DB::table('solicitudes_resolucion_excedente as sre')
+        $devolucionesAMayorAprobadas = (float) \Illuminate\Support\Facades\DB::table('solicitudes_resolucion_excedente as sre')
             ->join('pago as p', 'sre.PagoOrigenID', '=', 'p.PagoID')
             ->where('p.CreditoID', $credito->CreditoID)
-            ->where('sre.Estado', '!=', 'RECHAZADA')
+            ->where('sre.Estado', 'APROBADA')
             ->where('sre.TipoResolucion', 'DEVOLUCION_PAGO_MAYOR')
             ->sum('sre.MontoAplicar');
 
-        $aMayorAntesDeMora = max(0, $pagosAMayor - $trasladosAprobados - $devolucionesAMayorComprometidas);
+        $aMayorAntesDeMora = max(0, $pagosAMayor - $trasladosAprobados - $devolucionesAMayorAprobadas);
         $pagosAMayorPorMoraAplicados = self::calcularMayorPorMoraAplicado($credito->CreditoID, $aMayorAntesDeMora);
 
         $aMayorDisponible = max(
