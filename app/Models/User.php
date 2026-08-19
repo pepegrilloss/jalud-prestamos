@@ -50,6 +50,10 @@ class User extends Authenticatable implements FilamentUser
     // MÉTODO NUEVO - REQUERIDO POR FILAMENT
     public function canAccessPanel(Panel $panel): bool
     {
+        if ($this->hasRole('oficial_cumplimiento_sbs')) {
+            return false;
+        }
+
         if ($panel->getId() === 'gerencia') {
             return $this->puedeAccederAGerencia();
         }
