@@ -26,11 +26,11 @@ class PrestamoBancarioResource extends Resource
 
     protected static ?string $navigationGroup = 'Tesorería';
 
-    protected static ?string $navigationLabel = 'Préstamos Bancarios';
+    protected static ?string $navigationLabel = 'Préstamos';
 
-    protected static ?string $modelLabel = 'Préstamo bancario';
+    protected static ?string $modelLabel = 'Préstamo';
 
-    protected static ?string $pluralModelLabel = 'Préstamos bancarios';
+    protected static ?string $pluralModelLabel = 'Préstamos';
 
     protected static ?int $navigationSort = 3;
 
@@ -67,8 +67,27 @@ class PrestamoBancarioResource extends Resource
     public static function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Datos del préstamo bancario')
+            Forms\Components\Section::make('Datos del préstamo')
                 ->schema([
+                    Forms\Components\ToggleButtons::make('TipoPrestamista')
+                        ->label('Tipo de prestamista')
+                        ->options([
+                            PrestamoBancario::TIPO_BANCO => 'Banco',
+                            PrestamoBancario::TIPO_TERCERO => 'Tercero',
+                        ])
+                        ->icons([
+                            PrestamoBancario::TIPO_BANCO => 'heroicon-o-building-library',
+                            PrestamoBancario::TIPO_TERCERO => 'heroicon-o-user',
+                        ])
+                        ->default(PrestamoBancario::TIPO_BANCO)
+                        ->inline()
+                        ->live()
+                        ->afterStateUpdated(function (Set $set): void {
+                            $set('Banco', null);
+                            $set('PrestamistaTercero', null);
+                            $set('CuentaTesoreriaID', null);
+                        })
+                        ->required(),
                     Forms\Components\Select::make('Banco')
                         ->label('Banco')
                         ->options(fn () => CuentaTesoreria::query()
@@ -77,7 +96,14 @@ class PrestamoBancarioResource extends Resource
                         ->searchable()
                         ->live()
                         ->afterStateUpdated(fn (Set $set) => $set('CuentaTesoreriaID', null))
-                        ->required(),
+                        ->visible(fn (Get $get): bool => $get('TipoPrestamista') !== PrestamoBancario::TIPO_TERCERO)
+                        ->required(fn (Get $get): bool => $get('TipoPrestamista') !== PrestamoBancario::TIPO_TERCERO),
+                    Forms\Components\TextInput::make('PrestamistaTercero')
+                        ->label('Prestamista / tercero')
+                        ->placeholder('Nombre de la persona o empresa')
+                        ->maxLength(100)
+                        ->visible(fn (Get $get): bool => $get('TipoPrestamista') === PrestamoBancario::TIPO_TERCERO)
+                        ->required(fn (Get $get): bool => $get('TipoPrestamista') === PrestamoBancario::TIPO_TERCERO),
                     Forms\Components\Select::make('CuentaTesoreriaID')
                         ->label('Cuenta bancaria de débito')
                         ->options(fn (Get $get) => CuentaTesoreria::query()
@@ -90,9 +116,13 @@ class PrestamoBancarioResource extends Resource
                             ]))
                         ->searchable()
                         ->placeholder('Caja Abierta - Gerencia')
-                        ->helperText('Si no selecciona una cuenta, las cuotas se descontarán de Caja Abierta - Gerencia.'),
+                        ->helperText('Si no selecciona una cuenta, las cuotas se descontarán de Caja Abierta - Gerencia.')
+                        ->visible(fn (Get $get): bool => $get('TipoPrestamista') !== PrestamoBancario::TIPO_TERCERO),
                     Forms\Components\TextInput::make('Cliente')->label('Cliente / deudor')->required()->maxLength(255),
-                    Forms\Components\TextInput::make('CuentaPrestamo')->label('Cuenta del préstamo')->required()->maxLength(100),
+                    Forms\Components\TextInput::make('CuentaPrestamo')
+                        ->label('Cuenta / referencia del préstamo')
+                        ->required(fn (Get $get): bool => $get('TipoPrestamista') !== PrestamoBancario::TIPO_TERCERO)
+                        ->maxLength(100),
                     Forms\Components\TextInput::make('Operacion')->label('Operación')->maxLength(100),
                     Forms\Components\TextInput::make('MontoPrestamo')->label('Préstamo')->numeric()->prefix('S/')->minValue(0.01)->required()
                         ->live(onBlur: true)->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularCronograma($set, $get)),
@@ -123,7 +153,14 @@ class PrestamoBancarioResource extends Resource
                             Forms\Components\TextInput::make('Seguros')->numeric()->prefix('S/')->minValue(0)->default(0)->required(),
                             Forms\Components\TextInput::make('MontoCuota')->label('Cuota')->numeric()->prefix('S/')->minValue(0)->required(),
                             Forms\Components\TextInput::make('SaldoDeuda')->label('Saldo deuda')->numeric()->prefix('S/')->minValue(0)->required(),
-                        ])->columns(4)->defaultItems(0)->addable(false)->deletable(false)->reorderable(false)->columnSpanFull(),
+                        ])
+                        ->columns(['default' => 1, 'md' => 4, 'xl' => 8])
+                        ->itemLabel(fn (array $state): string => 'Cuota '.($state['Numero'] ?? ''))
+                        ->defaultItems(0)
+                        ->addable(false)
+                        ->deletable(false)
+                        ->reorderable(false)
+                        ->columnSpanFull(),
                 ]),
         ]);
     }
@@ -132,7 +169,11 @@ class PrestamoBancarioResource extends Resource
     {
         return $table->defaultSort('created_at', 'desc')->columns([
             Tables\Columns\TextColumn::make('PrestamoBancarioID')->label('#')->sortable(),
-            Tables\Columns\TextColumn::make('Banco')->searchable()->sortable(),
+            Tables\Columns\TextColumn::make('Banco')->label('Prestamista')->searchable()->sortable(),
+            Tables\Columns\BadgeColumn::make('TipoPrestamista')->label('Tipo')->formatStateUsing(fn (string $state): string => match ($state) {
+                PrestamoBancario::TIPO_TERCERO => 'Tercero',
+                default => 'Banco',
+            }),
             Tables\Columns\TextColumn::make('Cliente')->searchable()->wrap(),
             Tables\Columns\TextColumn::make('CuentaPrestamo')->label('Cuenta')->searchable(),
             Tables\Columns\TextColumn::make('FuentePago')->label('Origen de pago')->toggleable(),
@@ -150,8 +191,10 @@ class PrestamoBancarioResource extends Resource
                 default => $state,
             }),
         ])->filters([
-            Tables\Filters\SelectFilter::make('Banco')->options(fn () => CuentaTesoreria::query()
-                ->where('Estado', CuentaTesoreria::ESTADO_ACTIVA)->orderBy('Banco')->distinct()->pluck('Banco', 'Banco')),
+            Tables\Filters\SelectFilter::make('Banco')
+                ->label('Prestamista')
+                ->options(fn () => PrestamoBancario::query()
+                    ->whereNotNull('Banco')->orderBy('Banco')->distinct()->pluck('Banco', 'Banco')),
             Tables\Filters\SelectFilter::make('Estado')->options([
                 PrestamoBancario::ESTADO_VIGENTE => 'Vigente',
                 PrestamoBancario::ESTADO_CANCELADO => 'Cancelado',
@@ -163,9 +206,11 @@ class PrestamoBancarioResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
-            Infolists\Components\Section::make('Préstamo bancario')
+            Infolists\Components\Section::make('Préstamo')
                 ->schema([
-                    Infolists\Components\TextEntry::make('NombreBanco')->label('Banco'),
+                    Infolists\Components\TextEntry::make('NombreBanco')->label('Prestamista'),
+                    Infolists\Components\TextEntry::make('TipoPrestamista')->label('Tipo')->badge()
+                        ->formatStateUsing(fn (string $state): string => $state === PrestamoBancario::TIPO_TERCERO ? 'Tercero' : 'Banco'),
                     Infolists\Components\TextEntry::make('Cliente')->label('Cliente'),
                     Infolists\Components\TextEntry::make('CuentaPrestamo')->label('Cuenta'),
                     Infolists\Components\TextEntry::make('FuentePago')->label('Origen de pago'),

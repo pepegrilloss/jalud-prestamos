@@ -68,6 +68,25 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         $this->assertSame(900.0, (float) $fondo->fresh()->Saldo);
     }
 
+    public function test_pago_de_tercero_permite_monto_variable_y_descuenta_caja_gerencia(): void
+    {
+        [$prestamo, $cuota, $cuenta, $fondo] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        $prestamo->update([
+            'TipoPrestamista' => PrestamoBancario::TIPO_TERCERO,
+            'CuentaTesoreriaID' => null,
+        ]);
+
+        $pago = app(PrestamoBancarioService::class)->pagarCuota($cuota, [
+            'Monto' => 135.50,
+            'FechaContable' => '2026-07-30',
+        ], 13);
+
+        $this->assertSame(135.50, (float) $pago->Monto);
+        $this->assertSame(500.0, (float) $cuenta->fresh()->SaldoActual);
+        $this->assertSame(864.50, (float) $fondo->fresh()->Saldo);
+        $this->assertSame(CuotaPrestamoBancario::ESTADO_CANCELADA, $cuota->fresh()->Estado);
+    }
+
     public function test_cancelacion_anticipada_amortiza_solo_capital_y_anula_cuotas_pendientes(): void
     {
         [$prestamo, $cuota, $cuenta, $fondo] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
@@ -82,6 +101,25 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         $this->assertSame(80.0, (float) $cancelacion->Monto);
         $this->assertSame(PagoPrestamoBancario::TIPO_CANCELACION_ANTICIPADA, $cancelacion->Tipo);
         $this->assertSame(CuotaPrestamoBancario::ESTADO_ANULADA_ANTICIPADA, $cuota->fresh()->Estado);
+        $this->assertSame(PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO, $prestamo->fresh()->Estado);
+    }
+
+    public function test_cancelacion_anticipada_de_tercero_descuenta_capital_desde_caja_gerencia(): void
+    {
+        [$prestamo, $cuota, $cuenta, $fondo] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        $prestamo->update([
+            'TipoPrestamista' => PrestamoBancario::TIPO_TERCERO,
+            'CuentaTesoreriaID' => null,
+        ]);
+        $cuota->update(['Capital' => 80, 'Interes' => 20]);
+
+        $cancelacion = app(PrestamoBancarioService::class)->cancelarAnticipadamente($prestamo, [
+            'FechaContable' => '2026-07-30',
+        ], 13);
+
+        $this->assertSame(80.0, (float) $cancelacion->Monto);
+        $this->assertSame(500.0, (float) $cuenta->fresh()->SaldoActual);
+        $this->assertSame(920.0, (float) $fondo->fresh()->Saldo);
         $this->assertSame(PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO, $prestamo->fresh()->Estado);
     }
 
@@ -119,6 +157,7 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         ]);
         $prestamo = PrestamoBancario::create([
             'CuentaTesoreriaID' => $cuenta->CuentaTesoreriaID,
+            'TipoPrestamista' => PrestamoBancario::TIPO_BANCO,
             'Banco' => 'BBVA',
             'Cliente' => 'Cliente de prueba',
             'CuentaPrestamo' => 'PRESTAMO-001',
@@ -173,6 +212,7 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         Schema::create('tesoreria_prestamos_bancarios', function (Blueprint $table): void {
             $table->id('PrestamoBancarioID');
             $table->unsignedBigInteger('CuentaTesoreriaID')->nullable();
+            $table->string('TipoPrestamista')->default(PrestamoBancario::TIPO_BANCO);
             $table->string('Banco');
             $table->string('Cliente');
             $table->string('CuentaPrestamo');

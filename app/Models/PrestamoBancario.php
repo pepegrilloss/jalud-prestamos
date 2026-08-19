@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PrestamoBancario extends Model
 {
+    public const TIPO_BANCO = 'BANCO';
+
+    public const TIPO_TERCERO = 'TERCERO';
+
     public const ESTADO_VIGENTE = 'VIGENTE';
 
     public const ESTADO_CANCELADO = 'CANCELADO';
@@ -19,7 +23,7 @@ class PrestamoBancario extends Model
     protected $primaryKey = 'PrestamoBancarioID';
 
     protected $fillable = [
-        'CuentaTesoreriaID', 'Banco', 'Cliente', 'CuentaPrestamo', 'Operacion', 'MontoPrestamo',
+        'CuentaTesoreriaID', 'TipoPrestamista', 'Banco', 'Cliente', 'CuentaPrestamo', 'Operacion', 'MontoPrestamo',
         'FechaDesembolso', 'FechaVencimiento', 'NumeroCuotas', 'DiaPago', 'PagoMensual',
         'TEA', 'TED', 'Estado', 'Observaciones',
     ];
@@ -46,12 +50,17 @@ class PrestamoBancario extends Model
 
     public function getNombreBancoAttribute(): string
     {
-        return $this->Banco ?? $this->cuentaTesoreria?->Banco ?? 'Banco no disponible';
+        return $this->Banco ?? $this->cuentaTesoreria?->Banco ?? 'Prestamista no disponible';
     }
 
     public function getFuentePagoAttribute(): string
     {
         return $this->cuentaTesoreria?->NombreCompleto ?? 'Caja Abierta - Gerencia';
+    }
+
+    public function getEsPrestamoTerceroAttribute(): bool
+    {
+        return $this->TipoPrestamista === self::TIPO_TERCERO;
     }
 
     public function getCapitalPendienteAttribute(): float

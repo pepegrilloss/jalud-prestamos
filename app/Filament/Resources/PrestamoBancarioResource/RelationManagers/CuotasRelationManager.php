@@ -46,11 +46,19 @@ class CuotasRelationManager extends RelationManager
                 ->visible(fn (CuotaPrestamoBancario $record) => $record->Estado === CuotaPrestamoBancario::ESTADO_PENDIENTE)
                 ->requiresConfirmation()
                 ->modalHeading('Confirmar pago de cuota')
-                ->modalDescription(fn (CuotaPrestamoBancario $record) => 'Se descontará S/ '
-                    .number_format((float) $record->MontoCuota, 2)
-                    .' de '.$record->prestamo->FuentePago
-                    .' y se registrará como pago completo.')
+                ->modalDescription(fn (CuotaPrestamoBancario $record) => $record->prestamo->EsPrestamoTercero
+                    ? 'Ingrese el monto real de esta cuota. Se descontará de Caja Abierta - Gerencia.'
+                    : 'Se descontará S/ '.number_format((float) $record->MontoCuota, 2)
+                        .' de '.$record->prestamo->FuentePago.' y se registrará como pago completo.')
                 ->form([
+                    Forms\Components\TextInput::make('Monto')
+                        ->label('Monto pagado')
+                        ->prefix('S/')
+                        ->numeric()
+                        ->minValue(0.01)
+                        ->default(fn (CuotaPrestamoBancario $record): float => (float) $record->MontoCuota)
+                        ->visible(fn (CuotaPrestamoBancario $record): bool => $record->prestamo->EsPrestamoTercero)
+                        ->required(fn (CuotaPrestamoBancario $record): bool => $record->prestamo->EsPrestamoTercero),
                     Forms\Components\DatePicker::make('FechaContable')
                         ->label('Fecha contable')
                         ->default(now())

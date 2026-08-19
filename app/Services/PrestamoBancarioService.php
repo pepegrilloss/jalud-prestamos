@@ -74,28 +74,36 @@ class PrestamoBancarioService
     {
         $cronograma = $data['Cronograma'] ?? $this->generarCronograma($data);
         $this->validarPrestamo($data, $cronograma);
+        $tipoPrestamista = $data['TipoPrestamista'] ?? PrestamoBancario::TIPO_BANCO;
+        $nombrePrestamista = $tipoPrestamista === PrestamoBancario::TIPO_TERCERO
+            ? trim((string) ($data['PrestamistaTercero'] ?? ''))
+            : trim((string) ($data['Banco'] ?? ''));
         $cuentaTesoreriaId = filled($data['CuentaTesoreriaID'] ?? null)
             ? (int) $data['CuentaTesoreriaID']
             : null;
+        if ($tipoPrestamista === PrestamoBancario::TIPO_TERCERO) {
+            $cuentaTesoreriaId = null;
+        }
         if ($cuentaTesoreriaId) {
             $cuenta = CuentaTesoreria::query()
                 ->whereKey($cuentaTesoreriaId)
                 ->where('Estado', CuentaTesoreria::ESTADO_ACTIVA)
                 ->first();
-            if (! $cuenta || $cuenta->Banco !== trim($data['Banco'])) {
+            if (! $cuenta || $cuenta->Banco !== $nombrePrestamista) {
                 throw ValidationException::withMessages([
                     'CuentaTesoreriaID' => 'La cuenta de pago debe estar activa y pertenecer al banco seleccionado.',
                 ]);
             }
         }
 
-        return DB::transaction(function () use ($data, $cronograma, $cuentaTesoreriaId) {
+        return DB::transaction(function () use ($data, $cronograma, $cuentaTesoreriaId, $tipoPrestamista, $nombrePrestamista) {
             $ultimaCuota = collect($cronograma)->sortBy('Numero')->last();
             $prestamo = PrestamoBancario::create([
                 'CuentaTesoreriaID' => $cuentaTesoreriaId,
-                'Banco' => trim($data['Banco']),
+                'TipoPrestamista' => $tipoPrestamista,
+                'Banco' => $nombrePrestamista,
                 'Cliente' => trim($data['Cliente']),
-                'CuentaPrestamo' => trim($data['CuentaPrestamo']),
+                'CuentaPrestamo' => filled($data['CuentaPrestamo'] ?? null) ? trim($data['CuentaPrestamo']) : 'SIN CUENTA',
                 'Operacion' => filled($data['Operacion'] ?? null) ? trim($data['Operacion']) : null,
                 'MontoPrestamo' => round((float) $data['MontoPrestamo'], 2),
                 'FechaDesembolso' => Carbon::parse($data['FechaDesembolso'])->toDateString(),
@@ -143,7 +151,15 @@ class PrestamoBancarioService
             }
 
             $fechaContable = $this->resolverFechaContable($data['FechaContable'] ?? now()->toDateString());
-            $monto = round((float) $cuota->MontoCuota, 2);
+            $montoProgramado = round((float) $cuota->MontoCuota, 2);
+            $monto = $prestamo->EsPrestamoTercero
+                ? round((float) ($data['Monto'] ?? $montoProgramado), 2)
+                : $montoProgramado;
+            if ($monto <= 0) {
+                throw ValidationException::withMessages([
+                    'Monto' => 'El monto pagado debe ser mayor que cero.',
+                ]);
+            }
             $ahora = now();
             $origen = $this->obtenerOrigenPagoBloqueado($prestamo);
             [$saldoAnterior, $saldoNuevo] = $this->debitarOrigen($origen, $monto, $ahora);
@@ -438,8 +454,21 @@ class PrestamoBancarioService
 
     private function validarPrestamo(array $data, array $cronograma): void
     {
-        if (empty($data['Banco']) || empty($data['Cliente']) || empty($data['CuentaPrestamo'])) {
-            throw ValidationException::withMessages(['Banco' => 'Banco, cliente y cuenta del prestamo son obligatorios.']);
+        $tipoPrestamista = $data['TipoPrestamista'] ?? PrestamoBancario::TIPO_BANCO;
+        if (! in_array($tipoPrestamista, [PrestamoBancario::TIPO_BANCO, PrestamoBancario::TIPO_TERCERO], true)) {
+            throw ValidationException::withMessages(['TipoPrestamista' => 'Seleccione un tipo de prestamista válido.']);
+        }
+        if (empty($data['Cliente'])) {
+            throw ValidationException::withMessages(['Cliente' => 'El cliente o deudor es obligatorio.']);
+        }
+        if ($tipoPrestamista === PrestamoBancario::TIPO_BANCO && empty($data['Banco'])) {
+            throw ValidationException::withMessages(['Banco' => 'Seleccione el banco del préstamo.']);
+        }
+        if ($tipoPrestamista === PrestamoBancario::TIPO_BANCO && empty($data['CuentaPrestamo'])) {
+            throw ValidationException::withMessages(['CuentaPrestamo' => 'Ingrese la cuenta o referencia del préstamo bancario.']);
+        }
+        if ($tipoPrestamista === PrestamoBancario::TIPO_TERCERO && empty($data['PrestamistaTercero'])) {
+            throw ValidationException::withMessages(['PrestamistaTercero' => 'Ingrese el nombre del prestamista o tercero.']);
         }
         if ((float) ($data['MontoPrestamo'] ?? 0) <= 0 || (float) ($data['TEA'] ?? -1) < 0) {
             throw ValidationException::withMessages(['MontoPrestamo' => 'Monto y TEA deben ser validos.']);

@@ -21,7 +21,8 @@ class ViewPrestamoBancario extends ViewRecord
             Actions\Action::make('configurarCuentaPago')
                 ->label('Configurar origen de pago')
                 ->icon('heroicon-o-credit-card')
-                ->visible(fn () => $this->record->Estado === PrestamoBancario::ESTADO_VIGENTE)
+                ->visible(fn () => $this->record->Estado === PrestamoBancario::ESTADO_VIGENTE
+                    && ! $this->record->EsPrestamoTercero)
                 ->fillForm(fn () => ['CuentaTesoreriaID' => $this->record->CuentaTesoreriaID])
                 ->form([
                     Forms\Components\Select::make('CuentaTesoreriaID')
