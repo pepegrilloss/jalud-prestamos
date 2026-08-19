@@ -49,6 +49,10 @@ class AdminPanelProvider extends PanelProvider
                 Css::make('custom-scrollbar-css', public_path('css/custom-scrollbar.css')),
             ])
             ->renderHook(
+                PanelsRenderHook::HEAD_START,
+                fn(): string => '<link rel="stylesheet" href="' . asset('css/login-custom.css') . '?v=' . filemtime(public_path('css/login-custom.css')) . '">'
+            )
+            ->renderHook(
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn(): string => Blade::render('
                     @php

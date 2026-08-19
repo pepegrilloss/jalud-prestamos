@@ -11,6 +11,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Assets\Css;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -37,6 +38,10 @@ class CumplimientoPanelProvider extends PanelProvider
                 Css::make('custom-login-css', public_path('css/login-custom.css')),
                 Css::make('custom-scrollbar-css', public_path('css/custom-scrollbar.css')),
             ])
+            ->renderHook(
+                PanelsRenderHook::HEAD_START,
+                fn(): string => '<link rel="stylesheet" href="' . asset('css/login-custom.css') . '?v=' . filemtime(public_path('css/login-custom.css')) . '">'
+            )
             ->navigationGroups(['Cumplimiento'])
             ->resources([
                 RosCasoResource::class,

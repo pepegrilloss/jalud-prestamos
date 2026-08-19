@@ -1,128 +1,76 @@
-<div class="jalud-login-wrapper">
+@php
+    $esCumplimiento = filament()->getCurrentPanel()?->getId() === 'cumplimiento';
+    $tituloArea = $esCumplimiento ? 'Cumplimiento SBS' : 'JALUD';
+@endphp
 
-    {{-- ══════════════════════════════════
-    IZQUIERDA: Imagen / Branding
-    ══════════════════════════════════ --}}
-    <div class="jalud-login-image-side">
-
-        <div class="jalud-image-overlay"></div>
-
-        <img src="{{ asset('JALUD.png') }}" alt="Fondo JALUD" class="jalud-bg-image"
-            onerror="this.src='https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80'">
-
-        <div class="jalud-geo-circle jalud-geo-1"></div>
-        <div class="jalud-geo-circle jalud-geo-2"></div>
-        <div class="jalud-geo-circle jalud-geo-3"></div>
+<div class="jalud-login-wrapper {{ $esCumplimiento ? 'is-compliance' : 'is-core' }}">
+    <section class="jalud-login-image-side" aria-label="{{ $tituloArea }}">
+        <img
+            src="{{ asset('images/login-jalud.webp') }}"
+            alt="Reunión de trabajo de JALUD"
+            class="jalud-bg-image"
+            fetchpriority="high"
+        >
+        <div class="jalud-image-overlay" aria-hidden="true"></div>
 
         <div class="jalud-brand-content">
-            <div class="jalud-brand-badge">Sistema de Gestión</div>
-            <h2 class="jalud-brand-headline">
+            <div class="jalud-brand-badge">
+                <span aria-hidden="true"></span>
+                {{ $esCumplimiento ? 'Gestión de cumplimiento' : 'Sistema de gestión' }}
+            </div>
+
+            <h1 class="jalud-brand-headline">
                 Bienvenido a
-                <span>JALUD</span>
-            </h2>
+                <strong>{{ $tituloArea }}</strong>
+            </h1>
+
             <p class="jalud-brand-sub">
-                Plataforma de préstamos y créditos.<br>
-                Gestiona tu cartera con confianza.
+                @if ($esCumplimiento)
+                    Prevención, control y trazabilidad para una gestión responsable.
+                @else
+                    Plataforma de préstamos y créditos.<br>
+                    Gestiona tu cartera con confianza.
+                @endif
             </p>
-            <div class="jalud-brand-dots">
-                <span class="dot active"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-            </div>
         </div>
-    </div>
+    </section>
 
-    {{-- ══════════════════════════════════
-    DERECHA: Formulario
-    ══════════════════════════════════ --}}
-    <div class="jalud-login-form-side">
+    <main class="jalud-login-form-side">
+        <div class="jalud-panel-stack">
+            <section class="jalud-form-card" aria-labelledby="jalud-login-title">
+                <div class="jalud-logo-wrap">
+                    <img src="{{ asset('logo.png') }}" alt="JALUD" class="jalud-logo">
+                    @if ($esCumplimiento)
+                        <span class="jalud-area-label">Cumplimiento SBS</span>
+                    @endif
+                </div>
 
-        <div class="jalud-particle jalud-p1"></div>
-        <div class="jalud-particle jalud-p2"></div>
-        <div class="jalud-particle jalud-p3"></div>
+                <header class="jalud-form-header">
+                    <h2 id="jalud-login-title" class="jalud-form-title">Iniciar sesión</h2>
+                    <p class="jalud-form-subtitle">
+                        {{ $esCumplimiento
+                            ? 'Ingresa tus credenciales para acceder al panel de cumplimiento.'
+                            : 'Ingresa tus credenciales para acceder al sistema.' }}
+                    </p>
+                </header>
 
-        <div class="jalud-form-container">
+                <div class="jalud-fields-wrap">
+                    <x-filament-panels::form wire:submit="authenticate">
+                        {{ $this->form }}
 
-            <div class="jalud-logo-wrap">
-                <img src="{{ asset('logo.png') }}" alt="Logo JALUD" class="jalud-logo"
-                    onerror="this.src='https://ui-avatars.com/api/?name=JALUD&background=4f7942&color=fff&size=120'">
-            </div>
+                        <x-filament-panels::form.actions
+                            :actions="$this->getCachedFormActions()"
+                            :full-width="$this->hasFullWidthFormActions()"
+                            class="jalud-actions-wrap"
+                        />
+                    </x-filament-panels::form>
+                </div>
+            </section>
 
-            <div class="jalud-form-header">
-                <h1 class="jalud-form-title">Iniciar Sesión</h1>
-                <p class="jalud-form-subtitle">Ingresa tus credenciales para acceder al sistema</p>
-            </div>
-
-            <div class="jalud-divider">
-                <span class="jalud-divider-line"></span>
-                <span class="jalud-divider-icon">🔐</span>
-                <span class="jalud-divider-line"></span>
-            </div>
-            
-            <div class="jalud-fields-wrap">
-                <x-filament-panels::form wire:submit="authenticate">
-                    {{ $this->form }}
-                    <x-filament-panels::form.actions :actions="$this->getCachedFormActions()"
-                        :full-width="$this->hasFullWidthFormActions()" class="jalud-actions-wrap" />
-                </x-filament-panels::form>
-            </div>
-
-            <div class="jalud-form-footer">
-                <p>&copy; {{ date('Y') }} jalud-prestamos. Todos los derechos reservados.</p>
-            </div>
-
+            <footer class="jalud-form-footer">
+                &copy; {{ date('Y') }} {{ $esCumplimiento ? 'JALUD Cumplimiento SBS' : 'JALUD Préstamos' }}.
+                Todos los derechos reservados.
+            </footer>
         </div>
-    </div>
-
-    <style>
-        /* 
-           FIX PARA MODO OSCURO EN LOGIN 
-           Aseguramos que los labels y textos sean visibles 
-        */
-        .dark .jalud-login-form-side {
-            background-color: #111827 !important;
-        }
-
-        .dark .jalud-form-title {
-            color: #ffffff !important;
-        }
-
-        .dark .jalud-form-subtitle, 
-        .dark .jalud-form-footer p {
-            color: #9ca3af !important;
-        }
-
-        /* Labels de Filament en modo oscuro */
-        .dark .fi-fo-field-label {
-            color: #e5e7eb !important;
-        }
-
-        /* Inputs de Filament en modo oscuro */
-        .dark .fi-input-wrp {
-            background-color: #1f2937 !important;
-            border-color: #374151 !important;
-        }
-        
-        .dark .fi-input {
-            color: #ffffff !important;
-        }
-
-        /* Asegurar visibilidad de labels específicos si son blancos por error */
-        .dark label {
-            color: #e5e7eb !important;
-        }
-
-        /* Ajustes para el contenedor principal en responsive */
-        @media (max-width: 1024px) {
-            .jalud-login-wrapper {
-                flex-direction: column;
-            }
-            .jalud-login-image-side {
-                display: none;
-            }
-            .jalud-login-form-side {
-                width: 100%;
-            }
-        }
-    </style>
+    </main>
 </div>

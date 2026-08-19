@@ -96,7 +96,17 @@ class LogResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->poll('15s')
+            ->modifyQueryUsing(fn (Builder $query) => $query->select([
+                'logs.id',
+                'logs.user_id',
+                'logs.accion',
+                'logs.modelo',
+                'logs.modelo_id',
+                'logs.ip_address',
+                'logs.machine_name',
+                'logs.created_at',
+                'logs.SedeID',
+            ]))
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
@@ -163,7 +173,9 @@ class LogResource extends Resource
                     ->label('Modelo')
                     ->options(fn() => \App\Models\Log::distinct()->pluck('modelo', 'modelo')->toArray()),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('id', 'desc')
+            ->paginationPageOptions([10, 25, 50])
+            ->defaultPaginationPageOption(25)
             ->actions([
                 Tables\Actions\ViewAction::make(),
             ])

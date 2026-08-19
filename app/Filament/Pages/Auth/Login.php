@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Auth;
 
+use Filament\Actions\Action;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -20,7 +21,7 @@ class Login extends BaseLogin
             ->schema([
                 $this->getUsernameFormComponent(),
                 $this->getPasswordFormComponent(),
-                //$this->getRememberFormComponent(),
+                $this->getRememberFormComponent(),
             ])
             ->statePath('data');
     }
@@ -29,10 +30,26 @@ class Login extends BaseLogin
     {
         return TextInput::make('username')
             ->label('Usuario')
+            ->prefixIcon('heroicon-m-user')
+            ->placeholder('Ingrese su usuario')
             ->required()
             ->autocomplete()
             ->autofocus()
             ->extraInputAttributes(['tabindex' => 1]);
+    }
+
+    protected function getPasswordFormComponent(): Component
+    {
+        return parent::getPasswordFormComponent()
+            ->label('Contraseña')
+            ->prefixIcon('heroicon-m-lock-closed')
+            ->placeholder('Ingrese su contraseña');
+    }
+
+    protected function getAuthenticateFormAction(): Action
+    {
+        return parent::getAuthenticateFormAction()
+            ->label('Iniciar sesión');
     }
 
     protected function getCredentialsFromFormData(array $data): array

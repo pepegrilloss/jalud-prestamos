@@ -63,8 +63,8 @@ class GerenciaPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 \Filament\View\PanelsRenderHook::HEAD_START,
-                fn(): string => '<link rel="stylesheet" href="' . asset('css/login-custom.css') . '?v=' . time() . '">' .
-                '<link rel="stylesheet" href="' . asset('css/custom-scrollbar.css') . '?v=' . time() . '">'
+                fn(): string => '<link rel="stylesheet" href="' . asset('css/login-custom.css') . '?v=' . filemtime(public_path('css/login-custom.css')) . '">' .
+                '<link rel="stylesheet" href="' . asset('css/custom-scrollbar.css') . '?v=' . filemtime(public_path('css/custom-scrollbar.css')) . '">'
             )
             ->renderHook(
                 \Filament\View\PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
