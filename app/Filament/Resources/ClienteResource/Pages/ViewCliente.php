@@ -226,12 +226,16 @@ class ViewCliente extends ViewRecord
                         $negocio->ZonaID = $zonaNuevaID;
                         $negocio->save();
 
-                        // 2. Actualizar zona en TODAS las proposiciones de crédito activas del cliente
+                        // 2. Actualizar zona ÚNICAMENTE en el crédito activo vigente (con saldo pendiente > 0 y no saldado)
                         $proposicionesActualizadas = \App\Models\ProposicionCredito::withoutGlobalScope('sede')
                             ->withoutGlobalScope('eliminado')
                             ->where('ClienteID', $cliente->ClienteID)
                             ->where('Activo', true)
                             ->where('FueRefinanciada', false)
+                            ->where('SaldoPendiente', '>', 0)
+                            ->whereHas('credito', function ($q) {
+                                $q->whereNull('FechaSaldamiento');
+                            })
                             ->update(['ZonaID' => $zonaNuevaID]);
 
                         // 3. Actualizar promotor/cobrador del cliente
