@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\ResolucionExcedenteService;
 use PHPUnit\Framework\TestCase;
 
 class ResolucionExcedenteServiceTest extends TestCase
@@ -16,5 +17,23 @@ class ResolucionExcedenteServiceTest extends TestCase
         $this->assertStringNotContainsString('verificarCreditoCancelado', $source);
         $this->assertStringNotContainsString("whereHas('cuota'", $source);
         $this->assertStringNotContainsString("cuotas()->where('Activo', 1)->sum('MontoCuota')", $source);
+    }
+
+    public function test_separa_la_parte_que_cubre_deuda_del_pago_a_mayor(): void
+    {
+        $this->assertSame([
+            'monto_aplicar' => 65.0,
+            'saldo_aplicado' => 62.0,
+            'pago_a_mayor' => 3.0,
+        ], ResolucionExcedenteService::calcularDistribucion(65, 62));
+    }
+
+    public function test_todo_el_exceso_es_a_mayor_si_el_credito_ya_esta_saldado(): void
+    {
+        $this->assertSame([
+            'monto_aplicar' => 250.0,
+            'saldo_aplicado' => 0.0,
+            'pago_a_mayor' => 250.0,
+        ], ResolucionExcedenteService::calcularDistribucion(250, 0));
     }
 }

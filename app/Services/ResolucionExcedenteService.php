@@ -2,14 +2,29 @@
 
 namespace App\Services;
 
-use App\Models\SolicitudResolucionExcedente;
-use App\Models\Pago;
 use App\Models\Cuota;
-use Illuminate\Support\Facades\DB;
+use App\Models\Pago;
+use App\Models\SolicitudResolucionExcedente;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ResolucionExcedenteService
 {
+    private const TOLERANCIA = 0.009;
+
+    public static function calcularDistribucion(float $montoAplicar, float $saldoPendiente): array
+    {
+        $monto = round(max(0, $montoAplicar), 2);
+        $saldo = round(max(0, $saldoPendiente), 2);
+        $aplicado = min($monto, $saldo);
+
+        return [
+            'monto_aplicar' => $monto,
+            'saldo_aplicado' => $aplicado,
+            'pago_a_mayor' => round(max(0, $monto - $aplicado), 2),
+        ];
+    }
+
     public function aprobar(SolicitudResolucionExcedente $solicitud, $aprobador)
     {
         if ($solicitud->Estado !== 'PENDIENTE') {
@@ -46,8 +61,9 @@ class ResolucionExcedenteService
 
         // Obtener el pago original del Cliente A
         $pagoOriginal = Pago::find($solicitud->PagoOrigenID);
-        if (!$pagoOriginal)
+        if (! $pagoOriginal) {
             return;
+        }
 
         $montoAplicar = $solicitud->MontoAplicar ?? $pagoOriginal->MontoPagado;
 
@@ -57,10 +73,10 @@ class ResolucionExcedenteService
 
         // 1. Marcar el pago original como TRASLADADO
         $pagoOriginal->EstadoTraslado = 'TRASLADADO';
-        $pagoOriginal->Comentario = ($pagoOriginal->Comentario ? $pagoOriginal->Comentario . ' | ' : '')
-            . "TRASLADADO a {$clienteDestinoNombre} - Solicitud #{$solicitud->SolicitudID}";
+        $pagoOriginal->Comentario = ($pagoOriginal->Comentario ? $pagoOriginal->Comentario.' | ' : '')
+            ."TRASLADADO a {$clienteDestinoNombre} - Solicitud #{$solicitud->SolicitudID}";
         $pagoOriginal->save(); // PagoObserver recalcula SaldoPendiente del crédito origen
-        
+
         // RECALCULAR ESTADO DE LA CUOTA ORIGEN
         if ($pagoOriginal->CuotaID) {
             $this->recalcularEstadoCuota($pagoOriginal->CuotaID);
@@ -82,7 +98,7 @@ class ResolucionExcedenteService
             'EsPagoAutomatico' => true,
             'EsPagoAMayor' => false,
             'PagoOrigenID' => $pagoOriginal->PagoID,
-            'Comentario' => "Recibido por traslado de {$clienteOrigenNombre}\nSolicitud #{$solicitud->SolicitudID}.\nMonto: S/ " . number_format($montoAplicar, 2),
+            'Comentario' => "Recibido por traslado de {$clienteOrigenNombre}\nSolicitud #{$solicitud->SolicitudID}.\nMonto: S/ ".number_format($montoAplicar, 2),
             'UsuarioRegistro' => $aprobador->name,
             'Activo' => true,
             'SedeID' => optional(\App\Models\Credito::withoutGlobalScope('sede')->find($solicitud->CreditoDestinoID))->SedeID
@@ -90,7 +106,7 @@ class ResolucionExcedenteService
                 ?? $aprobador->SedeID,
             'SolicitudResolucionID' => $solicitud->SolicitudID,
         ]);
-        
+
         if ($nuevoPago->CuotaID) {
             $this->recalcularEstadoCuota($nuevoPago->CuotaID);
         }
@@ -101,11 +117,11 @@ class ResolucionExcedenteService
         app(SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
 
         $pagoOrigen = Pago::lockForUpdate()->find($solicitud->PagoOrigenID);
-        if (!$pagoOrigen) {
+        if (! $pagoOrigen) {
             throw new \Exception('El pago a mayor seleccionado ya no existe.');
         }
 
-        if (!$pagoOrigen->EsPagoAMayor) {
+        if (! $pagoOrigen->EsPagoAMayor) {
             throw new \Exception('El pago seleccionado no es un pago a mayor.');
         }
 
@@ -123,7 +139,7 @@ class ResolucionExcedenteService
         if (round($montoAplicar, 2) > round($montoDisponible, 2)) {
             throw new \Exception(
                 'La devolucion no puede superar el monto disponible del pago a mayor: S/ '
-                . number_format($montoDisponible, 2)
+                .number_format($montoDisponible, 2)
             );
         }
 
@@ -138,15 +154,15 @@ class ResolucionExcedenteService
             $solicitud->CreditoDestinoID,
             $aprobador->id,
             'Devolucion en efectivo de pago a mayor #'
-                . $pagoOrigen->PagoID
-                . ' a '
-                . ($solicitud->clienteDestino?->NombresApellidos ?? 'cliente')
-                . ' por solicitud #'
-                . $solicitud->SolicitudID
-                . ' por S/ '
-                . number_format($montoAplicar, 2)
-                . ($credito?->proposicion?->CodigoCredito ? ' - credito ' . $credito->proposicion->CodigoCredito : '')
-                . ($solicitud->DatosValeCaja ? ' - vale: ' . $solicitud->DatosValeCaja : '')
+                .$pagoOrigen->PagoID
+                .' a '
+                .($solicitud->clienteDestino?->NombresApellidos ?? 'cliente')
+                .' por solicitud #'
+                .$solicitud->SolicitudID
+                .' por S/ '
+                .number_format($montoAplicar, 2)
+                .($credito?->proposicion?->CodigoCredito ? ' - credito '.$credito->proposicion->CodigoCredito : '')
+                .($solicitud->DatosValeCaja ? ' - vale: '.$solicitud->DatosValeCaja : '')
         );
 
         $nuevoDisponible = $montoDisponible - $montoAplicar;
@@ -154,8 +170,8 @@ class ResolucionExcedenteService
             $pagoOrigen->EstadoTraslado = 'DEVUELTO';
         }
 
-        $pagoOrigen->Comentario = ($pagoOrigen->Comentario ? $pagoOrigen->Comentario . ' | ' : '')
-            . "DEVOLUCION EFECTIVO A MAYOR S/ " . number_format($montoAplicar, 2) . " - Solicitud #{$solicitud->SolicitudID}";
+        $pagoOrigen->Comentario = ($pagoOrigen->Comentario ? $pagoOrigen->Comentario.' | ' : '')
+            .'DEVOLUCION EFECTIVO A MAYOR S/ '.number_format($montoAplicar, 2)." - Solicitud #{$solicitud->SolicitudID}";
         $pagoOrigen->save();
     }
 
@@ -181,16 +197,17 @@ class ResolucionExcedenteService
     private function procesarExcedente(SolicitudResolucionExcedente $solicitud, $aprobador): void
     {
         $excedente = $solicitud->excedente;
-        if (!$excedente)
+        if (! $excedente) {
             return;
+        }
 
         $montoAplicar = $solicitud->MontoAplicar ?? $excedente->Monto;
 
         if ($montoAplicar > $excedente->Monto) {
             throw new \Exception(
-                "El excedente ya no tiene saldo suficiente. Disponible: S/ "
-                . number_format($excedente->Monto, 2)
-                . ". Monto solicitado: S/ " . number_format($montoAplicar, 2)
+                'El excedente ya no tiene saldo suficiente. Disponible: S/ '
+                .number_format($excedente->Monto, 2)
+                .'. Monto solicitado: S/ '.number_format($montoAplicar, 2)
             );
         }
 
@@ -212,7 +229,7 @@ class ResolucionExcedenteService
         $excedente->save();
 
         if ($solicitud->TipoResolucion === 'DEVOLUCION_EFECTIVO') {
-            if (!$solicitud->CreditoDestinoID) {
+            if (! $solicitud->CreditoDestinoID) {
                 throw new \Exception('Debe seleccionar el credito asociado a la devolucion en efectivo.');
             }
 
@@ -227,11 +244,11 @@ class ResolucionExcedenteService
                 $solicitud->CreditoDestinoID,
                 $aprobador->id,
                 'Devolucion en efectivo a '
-                    . ($solicitud->clienteDestino?->NombresApellidos ?? 'cliente')
-                    . ' por solicitud #'
-                    . $solicitud->SolicitudID
-                    . ($credito?->proposicion?->CodigoCredito ? ' - credito ' . $credito->proposicion->CodigoCredito : '')
-                    . ($solicitud->DatosValeCaja ? ' - vale: ' . $solicitud->DatosValeCaja : '')
+                    .($solicitud->clienteDestino?->NombresApellidos ?? 'cliente')
+                    .' por solicitud #'
+                    .$solicitud->SolicitudID
+                    .($credito?->proposicion?->CodigoCredito ? ' - credito '.$credito->proposicion->CodigoCredito : '')
+                    .($solicitud->DatosValeCaja ? ' - vale: '.$solicitud->DatosValeCaja : '')
             );
 
             return;
@@ -239,11 +256,11 @@ class ResolucionExcedenteService
 
         // AHORA SIEMPRE CREAMOS UN PAGO NUEVO INDEPENDIENTE.
         // Esto garantiza que el dinero de extornos (Cuenta a Mayor) jamás se mezcle con pagos físicos normales.
-        
+
         // 1. Asegurar que tenemos un CreditoDestinoID para asignar el nuevo pago
-        if (!$solicitud->CreditoDestinoID) {
+        if (! $solicitud->CreditoDestinoID) {
             $clienteID = $solicitud->ClienteDestinoID ?? $solicitud->ClienteOrigenID;
-            
+
             if ($clienteID) {
                 // Buscar algún crédito activo del cliente
                 $creditoActivo = \App\Models\Credito::whereHas('proposicion', function ($q) use ($clienteID) {
@@ -252,7 +269,7 @@ class ResolucionExcedenteService
                     ->where('SedeID', $solicitud->SedeID)
                     ->where('Activo', 1)
                     ->first();
-                
+
                 if ($creditoActivo) {
                     $solicitud->CreditoDestinoID = $creditoActivo->CreditoID;
                     $solicitud->save();
@@ -260,8 +277,8 @@ class ResolucionExcedenteService
                 }
             }
         }
-        
-        // 2. Crear el pago nuevo como Cuenta a Mayor
+
+        // 2. Distribuir el importe entre deuda y pago a mayor.
         if ($solicitud->CreditoDestinoID) {
             $this->crearPagoNuevoDesdeExcedente($solicitud, $excedente, $montoAplicar, $aprobador);
         } else {
@@ -292,78 +309,65 @@ class ResolucionExcedenteService
             $fechaPago = $fechaAbierta ? $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second) : Carbon::now();
         }
 
-        // REGLA (confirmada): el pago generado por el extorno se marca como A MAYOR
-        // solo si el credito destino tiene saldo 0 (saldado) al momento de la solicitud.
-        // Si tiene saldo pendiente, es una regularizacion (no a mayor).
-        $esPagoAMayor = $this->creditoDestinoSaldadoAlMomento($solicitud);
+        $credito = \App\Models\Credito::withoutGlobalScope('sede')
+            ->where('CreditoID', $solicitud->CreditoDestinoID)
+            ->lockForUpdate()
+            ->firstOrFail();
+        $proposicion = \App\Models\ProposicionCredito::withoutGlobalScope('sede')
+            ->where('ProposicionCreditoID', $credito->ProposicionCreditoID)
+            ->lockForUpdate()
+            ->firstOrFail();
+        $distribucion = self::calcularDistribucion($montoAplicar, (float) $proposicion->SaldoPendiente);
 
-        $nuevoPago = Pago::create([
+        $datosBase = [
             'CreditoID' => $solicitud->CreditoDestinoID,
             'CuotaID' => null,
-            'MontoPagado' => $montoAplicar,
             'FechaPago' => $fechaPago,
             'TipoPago' => $tipoPago,
             'TipoConcepto' => 'C',
             'EsMora' => false,
             'EsPagoAutomatico' => true,
-            'EsPagoAMayor' => $esPagoAMayor,
-            'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}.\nTipo: {$solicitud->TipoResolucion}.\nMonto aplicado: S/ " . number_format($montoAplicar, 2),
             'UsuarioRegistro' => $aprobador->name,
             'Activo' => true,
-            'SedeID' => optional(\App\Models\Credito::withoutGlobalScope('sede')->find($solicitud->CreditoDestinoID))->SedeID
-                ?? $solicitud->SedeID
-                ?? $aprobador->SedeID,
+            'SedeID' => $credito->SedeID ?? $solicitud->SedeID ?? $aprobador->SedeID,
             'SolicitudResolucionID' => $solicitud->SolicitudID,
-        ]);
+        ];
 
-        if ($nuevoPago->CuotaID) {
-            $this->recalcularEstadoCuota($nuevoPago->CuotaID);
+        if ($distribucion['saldo_aplicado'] > self::TOLERANCIA) {
+            Pago::create($datosBase + [
+                'MontoPagado' => $distribucion['saldo_aplicado'],
+                'EsPagoAMayor' => false,
+                'EsPagoAMayorPorMora' => false,
+                'Comentario' => "Pago generado por Extorno/Resolución #{$solicitud->SolicitudID}.\n"
+                    ."Tipo: {$solicitud->TipoResolucion}.\n"
+                    .'Aplicado a deuda: S/ '.number_format($distribucion['saldo_aplicado'], 2),
+            ]);
+        }
+
+        if ($distribucion['pago_a_mayor'] > self::TOLERANCIA) {
+            Pago::create($datosBase + [
+                'MontoPagado' => $distribucion['pago_a_mayor'],
+                'EsPagoAMayor' => true,
+                'EsPagoAMayorPorMora' => false,
+                'Comentario' => "Pago a mayor generado por Extorno/Resolución #{$solicitud->SolicitudID}.\n"
+                    ."Tipo: {$solicitud->TipoResolucion}.\n"
+                    .'Exceso no aplicado a deuda: S/ '.number_format($distribucion['pago_a_mayor'], 2),
+            ]);
         }
     }
 
-    /**
-     * Determina si el credito destino estaba saldado (saldo 0) al momento
-     * de crearse la solicitud de resolucion. Suma los pagos normales activos
-     * (no a mayor, no mora, no trasladados) con FechaPago <= created_at de la
-     * solicitud y compara contra MontoTotalPagar.
-     */
-    private function creditoDestinoSaldadoAlMomento(SolicitudResolucionExcedente $solicitud): bool
-    {
-        $credito = \App\Models\Credito::withoutGlobalScope('sede')
-            ->with('proposicion')
-            ->find($solicitud->CreditoDestinoID);
-
-        if (! $credito || ! $credito->proposicion) {
-            return false;
-        }
-
-        $montoTotalPagar = (float) ($credito->proposicion->MontoTotalPagar ?? 0);
-
-        $pagadoNormal = (float) Pago::where('CreditoID', $credito->CreditoID)
-            ->where('Activo', 1)
-            ->where('EsMora', 0)
-            ->where('EsPagoAMayor', 0)
-            ->where('EsPagoAMayorPorMora', 0)
-            ->where('FechaPago', '<=', $solicitud->created_at)
-            ->where(function ($q) {
-                $q->whereNull('EstadoTraslado')
-                  ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
-            })
-            ->sum('MontoPagado');
-
-        return ($montoTotalPagar - $pagadoNormal) <= 0.009;
-    }
-    
     private function recalcularEstadoCuota($cuotaID): void
     {
         $cuota = Cuota::find($cuotaID);
-        if (!$cuota) return;
+        if (! $cuota) {
+            return;
+        }
 
         $totalPagadoEnCuota = Pago::where('CuotaID', $cuota->CuotaID)
             ->where('Activo', 1)
             ->where(function ($q) {
                 $q->whereNull('EstadoTraslado')
-                  ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
+                    ->orWhere('EstadoTraslado', '!=', 'TRASLADADO');
             })
             ->sum('MontoPagado');
 
@@ -378,5 +382,4 @@ class ResolucionExcedenteService
 
         $cuota->update(['Estado' => $nuevoEstado]);
     }
-    
 }
