@@ -2,13 +2,13 @@
     if (!isset($proposiciones)) {
         $proposiciones = $cliente->relationLoaded('proposiciones') 
             ? $cliente->proposiciones 
-            : $cliente->proposiciones()->where('Estado', 'APROBADO')->has('credito')->with(['tipoCredito', 'credito'])->get();
+            : $cliente->proposiciones()->where('Estado', 'APROBADO')->has('credito')->with(['tipoCredito', 'credito', 'zona'])->get();
     }
     $itemsJson = json_encode($proposiciones->map(fn($p) => [
         'codigo' => $p->CodigoCredito,
         'cliente' => $cliente->NombresApellidos,
         'tipo' => $p->tipoCredito?->Descripcion ?? '-',
-        'zona' => $cliente->negocio?->zona?->Nombre ?? '-',
+        'zona' => $p->zona?->Nombre ?? $cliente->negocio?->zona?->Nombre ?? '-',
         'monto' => (float)$p->MontoTotal,
         'tasa' => (float)$p->TasaInteres,
         'interes' => (float)$p->MontoInteres,

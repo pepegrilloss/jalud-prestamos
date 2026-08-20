@@ -54,7 +54,7 @@ class RegistrarEvaluacionDeCreditoResource extends Resource
                             ->modalHeading(fn ($record, array $arguments) => 'Créditos de ' . (($record?->NombresApellidos) ?? (\App\Models\Cliente::find($arguments['cliente'] ?? null)?->NombresApellidos ?? 'Cliente')))
                             ->modalWidth('7xl')
                             ->modalContent(function ($record, array $arguments) {
-                                $cliente = $record ?? \App\Models\Cliente::with(['proposiciones' => fn($q) => $q->where('Estado', 'APROBADO')->has('credito')->with(['tipoCredito', 'credito']), 'negocio.zona'])->find($arguments['cliente'] ?? null);
+                                $cliente = $record ?? \App\Models\Cliente::with(['proposiciones' => fn($q) => $q->where('Estado', 'APROBADO')->has('credito')->with(['tipoCredito', 'credito', 'zona']), 'negocio.zona'])->find($arguments['cliente'] ?? null);
                                 return view('filament.components.client-credits-evaluacion-table', ['cliente' => $cliente]);
                             })
                             ->modalSubmitAction(false)
