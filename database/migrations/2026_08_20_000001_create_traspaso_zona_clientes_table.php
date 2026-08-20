@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('traspaso_zona_clientes', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('ClienteID');
-            $table->unsignedBigInteger('ZonaAnteriorID');
+            $table->unsignedBigInteger('ZonaAnteriorID')->nullable();
             $table->unsignedBigInteger('ZonaNuevaID');
             $table->unsignedBigInteger('PromotorAnteriorID')->nullable();
             $table->unsignedBigInteger('PromotorNuevoID')->nullable();

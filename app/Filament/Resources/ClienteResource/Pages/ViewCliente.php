@@ -260,7 +260,7 @@ class ViewCliente extends ViewRecord
                         ]);
 
                         // 5. Registrar en logs de auditoría del sistema
-                        $zonaAnterior = \App\Models\Zona::withoutGlobalScope('sede')->find($zonaAnteriorID);
+                        $zonaAnterior = $zonaAnteriorID ? \App\Models\Zona::withoutGlobalScope('sede')->find($zonaAnteriorID) : null;
                         $zonaNueva = \App\Models\Zona::withoutGlobalScope('sede')->find($zonaNuevaID);
                         $promotorAnterior = $promotorAnteriorID
                             ? \App\Models\PromotorCobrador::withoutGlobalScope('sede')->find($promotorAnteriorID)
