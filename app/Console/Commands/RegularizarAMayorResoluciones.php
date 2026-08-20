@@ -12,6 +12,7 @@ class RegularizarAMayorResoluciones extends Command
 {
     protected $signature = 'pagos:regularizar-a-mayor-resoluciones
                             {--codigo=* : Codigo(s) de credito a auditar}
+                            {--anio= : Audita todos los creditos con resoluciones aprobadas en el anio}
                             {--fix : Aplica la distribucion validada}
                             {--usuario-id= : Usuario responsable de la regularizacion}';
 
@@ -26,13 +27,18 @@ class RegularizarAMayorResoluciones extends Command
             ->filter()
             ->unique()
             ->values();
+        $anio = $this->option('anio');
         $aplicar = (bool) $this->option('fix');
         $usuarioId = (int) $this->option('usuario-id');
 
-        if ($codigos->isEmpty()) {
-            $this->error('Indique al menos un credito con --codigo=C-000000.');
+        if ($codigos->isEmpty() && (! is_numeric($anio) || (int) $anio < 2000)) {
+            $this->error('Indique al menos un --codigo=C-000000 o un --anio=2026.');
 
             return self::FAILURE;
+        }
+
+        if ($codigos->isEmpty()) {
+            $codigos = $this->codigosConResolucionesDelAnio((int) $anio);
         }
 
         if ($aplicar && ($usuarioId <= 0 || ! DB::table('users')->where('id', $usuarioId)->exists())) {
@@ -53,13 +59,15 @@ class RegularizarAMayorResoluciones extends Command
         }
 
         $this->table(
-            ['Credito', 'Deuda', 'Pagos reales', 'Resoluciones', 'A mayor esperado', 'Accion'],
+            ['Credito', 'Deuda', 'Pagos reales netos', 'Resoluciones', 'A mayor actual', 'A mayor esperado', 'Diferencia', 'Accion'],
             $resultados->map(fn (array $r) => [
                 $r['codigo'],
                 number_format($r['deuda'], 2),
                 number_format($r['pagos_reales'], 2),
                 number_format($r['resoluciones'], 2),
+                number_format($r['a_mayor_actual'], 2),
                 number_format($r['a_mayor'], 2),
+                number_format($r['a_mayor'] - $r['a_mayor_actual'], 2),
                 $r['accion'],
             ])->all()
         );
@@ -69,6 +77,22 @@ class RegularizarAMayorResoluciones extends Command
             : 'Modo auditoria: no se modifico ningun registro.');
 
         return self::SUCCESS;
+    }
+
+    private function codigosConResolucionesDelAnio(int $anio)
+    {
+        return DB::table('pago as p')
+            ->join('solicitudes_resolucion_excedente as sre', 'p.SolicitudResolucionID', '=', 'sre.SolicitudID')
+            ->join('Credito as c', 'p.CreditoID', '=', 'c.CreditoID')
+            ->join('ProposicionCredito as pc', 'c.ProposicionCreditoID', '=', 'pc.ProposicionCreditoID')
+            ->where('p.Activo', 1)
+            ->where('p.EsMora', 0)
+            ->where('sre.Estado', 'APROBADA')
+            ->whereIn('sre.TipoResolucion', ['ASIGNACION_POR_RECLAMO', 'APLICACION_NUEVO_CREDITO'])
+            ->whereYear('sre.created_at', $anio)
+            ->distinct()
+            ->orderBy('pc.CodigoCredito')
+            ->pluck('pc.CodigoCredito');
     }
 
     private function procesarCredito(string $codigo, bool $aplicar, int $usuarioId): array
@@ -84,17 +108,29 @@ class RegularizarAMayorResoluciones extends Command
             throw new RuntimeException("No existe el credito {$codigo}.");
         }
 
-        $pagosReales = (float) DB::table('pago')
+        $pagosRealesBrutos = (float) DB::table('pago')
             ->where('CreditoID', $credito->CreditoID)
             ->where('Activo', 1)
             ->where('EsMora', 0)
             ->whereNull('SolicitudResolucionID')
             ->sum('MontoPagado');
+        $trasladosReales = (float) DB::table('solicitudes_resolucion_excedente as sre')
+            ->join('pago as p', 'sre.PagoOrigenID', '=', 'p.PagoID')
+            ->where('p.CreditoID', $credito->CreditoID)
+            ->whereNull('p.SolicitudResolucionID')
+            ->where('sre.TipoResolucion', 'TRASLADO_DE_PAGO')
+            ->where('sre.Estado', 'APROBADA')
+            ->sum('sre.MontoAplicar');
+        $pagosReales = round(max(0, $pagosRealesBrutos - $trasladosReales), 2);
         $grupos = Pago::withoutGlobalScope('sede')
             ->where('CreditoID', $credito->CreditoID)
             ->where('Activo', true)
             ->where('EsMora', false)
             ->whereNotNull('SolicitudResolucionID')
+            ->whereHas('solicitudResolucion', function ($query) {
+                $query->where('Estado', 'APROBADA')
+                    ->whereIn('TipoResolucion', ['ASIGNACION_POR_RECLAMO', 'APLICACION_NUEVO_CREDITO']);
+            })
             ->orderBy('SolicitudResolucionID')
             ->orderBy('PagoID')
             ->lockForUpdate()
@@ -108,6 +144,7 @@ class RegularizarAMayorResoluciones extends Command
         $saldoPorCubrir = round(max(0, (float) $credito->MontoTotalPagar - $pagosReales), 2);
         $totalResoluciones = 0.0;
         $totalMayor = 0.0;
+        $totalMayorActual = 0.0;
         $cambios = 0;
 
         foreach ($grupos as $solicitudId => $pagos) {
@@ -120,6 +157,7 @@ class RegularizarAMayorResoluciones extends Command
 
             $normalActual = round((float) $pagos->where('EsPagoAMayor', false)->sum('MontoPagado'), 2);
             $mayorActual = round((float) $pagos->where('EsPagoAMayor', true)->sum('MontoPagado'), 2);
+            $totalMayorActual += $mayorActual;
             if (abs($normalActual - $normalEsperado) <= self::TOLERANCIA
                 && abs($mayorActual - $mayorEsperado) <= self::TOLERANCIA) {
                 continue;
@@ -141,6 +179,7 @@ class RegularizarAMayorResoluciones extends Command
             'deuda' => (float) $credito->MontoTotalPagar,
             'pagos_reales' => $pagosReales,
             'resoluciones' => round($totalResoluciones, 2),
+            'a_mayor_actual' => round($totalMayorActual, 2),
             'a_mayor' => round($totalMayor, 2),
             'accion' => $cambios === 0 ? 'Ya consistente' : ($aplicar ? 'Corregido' : "Corregir {$cambios}"),
         ];
