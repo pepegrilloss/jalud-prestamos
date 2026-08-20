@@ -33,14 +33,14 @@ class ListPagos extends ListRecords
         $zonaId = $promotorCobrador?->ZonaID ?? null;
         $promotorId = $user?->PromotorCobradorID ?? null;
 
-        $bloqueado = $user?->hasRole('promotor_cobrador')
+        $bloqueado = $user?->esPromotorCobrador()
             && \App\Models\PagoBloqueoPromotor::estaBloqueado($sedeId, $zonaId, $promotorId);
 
         if (AperturaCierreDia::estaAbierto() && !$bloqueado) {
             $actions[] = Actions\CreateAction::make()
                 ->label('Registrar Pago')
                 ->visible(function () use ($sedeId, $zonaId, $promotorId) {
-                    if (auth()->user()?->hasRole('promotor_cobrador')) {
+                    if (auth()->user()?->esPromotorCobrador()) {
                         $aunBloqueado = \App\Models\PagoBloqueoPromotor::estaBloqueado($sedeId, $zonaId, $promotorId);
                         return !$aunBloqueado;
                     }
@@ -182,16 +182,24 @@ class ListPagos extends ListRecords
     {
         $query = parent::getTableQuery();
 
-        if (auth()->user()?->hasRole('Promotor Cobrador')) {
-            $promotorCobrador = auth()->user()->promotorCobrador;
+        $user = auth()->user();
+        if ($user?->esPromotorCobrador()) {
+            $promotorCobrador = $user->promotorCobrador 
+                ?? ($user->PromotorCobradorID ? \App\Models\PromotorCobrador::find($user->PromotorCobradorID) : null);
             
-            if ($promotorCobrador && $promotorCobrador->ZonaID) {
-                return $query->whereHas('credito.proposicion', function (Builder $q) use ($promotorCobrador) {
-                    $q->where('ZonaID', $promotorCobrador->ZonaID);
+            if ($promotorCobrador) {
+                $query->where(function (Builder $q) use ($promotorCobrador) {
+                    $q->where('pago.PromotorCobradorID', $promotorCobrador->PromotorCobradorID)
+                      ->orWhere(function (Builder $sub) use ($promotorCobrador) {
+                          $sub->whereNull('pago.PromotorCobradorID')
+                              ->whereHas('credito.proposicion', function (Builder $pq) use ($promotorCobrador) {
+                                  $pq->where('ZonaID', $promotorCobrador->ZonaID);
+                              });
+                      });
                 });
+            } else {
+                $query->whereRaw('1 = 0');
             }
-
-            return $query->whereRaw('1 = 0');
         }
 
         // Si NO tiene el permiso "ver_todos_los_pagos", filtrar SOLO pagos del día abierto

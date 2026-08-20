@@ -141,6 +141,12 @@ class User extends Authenticatable implements FilamentUser
         return parent::can($abilities, $arguments);
     }
 
+    public function esPromotorCobrador(): bool
+    {
+        return !empty($this->PromotorCobradorID)
+            || $this->hasAnyRole(['promotor_cobrador', 'Promotor Cobrador', 'promotor cobrador']);
+    }
+
     /**
      * Centraliza el chequeo del permiso "Ver Todas Las Sedes"
      * Soporta tanto el nombre con espacios como el slug.

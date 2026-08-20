@@ -136,6 +136,177 @@ class ViewCliente extends ViewRecord
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Cerrar'),
 
+            Actions\Action::make('traspasar_zona')
+                ->label('Traspasar Zona')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->visible(fn() => auth()->user()?->can('traspasar_zona_clientes') ?? false)
+                ->modalHeading('Traspasar Cliente de Zona')
+                ->modalDescription('Se actualizará la zona del negocio, las proposiciones de crédito activas y el promotor/cobrador asignado.')
+                ->modalSubmitActionLabel('Ejecutar Traspaso')
+                ->modalIcon('heroicon-o-arrow-path')
+                ->modalIconColor('warning')
+                ->form([
+                    Forms\Components\Placeholder::make('zona_actual_info')
+                        ->label('Información Actual')
+                        ->content(function () {
+                            $zonaActual = $this->record->negocio?->zona?->Nombre ?? 'Sin zona asignada';
+                            $promotorActual = $this->record->promotorCobrador?->Descripcion ?? 'Sin promotor asignado';
+                            return new \Illuminate\Support\HtmlString("
+                                <div class='p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm space-y-1'>
+                                    <div><strong>Zona actual:</strong> {$zonaActual}</div>
+                                    <div><strong>Promotor/Cobrador actual:</strong> {$promotorActual}</div>
+                                </div>
+                            ");
+                        }),
+
+                    Forms\Components\Select::make('ZonaNuevaID')
+                        ->label('Nueva Zona')
+                        ->options(function () {
+                            $zonaActualId = $this->record->negocio?->ZonaID;
+                            return \App\Models\Zona::where('Activo', true)
+                                ->when($zonaActualId, fn($q) => $q->where('ZonaID', '!=', $zonaActualId))
+                                ->pluck('Nombre', 'ZonaID');
+                        })
+                        ->searchable()
+                        ->required()
+                        ->native(false)
+                        ->prefixIcon('heroicon-m-map')
+                        ->helperText('Seleccione la zona a la que se transferirá el cliente.'),
+
+                    Forms\Components\Textarea::make('MotivoTraspaso')
+                        ->label('Motivo del Traspaso')
+                        ->required()
+                        ->rows(3)
+                        ->maxLength(1000)
+                        ->placeholder('Ej: El gestor de la zona Chiclayo 02 está llegando tarde a estos clientes y maneja una cartera de 190 clientes, generando atrasos.')
+                        ->helperText('Este motivo quedará registrado en el historial de trazabilidad.'),
+                ])
+                ->action(function (array $data): void {
+                    $cliente = $this->record;
+                    $zonaNuevaID = $data['ZonaNuevaID'];
+                    $motivo = $data['MotivoTraspaso'];
+                    $userId = auth()->id();
+                    $sedeId = auth()->user()->getEffectiveSedeId();
+
+                    $negocio = \App\Models\Negocio::withoutGlobalScope('sede')
+                        ->where('ClienteID', $cliente->ClienteID)
+                        ->first();
+
+                    if (!$negocio) {
+                        \Filament\Notifications\Notification::make()
+                            ->danger()
+                            ->title('Error')
+                            ->body('El cliente no tiene un negocio registrado para asociar la zona.')
+                            ->send();
+                        return;
+                    }
+
+                    $zonaAnteriorID = $negocio->ZonaID;
+
+                    if ((int) $zonaAnteriorID === (int) $zonaNuevaID) {
+                        \Filament\Notifications\Notification::make()
+                            ->warning()
+                            ->title('Aviso')
+                            ->body('El cliente ya se encuentra en la zona seleccionada.')
+                            ->send();
+                        return;
+                    }
+
+                    $promotorNuevo = \App\Models\PromotorCobrador::where('ZonaID', $zonaNuevaID)
+                        ->where('Activo', true)
+                        ->first();
+
+                    $promotorAnteriorID = $cliente->PromotorCobradorID;
+
+                    \Illuminate\Support\Facades\DB::beginTransaction();
+
+                    try {
+                        // 1. Actualizar zona del negocio
+                        $negocio->ZonaID = $zonaNuevaID;
+                        $negocio->save();
+
+                        // 2. Actualizar zona en TODAS las proposiciones de crédito activas del cliente
+                        $proposicionesActualizadas = \App\Models\ProposicionCredito::withoutGlobalScope('sede')
+                            ->withoutGlobalScope('eliminado')
+                            ->where('ClienteID', $cliente->ClienteID)
+                            ->where('Activo', true)
+                            ->where('FueRefinanciada', false)
+                            ->update(['ZonaID' => $zonaNuevaID]);
+
+                        // 3. Actualizar promotor/cobrador del cliente
+                        if ($promotorNuevo) {
+                            $cliente->PromotorCobradorID = $promotorNuevo->PromotorCobradorID;
+                            $cliente->UsuarioModificacion = auth()->user()->name ?? 'Sistema';
+                            $cliente->FechaModificacion = now();
+                            $cliente->save();
+                        }
+
+                        // 4. Registrar en tabla de trazabilidad
+                        \App\Models\TraspasoZonaCliente::create([
+                            'ClienteID' => $cliente->ClienteID,
+                            'ZonaAnteriorID' => $zonaAnteriorID,
+                            'ZonaNuevaID' => $zonaNuevaID,
+                            'PromotorAnteriorID' => $promotorAnteriorID,
+                            'PromotorNuevoID' => $promotorNuevo?->PromotorCobradorID,
+                            'MotivoTraspaso' => $motivo,
+                            'UserSolicitaID' => $userId,
+                            'SedeID' => $sedeId,
+                            'FechaTraspaso' => now(),
+                        ]);
+
+                        // 5. Registrar en logs de auditoría del sistema
+                        $zonaAnterior = \App\Models\Zona::withoutGlobalScope('sede')->find($zonaAnteriorID);
+                        $zonaNueva = \App\Models\Zona::withoutGlobalScope('sede')->find($zonaNuevaID);
+                        $promotorAnterior = $promotorAnteriorID
+                            ? \App\Models\PromotorCobrador::withoutGlobalScope('sede')->find($promotorAnteriorID)
+                            : null;
+
+                        \App\Models\Log::registrar(
+                            'TRASPASO_ZONA',
+                            'Cliente',
+                            $cliente->ClienteID,
+                            [
+                                'ZonaAnteriorID' => $zonaAnteriorID,
+                                'ZonaAnteriorNombre' => $zonaAnterior?->Nombre ?? 'N/A',
+                                'PromotorAnteriorID' => $promotorAnteriorID,
+                                'PromotorAnteriorNombre' => $promotorAnterior?->Descripcion ?? 'N/A',
+                                'ProposicionesEnZonaAnterior' => $proposicionesActualizadas,
+                            ],
+                            [
+                                'ZonaNuevaID' => $zonaNuevaID,
+                                'ZonaNuevaNombre' => $zonaNueva?->Nombre ?? 'N/A',
+                                'PromotorNuevoID' => $promotorNuevo?->PromotorCobradorID,
+                                'PromotorNuevoNombre' => $promotorNuevo?->Descripcion ?? 'N/A',
+                                'MotivoTraspaso' => $motivo,
+                                'ProposicionesActualizadas' => $proposicionesActualizadas,
+                            ],
+                            $sedeId,
+                            $userId
+                        );
+
+                        \Illuminate\Support\Facades\DB::commit();
+
+                        \Filament\Notifications\Notification::make()
+                            ->success()
+                            ->title('Traspaso completado')
+                            ->body("El cliente fue traspasado a la zona {$zonaNueva->Nombre}."
+                                . ($promotorNuevo ? " Promotor asignado: {$promotorNuevo->Descripcion}." : ''))
+                            ->persistent()
+                            ->send();
+
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\DB::rollBack();
+
+                        \Filament\Notifications\Notification::make()
+                            ->danger()
+                            ->title('Error en el traspaso')
+                            ->body('Ocurrió un error: ' . $e->getMessage())
+                            ->persistent()
+                            ->send();
+                    }
+                }),
+
             Actions\EditAction::make(),
         ];
     }

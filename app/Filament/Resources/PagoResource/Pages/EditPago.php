@@ -17,7 +17,7 @@ class EditPago extends EditRecord
 
     public function mount(int|string $record): void
     {
-        if (auth()->user()?->hasRole('Promotor Cobrador')) {
+        if (auth()->user()?->esPromotorCobrador()) {
             abort(403);
         }
 

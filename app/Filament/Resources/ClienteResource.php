@@ -650,13 +650,13 @@ class ClienteResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->toggleable()
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
 
                 Tables\Columns\TextColumn::make('negocio.zona.Nombre')
                     ->label('Zona')
                     ->searchable()
                     ->toggleable()
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
 
                 Tables\Columns\TextColumn::make('Estado')
                     ->badge()
@@ -665,32 +665,32 @@ class ClienteResource extends Resource
                         'OBSERVADO' => 'warning',
                     })
                     ->sortable()
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
 
                 Tables\Columns\TextColumn::make('promotorCobrador.Descripcion')
                     ->label('Promotor/Cobrador')
                     ->searchable()
                     ->toggleable()
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
 
                 Tables\Columns\TextColumn::make('garante.NombresApellidos')
                     ->label('Garante')
                     ->searchable()
                     ->toggleable()
                     ->placeholder('Sin garante')
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
 
                 Tables\Columns\IconColumn::make('Activo')
                     ->boolean()
                     ->sortable()
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
 
                 Tables\Columns\TextColumn::make('FechaRegistro')
                     ->label('Fecha Registro')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
 
                 // Direcciones y teléfonos: visibles para todos (promotor verá solo estas junto al nombre)
                 Tables\Columns\TextColumn::make('Domicilio')
@@ -766,7 +766,7 @@ class ClienteResource extends Resource
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->label('Ver')
-                        ->visible(fn () => !auth()->user()?->hasRole('Promotor Cobrador')),
+                        ->visible(fn () => !auth()->user()?->esPromotorCobrador()),
                     Tables\Actions\EditAction::make()
                         ->label('Editar')
                         ->visible(fn (Cliente $record) => self::canEdit($record)),
@@ -825,7 +825,7 @@ class ClienteResource extends Resource
         }
 
         // Los Promotores Cobradores NO pueden crear clientes
-        if (auth()->user()?->hasRole('Promotor Cobrador')) {
+        if (auth()->user()?->esPromotorCobrador()) {
             return false;
         }
 
@@ -841,7 +841,7 @@ class ClienteResource extends Resource
         }
 
         // Los Promotores Cobradores NO pueden editar clientes
-        if (auth()->user()?->hasRole('Promotor Cobrador')) {
+        if (auth()->user()?->esPromotorCobrador()) {
             return false;
         }
 
@@ -856,7 +856,7 @@ class ClienteResource extends Resource
         }
 
         // Los Promotores Cobradores NO pueden eliminar clientes
-        if (auth()->user()?->hasRole('Promotor Cobrador')) {
+        if (auth()->user()?->esPromotorCobrador()) {
             return false;
         }
 

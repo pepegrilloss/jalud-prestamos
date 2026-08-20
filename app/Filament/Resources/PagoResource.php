@@ -584,13 +584,13 @@ class PagoResource extends Resource
                     ->searchable(query: fn (Builder $query, string $search) => $query->orWhere('pago.UsuarioRegistro', 'like', "%{$search}%"))
                     ->sortable(query: fn (Builder $query, string $direction) => $query->orderBy('pago.UsuarioRegistro', $direction))
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
 
                 Tables\Columns\IconColumn::make('Activo')
                     ->boolean()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->visible(fn() => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn() => !auth()->user()?->esPromotorCobrador()),
             ])
             ->filters([
                 Tables\Filters\Filter::make('filtros_dinamicos')
@@ -755,11 +755,11 @@ class PagoResource extends Resource
             ->defaultSort('pago.FechaPago', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make()
-                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador')),
+                    ->visible(fn($record) => !auth()->user()?->esPromotorCobrador()),
                 Tables\Actions\EditAction::make()
-                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador') && self::canEdit($record)),
+                    ->visible(fn($record) => !auth()->user()?->esPromotorCobrador() && self::canEdit($record)),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn($record) => !auth()->user()?->hasRole('Promotor Cobrador') && self::canDelete($record)),
+                    ->visible(fn($record) => !auth()->user()?->esPromotorCobrador() && self::canDelete($record)),
             ]);
 
     }
@@ -785,7 +785,7 @@ class PagoResource extends Resource
 
         // Si el usuario es promotor y hay bloqueo activo en su sede, zona o promotor, bloquear
         $user = auth()->user();
-        if ($user?->hasRole('promotor_cobrador') && $user->SedeID) {
+        if ($user?->esPromotorCobrador() && $user->SedeID) {
             $sedeId = $user->getEffectiveSedeId();
             $promotorCobrador = $user->promotorCobrador;
             $zonaId = $promotorCobrador?->ZonaID ?? null;

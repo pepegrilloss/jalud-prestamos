@@ -52,13 +52,23 @@ class ListClientes extends ListRecords
     {
         $query = parent::getTableQuery();
 
-        if (auth()->user()?->hasRole('Promotor Cobrador')) {
-            $promotorCobrador = auth()->user()->promotorCobrador;
+        $user = auth()->user();
+        if ($user?->esPromotorCobrador()) {
+            $promotorCobrador = $user->promotorCobrador 
+                ?? ($user->PromotorCobradorID ? \App\Models\PromotorCobrador::find($user->PromotorCobradorID) : null);
             
             if ($promotorCobrador && $promotorCobrador->ZonaID) {
-                // Filtrar clientes cuyas proposiciones estén en la zona del promotor
-                return $query->whereHas('proposiciones', function (Builder $q) use ($promotorCobrador) {
-                    $q->where('ZonaID', $promotorCobrador->ZonaID);
+                // Filtrar clientes asignados a este promotor o con negocio/créditos activos en su zona
+                return $query->where(function (Builder $q) use ($promotorCobrador) {
+                    $q->where('PromotorCobradorID', $promotorCobrador->PromotorCobradorID)
+                      ->orWhereHas('negocio', function (Builder $nq) use ($promotorCobrador) {
+                          $nq->where('ZonaID', $promotorCobrador->ZonaID);
+                      })
+                      ->orWhereHas('proposiciones', function (Builder $pq) use ($promotorCobrador) {
+                          $pq->where('Activo', true)
+                             ->where('FueRefinanciada', false)
+                             ->where('ZonaID', $promotorCobrador->ZonaID);
+                      });
                 });
             }
 
