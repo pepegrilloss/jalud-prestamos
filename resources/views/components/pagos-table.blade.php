@@ -121,6 +121,7 @@
 
             $tempPagos[] = [
                 'pago' => $pagoMock,
+                'numero' => count($tempPagos) + 1,
                 'saldo_antes' => $saldoAcumulado,
                 'saldo_despues' => max(0, $saldoAcumulado - $montoTotalDia),
                 'es_trasladado' => $esTrasladadoTotal,
@@ -128,8 +129,18 @@
             $saldoAcumulado -= $montoTotalDia;
         }
         
-        $pagosDisplay = array_reverse($tempPagos);
-        $totalPagos = count($pagosDisplay);
+        $pagosDescendentes = array_reverse($tempPagos);
+        $pagosAMayorDisplay = array_values(array_filter(
+            $pagosDescendentes,
+            fn ($item) => $item['pago']->EsPagoAMayor || $item['pago']->EsPagoAMayorPorMora
+        ));
+        $pagosRegularesDisplay = array_values(array_filter(
+            $pagosDescendentes,
+            fn ($item) => !$item['pago']->EsPagoAMayor && !$item['pago']->EsPagoAMayorPorMora
+        ));
+        $pagosDisplay = array_merge($pagosAMayorDisplay, $pagosRegularesDisplay);
+        $totalPagosAMayor = count($pagosAMayorDisplay);
+        $montoTotalAMayor = collect($pagosAMayorDisplay)->sum(fn ($item) => (float) $item['pago']->MontoPagado);
     }
 @endphp
 
@@ -160,19 +171,54 @@
                     @foreach($pagosDisplay as $index => $item)
                         @php 
                             $pago = $item['pago'];
-                            $numFila = $totalPagos - $index;
+                            $numFila = $item['numero'];
                             $esTrasladado = $item['es_trasladado'];
-                            $rowClass = $esTrasladado ? 'bg-danger-50 dark:bg-danger-900/20 hover:bg-danger-100 dark:hover:bg-danger-900/30 transition-colors' : 'hover:bg-gray-50 dark:hover:bg-white/5 transition-colors';
+                            $esPagoAMayor = $pago->EsPagoAMayor || $pago->EsPagoAMayorPorMora;
+                            $rowClass = $esTrasladado
+                                ? 'bg-danger-50 dark:bg-danger-900/20 hover:bg-danger-100 dark:hover:bg-danger-900/30 transition-colors'
+                                : ($esPagoAMayor
+                                    ? 'bg-warning-50/70 dark:bg-warning-900/10 hover:bg-warning-100/70 dark:hover:bg-warning-900/20 border-l-4 border-warning-400 transition-colors'
+                                    : 'hover:bg-gray-50 dark:hover:bg-white/5 transition-colors');
                             $textClass = $esTrasladado ? 'text-danger-600 dark:text-danger-400' : 'text-gray-600 dark:text-gray-400';
                         @endphp
+                        @if($index === 0 && $totalPagosAMayor > 0)
+                            <tr class="border-y border-warning-200 bg-warning-50 dark:border-warning-800/60 dark:bg-warning-900/20">
+                                <td colspan="8" class="px-4 py-2.5">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <div class="flex items-center gap-2 text-warning-800 dark:text-warning-300">
+                                            <x-heroicon-m-banknotes class="h-5 w-5" />
+                                            <span class="font-semibold">Pagos a mayor</span>
+                                            <span class="rounded-md border border-warning-200 bg-white px-2 py-0.5 text-xs font-semibold dark:border-warning-700 dark:bg-warning-950/40">
+                                                {{ $totalPagosAMayor }} {{ $totalPagosAMayor === 1 ? 'registro' : 'registros' }}
+                                            </span>
+                                        </div>
+                                        <span class="font-mono text-sm font-bold text-warning-800 dark:text-warning-300">
+                                            S/ {{ number_format($montoTotalAMayor, 2) }}
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @elseif($index === $totalPagosAMayor && $totalPagosAMayor > 0)
+                            <tr class="border-y border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5">
+                                <td colspan="8" class="px-4 py-2 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                                    Historial de pagos
+                                </td>
+                            </tr>
+                        @endif
                         <tr class="{{ $rowClass }}">
                             <td class="px-3 py-1.5 border-r dark:border-white/10 font-medium text-center">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full {{ $esTrasladado ? 'bg-danger-100 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400' : 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400' }} font-bold text-xs">
-                                    {{ str_pad($numFila, 2, '0', STR_PAD_LEFT) }}
-                                </span>
+                                @if($esPagoAMayor)
+                                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400" title="Pago a mayor">
+                                        <x-heroicon-m-banknotes class="h-4 w-4" />
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full {{ $esTrasladado ? 'bg-danger-100 dark:bg-danger-900/30 text-danger-700 dark:text-danger-400' : 'bg-success-100 dark:bg-success-900/30 text-success-700 dark:text-success-400' }} font-bold text-xs">
+                                        {{ str_pad($numFila, 2, '0', STR_PAD_LEFT) }}
+                                    </span>
+                                @endif
                             </td>
 
-                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono {{ $esTrasladado ? 'text-danger-600 dark:text-danger-400 font-bold' : 'text-success-600 dark:text-success-400' }}">
+                            <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono {{ $esTrasladado ? 'text-danger-600 dark:text-danger-400 font-bold' : ($esPagoAMayor ? 'text-warning-700 dark:text-warning-400 font-bold' : 'text-success-600 dark:text-success-400') }}">
                                 {{ $esTrasladado ? '-' : '' }}{{ number_format($pago->MontoPagado, 2) }}
                             </td>
                             <td class="px-3 py-1.5 border-r dark:border-white/10 {{ $textClass }} whitespace-nowrap">
@@ -195,7 +241,11 @@
                                 @endif
                             </td>
                             <td class="px-3 py-1.5 border-r dark:border-white/10 text-right font-mono font-bold {{ $esTrasladado ? 'text-danger-600 dark:text-danger-400' : 'text-gray-950 dark:text-gray-200' }}">
-                                {{ number_format($item['saldo_despues'], 2) }}
+                                @if($esPagoAMayor)
+                                    <span class="text-gray-400 dark:text-gray-500" title="No se aplica al saldo del crédito">—</span>
+                                @else
+                                    {{ number_format($item['saldo_despues'], 2) }}
+                                @endif
                             </td>
                             <td class="px-3 py-1.5 border-r dark:border-white/10 truncate max-w-[150px] {{ $textClass }}" title="{{ $pago->UsuarioRegistro }}">
                                 {{ $pago->UsuarioRegistro ?? '-' }}
