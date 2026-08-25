@@ -225,9 +225,10 @@ class SaldarCreditoResource extends Resource
                                 );
                             }
 
-                            $saldoRestante = max(0, (float) (DB::table('ProposicionCredito')
-                                ->where('ProposicionCreditoID', $record->ProposicionCreditoID)
-                                ->value('SaldoPendiente') ?? 0) - $montoSaldar);
+                            // Usar el saldo ANTERIOR al pago (PagoObserver ya recalculo el
+                            // saldo incluyendo el pago creado arriba). Restarlo de nuevo
+                            // contaba el monto dos veces y saldaba creditos con saldo real.
+                            $saldoRestante = max(0, $saldoAnterior - $montoSaldar);
 
                             if ($saldoRestante > 0) {
                                 AuditLog::registrar(

@@ -25,13 +25,13 @@ class ListReporteProyeccion extends ListRecords
                 ->color('success')
                 ->form([
                     Forms\Components\DatePicker::make('fecha_desde')
-                        ->label('Desde (Fecha de Giro)')
+                        ->label('Desde (Fecha de Vencimiento)')
                         ->default(now()->startOfMonth())
                         ->native(false)
                         ->displayFormat('d/m/Y')
                         ->required(),
                     Forms\Components\DatePicker::make('fecha_hasta')
-                        ->label('Hasta (Fecha de Giro)')
+                        ->label('Hasta (Fecha de Vencimiento)')
                         ->default(now())
                         ->native(false)
                         ->displayFormat('d/m/Y')

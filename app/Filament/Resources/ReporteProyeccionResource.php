@@ -116,7 +116,7 @@ class ReporteProyeccionResource extends Resource
                     }),
 
                 Tables\Filters\Filter::make('rango_fechas')
-                    ->label('Rango de Fechas (Giro)')
+                    ->label('Rango de Fechas (Vencimiento)')
                     ->form([
                         Forms\Components\DatePicker::make('fecha_desde')
                             ->label('Desde')
@@ -131,11 +131,11 @@ class ReporteProyeccionResource extends Resource
                         return $query
                             ->when(
                                 filled($data['fecha_desde'] ?? null),
-                                fn (Builder $q) => $q->whereDate('Credito.FechaGeneracion', '>=', $data['fecha_desde'])
+                                fn (Builder $q) => $q->whereDate('Credito.FechaVencimiento', '>=', $data['fecha_desde'])
                             )
                             ->when(
                                 filled($data['fecha_hasta'] ?? null),
-                                fn (Builder $q) => $q->whereDate('Credito.FechaGeneracion', '<=', $data['fecha_hasta'])
+                                fn (Builder $q) => $q->whereDate('Credito.FechaVencimiento', '<=', $data['fecha_hasta'])
                             );
                     }),
             ])
@@ -157,7 +157,7 @@ class ReporteProyeccionResource extends Resource
             ->actions([])
             ->bulkActions([])
             ->recordUrl(null)
-            ->defaultSort('Credito.FechaGeneracion', 'desc')
+            ->defaultSort('Credito.FechaVencimiento', 'desc')
             ->paginationPageOptions([10, 25, 50]);
     }
 
