@@ -22,6 +22,10 @@ class CreateResolucionExcedente extends CreateRecord
             $data['PagoOrigenID'] = $data['PagoMayorOrigenID'] ?? null;
             $data['ExcedenteID'] = null;
         }
+
+        if (($data['TipoResolucion'] ?? null) === 'APLICACION_PAGO_MAYOR') {
+            $data['ExcedenteID'] = null;
+        }
         unset($data['PagoMayorOrigenID']);
 
         $data['UserSolicitanteID'] = auth()->id();

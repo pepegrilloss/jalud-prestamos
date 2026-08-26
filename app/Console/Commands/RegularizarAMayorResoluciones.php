@@ -118,7 +118,7 @@ class RegularizarAMayorResoluciones extends Command
             ->join('pago as p', 'sre.PagoOrigenID', '=', 'p.PagoID')
             ->where('p.CreditoID', $credito->CreditoID)
             ->whereNull('p.SolicitudResolucionID')
-            ->where('sre.TipoResolucion', 'TRASLADO_DE_PAGO')
+            ->whereIn('sre.TipoResolucion', ['TRASLADO_DE_PAGO', 'APLICACION_PAGO_MAYOR'])
             ->where('sre.Estado', 'APROBADA')
             ->sum('sre.MontoAplicar');
         $pagosReales = round(max(0, $pagosRealesBrutos - $trasladosReales), 2);

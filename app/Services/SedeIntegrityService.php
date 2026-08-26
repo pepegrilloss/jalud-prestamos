@@ -108,6 +108,17 @@ class SedeIntegrityService
                     $this->fail('El credito destino no pertenece al cliente seleccionado.');
                 }
             }
+
+            if ($solicitud->TipoResolucion === 'APLICACION_PAGO_MAYOR' && $solicitud->CreditoOrigenID) {
+                $proposicionOrigen = ProposicionCredito::withoutGlobalScope('sede')
+                    ->where('ProposicionCreditoID', $this->find(Credito::class, 'CreditoID', $solicitud->CreditoOrigenID, 'credito origen')->ProposicionCreditoID)
+                    ->first();
+
+                if ($proposicionOrigen && $proposicionDestino
+                    && (int) $proposicionOrigen->ClienteID !== (int) $proposicionDestino->ClienteID) {
+                    $this->fail('El pago a mayor solo puede aplicarse a un credito del mismo cliente.');
+                }
+            }
         }
     }
 

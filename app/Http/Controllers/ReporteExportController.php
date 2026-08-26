@@ -364,8 +364,8 @@ class ReporteExportController extends Controller
             $clienteNombre = $e->creditoDestino?->proposicion?->cliente?->NombresApellidos ?? $e->clienteDestino?->NombresApellidos ?? $e->clienteOrigen?->NombresApellidos ?? 'N/A';
             $codigoCredito = $e->creditoDestino?->proposicion?->CodigoCredito ?? '';
             $ctaCliente = $codigoCredito ? "{$codigoCredito} - ".mb_strtoupper($clienteNombre) : mb_strtoupper($clienteNombre);
-            if ($e->TipoResolucion !== 'TRASLADO_DE_PAGO') $tExt += $e->MontoAplicar;
-            $tipo = $e->TipoResolucion === 'TRASLADO_DE_PAGO' ? 'TRAS' : 'EXT';
+            if (!in_array($e->TipoResolucion, ['TRASLADO_DE_PAGO', 'APLICACION_PAGO_MAYOR'], true)) $tExt += $e->MontoAplicar;
+            $tipo = in_array($e->TipoResolucion, ['TRASLADO_DE_PAGO', 'APLICACION_PAGO_MAYOR'], true) ? 'TRAS' : 'EXT';
             $this->writeDataRow($sheet, $row, [$e->excedente?->NroOperacion??'', $e->created_at->format('d/m/Y'), $ctaCliente, $tipo, $e->MontoAplicar], 5);
             $sheet->getStyle('E'.$row)->getAlignment()->setHorizontal('right'); $row++;
         }

@@ -745,7 +745,7 @@ class CreditoResource extends Resource
             ->join('pago as p', 'sre.PagoOrigenID', '=', 'p.PagoID')
             ->where('p.CreditoID', $credito->CreditoID)
             ->where('sre.Estado', 'APROBADA')
-            ->where('sre.TipoResolucion', 'TRASLADO_DE_PAGO')
+            ->whereIn('sre.TipoResolucion', ['TRASLADO_DE_PAGO', 'APLICACION_PAGO_MAYOR'])
             ->sum('sre.MontoAplicar');
 
         $devolucionesAMayorAprobadas = (float) \Illuminate\Support\Facades\DB::table('solicitudes_resolucion_excedente as sre')

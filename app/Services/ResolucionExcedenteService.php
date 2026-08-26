@@ -42,6 +42,8 @@ class ResolucionExcedenteService
             if ($solicitud->TipoResolucion === 'TRASLADO_DE_PAGO') {
                 // ========== FLUJO TRASLADO DE PAGO ==========
                 $this->procesarTrasladoPago($solicitud, $aprobador);
+            } elseif ($solicitud->TipoResolucion === 'APLICACION_PAGO_MAYOR') {
+                $this->procesarAplicacionPagoMayor($solicitud, $aprobador);
             } elseif ($solicitud->TipoResolucion === 'DEVOLUCION_PAGO_MAYOR') {
                 $this->procesarDevolucionPagoMayor($solicitud, $aprobador);
             } else {
@@ -112,6 +114,96 @@ class ResolucionExcedenteService
         }
     }
 
+    /**
+     * Aplica un pago a mayor ya existente al saldo de otro credito del mismo
+     * cliente. No crea excedente ni movimiento de caja: solo mueve el asiento
+     * con trazabilidad y lo registra como una solicitud aprobable.
+     */
+    private function procesarAplicacionPagoMayor(SolicitudResolucionExcedente $solicitud, $aprobador): void
+    {
+        app(SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
+
+        $pagoOrigen = Pago::lockForUpdate()->find($solicitud->PagoOrigenID);
+        $creditoOrigen = \App\Models\Credito::withoutGlobalScope('sede')
+            ->with('proposicion')
+            ->lockForUpdate()
+            ->find($solicitud->CreditoOrigenID);
+        $creditoDestino = \App\Models\Credito::withoutGlobalScope('sede')
+            ->with('proposicion')
+            ->lockForUpdate()
+            ->find($solicitud->CreditoDestinoID);
+
+        if (! $pagoOrigen || ! $creditoOrigen || ! $creditoDestino) {
+            throw new \Exception('No se encontraron todos los registros del traslado de pago a mayor.');
+        }
+
+        if (! $pagoOrigen->EsPagoAMayor || $pagoOrigen->EsPagoAMayorPorMora) {
+            throw new \Exception('El pago seleccionado no es un pago a mayor disponible.');
+        }
+
+        if (! $pagoOrigen->Activo || in_array($pagoOrigen->EstadoTraslado, ['TRASLADADO', 'DEVUELTO'], true)) {
+            throw new \Exception('El pago a mayor seleccionado ya fue trasladado o resuelto.');
+        }
+
+        $clienteOrigen = (int) $creditoOrigen->proposicion?->ClienteID;
+        $clienteDestino = (int) $creditoDestino->proposicion?->ClienteID;
+        if ($clienteOrigen === 0 || $clienteOrigen !== $clienteDestino) {
+            throw new \Exception('El pago a mayor solo puede aplicarse a otro credito del mismo cliente.');
+        }
+
+        if ((int) $creditoOrigen->SedeID !== (int) $creditoDestino->SedeID) {
+            throw new \Exception('El pago a mayor solo puede aplicarse dentro de la misma sede.');
+        }
+
+        $montoAplicar = round((float) ($solicitud->MontoAplicar ?? 0), 2);
+        $montoDisponible = $this->montoDisponiblePagoMayor($pagoOrigen, $solicitud->SolicitudID);
+        $saldoDestino = round((float) ($creditoDestino->proposicion?->SaldoPendiente ?? 0), 2);
+
+        if ($montoAplicar <= 0) {
+            throw new \Exception('El monto a aplicar debe ser mayor a 0.');
+        }
+
+        if ($montoAplicar > round($montoDisponible, 2)) {
+            throw new \Exception('El monto supera el pago a mayor disponible: S/ '.number_format($montoDisponible, 2).'.');
+        }
+
+        if ($montoAplicar > $saldoDestino) {
+            throw new \Exception('El monto supera el saldo pendiente del credito destino: S/ '.number_format($saldoDestino, 2).'.');
+        }
+
+        $fechaPago = $pagoOrigen->FechaPago
+            ?? (\App\Services\DateFieldResolver::getFechaAbierta()?->setTime(now()->hour, now()->minute, now()->second) ?: Carbon::now());
+
+        $pagoOrigen->EstadoTraslado = $montoAplicar >= round((float) $pagoOrigen->MontoPagado, 2) - self::TOLERANCIA
+            ? 'TRASLADADO'
+            : $pagoOrigen->EstadoTraslado;
+        $pagoOrigen->Comentario = ($pagoOrigen->Comentario ? $pagoOrigen->Comentario.' | ' : '')
+            .'APLICADO A '.$creditoDestino->proposicion->CodigoCredito
+            .' - Solicitud #'.$solicitud->SolicitudID
+            .' - S/ '.number_format($montoAplicar, 2);
+        $pagoOrigen->save();
+
+        Pago::create([
+            'CreditoID' => $creditoDestino->CreditoID,
+            'CuotaID' => null,
+            'MontoPagado' => $montoAplicar,
+            'FechaPago' => $fechaPago,
+            'TipoPago' => $pagoOrigen->TipoPago,
+            'TipoConcepto' => 'C',
+            'EsMora' => false,
+            'EsPagoAutomatico' => true,
+            'EsPagoAMayor' => false,
+            'EsPagoAMayorPorMora' => false,
+            'PagoOrigenID' => $pagoOrigen->PagoID,
+            'Comentario' => 'Aplicacion de pago a mayor al credito '.$creditoDestino->proposicion->CodigoCredito
+                ." por solicitud #{$solicitud->SolicitudID}. Monto: S/ ".number_format($montoAplicar, 2),
+            'UsuarioRegistro' => $aprobador->name,
+            'Activo' => true,
+            'SedeID' => $creditoDestino->SedeID,
+            'SolicitudResolucionID' => $solicitud->SolicitudID,
+        ]);
+    }
+
     private function procesarDevolucionPagoMayor(SolicitudResolucionExcedente $solicitud, $aprobador): void
     {
         app(SedeIntegrityService::class)->assertSolicitudResolucionConsistente($solicitud);
@@ -177,7 +269,7 @@ class ResolucionExcedenteService
 
     private function montoDisponiblePagoMayor(Pago $pagoOrigen, ?int $solicitudActualId = null): float
     {
-        $query = SolicitudResolucionExcedente::where('TipoResolucion', 'DEVOLUCION_PAGO_MAYOR')
+        $query = SolicitudResolucionExcedente::whereIn('TipoResolucion', ['DEVOLUCION_PAGO_MAYOR', 'APLICACION_PAGO_MAYOR'])
             ->where('PagoOrigenID', $pagoOrigen->PagoID)
             ->where('Estado', '!=', 'RECHAZADA');
 

@@ -54,7 +54,7 @@ class SaldoPendienteService
                 FROM {$tablaSolicitudes} sre
                 JOIN pago p2 ON sre.PagoOrigenID = p2.PagoID
                 WHERE p2.CreditoID = ?
-                  AND sre.TipoResolucion = 'TRASLADO_DE_PAGO'
+                  AND sre.TipoResolucion IN ('TRASLADO_DE_PAGO', 'APLICACION_PAGO_MAYOR')
                   AND sre.Estado = 'APROBADA'
             ), 0)
             as total_pagado
