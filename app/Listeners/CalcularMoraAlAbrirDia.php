@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
  */
 class CalcularMoraAlAbrirDia implements ShouldQueueAfterCommit
 {
-    public $connection = 'deferred';
+    public $connection = 'background';
 
     public function handle($event)
     {

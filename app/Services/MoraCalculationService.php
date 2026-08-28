@@ -19,6 +19,14 @@ class MoraCalculationService
 
         if ($desde !== null) {
             $inicio = $inicio->max($this->normalizarFecha($desde));
+        } else {
+            $ultimaMora = DB::table('mora')
+                ->where('CreditoID', $credito->CreditoID)
+                ->max('FechaMora');
+
+            if ($ultimaMora) {
+                $inicio = $inicio->max(Carbon::parse($ultimaMora)->startOfDay()->addDay());
+            }
         }
 
         if ($inicio->gt($hasta)) {

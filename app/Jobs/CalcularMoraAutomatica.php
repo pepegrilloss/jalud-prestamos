@@ -8,6 +8,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 
 class CalcularMoraAutomatica implements ShouldQueue
@@ -19,6 +20,15 @@ class CalcularMoraAutomatica implements ShouldQueue
     public function __construct($fecha = null)
     {
         $this->fecha = $fecha ? \Carbon\Carbon::parse($fecha)->toDateString() : today()->toDateString();
+    }
+
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('calcular-mora-automatica'))
+                ->dontRelease()
+                ->expireAfter(600),
+        ];
     }
 
     public function handle(MoraCalculationService $moraService): void
@@ -34,6 +44,7 @@ class CalcularMoraAutomatica implements ShouldQueue
             Credito::withoutGlobalScope('sede')
                 ->where('Activo', 1)
                 ->whereDate('FechaVencimiento', '<=', $fecha)
+                ->whereHas('proposicion', fn ($query) => $query->where('SaldoPendiente', '>', 0))
                 ->whereIn('SedeID', \App\Models\Sede::where('Activo', true)->pluck('SedeID'))
                 ->chunkById(500, function ($creditos) use ($fecha, $moraService, &$morasCreadas) {
                     foreach ($creditos as $credito) {

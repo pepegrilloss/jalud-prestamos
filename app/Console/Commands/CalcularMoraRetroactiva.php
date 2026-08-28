@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Credito;
 use App\Services\MoraCalculationService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class CalcularMoraRetroactiva extends Command
@@ -31,7 +32,11 @@ class CalcularMoraRetroactiva extends Command
             ->select('Credito.*')
             ->chunkById(500, function ($creditos) use ($moraService, &$morasRegistradas, &$montoTotal) {
                 foreach ($creditos as $credito) {
-                    $resultado = $moraService->procesarCreditoHasta($credito, today());
+                    $resultado = $moraService->procesarCreditoHasta(
+                        $credito,
+                        today(),
+                        Carbon::parse($credito->FechaVencimiento)->addDay(),
+                    );
                     $morasRegistradas += $resultado['creadas'];
                     $montoTotal = round($montoTotal + $resultado['monto'], 2);
                 }
