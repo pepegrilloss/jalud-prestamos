@@ -87,6 +87,8 @@ class Credito extends Model
 
     public function moras()
     {
-        return $this->hasMany(Mora::class, 'CreditoID');
+        return $this->hasMany(Mora::class, 'CreditoID')
+            ->orderBy('FechaMora')
+            ->orderBy('MoraID');
     }
 }

@@ -574,7 +574,7 @@ class CreditoResource extends Resource
                                 ->label('Mora Acumulada')
                                 ->money('PEN')
                                 ->getStateUsing(function ($record) {
-                                    $ultimaMora = $record->moras()->latest('FechaMora')->first(['MoraAcumulada']);
+                                    $ultimaMora = $record->moras()->reorder()->latest('FechaMora')->first(['MoraAcumulada']);
                                     $moraPagada = (float) \App\Models\Pago::where('CreditoID', $record->CreditoID)
                                         ->where('Activo', 1)
                                         ->where(function ($q) {
@@ -664,7 +664,7 @@ class CreditoResource extends Resource
                 ->icon('heroicon-m-clock')
                 ->collapsed()
                 ->description(function ($record) {
-                    $ultimaMora = $record->moras()->latest('FechaMora')->first();
+                    $ultimaMora = $record->moras()->reorder()->latest('FechaMora')->first();
                     if (! $ultimaMora) {
                         return 'Sin moras registradas';
                     }
@@ -688,14 +688,8 @@ class CreditoResource extends Resource
                     return $texto;
                 })
                 ->schema([
-                    Infolists\Components\RepeatableEntry::make('moras_ordenadas')
+                    Infolists\Components\RepeatableEntry::make('moras')
                         ->label('')
-                        ->getStateUsing(fn ($record) => $record->moras()
-                            ->orderBy('FechaMora')
-                            ->orderBy('MoraID')
-                            ->get()
-                            ->map(fn ($mora) => $mora->toArray())
-                            ->all())
                         ->schema([
                             Infolists\Components\Grid::make(5)
                                 ->schema([
