@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\AperturaCierreDiaResource\Pages;
 
 use App\Filament\Resources\AperturaCierreDiaResource;
-use App\Events\DiaAbierto;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
@@ -27,14 +26,6 @@ class EditAperturaCierreDia extends EditRecord
         }
 
         return $data;
-    }
-
-    protected function afterSave(): void
-    {
-        // Disparar evento manualmente si cambió a ABIERTO
-        if ($this->record->EstadoDia === 'ABIERTO' && $this->record->wasChanged('EstadoDia')) {
-            DiaAbierto::dispatch($this->record);
-        }
     }
 
     protected function getRedirectUrl(): string

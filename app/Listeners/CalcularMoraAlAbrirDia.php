@@ -3,17 +3,19 @@
 namespace App\Listeners;
 
 use App\Jobs\CalcularMoraAutomatica;
-use App\Models\AperturaCierreDia;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Support\Facades\Log;
 
 /**
  * CalcularMoraAlAbrirDia
- * 
+ *
  * Se ejecuta automáticamente cuando se abre un nuevo día en el sistema.
  * Calcula la mora para todos los créditos vencidos.
  */
-class CalcularMoraAlAbrirDia
+class CalcularMoraAlAbrirDia implements ShouldQueueAfterCommit
 {
+    public $connection = 'deferred';
+
     public function handle($event)
     {
         set_time_limit(300);
@@ -22,12 +24,12 @@ class CalcularMoraAlAbrirDia
             'event' => get_class($event),
             'fecha' => $event?->aperturaCierre?->Fecha ?? 'desconocida',
         ]);
-        
-        // Ejecutar el Job sincronamente (no en cola) para calcular mora inmediatamente
+
+        // El listener corre en segundo plano, después de confirmar la apertura.
         try {
             $fecha = $event->aperturaCierre?->Fecha;
-            Log::info('[LISTENER] Despachando CalcularMoraAutomatica sincronamente para: ' . $fecha);
-            // Usar dispatchSync para ejecutar INMEDIATAMENTE sin cola
+            Log::info('[LISTENER] Despachando CalcularMoraAutomatica sincronamente para: '.$fecha);
+            // El trabajo pesado se ejecuta después de enviar la respuesta al usuario.
             CalcularMoraAutomatica::dispatchSync($fecha);
             Log::info('[LISTENER] CalcularMoraAutomatica ejecutado correctamente');
         } catch (\Exception $e) {

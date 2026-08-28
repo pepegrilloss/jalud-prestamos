@@ -4,17 +4,16 @@ namespace App\Filament\Resources\AperturaCierreDiaResource\Pages;
 
 use App\Filament\Resources\AperturaCierreDiaResource;
 use App\Models\AperturaCierreDia;
-use App\Events\DiaAbierto;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
-use Illuminate\Database\Eloquent\Builder;
 
 class AperturarFechaPasada extends Page
 {
     protected static string $resource = AperturaCierreDiaResource::class;
+
     protected static string $view = 'filament.resources.apertura-cierre-dia-resource.pages.aperturar-fecha-pasada';
 
     public ?array $data = [];
@@ -82,13 +81,10 @@ class AperturarFechaPasada extends Page
                     'UsuarioCierreID' => null,
                     'FechaApertura' => now(),
                     'UsuarioAperturaID' => auth()->id(),
-                    'Observaciones' => $data['observaciones'] ? 
-                        ($registro->Observaciones ? $registro->Observaciones . "\n[Reapertura] " . $data['observaciones'] : "[Reapertura] " . $data['observaciones']) 
+                    'Observaciones' => $data['observaciones'] ?
+                        ($registro->Observaciones ? $registro->Observaciones."\n[Reapertura] ".$data['observaciones'] : '[Reapertura] '.$data['observaciones'])
                         : $registro->Observaciones,
                 ]);
-
-                // Disparar evento
-                DiaAbierto::dispatch($registro);
 
                 // Reabrir registros del día
                 AperturaCierreDiaResource::reabrirDia($registro);
@@ -106,11 +102,8 @@ class AperturarFechaPasada extends Page
                     'EstadoDia' => 'ABIERTO',
                     'FechaApertura' => now(),
                     'UsuarioAperturaID' => auth()->id(),
-                    'Observaciones' => $data['observaciones'] ? "[Apertura de Fecha Pasada] " . $data['observaciones'] : '[Apertura de Fecha Pasada]',
+                    'Observaciones' => $data['observaciones'] ? '[Apertura de Fecha Pasada] '.$data['observaciones'] : '[Apertura de Fecha Pasada]',
                 ]);
-
-                // Disparar evento
-                DiaAbierto::dispatch($nuevoRegistro);
 
                 Notification::make()
                     ->success()
@@ -125,7 +118,7 @@ class AperturarFechaPasada extends Page
             Notification::make()
                 ->danger()
                 ->title('Error')
-                ->body('No se pudo aperturar la fecha: ' . $e->getMessage())
+                ->body('No se pudo aperturar la fecha: '.$e->getMessage())
                 ->persistent()
                 ->send();
         }

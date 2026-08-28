@@ -2,22 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSede;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Observers\AperturaCierreDiaObserver;
-use App\Traits\BelongsToSede;
-use App\Models\Excedente;
-use App\Models\SolicitudResolucionExcedente;
-use App\Models\Gasto;
-use App\Models\Compra;
-use App\Models\TransferenciaSede;
-use App\Models\ProposicionCredito;
-use App\Models\SolicitudExoneracion;
 
 class AperturaCierreDia extends Model
 {
     use BelongsToSede;
+
     protected $table = 'apertura_cierre_dia';
+
     protected $primaryKey = 'AperturaCierreDiaID';
 
     protected $fillable = [
@@ -38,15 +32,6 @@ class AperturaCierreDia extends Model
         'FechaCierre' => 'datetime',
         'pagos_promotor_bloqueados' => 'boolean',
     ];
-
-    /**
-     * Registrar el Observer para los eventos de este modelo
-     */
-    protected static function boot()
-    {
-        parent::boot();
-        static::observe(AperturaCierreDiaObserver::class);
-    }
 
     public function usuarioApertura(): BelongsTo
     {
@@ -108,6 +93,7 @@ class AperturaCierreDia extends Model
         if ($sedeId) {
             $existsQuery->where('SedeID', $sedeId);
         }
+
         return $existsQuery->exists();
     }
 
@@ -131,6 +117,7 @@ class AperturaCierreDia extends Model
     public static function estadoDiaActual(): string
     {
         $hoy = self::hoyOHoy();
+
         return $hoy?->EstadoDia ?? 'CERRADO';
     }
 
@@ -146,9 +133,9 @@ class AperturaCierreDia extends Model
         // 1. Transferencias pendientes de aprobar (origen o destino en esta sede)
         $transferenciasPendientes = TransferenciaSede::withoutGlobalScope('sede')
             ->where('Estado', 'PENDIENTE')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->where('SedeOrigenID', $this->SedeID)
-                  ->orWhere('SedeDestinoID', $this->SedeID);
+                    ->orWhere('SedeDestinoID', $this->SedeID);
             })
             ->whereDate('FechaTransferencia', $fecha)
             ->count();
@@ -318,9 +305,9 @@ class AperturaCierreDia extends Model
             // Cerrar transferencias/remesas SIN CERRAR de ese día (origen O destino en esta sede)
             $transferenciasActualizadas = TransferenciaSede::withoutGlobalScope('sede')
                 ->whereNull('FechaCierre')
-                ->where(function($q) {
+                ->where(function ($q) {
                     $q->where('SedeOrigenID', $this->SedeID)
-                      ->orWhere('SedeDestinoID', $this->SedeID);
+                        ->orWhere('SedeDestinoID', $this->SedeID);
                 })
                 ->whereDate('FechaTransferencia', $fecha)
                 ->update(['FechaCierre' => $fechaCarbon]);
@@ -331,9 +318,9 @@ class AperturaCierreDia extends Model
             $this->registrarHistorial('CERRAR', $clientesActualizados + $proposicionesActualizadas + $creditosActualizados + $pagosActualizados + $cuotasActualizadas + $analisisActualizados + $evaluacionesActualizadas + $excedentesActualizados + $solicitudesActualizadas + $gastosActualizados + $comprasActualizadas + $transferenciasActualizadas);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error generando cierre de día: ' . $e->getMessage(), [
+            \Illuminate\Support\Facades\Log::error('Error generando cierre de día: '.$e->getMessage(), [
                 'exception' => $e,
-                'fecha' => $this->Fecha
+                'fecha' => $this->Fecha,
             ]);
             throw $e;
         }
@@ -354,8 +341,8 @@ class AperturaCierreDia extends Model
             $fechaInicio = $this->Fecha->copy()->startOfDay();
             $fechaFin = $this->Fecha->copy()->endOfDay();
 
-            file_put_contents($logFile, "Fecha inicio: " . $fechaInicio->toDateTimeString() . "\n", FILE_APPEND);
-            file_put_contents($logFile, "Fecha fin: " . $fechaFin->toDateTimeString() . "\n", FILE_APPEND);
+            file_put_contents($logFile, 'Fecha inicio: '.$fechaInicio->toDateTimeString()."\n", FILE_APPEND);
+            file_put_contents($logFile, 'Fecha fin: '.$fechaFin->toDateTimeString()."\n", FILE_APPEND);
 
             // Reabrir clientes registrados ese día (SOLO esta sede)
             $clientesActualizados = Cliente::withoutGlobalScope('sede')
@@ -457,9 +444,9 @@ class AperturaCierreDia extends Model
             // Reabrir transferencias de ese día (origen O destino en esta sede)
             $transferenciasReabiertas = TransferenciaSede::withoutGlobalScope('sede')
                 ->whereDate('FechaCierre', $fecha)
-                ->where(function($q) {
+                ->where(function ($q) {
                     $q->where('SedeOrigenID', $this->SedeID)
-                      ->orWhere('SedeDestinoID', $this->SedeID);
+                        ->orWhere('SedeDestinoID', $this->SedeID);
                 })
                 ->whereDate('FechaTransferencia', $fecha)
                 ->update(['FechaCierre' => null]);
@@ -469,19 +456,19 @@ class AperturaCierreDia extends Model
 
             \Illuminate\Support\Facades\Log::info("Día reabierto: {$fecha}", [
                 'usuario' => auth()->user()?->name,
-                'timestamp' => now()
+                'timestamp' => now(),
             ]);
 
             $this->registrarHistorial('REABRIR', $clientesActualizados + $proposicionesActualizadas + $creditosActualizados + $pagosActualizados + $cuotasActualizadas + $analisisActualizados + $evaluacionesActualizadas + $excedentesActualizados + $solicitudesActualizadas + $gastosReabiertos + $comprasReabiertas + $transferenciasReabiertas);
 
         } catch (\Exception $e) {
             $logFile = storage_path('logs/reopening-debug.log');
-            file_put_contents($logFile, "ERROR en reabrirDia: " . $e->getMessage() . "\n", FILE_APPEND);
-            file_put_contents($logFile, "Stack trace: " . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            file_put_contents($logFile, 'ERROR en reabrirDia: '.$e->getMessage()."\n", FILE_APPEND);
+            file_put_contents($logFile, 'Stack trace: '.$e->getTraceAsString()."\n\n", FILE_APPEND);
 
-            \Illuminate\Support\Facades\Log::error('Error reabriendo día: ' . $e->getMessage(), [
+            \Illuminate\Support\Facades\Log::error('Error reabriendo día: '.$e->getMessage(), [
                 'fecha' => $this->Fecha,
-                'exception' => $e
+                'exception' => $e,
             ]);
             throw $e;
         }
@@ -506,7 +493,7 @@ class AperturaCierreDia extends Model
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Error registrando historial de {$accion}", [
                 'fecha' => $this->Fecha,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }

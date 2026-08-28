@@ -3,9 +3,6 @@
 namespace App\Filament\Resources\AperturaCierreDiaResource\Pages;
 
 use App\Filament\Resources\AperturaCierreDiaResource;
-use App\Models\AperturaCierreDia;
-use App\Events\DiaAbierto;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateAperturaCierreDia extends CreateRecord
@@ -27,14 +24,6 @@ class CreateAperturaCierreDia extends CreateRecord
         }
 
         return $data;
-    }
-
-    protected function afterCreate(): void
-    {
-        // Disparar evento manualmente si se creó como ABIERTO
-        if ($this->record->EstadoDia === 'ABIERTO') {
-            DiaAbierto::dispatch($this->record);
-        }
     }
 
     protected function getRedirectUrl(): string
