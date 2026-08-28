@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\CalcularMoraAutomatica;
 use App\Models\Credito;
 use App\Services\MoraCalculationService;
 use Illuminate\Database\Schema\Blueprint;
@@ -29,6 +30,18 @@ class MoraCalculationServiceTest extends TestCase
             $table->string('EstatusCreditoFinal')->default('ACTIVO');
             $table->unsignedInteger('SedeID');
         });
+
+        Schema::create('Sede', function (Blueprint $table) {
+            $table->increments('SedeID');
+            $table->string('Nombre');
+            $table->boolean('Activo')->default(true);
+        });
+
+        DB::table('Sede')->insert([
+            ['SedeID' => 1, 'Nombre' => 'Chiclayo', 'Activo' => true],
+            ['SedeID' => 2, 'Nombre' => 'Trujillo', 'Activo' => true],
+            ['SedeID' => 3, 'Nombre' => 'Gerencia', 'Activo' => true],
+        ]);
 
         Schema::create('ProposicionCredito', function (Blueprint $table) {
             $table->increments('ProposicionCreditoID');
@@ -175,12 +188,35 @@ class MoraCalculationServiceTest extends TestCase
         $this->assertSame(19.0, (float) $moras[1]->MoraAcumulada);
     }
 
+    public function test_el_calculo_automatico_solo_procesa_la_sede_abierta(): void
+    {
+        $creditoChiclayo = $this->crearCredito('2026-08-22', 1000, 500, 0.5, null, 1);
+        $this->crearCredito('2026-08-22', 1000, 500, 0.5, null, 2);
+
+        $servicio = \Mockery::mock(MoraCalculationService::class);
+        $servicio->shouldReceive('procesarCreditoHasta')
+            ->once()
+            ->withArgs(fn (Credito $credito) => $credito->CreditoID === $creditoChiclayo->CreditoID)
+            ->andReturn(['creadas' => 0]);
+
+        (new CalcularMoraAutomatica('2026-08-23', 1))->handle($servicio);
+    }
+
+    public function test_gerencia_no_ejecuta_calculo_automatico_de_mora(): void
+    {
+        $servicio = \Mockery::mock(MoraCalculationService::class);
+        $servicio->shouldNotReceive('procesarCreditoHasta');
+
+        (new CalcularMoraAutomatica('2026-08-23', 3))->handle($servicio);
+    }
+
     private function crearCredito(
         string $vencimiento,
         float $total,
         float $saldo,
         ?float $tasaCredito,
         ?float $tasaCliente,
+        int $sedeId = 2,
     ): Credito {
         $tasaMoraId = null;
         if ($tasaCliente !== null) {
@@ -189,7 +225,7 @@ class MoraCalculationServiceTest extends TestCase
 
         $clienteId = DB::table('Cliente')->insertGetId([
             'TasaMoraID' => $tasaMoraId,
-            'SedeID' => 2,
+            'SedeID' => $sedeId,
         ]);
 
         $proposicionId = DB::table('ProposicionCredito')->insertGetId([
@@ -200,7 +236,7 @@ class MoraCalculationServiceTest extends TestCase
             'TasaMora' => $tasaCredito,
             'Activo' => true,
             'Eliminado' => false,
-            'SedeID' => 2,
+            'SedeID' => $sedeId,
         ]);
 
         $creditoId = DB::table('Credito')->insertGetId([
@@ -210,7 +246,7 @@ class MoraCalculationServiceTest extends TestCase
             'FechaVencimiento' => $vencimiento,
             'Activo' => true,
             'EstatusCreditoFinal' => 'ACTIVO',
-            'SedeID' => 2,
+            'SedeID' => $sedeId,
         ]);
 
         return Credito::withoutGlobalScope('sede')->findOrFail($creditoId);
