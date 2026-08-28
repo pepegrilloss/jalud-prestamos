@@ -688,7 +688,7 @@ class CreditoResource extends Resource
                     return $texto;
                 })
                 ->schema([
-                    Infolists\Components\RepeatableEntry::make('moras')
+                    Infolists\Components\RepeatableEntry::make('moras_ordenadas')
                         ->label('')
                         ->getStateUsing(fn ($record) => $record->moras()
                             ->orderBy('FechaMora')
