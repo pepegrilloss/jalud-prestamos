@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ReporteCreditosVencidosResource\Pages;
 use App\Models\CreditoReporteVencido;
+use App\Models\Sede;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -11,16 +12,20 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-use App\Models\Sede;
 class ReporteCreditosVencidosResource extends Resource
 {
     protected static ?string $model = CreditoReporteVencido::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-exclamation-circle';
+
     protected static ?string $navigationGroup = 'Reportes';
+
     protected static ?int $navigationGroupSort = 10;
+
     protected static ?int $navigationSort = 2;
+
     protected static ?string $label = 'Créditos Vencidos';
+
     protected static ?string $pluralLabel = 'Créditos Vencidos';
 
     public static function form(Form $form): Form
@@ -69,10 +74,13 @@ class ReporteCreditosVencidosResource extends Resource
                 Tables\Columns\TextColumn::make('saldoPendiente')
                     ->label('Saldo')
                     ->money('PEN')
+                    ->color('danger')
+                    ->weight('semibold')
                     // OPTIMIZACIÓN N+1: usa total_pagado (subquery) y proposicion (eager loaded).
                     ->getStateUsing(function ($record) {
                         $total = (float) ($record->proposicion->MontoTotalPagar ?? 0);
                         $pagado = (float) ($record->total_pagado ?? 0);
+
                         return $total - $pagado;
                     })
                     ->sortable(query: fn (Builder $query, string $direction) => $query->orderByRaw("(SELECT pc.SaldoPendiente FROM ProposicionCredito pc WHERE pc.ProposicionCreditoID = Credito.ProposicionCreditoID) {$direction}")),
@@ -80,6 +88,8 @@ class ReporteCreditosVencidosResource extends Resource
                 Tables\Columns\TextColumn::make('FechaVencimiento')
                     ->label('Fecha')
                     ->date('d/m/Y')
+                    ->color('danger')
+                    ->weight('semibold')
                     ->sortable(),
             ])
             ->filters([
@@ -146,11 +156,11 @@ class ReporteCreditosVencidosResource extends Resource
             ->paginationPageOptions([10, 25, 50]);
     }
 
-    
     public static function canViewAny(): bool
     {
         return auth()->user()->can('view_any_reporte::creditos::vencidos');
     }
+
     public static function getRelations(): array
     {
         return [];
@@ -165,21 +175,27 @@ class ReporteCreditosVencidosResource extends Resource
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) { return false; }
+        if (! parent::canCreate()) {
+            return false;
+        }
 
         return false;
     }
 
     public static function canEdit($record): bool
     {
-        if (!parent::canEdit($record)) { return false; }
+        if (! parent::canEdit($record)) {
+            return false;
+        }
 
         return false;
     }
 
     public static function canDelete($record): bool
     {
-        if (!parent::canDelete($record)) { return false; }
+        if (! parent::canDelete($record)) {
+            return false;
+        }
 
         return false;
     }

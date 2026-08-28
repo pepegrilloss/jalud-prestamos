@@ -385,13 +385,28 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     return [];
                                 return Credito::whereHas('proposicion', function ($q) use ($get) {
                                     $q->where('ClienteID', $get('ClienteDestinoID'));
-                                })->where('Activo', 1)->with('proposicion.tipoCredito')->get()->mapWithKeys(function ($cr) {
+                                })
+                                    ->when($get('TipoResolucion') === 'APLICACION_PAGO_MAYOR' && $get('CreditoOrigenID'), function ($query) use ($get) {
+                                        $query->where('CreditoID', '!=', $get('CreditoOrigenID'));
+                                    })
+                                    ->where('Activo', 1)
+                                    ->with('proposicion.tipoCredito')
+                                    ->get()
+                                    ->mapWithKeys(function ($cr) {
                                     return [$cr->CreditoID => "{$cr->proposicion->CodigoCredito} - Vigente"];
-                                });
+                                    });
                             })
                             ->required(fn(Get $get) => in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'ASIGNACION_POR_RECLAMO', 'DEVOLUCION_EFECTIVO', 'DEVOLUCION_PAGO_MAYOR', 'APLICACION_NUEVO_CREDITO', 'APLICACION_PAGO_MAYOR']))
                             ->searchable()
                             ->live()
+                            ->rules([
+                                fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    if ($get('TipoResolucion') === 'APLICACION_PAGO_MAYOR'
+                                        && (int) $value === (int) $get('CreditoOrigenID')) {
+                                        $fail('El credito destino debe ser diferente al credito origen.');
+                                    }
+                                },
+                            ])
                             ->afterStateUpdated(function (Get $get, Set $set) {
                                 $pagoMayorSeleccionado = $get('PagoMayorOrigenID');
                                 $set('PagoMayorOrigenID', null);

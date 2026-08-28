@@ -137,6 +137,10 @@ class ResolucionExcedenteService
             throw new \Exception('No se encontraron todos los registros del traslado de pago a mayor.');
         }
 
+        if ((int) $creditoOrigen->CreditoID === (int) $creditoDestino->CreditoID) {
+            throw new \Exception('El credito destino debe ser diferente al credito origen.');
+        }
+
         if (! $pagoOrigen->EsPagoAMayor || $pagoOrigen->EsPagoAMayorPorMora) {
             throw new \Exception('El pago seleccionado no es un pago a mayor disponible.');
         }
