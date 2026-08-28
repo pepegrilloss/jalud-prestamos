@@ -690,6 +690,10 @@ class CreditoResource extends Resource
                 ->schema([
                     Infolists\Components\RepeatableEntry::make('moras')
                         ->label('')
+                        ->getStateUsing(fn ($record) => $record->moras()
+                            ->orderBy('FechaMora')
+                            ->orderBy('MoraID')
+                            ->get())
                         ->schema([
                             Infolists\Components\Grid::make(5)
                                 ->schema([
