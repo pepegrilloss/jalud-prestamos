@@ -16,7 +16,7 @@ class CalcularMoraCommand extends Command
         $this->info('Iniciando cálculo de mora automática...');
 
         try {
-            CalcularMoraAutomatica::dispatch();
+            CalcularMoraAutomatica::dispatch($this->option('date'));
             $this->info('✅ Cálculo de mora encolado correctamente.');
             return 0;
         } catch (\Exception $e) {
