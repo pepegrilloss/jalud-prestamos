@@ -693,7 +693,9 @@ class CreditoResource extends Resource
                         ->getStateUsing(fn ($record) => $record->moras()
                             ->orderBy('FechaMora')
                             ->orderBy('MoraID')
-                            ->get())
+                            ->get()
+                            ->map(fn ($mora) => $mora->toArray())
+                            ->all())
                         ->schema([
                             Infolists\Components\Grid::make(5)
                                 ->schema([
