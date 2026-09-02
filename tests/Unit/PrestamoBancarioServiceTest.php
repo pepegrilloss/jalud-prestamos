@@ -31,4 +31,21 @@ class PrestamoBancarioServiceTest extends TestCase
 
         $this->assertEqualsWithDelta(0.090292, $ted, 0.000001);
     }
+
+    public function test_normaliza_cronograma_manual_y_recalcula_saldos(): void
+    {
+        $cronograma = app(PrestamoBancarioService::class)->normalizarCronogramaManual([
+            ['Numero' => 1, 'Capital' => 350, 'Interes' => 20, 'Comision' => 5, 'Seguros' => 0],
+            ['Numero' => 2, 'Capital' => 300, 'Interes' => 15, 'Comision' => 0, 'Seguros' => 0],
+            ['Numero' => 3, 'Capital' => 300, 'Interes' => 5, 'Comision' => 0, 'Seguros' => 0],
+        ], 1000);
+
+        $this->assertSame(375.0, (float) $cronograma[0]['MontoCuota']);
+        $this->assertSame(650.0, (float) $cronograma[0]['SaldoDeuda']);
+        $this->assertSame(350.0, (float) $cronograma[1]['SaldoDeuda']);
+        $this->assertSame(350.0, (float) $cronograma[2]['Capital']);
+        $this->assertSame(355.0, (float) $cronograma[2]['MontoCuota']);
+        $this->assertSame(0.0, (float) $cronograma[2]['SaldoDeuda']);
+        $this->assertSame(1000.0, round(array_sum(array_column($cronograma, 'Capital')), 2));
+    }
 }

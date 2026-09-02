@@ -14,6 +14,50 @@ use Illuminate\Validation\ValidationException;
 
 class PrestamoBancarioService
 {
+    /**
+     * Recalcula los importes derivados de un cronograma ajustado manualmente.
+     * La última cuota absorbe el capital restante para que el préstamo cierre en cero.
+     *
+     * @param  array<array-key, array<string, mixed>>  $cronograma
+     * @return array<array-key, array<string, mixed>>
+     */
+    public function normalizarCronogramaManual(array $cronograma, float $montoPrestamo): array
+    {
+        $montoPrestamo = round($montoPrestamo, 2);
+
+        if ($montoPrestamo <= 0 || $cronograma === []) {
+            return $cronograma;
+        }
+
+        $filas = collect($cronograma)->sortBy(fn (array $fila): int => (int) ($fila['Numero'] ?? 0));
+        $ultimaClave = $filas->keys()->last();
+        $capitalAntesDeLaUltima = round((float) $filas
+            ->except($ultimaClave)
+            ->sum(fn (array $fila): float => max(0, (float) ($fila['Capital'] ?? 0))), 2);
+        $capitalUltimaCuota = round(max(0, $montoPrestamo - $capitalAntesDeLaUltima), 2);
+        $saldo = $montoPrestamo;
+
+        foreach ($filas as $clave => $fila) {
+            $capital = $clave === $ultimaClave
+                ? $capitalUltimaCuota
+                : round(max(0, (float) ($fila['Capital'] ?? 0)), 2);
+            $interes = round(max(0, (float) ($fila['Interes'] ?? 0)), 2);
+            $comision = round(max(0, (float) ($fila['Comision'] ?? 0)), 2);
+            $seguros = round(max(0, (float) ($fila['Seguros'] ?? 0)), 2);
+
+            $fila['Capital'] = $capital;
+            $fila['Interes'] = $interes;
+            $fila['Comision'] = $comision;
+            $fila['Seguros'] = $seguros;
+            $fila['MontoCuota'] = round($capital + $interes + $comision + $seguros, 2);
+            $saldo = round(max(0, $saldo - $capital), 2);
+            $fila['SaldoDeuda'] = $saldo;
+            $filas->put($clave, $fila);
+        }
+
+        return $filas->all();
+    }
+
     public function generarCronograma(array $data): array
     {
         $monto = round((float) ($data['MontoPrestamo'] ?? 0), 2);

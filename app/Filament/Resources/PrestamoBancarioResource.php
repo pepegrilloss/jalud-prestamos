@@ -147,12 +147,16 @@ class PrestamoBancarioResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('Numero')->label('N°')->numeric()->integer()->disabled()->dehydrated(),
                             Forms\Components\DatePicker::make('FechaVencimiento')->label('F. vcto')->required(),
-                            Forms\Components\TextInput::make('Capital')->numeric()->prefix('S/')->minValue(0)->required(),
-                            Forms\Components\TextInput::make('Interes')->label('Interés')->numeric()->prefix('S/')->minValue(0)->required(),
-                            Forms\Components\TextInput::make('Comision')->label('Comisión')->numeric()->prefix('S/')->minValue(0)->default(0)->required(),
-                            Forms\Components\TextInput::make('Seguros')->numeric()->prefix('S/')->minValue(0)->default(0)->required(),
-                            Forms\Components\TextInput::make('MontoCuota')->label('Cuota')->numeric()->prefix('S/')->minValue(0)->required(),
-                            Forms\Components\TextInput::make('SaldoDeuda')->label('Saldo deuda')->numeric()->prefix('S/')->minValue(0)->required(),
+                            Forms\Components\TextInput::make('Capital')->numeric()->prefix('S/')->minValue(0)->required()
+                                ->live(onBlur: true)->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularCronogramaManual($set, $get)),
+                            Forms\Components\TextInput::make('Interes')->label('Interés')->numeric()->prefix('S/')->minValue(0)->required()
+                                ->live(onBlur: true)->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularCronogramaManual($set, $get)),
+                            Forms\Components\TextInput::make('Comision')->label('Comisión')->numeric()->prefix('S/')->minValue(0)->default(0)->required()
+                                ->live(onBlur: true)->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularCronogramaManual($set, $get)),
+                            Forms\Components\TextInput::make('Seguros')->numeric()->prefix('S/')->minValue(0)->default(0)->required()
+                                ->live(onBlur: true)->afterStateUpdated(fn (Set $set, Get $get) => static::recalcularCronogramaManual($set, $get)),
+                            Forms\Components\TextInput::make('MontoCuota')->label('Cuota')->numeric()->prefix('S/')->disabled()->dehydrated(),
+                            Forms\Components\TextInput::make('SaldoDeuda')->label('Saldo deuda')->numeric()->prefix('S/')->disabled()->dehydrated(),
                         ])
                         ->columns(['default' => 1, 'md' => 4, 'xl' => 8])
                         ->itemLabel(fn (array $state): string => 'Cuota '.($state['Numero'] ?? ''))
@@ -278,6 +282,37 @@ class PrestamoBancarioResource extends Resource
         $set('TED', $service->calcularTed((float) $data['TEA']));
         $set('PagoMensual', $cronograma[0]['MontoCuota']);
         $set('FechaVencimiento', $cronograma[array_key_last($cronograma)]['FechaVencimiento']);
+    }
+
+    public static function normalizarDatosCronograma(array $data): array
+    {
+        if (! is_array($data['Cronograma'] ?? null)) {
+            return $data;
+        }
+
+        $data['Cronograma'] = app(PrestamoBancarioService::class)->normalizarCronogramaManual(
+            $data['Cronograma'],
+            (float) ($data['MontoPrestamo'] ?? 0),
+        );
+
+        $ultimaCuota = collect($data['Cronograma'])->sortBy('Numero')->last();
+        if ($ultimaCuota) {
+            $data['FechaVencimiento'] = $ultimaCuota['FechaVencimiento'];
+        }
+
+        return $data;
+    }
+
+    private static function recalcularCronogramaManual(Set $set, Get $get): void
+    {
+        $cronograma = $get('../');
+        $montoPrestamo = (float) $get('../../MontoPrestamo');
+
+        if (! is_array($cronograma) || $montoPrestamo <= 0) {
+            return;
+        }
+
+        $set('../', app(PrestamoBancarioService::class)->normalizarCronogramaManual($cronograma, $montoPrestamo));
     }
 
     private static function enGerencia(): bool
