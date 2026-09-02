@@ -237,6 +237,7 @@ class ReporteDiarioController extends Controller
         // como excedente cuando ingresó.
         $pagosQuery = Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)
+            ->where('pago.ExcluirBalanceDiario', false)
             ->whereNull('pago.SolicitudResolucionID')
             ->where('pago.EsPagoAMayorPorMora', false)
             ->where(function($q) {
@@ -400,6 +401,7 @@ class ReporteDiarioController extends Controller
                 // 3. Pagos / Amortizaciones (Entrada física) — descontando porciones aplicadas por excedentes
                 $pagosRaw = \App\Models\Pago::withoutGlobalScopes()
                     ->where('Activo', true)
+                    ->where('ExcluirBalanceDiario', false)
                     ->whereNull('SolicitudResolucionID')
                     ->where('EsPagoAMayorPorMora', false)
                     ->where(function($q) {

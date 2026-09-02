@@ -93,6 +93,7 @@ class Pago extends Model
         'EsPagoAMayor',
         'EsPagoAMayorPorMora',
         'EsPagoInicial',
+        'ExcluirBalanceDiario',
         'EsPagoForzado',
         'EsPagoAutomatico',
         'Comentario',
@@ -116,6 +117,7 @@ class Pago extends Model
         'EsPagoAMayor' => 'boolean',
         'EsPagoAMayorPorMora' => 'boolean',
         'EsPagoInicial' => 'boolean',
+        'ExcluirBalanceDiario' => 'boolean',
         'EsPagoForzado' => 'boolean',
         'EsPagoAutomatico' => 'boolean',
         'Activo' => 'boolean'

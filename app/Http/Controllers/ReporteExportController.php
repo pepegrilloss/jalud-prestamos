@@ -114,6 +114,7 @@ class ReporteExportController extends Controller
 
         $pagos = \App\Models\Pago::withoutGlobalScopes()
             ->where('pago.Activo', true)->where('pago.EsPagoAMayorPorMora', false)
+            ->where('pago.ExcluirBalanceDiario', false)
             ->whereNull('pago.SolicitudResolucionID')
             ->whereDate('pago.FechaPago', $fecha)->when($sedeId, fn($q) => $q->where('pago.SedeID', $sedeId))
             ->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')
@@ -258,6 +259,7 @@ class ReporteExportController extends Controller
                     })
                     ->sum('Monto');
                 $pg = \App\Models\Pago::withoutGlobalScopes()->where('Activo', true)->where('EsPagoAMayorPorMora', false)
+                    ->where('ExcluirBalanceDiario', false)
                     ->whereNull('SolicitudResolucionID')
                     ->where(function($q) {
                         $q->whereNull('TipoConcepto')
