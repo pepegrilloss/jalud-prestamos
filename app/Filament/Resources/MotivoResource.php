@@ -85,12 +85,12 @@ class MotivoResource extends Resource implements HasShieldPermissions
             ->actions([
                 Tables\Actions\EditAction::make()->visible(fn($record) => static::canEdit($record)),
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn() => AperturaCierreDia::estaAbierto()),
+                    ->visible(fn($record) => static::canDelete($record)),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => AperturaCierreDia::estaAbierto()),
+                        ->visible(fn() => static::esPanelGerencia() || AperturaCierreDia::estaAbierto()),
                 ]),
             ])
             ->recordUrl(null)
@@ -99,19 +99,28 @@ class MotivoResource extends Resource implements HasShieldPermissions
 
     public static function canCreate(): bool
     {
-        if (!parent::canCreate()) { return false; }
+        if (! parent::canCreate()) {
+            return false;
+        }
 
-        return parent::canCreate(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return static::esPanelGerencia() || \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
-        return parent::canEdit(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canEdit(...func_get_args())
+            && (static::esPanelGerencia() || \App\Models\AperturaCierreDia::estaAbierto());
     }
 
     public static function canDelete($record): bool
     {
-        return parent::canDelete(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
+        return parent::canDelete(...func_get_args())
+            && (static::esPanelGerencia() || \App\Models\AperturaCierreDia::estaAbierto());
+    }
+
+    public static function esPanelGerencia(): bool
+    {
+        return filament()->getCurrentPanel()?->getId() === 'gerencia';
     }
 
     public static function getPages(): array

@@ -103,7 +103,26 @@ class GastoResource extends Resource
                             ->label('Motivo')
                             ->options(Motivo::where('Activo', true)->pluck('Nombre', 'MotivoID'))
                             ->required()
-                            ->searchable(),
+                            ->searchable()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('Nombre')
+                                    ->label('Nombre del Motivo')
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
+                                        return $rule->where('SedeID', auth()->user()->getEffectiveSedeId());
+                                    }),
+                            ])
+                            ->createOptionAction(fn ($action) => $action
+                                ->visible(fn (): bool => static::esPanelGerencia() && MotivoResource::canCreate())
+                                ->modalHeading('Crear motivo de gasto')
+                                ->modalSubmitActionLabel('Crear motivo'))
+                            ->createOptionUsing(function (array $data): string {
+                                $data['Activo'] = true;
+                                $motivo = Motivo::create($data);
+
+                                return (string) $motivo->MotivoID;
+                            }),
                         Forms\Components\Hidden::make('MetodoGasto')
                             ->default('CAJA CHICA'),
                         Forms\Components\Select::make('OrigenTesoreria')

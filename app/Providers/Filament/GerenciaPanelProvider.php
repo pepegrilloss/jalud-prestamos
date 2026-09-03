@@ -26,6 +26,7 @@ use App\Filament\Resources\CuentaTesoreriaResource;
 use App\Filament\Resources\FondoSedeResource;
 use App\Filament\Resources\GastoResource;
 use App\Filament\Resources\LogResource;
+use App\Filament\Resources\MotivoResource;
 use App\Filament\Resources\MovimientoTesoreriaResource;
 use App\Filament\Resources\PrestamoBancarioResource;
 use App\Filament\Resources\TransferenciaSedeResource;
@@ -130,6 +131,7 @@ class GerenciaPanelProvider extends PanelProvider
                 'Administración',
                 'Tesorería',
                 'Compras y Gastos',
+                'Mantenimiento',
                 'Reportes',
                 'Sistema',
             ])
@@ -140,6 +142,7 @@ class GerenciaPanelProvider extends PanelProvider
                 FondoSedeResource::class,
                 GastoResource::class,
                 LogResource::class,
+                MotivoResource::class,
                 MovimientoTesoreriaResource::class,
                 PrestamoBancarioResource::class,
                 TransferenciaSedeResource::class,
