@@ -52,18 +52,39 @@ class MovimientosRelationManager extends RelationManager
                         ? $record->CuentaDestinoNombre
                         : $record->CuentaOrigenNombre)
                     ->wrap(),
-                Tables\Columns\TextColumn::make('Monto')->money('PEN')->weight('bold'),
+                Tables\Columns\TextColumn::make('Monto')
+                    ->money('PEN')
+                    ->weight('bold')
+                    ->summarize(
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->label('Total filtrado')
+                            ->money('PEN')
+                    ),
                 Tables\Columns\TextColumn::make('saldo_resultante')
-                    ->label('Saldo resultante')
+                    ->label('Saldo')
                     ->getStateUsing(fn (MovimientoTesoreria $record) => (int) $record->CuentaOrigenID === (int) $cuentaId
                         ? $record->SaldoNuevoOrigen
                         : $record->SaldoNuevoDestino)
                     ->money('PEN')
+                    ->weight('bold')
                     ->placeholder('-'),
                 Tables\Columns\TextColumn::make('Concepto')->wrap()->searchable(),
                 Tables\Columns\TextColumn::make('usuario.name')->label('Usuario'),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('direccion')
+                    ->label('Movimiento')
+                    ->options([
+                        'ENTRADA' => 'Entrada',
+                        'SALIDA' => 'Salida',
+                    ])
+                    ->query(function (Builder $query, array $data) use ($cuentaId): Builder {
+                        return match ($data['value'] ?? null) {
+                            'ENTRADA' => $query->where('CuentaDestinoID', $cuentaId),
+                            'SALIDA' => $query->where('CuentaOrigenID', $cuentaId),
+                            default => $query,
+                        };
+                    }),
                 Tables\Filters\SelectFilter::make('Tipo')
                     ->options(fn () => MovimientoTesoreria::query()
                         ->where(function (Builder $query) use ($cuentaId): void {
@@ -82,6 +103,7 @@ class MovimientosRelationManager extends RelationManager
                         ->when($data['desde'] ?? null, fn (Builder $q, $fecha) => $q->whereDate('FechaContable', '>=', $fecha))
                         ->when($data['hasta'] ?? null, fn (Builder $q, $fecha) => $q->whereDate('FechaContable', '<=', $fecha))),
             ])
+            ->defaultPaginationPageOption(25)
             ->actions([
                 Tables\Actions\Action::make('ver')
                     ->label('Ver')

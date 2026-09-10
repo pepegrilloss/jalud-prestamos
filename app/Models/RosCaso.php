@@ -45,7 +45,7 @@ class RosCaso extends Model
         static::saving(function (self $caso): void {
             $usuario = auth()->user();
 
-            if ($usuario && !$usuario->can('ver_todos_los_casos_sbs')) {
+            if ($usuario) {
                 $caso->SedeID = $usuario->getEffectiveSedeId();
             }
 

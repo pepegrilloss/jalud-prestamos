@@ -50,16 +50,8 @@ class User extends Authenticatable implements FilamentUser
     // MÉTODO NUEVO - REQUERIDO POR FILAMENT
     public function canAccessPanel(Panel $panel): bool
     {
-        if ($this->hasRole('oficial_cumplimiento_sbs')) {
-            return false;
-        }
-
         if ($panel->getId() === 'gerencia') {
             return $this->puedeAccederAGerencia();
-        }
-
-        if ($panel->getId() === 'cumplimiento') {
-            return $this->puedeAccederACumplimientoSbs();
         }
 
         return $this->roles()->exists();
@@ -180,27 +172,6 @@ class User extends Authenticatable implements FilamentUser
     public function puedeAccederAGerencia(): bool
     {
         return $this->esAdmin() || $this->puedeVerTodasLasSedes();
-    }
-
-    public function puedeAccederACumplimientoSbs(): bool
-    {
-        $permission = 'acceder_cumplimiento_sbs';
-
-        if ($this->permissions()->where('name', $permission)->exists()) {
-            return true;
-        }
-
-        $rolesOperativos = [
-            \BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName(),
-            'admin',
-            'Administrador',
-            'Super Admin',
-        ];
-
-        return $this->roles()
-            ->whereNotIn('name', $rolesOperativos)
-            ->whereHas('permissions', fn($query) => $query->where('name', $permission))
-            ->exists();
     }
 
     /**

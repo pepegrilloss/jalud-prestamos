@@ -73,9 +73,6 @@ return [
         'aprobar_extornos',
         'aprobar_exoneraciones',
         'eliminar_credito',
-        'acceder_cumplimiento_sbs',
-        'ver_todos_los_casos_sbs',
-        'gestionar_catalogos_sbs',
         'traspasar_zona_clientes',
     ],
 

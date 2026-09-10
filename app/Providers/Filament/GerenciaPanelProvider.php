@@ -49,6 +49,7 @@ class GerenciaPanelProvider extends PanelProvider
         return $panel
             ->id('gerencia')
             ->path('gerencia')
+            ->spa()
             ->login(Login::class)
             ->homeUrl('/gerencia')
             ->sidebarCollapsibleOnDesktop()

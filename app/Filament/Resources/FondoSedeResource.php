@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\FondoSedeResource\Pages;
+use App\Filament\Pages\GerenciaReportes;
 use App\Models\FondoSede;
 use App\Models\Sede;
 use App\Models\TransferenciaSede;
@@ -133,6 +134,15 @@ class FondoSedeResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+
+                Tables\Actions\Action::make('verBalanceDiario')
+                    ->label('Balance por día')
+                    ->icon('heroicon-o-chart-bar')
+                    ->color('info')
+                    ->visible(fn (FondoSede $record): bool => filament()->getCurrentPanel()?->getId() === 'gerencia'
+                        && stripos($record->sede->Nombre, 'Gerencia') !== false)
+                    ->url(fn (): string => GerenciaReportes::getUrl())
+                    ->openUrlInNewTab(),
 
                 // Inyectar capital a Caja Abierta (solo Gerencia para su propia sede)
                 Tables\Actions\Action::make('inyectarCapital')

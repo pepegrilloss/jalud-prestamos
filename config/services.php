@@ -41,8 +41,4 @@ return [
         'type' => 'national',
     ],
 
-    'cumplimiento' => [
-        'url' => env('CUMPLIMIENTO_URL', 'https://cumplimiento.jvcsolucionesintegrales.com'),
-    ],
-
 ];

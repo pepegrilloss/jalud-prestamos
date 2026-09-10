@@ -18,6 +18,14 @@ class ViewPrestamoBancario extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\EditAction::make()
+                ->label('Modificar')
+                ->visible(fn (): bool => PrestamoBancarioResource::canEdit($this->record)),
+            Actions\Action::make('imprimir')
+                ->label('Imprimir')
+                ->icon('heroicon-o-printer')
+                ->url(fn (): string => route('prestamos-bancarios.imprimir', ['prestamo' => $this->record]))
+                ->openUrlInNewTab(),
             Actions\Action::make('configurarCuentaPago')
                 ->label('Configurar origen de pago')
                 ->icon('heroicon-o-credit-card')

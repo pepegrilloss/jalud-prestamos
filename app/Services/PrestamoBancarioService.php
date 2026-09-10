@@ -179,6 +179,87 @@ class PrestamoBancarioService
         });
     }
 
+    /**
+     * Actualiza condiciones y cronograma antes de que exista un pago contable.
+     */
+    public function actualizarPrestamoSinPagos(PrestamoBancario $prestamo, array $data): PrestamoBancario
+    {
+        $cronograma = $data['Cronograma'] ?? $this->generarCronograma($data);
+        $this->validarPrestamo($data, $cronograma);
+
+        return DB::transaction(function () use ($prestamo, $data, $cronograma) {
+            $prestamo = PrestamoBancario::lockForUpdate()->findOrFail($prestamo->PrestamoBancarioID);
+
+            if ($prestamo->Estado !== PrestamoBancario::ESTADO_VIGENTE
+                || PagoPrestamoBancario::where('PrestamoBancarioID', $prestamo->PrestamoBancarioID)->exists()) {
+                throw ValidationException::withMessages([
+                    'Cronograma' => 'Solo se puede modificar un préstamo vigente que no tenga pagos registrados.',
+                ]);
+            }
+
+            $tipoPrestamista = $data['TipoPrestamista'] ?? PrestamoBancario::TIPO_BANCO;
+            $nombrePrestamista = $tipoPrestamista === PrestamoBancario::TIPO_TERCERO
+                ? trim((string) ($data['PrestamistaTercero'] ?? ''))
+                : trim((string) ($data['Banco'] ?? ''));
+            $cuentaTesoreriaId = filled($data['CuentaTesoreriaID'] ?? null)
+                ? (int) $data['CuentaTesoreriaID']
+                : null;
+
+            if ($tipoPrestamista === PrestamoBancario::TIPO_TERCERO) {
+                $cuentaTesoreriaId = null;
+            }
+
+            if ($cuentaTesoreriaId) {
+                $cuenta = CuentaTesoreria::query()
+                    ->whereKey($cuentaTesoreriaId)
+                    ->where('Estado', CuentaTesoreria::ESTADO_ACTIVA)
+                    ->first();
+
+                if (! $cuenta || $cuenta->Banco !== $nombrePrestamista) {
+                    throw ValidationException::withMessages([
+                        'CuentaTesoreriaID' => 'La cuenta de pago debe estar activa y pertenecer al banco seleccionado.',
+                    ]);
+                }
+            }
+
+            $ultimaCuota = collect($cronograma)->sortBy('Numero')->last();
+            $prestamo->update([
+                'CuentaTesoreriaID' => $cuentaTesoreriaId,
+                'TipoPrestamista' => $tipoPrestamista,
+                'Banco' => $nombrePrestamista,
+                'Cliente' => trim($data['Cliente']),
+                'CuentaPrestamo' => filled($data['CuentaPrestamo'] ?? null) ? trim($data['CuentaPrestamo']) : 'SIN CUENTA',
+                'Operacion' => filled($data['Operacion'] ?? null) ? trim($data['Operacion']) : null,
+                'MontoPrestamo' => round((float) $data['MontoPrestamo'], 2),
+                'FechaDesembolso' => Carbon::parse($data['FechaDesembolso'])->toDateString(),
+                'FechaVencimiento' => Carbon::parse($data['FechaVencimiento'] ?? $ultimaCuota['FechaVencimiento'])->toDateString(),
+                'NumeroCuotas' => count($cronograma),
+                'DiaPago' => (int) $data['DiaPago'],
+                'PagoMensual' => round((float) ($data['PagoMensual'] ?? $cronograma[0]['MontoCuota']), 2),
+                'TEA' => round((float) $data['TEA'], 6),
+                'TED' => round((float) ($data['TED'] ?? $this->calcularTed((float) $data['TEA'])), 6),
+                'Observaciones' => $data['Observaciones'] ?? null,
+            ]);
+
+            $prestamo->cuotas()->delete();
+            foreach ($cronograma as $fila) {
+                $prestamo->cuotas()->create([
+                    'Numero' => (int) $fila['Numero'],
+                    'FechaVencimiento' => $fila['FechaVencimiento'],
+                    'Capital' => round((float) $fila['Capital'], 2),
+                    'Interes' => round((float) $fila['Interes'], 2),
+                    'Comision' => round((float) ($fila['Comision'] ?? 0), 2),
+                    'Seguros' => round((float) ($fila['Seguros'] ?? 0), 2),
+                    'MontoCuota' => round((float) $fila['MontoCuota'], 2),
+                    'SaldoDeuda' => round((float) $fila['SaldoDeuda'], 2),
+                    'Estado' => CuotaPrestamoBancario::ESTADO_PENDIENTE,
+                ]);
+            }
+
+            return $prestamo->fresh();
+        });
+    }
+
     public function pagarCuota(CuotaPrestamoBancario $cuota, array $data, int $usuarioId): PagoPrestamoBancario
     {
         return DB::transaction(function () use ($cuota, $data, $usuarioId) {

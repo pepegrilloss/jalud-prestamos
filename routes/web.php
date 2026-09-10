@@ -9,32 +9,15 @@ Route::get('/', function () {
     return redirect('/admin/login');
 });
 
-// Cumplimiento SBS vive en la aplicacion independiente.
-Route::get('/cumplimiento/{path?}', function (?string $path = null) {
-    $base = rtrim(config('services.cumplimiento.url'), '/') . '/cumplimiento';
-    $url = $path ? $base . '/' . ltrim($path, '/') : $base;
-
-    if ($query = request()->getQueryString()) {
-        $url .= '?' . $query;
-    }
-
-    return redirect()->away($url);
-})->where('path', '.*')->name('cumplimiento.redirect');
-
-Route::post('/salir-a-cumplimiento', function () {
-    abort_unless(
-        auth()->user()?->hasRole('oficial_cumplimiento_sbs'),
-        403
-    );
-
-    auth()->logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-
-    return redirect()->route('cumplimiento.redirect');
-})->name('cumplimiento.logout-redirect');
-
 Route::middleware(['auth', 'throttle:api'])->group(function () {
+    Route::get('/prestamos-bancarios/{prestamo}/imprimir', function (\App\Models\PrestamoBancario $prestamo) {
+        abort_unless(auth()->user()?->puedeAccederAGerencia(), 403);
+
+        return view('reportes.prestamo-bancario', [
+            'prestamo' => $prestamo->load('cuotas'),
+        ]);
+    })->name('prestamos-bancarios.imprimir');
+
     Route::get('/pdf/acta-creditos', function () {
         $fecha = request()->get('fecha') ? \Carbon\Carbon::createFromFormat('Y-m-d', request()->get('fecha')) : now();
 

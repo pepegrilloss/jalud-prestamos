@@ -51,7 +51,9 @@ class PrestamoBancarioResource extends Resource
 
     public static function canEdit($record): bool
     {
-        return false;
+        return self::enGerencia()
+            && $record->Estado === PrestamoBancario::ESTADO_VIGENTE
+            && ! $record->pagos()->exists();
     }
 
     public static function canDelete($record): bool
@@ -86,6 +88,7 @@ class PrestamoBancarioResource extends Resource
                             $set('Banco', null);
                             $set('PrestamistaTercero', null);
                             $set('CuentaTesoreriaID', null);
+                            $set('CuentaPrestamo', null);
                         })
                         ->required(),
                     Forms\Components\Select::make('Banco')
@@ -204,7 +207,11 @@ class PrestamoBancarioResource extends Resource
                 PrestamoBancario::ESTADO_CANCELADO => 'Cancelado',
                 PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO => 'Cancelado anticipadamente',
             ]),
-        ])->actions([Tables\Actions\ViewAction::make()])->bulkActions([]);
+        ])->actions([
+            Tables\Actions\ViewAction::make(),
+            Tables\Actions\EditAction::make()
+                ->visible(fn (PrestamoBancario $record): bool => static::canEdit($record)),
+        ])->bulkActions([]);
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -256,6 +263,7 @@ class PrestamoBancarioResource extends Resource
             'index' => Pages\ListPrestamosBancarios::route('/'),
             'create' => Pages\CreatePrestamoBancario::route('/create'),
             'view' => Pages\ViewPrestamoBancario::route('/{record}'),
+            'edit' => Pages\EditPrestamoBancario::route('/{record}/edit'),
         ];
     }
 

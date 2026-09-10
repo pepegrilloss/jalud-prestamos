@@ -1048,41 +1048,113 @@ class ReporteExportController extends Controller
         }
         return $this->downloadSpreadsheet($spreadsheet, "Eficiencia_Cobranza_{$fechaDesde}_{$fechaHasta}");
     }
-    private function baseCreditosEficiencia(int $promotorId, int $zonaId, ?int $sedeId)
+    private function baseCreditosEficiencia(int $promotorId, int $zonaId, Carbon $fecha, ?int $sedeId)
     {
-        return DB::table('Credito')->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')->where('ProposicionCredito.ZonaID', $zonaId)->where('ProposicionCredito.Activo', 1)->where('ProposicionCredito.Estado', 'APROBADO')->where('ProposicionCredito.FueRefinanciada', 0)->where('ProposicionCredito.Eliminado', 0)->where('Credito.Activo', 1)->when($sedeId, fn($query) => $query->where('Credito.SedeID', $sedeId));
+        $query = DB::table('Credito')->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')->where('ProposicionCredito.ZonaID', $zonaId)->where('ProposicionCredito.Estado', 'APROBADO')->where('ProposicionCredito.Eliminado', 0)->where('Credito.Activo', 1)->when($sedeId, fn($query) => $query->where('Credito.SedeID', $sedeId));
+
+        if ($this->cantidadPromotoresActivosZona($zonaId, $sedeId) > 1) {
+            $query->whereRaw(
+                'COALESCE((SELECT ph.PromotorCobradorID FROM pago ph WHERE ph.CreditoID = Credito.CreditoID AND ph.Activo = 1 AND ph.PromotorCobradorID IS NOT NULL AND ph.FechaPago <= ? ORDER BY ph.FechaPago DESC, ph.PagoID DESC LIMIT 1), Cliente.PromotorCobradorID) = ?',
+                [$fecha->copy()->endOfDay(), $promotorId]
+            );
+        }
+
+        return $query;
     }
     private function basePagosEficiencia(int $promotorId, int $zonaId, Carbon $fecha, ?int $sedeId)
     {
-        return DB::table('pago')->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')->where('pago.Activo', 1)->where('ProposicionCredito.ZonaID', $zonaId)->whereDate('pago.FechaPago', $fecha->toDateString())->where(function ($query) {
+        $query = DB::table('pago')->join('Credito', 'pago.CreditoID', '=', 'Credito.CreditoID')->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')->where('pago.Activo', 1)->where('ProposicionCredito.ZonaID', $zonaId)->whereDate('pago.FechaPago', $fecha->toDateString())->where(function ($query) {
             $query->where('pago.EsPagoAutomatico', 0)->orWhereNull('pago.EsPagoAutomatico');
         })->when($sedeId, fn($query) => $query->where('pago.SedeID', $sedeId));
+
+        if ($this->cantidadPromotoresActivosZona($zonaId, $sedeId) > 1) {
+            $query->where(function ($atribucion) use ($promotorId) {
+                $atribucion->where('pago.PromotorCobradorID', $promotorId)
+                    ->orWhere(function ($sinPromotor) use ($promotorId) {
+                        $sinPromotor->whereNull('pago.PromotorCobradorID')
+                            ->whereRaw(
+                                'COALESCE((SELECT ph.PromotorCobradorID FROM pago ph WHERE ph.CreditoID = pago.CreditoID AND ph.Activo = 1 AND ph.PromotorCobradorID IS NOT NULL AND ph.FechaPago <= pago.FechaPago ORDER BY ph.FechaPago DESC, ph.PagoID DESC LIMIT 1), Cliente.PromotorCobradorID) = ?',
+                                [$promotorId]
+                            );
+                    });
+            });
+        }
+
+        return $query;
+    }
+
+    private function cantidadPromotoresActivosZona(int $zonaId, ?int $sedeId): int
+    {
+        return (int) PromotorCobrador::withoutGlobalScopes()
+            ->where('Activo', true)
+            ->where('ZonaID', $zonaId)
+            ->when($sedeId, fn($query) => $query->where('SedeID', $sedeId))
+            ->count();
     }
     private function clasificarClientesEficiencia(int $promotorId, int $zonaId, Carbon $fecha, ?int $sedeId): array
     {
         $terminales = ['SALDADO', 'REFINANCIADO', 'ELIMINADO'];
-        $limiteSalida = $fecha->copy()->subDays(7)->startOfDay();
-        $creditos = $this->baseCreditosEficiencia($promotorId, $zonaId, $sedeId)->whereDate('Credito.FechaGeneracion', '<=', $fecha->toDateString())->where(function ($query) use ($terminales, $limiteSalida, $fecha) {
-            $query->whereNotIn('Credito.EstatusCreditoFinal', $terminales)->orWhere(function ($salidas) use ($limiteSalida, $fecha) {
-                $salidas->where('Credito.EstatusCreditoFinal', 'SALDADO')->whereBetween('Credito.FechaSaldamiento', [$limiteSalida, $fecha->copy()->endOfDay()]);
-            });
+        // El dia de salida mas los seis anteriores forman los siete dias en que
+        // el cliente permanece visible como SCR.
+        $limiteSalida = $fecha->copy()->subDays(6)->startOfDay();
+        $finDelDia = $fecha->copy()->endOfDay();
+        $creditos = $this->baseCreditosEficiencia($promotorId, $zonaId, $fecha, $sedeId)->whereDate('Credito.FechaGeneracion', '<=', $fecha->toDateString())->where(function ($query) use ($terminales, $limiteSalida) {
+            $query->whereNotIn('Credito.EstatusCreditoFinal', $terminales)
+                // Incluye salidas recientes y creditos que, aunque hoy figuren
+                // cerrados, todavia estaban vigentes en la fecha consultada.
+                ->orWhere('Credito.FechaSaldamiento', '>=', $limiteSalida);
         })->select(['ProposicionCredito.ClienteID as cliente_id', 'Cliente.DNI as dni', 'Cliente.NombresApellidos as cliente', 'ProposicionCredito.CodigoCredito as codigo_credito', 'Credito.CreditoID as credito_id', 'Credito.FechaGeneracion as fecha_generacion', 'Credito.FechaSaldamiento as fecha_saldamiento', 'Credito.EstatusCreditoFinal as estado_credito'])->orderByDesc('Credito.FechaGeneracion')->get()->groupBy('cliente_id');
         $pagos = $this->basePagosEficiencia($promotorId, $zonaId, $fecha, $sedeId)->select(['ProposicionCredito.ClienteID as cliente_id', 'Cliente.DNI as dni', 'Cliente.NombresApellidos as cliente', 'ProposicionCredito.CodigoCredito as codigo_credito', 'Credito.CreditoID as credito_id', 'Credito.FechaGeneracion as fecha_generacion', 'pago.MontoPagado as monto_pagado'])->get()->groupBy('cliente_id');
-        return $this->clasificarRegistrosEficiencia($creditos, $pagos, $terminales);
+        $montoCobrado = (float) $this->basePagosEficiencia($promotorId, $zonaId, $fecha, $sedeId)
+            ->where(function ($query) use ($promotorId) {
+                $query->where('pago.PromotorCobradorID', $promotorId)
+                    ->orWhere(function ($sinPromotor) {
+                        $sinPromotor->whereNull('pago.PromotorCobradorID')
+                            ->where(function ($especial) {
+                                $especial->where('pago.EsPagoAMayor', 1)
+                                    ->orWhere(function ($mora) {
+                                        $mora->where('pago.EsMora', 1)
+                                            ->where(function ($comentario) {
+                                                $comentario->whereNull('pago.Comentario')
+                                                    ->orWhere('pago.Comentario', 'not like', 'VALE POR MORA NO COBRADA%');
+                                            });
+                                    });
+                            })
+                            ->where(function ($comentario) {
+                                $comentario->whereNull('pago.Comentario')
+                                    ->orWhere('pago.Comentario', 'not like', 'RECONOCIMIENTO DE PAGO%');
+                            });
+                    });
+            })
+            ->sum('pago.MontoPagado');
+
+        return $this->clasificarRegistrosEficiencia($creditos, $pagos, $terminales, $finDelDia, $montoCobrado);
     }
-    private function clasificarRegistrosEficiencia($creditos, $pagos, array $terminales): array
+    private function clasificarRegistrosEficiencia($creditos, $pagos, array $terminales, ?Carbon $fecha = null, ?float $montoCobrado = null): array
     {
+        $fecha ??= now()->endOfDay();
+        $inicioDelDia = $fecha->copy()->startOfDay();
         $activos = collect();
         $salidas = collect();
         foreach ($creditos as $clienteId => $creditosCliente) {
-            $creditoVigente = $creditosCliente->first(fn($credito) => !in_array(mb_strtoupper((string) $credito->estado_credito), $terminales, true));
+            $creditoVigente = $creditosCliente->first(function ($credito) use ($terminales, $inicioDelDia) {
+                if (!in_array(mb_strtoupper((string) $credito->estado_credito), $terminales, true)) {
+                    return true;
+                }
+
+                return filled($credito->fecha_saldamiento ?? null)
+                    && Carbon::parse($credito->fecha_saldamiento)->gte($inicioDelDia);
+            });
             $registro = $creditoVigente ?? $creditosCliente->first();
             if (!$registro) {
                 continue;
             }
             $activos->put((int) $clienteId, $registro);
             // Una salida solo es SCR si el cliente ya no conserva otro credito vigente.
-            if (!$creditoVigente) {
+            if (!$creditoVigente
+                && mb_strtoupper((string) $registro->estado_credito) === 'SALDADO'
+                && filled($registro->fecha_saldamiento ?? null)
+                && Carbon::parse($registro->fecha_saldamiento)->lt($inicioDelDia)) {
                 $salidas->put((int) $clienteId, $registro);
             }
         }
@@ -1098,7 +1170,7 @@ class ReporteExportController extends Controller
             $cancelaron->put($clienteId, $registro);
         }
         $np = $activos->except($cancelaron->keys()->merge($salidas->keys())->all());
-        return ['activos' => $activos, 'cancelaron' => $cancelaron, 'np' => $np, 'scr' => $salidas, 'monto_cobrado' => (float) $pagos->flatten(1)->sum('monto_pagado')];
+        return ['activos' => $activos, 'cancelaron' => $cancelaron, 'np' => $np, 'scr' => $salidas, 'monto_cobrado' => $montoCobrado ?? (float) $pagos->flatten(1)->sum('monto_pagado')];
     }
     public function eficienciaCobranzaDetalleExcel(Request $request)
     {
