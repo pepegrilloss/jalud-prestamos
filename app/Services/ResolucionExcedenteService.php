@@ -159,6 +159,10 @@ class ResolucionExcedenteService
             throw new \Exception('El pago a mayor solo puede aplicarse dentro de la misma sede.');
         }
 
+        if (in_array($creditoDestino->EstatusCreditoFinal, ['SALDADO', 'REFINANCIADO', 'ELIMINADO'], true)) {
+            throw new \Exception('El credito destino debe estar vigente y tener saldo pendiente.');
+        }
+
         $montoAplicar = round((float) ($solicitud->MontoAplicar ?? 0), 2);
         $montoDisponible = $this->montoDisponiblePagoMayor($pagoOrigen, $solicitud->SolicitudID);
         $saldoDestino = round((float) ($creditoDestino->proposicion?->SaldoPendiente ?? 0), 2);
