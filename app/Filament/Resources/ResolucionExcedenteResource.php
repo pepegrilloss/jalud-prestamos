@@ -104,12 +104,15 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                 $esAplicacionPagoMayor = $get('TipoResolucion') === 'APLICACION_PAGO_MAYOR';
                                 $query = Credito::whereHas('proposicion', function ($q) use ($clienteID, $esAplicacionPagoMayor) {
                                     $q->where('ClienteID', $clienteID);
-                                    if (! $esAplicacionPagoMayor) {
-                                        $q->where('Activo', 1);
-                                    }
                                 })->where('Activo', 1);
 
                                 if (! $esAplicacionPagoMayor) {
+                                    $query->where(function ($creditos) {
+                                        $creditos
+                                            ->whereHas('proposicion', fn($proposicion) => $proposicion->where('Activo', 1))
+                                            ->orWhereHas('pagos', fn($pagos) => self::queryPagosMayoresSeleccionables($pagos));
+                                    });
+
                                     return $query->with('proposicion')->get()->mapWithKeys(function ($cr) {
                                         return [$cr->CreditoID => "{$cr->proposicion->CodigoCredito} - Saldo: S/ " . number_format($cr->proposicion->SaldoPendiente, 2)];
                                     });
@@ -149,9 +152,12 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     return [];
 
                                 $esAplicacionPagoMayor = $get('TipoResolucion') === 'APLICACION_PAGO_MAYOR';
+                                $creditoOrigen = Credito::with('proposicion')->find($creditoID);
+                                $soloPagoMayorDisponible = $esAplicacionPagoMayor
+                                    || ($creditoOrigen && ! (bool) $creditoOrigen->proposicion?->Activo);
                                 $pagos = Pago::where('CreditoID', $creditoID)
                                     ->where('Activo', 1)
-                                    ->when($esAplicacionPagoMayor, fn($query) => self::queryPagosMayoresSeleccionables($query))
+                                    ->when($soloPagoMayorDisponible, fn($query) => self::queryPagosMayoresSeleccionables($query))
                                     ->orderBy('FechaPago', 'asc')
                                     ->orderBy('PagoID', 'asc')
                                     ->get();
@@ -161,12 +167,12 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
 
                                 foreach ($pagos as $pago) {
                                     // Solo mostrar en las opciones los que no han sido trasladados
-                                    $disponible = $esAplicacionPagoMayor
+                                    $disponible = $soloPagoMayorDisponible
                                         ? self::montoDisponiblePagoMayor($pago)
                                         : (float) $pago->MontoPagado;
                                     if ($pago->EstadoTraslado !== 'TRASLADADO' && $disponible > 0) {
                                         $fecha = \Carbon\Carbon::parse($pago->FechaPago)->format('d/m/Y');
-                                        $etiqueta = $esAplicacionPagoMayor ? 'A mayor disponible' : 'Pago';
+                                        $etiqueta = $soloPagoMayorDisponible ? 'A mayor disponible' : 'Pago';
                                         $opciones[$pago->PagoID] = "{$etiqueta} #{$correlativo} - S/ " . number_format($disponible, 2) . " - {$fecha} - {$pago->TipoPago}";
                                     }
                                     $correlativo++;
@@ -180,14 +186,21 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                             ->live()
                             ->rules([
                                 fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
-                                    if ($get('TipoResolucion') !== 'APLICACION_PAGO_MAYOR' || ! $value) {
+                                    if (! in_array($get('TipoResolucion'), ['TRASLADO_DE_PAGO', 'APLICACION_PAGO_MAYOR']) || ! $value) {
                                         return;
                                     }
 
                                     $pago = Pago::find($value);
                                     if (! $pago
-                                        || (int) $pago->CreditoID !== (int) $get('CreditoOrigenID')
-                                        || ! self::pagoMayorEsSeleccionable($pago)) {
+                                        || (int) $pago->CreditoID !== (int) $get('CreditoOrigenID')) {
+                                        $fail('El pago seleccionado no pertenece al credito origen.');
+                                        return;
+                                    }
+
+                                    $creditoOrigen = Credito::with('proposicion')->find($get('CreditoOrigenID'));
+                                    $requierePagoMayor = $get('TipoResolucion') === 'APLICACION_PAGO_MAYOR'
+                                        || ($creditoOrigen && ! (bool) $creditoOrigen->proposicion?->Activo);
+                                    if ($requierePagoMayor && ! self::pagoMayorEsSeleccionable($pago)) {
                                         $fail('El pago a mayor seleccionado ya no esta disponible para ser aplicado.');
                                     }
                                 },
@@ -779,7 +792,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
 
     private static function montoDisponiblePagoMayor(Pago $pago): float
     {
-        $montoComprometido = SolicitudResolucionExcedente::whereIn('TipoResolucion', ['DEVOLUCION_PAGO_MAYOR', 'APLICACION_PAGO_MAYOR'])
+        $montoComprometido = SolicitudResolucionExcedente::whereIn('TipoResolucion', ['DEVOLUCION_PAGO_MAYOR', 'APLICACION_PAGO_MAYOR', 'TRASLADO_DE_PAGO'])
             ->where('PagoOrigenID', $pago->PagoID)
             ->where('Estado', '!=', 'RECHAZADA')
             ->sum('MontoAplicar');

@@ -68,13 +68,32 @@ class ResolucionExcedenteService
         }
 
         $montoAplicar = $solicitud->MontoAplicar ?? $pagoOriginal->MontoPagado;
+        $creditoOrigen = \App\Models\Credito::withoutGlobalScope('sede')
+            ->with('proposicion')
+            ->find($pagoOriginal->CreditoID);
+
+        if ($creditoOrigen && ! (bool) $creditoOrigen->proposicion?->Activo) {
+            if (! $pagoOriginal->EsPagoAMayor
+                || $pagoOriginal->EsPagoAMayorPorMora
+                || ! $pagoOriginal->Activo
+                || filled($pagoOriginal->EstadoTraslado)) {
+                throw new \Exception('El credito origen historico solo permite trasladar un pago a mayor disponible.');
+            }
+
+            $disponible = $this->montoDisponiblePagoMayor($pagoOriginal, $solicitud->SolicitudID);
+            if (round((float) $montoAplicar, 2) > round($disponible, 2)) {
+                throw new \Exception('El monto supera el pago a mayor disponible: S/ '.number_format($disponible, 2).'.');
+            }
+        }
 
         // Obtener nombre del cliente origen para comentarios
         $clienteOrigenNombre = $solicitud->clienteOrigen?->NombresApellidos ?? 'Cliente Origen';
         $clienteDestinoNombre = $solicitud->clienteDestino?->NombresApellidos ?? 'Cliente Destino';
 
         // 1. Marcar el pago original como TRASLADADO
-        $pagoOriginal->EstadoTraslado = 'TRASLADADO';
+        $pagoOriginal->EstadoTraslado = round((float) $montoAplicar, 2) >= round((float) $pagoOriginal->MontoPagado, 2) - self::TOLERANCIA
+            ? 'TRASLADADO'
+            : $pagoOriginal->EstadoTraslado;
         $pagoOriginal->Comentario = ($pagoOriginal->Comentario ? $pagoOriginal->Comentario.' | ' : '')
             ."TRASLADADO a {$clienteDestinoNombre} - Solicitud #{$solicitud->SolicitudID}";
         $pagoOriginal->save(); // PagoObserver recalcula SaldoPendiente del crédito origen
@@ -277,7 +296,7 @@ class ResolucionExcedenteService
 
     private function montoDisponiblePagoMayor(Pago $pagoOrigen, ?int $solicitudActualId = null): float
     {
-        $query = SolicitudResolucionExcedente::whereIn('TipoResolucion', ['DEVOLUCION_PAGO_MAYOR', 'APLICACION_PAGO_MAYOR'])
+        $query = SolicitudResolucionExcedente::whereIn('TipoResolucion', ['DEVOLUCION_PAGO_MAYOR', 'APLICACION_PAGO_MAYOR', 'TRASLADO_DE_PAGO'])
             ->where('PagoOrigenID', $pagoOrigen->PagoID)
             ->where('Estado', '!=', 'RECHAZADA');
 
