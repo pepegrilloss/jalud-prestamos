@@ -152,9 +152,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                     return [];
 
                                 $esAplicacionPagoMayor = $get('TipoResolucion') === 'APLICACION_PAGO_MAYOR';
-                                $creditoOrigen = Credito::with('proposicion')->find($creditoID);
-                                $soloPagoMayorDisponible = $esAplicacionPagoMayor
-                                    || ($creditoOrigen && ! (bool) $creditoOrigen->proposicion?->Activo);
+                                $soloPagoMayorDisponible = $esAplicacionPagoMayor;
                                 $pagos = Pago::where('CreditoID', $creditoID)
                                     ->where('Activo', 1)
                                     ->when($soloPagoMayorDisponible, fn($query) => self::queryPagosMayoresSeleccionables($query))
@@ -197,9 +195,7 @@ class ResolucionExcedenteResource extends Resource implements HasShieldPermissio
                                         return;
                                     }
 
-                                    $creditoOrigen = Credito::with('proposicion')->find($get('CreditoOrigenID'));
-                                    $requierePagoMayor = $get('TipoResolucion') === 'APLICACION_PAGO_MAYOR'
-                                        || ($creditoOrigen && ! (bool) $creditoOrigen->proposicion?->Activo);
+                                    $requierePagoMayor = $get('TipoResolucion') === 'APLICACION_PAGO_MAYOR';
                                     if ($requierePagoMayor && ! self::pagoMayorEsSeleccionable($pago)) {
                                         $fail('El pago a mayor seleccionado ya no esta disponible para ser aplicado.');
                                     }

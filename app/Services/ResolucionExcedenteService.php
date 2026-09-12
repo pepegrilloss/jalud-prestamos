@@ -68,22 +68,16 @@ class ResolucionExcedenteService
         }
 
         $montoAplicar = $solicitud->MontoAplicar ?? $pagoOriginal->MontoPagado;
-        $creditoOrigen = \App\Models\Credito::withoutGlobalScope('sede')
-            ->with('proposicion')
-            ->find($pagoOriginal->CreditoID);
+        if ((int) $pagoOriginal->CreditoID !== (int) $solicitud->CreditoOrigenID) {
+            throw new \Exception('El pago seleccionado no pertenece al credito origen.');
+        }
 
-        if ($creditoOrigen && ! (bool) $creditoOrigen->proposicion?->Activo) {
-            if (! $pagoOriginal->EsPagoAMayor
-                || $pagoOriginal->EsPagoAMayorPorMora
-                || ! $pagoOriginal->Activo
-                || filled($pagoOriginal->EstadoTraslado)) {
-                throw new \Exception('El credito origen historico solo permite trasladar un pago a mayor disponible.');
-            }
+        if (! $pagoOriginal->Activo || filled($pagoOriginal->EstadoTraslado)) {
+            throw new \Exception('El pago seleccionado ya no esta disponible para ser trasladado.');
+        }
 
-            $disponible = $this->montoDisponiblePagoMayor($pagoOriginal, $solicitud->SolicitudID);
-            if (round((float) $montoAplicar, 2) > round($disponible, 2)) {
-                throw new \Exception('El monto supera el pago a mayor disponible: S/ '.number_format($disponible, 2).'.');
-            }
+        if (round((float) $montoAplicar, 2) > round((float) $pagoOriginal->MontoPagado, 2)) {
+            throw new \Exception('El monto a trasladar no puede superar el monto del pago original.');
         }
 
         // Obtener nombre del cliente origen para comentarios
