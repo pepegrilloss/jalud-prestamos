@@ -209,6 +209,12 @@ class PrestamoBancarioResource extends Resource
             ]),
         ])->actions([
             Tables\Actions\ViewAction::make(),
+            Tables\Actions\Action::make('imprimir')
+                ->label('Imprimir')
+                ->icon('heroicon-o-printer')
+                ->color('gray')
+                ->url(fn (PrestamoBancario $record): string => route('prestamos-bancarios.imprimir', ['prestamo' => $record]))
+                ->openUrlInNewTab(),
             Tables\Actions\EditAction::make()
                 ->visible(fn (PrestamoBancario $record): bool => static::canEdit($record)),
         ])->bulkActions([]);

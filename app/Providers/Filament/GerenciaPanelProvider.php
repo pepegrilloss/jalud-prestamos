@@ -17,6 +17,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\BalanceCajaGerencia;
 use App\Filament\Pages\FacturasPendientes;
 use App\Filament\Pages\GerenciaDashboard;
 use App\Filament\Pages\GerenciaReportes;
@@ -149,6 +150,7 @@ class GerenciaPanelProvider extends PanelProvider
                 TransferenciaSedeResource::class,
             ])
             ->pages([
+                BalanceCajaGerencia::class,
                 FacturasPendientes::class,
                 GerenciaDashboard::class,
                 GerenciaReportes::class,

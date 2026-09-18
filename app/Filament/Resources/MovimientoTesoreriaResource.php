@@ -92,30 +92,59 @@ class MovimientoTesoreriaResource extends Resource
                             MovimientoTesoreria::TIPO_EGRESO_GASTO,
                         ], true),
                     ]),
+                Tables\Columns\TextColumn::make('direccion')
+                    ->label('Movimiento')
+                    ->badge()
+                    ->getStateUsing(function (MovimientoTesoreria $record) use ($table): ?string {
+                        $referencia = $table->getFilter('cuenta')->getState()['referencia'] ?? null;
+                        if (! $referencia) {
+                            return null;
+                        }
+                        if ($referencia === TesoreriaGerenciaService::CAJA_GERENCIA_KEY) {
+                            return $record->OrigenTipo === MovimientoTesoreria::CAJA_GERENCIA ? 'Salida' : 'Entrada';
+                        }
+                        return (int) $record->CuentaOrigenID === (int) $referencia ? 'Salida' : 'Entrada';
+                    })
+                    ->color(fn (?string $state) => match ($state) {
+                        'Salida' => 'danger',
+                        'Entrada' => 'success',
+                        default => 'gray',
+                    })
+                    ->placeholder('-'),
                 Tables\Columns\TextColumn::make('FechaContable')->label('Fecha contable')->date('d/m/Y')->sortable(),
                 Tables\Columns\TextColumn::make('FechaMovimiento')->label('Registrado')->dateTime('d/m/Y H:i:s')->sortable(),
                 Tables\Columns\TextColumn::make('CuentaOrigenNombre')->label('Origen')->searchable()->wrap(),
                 Tables\Columns\TextColumn::make('CuentaDestinoNombre')->label('Destino')->searchable()->wrap(),
-                Tables\Columns\TextColumn::make('Monto')->money('PEN')->weight('bold')->sortable(),
+                Tables\Columns\TextColumn::make('Monto')
+                    ->money('PEN')
+                    ->weight('bold')
+                    ->sortable()
+                    ->summarize(
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->label('Total filtrado')
+                            ->money('PEN')
+                    ),
                 Tables\Columns\TextColumn::make('Concepto')->limit(40)->searchable(),
                 Tables\Columns\TextColumn::make('usuario.name')->label('Usuario')->searchable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('Tipo')->options([
-                    MovimientoTesoreria::TIPO_APERTURA => 'Apertura',
-                    MovimientoTesoreria::TIPO_TRANSFERENCIA => 'Transferencia',
-                    MovimientoTesoreria::TIPO_EXTORNO => 'Extorno',
-                    MovimientoTesoreria::TIPO_EGRESO_COMPRA => 'Egreso por compra',
-                    MovimientoTesoreria::TIPO_AJUSTE_COMPRA => 'Ajuste de compra',
-                    MovimientoTesoreria::TIPO_EXTORNO_COMPRA => 'Extorno de compra',
-                    MovimientoTesoreria::TIPO_EGRESO_GASTO => 'Egreso por gasto',
-                    MovimientoTesoreria::TIPO_AJUSTE_GASTO => 'Ajuste de gasto',
-                    MovimientoTesoreria::TIPO_EXTORNO_GASTO => 'Extorno de gasto',
-                    MovimientoTesoreria::TIPO_CANCELACION_ANTICIPADA => 'Cancelación anticipada',
-                    MovimientoTesoreria::TIPO_EXTORNO_CANCELACION_ANTICIPADA => 'Extorno cancelación anticipada',
-                    MovimientoTesoreria::TIPO_PAGO_PRESTAMO_BANCARIO => 'Pago préstamo bancario',
-                    MovimientoTesoreria::TIPO_EXTORNO_PAGO_PRESTAMO => 'Extorno pago préstamo',
-                ]),
+                Tables\Filters\SelectFilter::make('Tipo')
+                    ->multiple()
+                    ->options([
+                        MovimientoTesoreria::TIPO_APERTURA => 'Apertura',
+                        MovimientoTesoreria::TIPO_TRANSFERENCIA => 'Transferencia',
+                        MovimientoTesoreria::TIPO_EXTORNO => 'Extorno',
+                        MovimientoTesoreria::TIPO_EGRESO_COMPRA => 'Egreso por compra',
+                        MovimientoTesoreria::TIPO_AJUSTE_COMPRA => 'Ajuste de compra',
+                        MovimientoTesoreria::TIPO_EXTORNO_COMPRA => 'Extorno de compra',
+                        MovimientoTesoreria::TIPO_EGRESO_GASTO => 'Egreso por gasto',
+                        MovimientoTesoreria::TIPO_AJUSTE_GASTO => 'Ajuste de gasto',
+                        MovimientoTesoreria::TIPO_EXTORNO_GASTO => 'Extorno de gasto',
+                        MovimientoTesoreria::TIPO_CANCELACION_ANTICIPADA => 'Cancelación anticipada',
+                        MovimientoTesoreria::TIPO_EXTORNO_CANCELACION_ANTICIPADA => 'Extorno cancelación anticipada',
+                        MovimientoTesoreria::TIPO_PAGO_PRESTAMO_BANCARIO => 'Pago préstamo bancario',
+                        MovimientoTesoreria::TIPO_EXTORNO_PAGO_PRESTAMO => 'Extorno pago préstamo',
+                    ]),
                 Tables\Filters\Filter::make('cuenta')
                     ->form([
                         Forms\Components\Select::make('referencia')
@@ -139,6 +168,43 @@ class MovimientoTesoreriaResource extends Resource
                             $movimientos->where('CuentaOrigenID', $referencia)
                                 ->orWhere('CuentaDestinoID', $referencia);
                         });
+                    }),
+                Tables\Filters\Filter::make('direccion')
+                    ->label('Movimiento')
+                    ->form([
+                        Forms\Components\Select::make('direccion')
+                            ->label('Movimiento')
+                            ->options([
+                                'ENTRADA' => 'Entrada',
+                                'SALIDA' => 'Salida',
+                            ])
+                            ->placeholder('Todos')
+                            ->helperText('Seleccione una cuenta primero para usar este filtro.'),
+                    ])
+                    ->query(function (Builder $query, array $data, Tables\Filters\Filter $filter) use ($table): Builder {
+                        $direccion = $data['direccion'] ?? null;
+                        if (! $direccion) {
+                            return $query;
+                        }
+
+                        $referencia = $table->getFilter('cuenta')->getState()['referencia'] ?? null;
+                        if (! $referencia) {
+                            return $query;
+                        }
+
+                        if ($referencia === TesoreriaGerenciaService::CAJA_GERENCIA_KEY) {
+                            return match ($direccion) {
+                                'ENTRADA' => $query->where('DestinoTipo', MovimientoTesoreria::CAJA_GERENCIA),
+                                'SALIDA' => $query->where('OrigenTipo', MovimientoTesoreria::CAJA_GERENCIA),
+                                default => $query,
+                            };
+                        }
+
+                        return match ($direccion) {
+                            'ENTRADA' => $query->where('CuentaDestinoID', $referencia),
+                            'SALIDA' => $query->where('CuentaOrigenID', $referencia),
+                            default => $query,
+                        };
                     }),
                 Tables\Filters\Filter::make('fecha')
                     ->form([
