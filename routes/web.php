@@ -13,9 +13,13 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/prestamos-bancarios/{prestamo}/imprimir', function (\App\Models\PrestamoBancario $prestamo) {
         abort_unless(auth()->user()?->puedeAccederAGerencia(), 403);
 
-        return view('reportes.prestamo-bancario', [
+        $pdf = Pdf::loadView('reportes.prestamo-bancario', [
             'prestamo' => $prestamo->load('cuotas'),
         ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->stream('Prestamo_' . $prestamo->PrestamoBancarioID . '_' . now()->format('d-m-Y') . '.pdf');
     })->name('prestamos-bancarios.imprimir');
 
     Route::get('/pdf/acta-creditos', function () {
