@@ -20,7 +20,7 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
     #[Livewire\Attributes\On('abrirBalanceDiario')]
     public function abrirModal(): void
     {
-        if (! auth()->user()?->can('balance_diario')) {
+        if (! $this->puedeAbrirModal()) {
             return;
         }
 
@@ -30,9 +30,11 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
     public function generarReporteAction(): Action
     {
         return Action::make('generarReporte')
-            ->modalHeading('BALANCE DIARIO')
-            ->modalDescription('Seleccione la fecha y el formato para generar el reporte de su sede.')
-            ->form([
+            ->modalHeading($this->esPanelGerencia() ? 'BALANCE DIARIO - GERENCIA' : 'BALANCE DIARIO')
+            ->modalDescription($this->esPanelGerencia()
+                ? 'Seleccione la fecha para generar el balance de caja y cuentas bancarias de Gerencia.'
+                : 'Seleccione la fecha y el formato para generar el reporte de su sede.')
+            ->form(array_merge([
                 DatePicker::make('fecha')
                     ->label('Día a Procesar')
                     ->required()
@@ -40,6 +42,7 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
                     ->native(false)
                     ->maxDate(today())
                     ->displayFormat('d/m/Y'),
+            ], $this->esPanelGerencia() ? [] : [
                 Select::make('formato')
                     ->label('Formato')
                     ->options([
@@ -49,11 +52,23 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
                     ->default('pdf')
                     ->required()
                     ->native(false),
-            ])
+            ]))
             ->modalSubmitActionLabel('Descargar')
             ->modalCancelActionLabel('Salir')
             ->action(function (array $data) {
+                abort_unless($this->puedeAbrirModal(), 403);
+
                 $fecha = $data['fecha'];
+                if ($this->esPanelGerencia()) {
+                    $url = route('gerencia.reporte-diario.pdf', [
+                        'fecha' => \Carbon\Carbon::parse($fecha)->format('Y-m-d'),
+                    ]);
+
+                    $this->js("window.open('{$url}', '_blank')");
+
+                    return;
+                }
+
                 $formato = $data['formato'] ?? 'pdf';
                 $user = auth()->user();
                 $sedeId = $user->getEffectiveSedeId();
@@ -83,6 +98,20 @@ class BalanceDiarioModal extends Component implements HasForms, HasActions
                 $this->js("window.open('{$url}', '_blank')");
             })
             ->modalWidth('md');
+    }
+
+    private function esPanelGerencia(): bool
+    {
+        return filament()->getCurrentPanel()?->getId() === 'gerencia';
+    }
+
+    private function puedeAbrirModal(): bool
+    {
+        $user = auth()->user();
+
+        return $user && ($this->esPanelGerencia()
+            ? $user->puedeAccederAGerencia()
+            : $user->can('balance_diario'));
     }
 
     public function render()

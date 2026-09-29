@@ -25,7 +25,8 @@ class GerenciaReportes extends Page
 
     public static function shouldRegisterNavigation(): bool
     {
-        return filament()->getCurrentPanel()?->getId() === 'gerencia';
+        // El acceso de reportes de Gerencia ahora se realiza desde el modal Balance diario.
+        return false;
     }
 
     public static function canAccess(): bool

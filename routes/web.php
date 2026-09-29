@@ -302,6 +302,9 @@ Route::middleware(['auth', 'throttle:api'])->group(function () {
     Route::get('/pdf/reporte-diario', [App\Http\Controllers\ReporteDiarioController::class, 'descargar'])
         ->name('reporte-diario.pdf');
 
+    Route::get('/gerencia/reportes/balance-diario/pdf', [App\Http\Controllers\GerenciaBalanceDiarioController::class, 'descargar'])
+        ->name('gerencia.reporte-diario.pdf');
+
     Route::get('/descargar-pagos/{credito}', [App\Http\Controllers\DescargarPagosController::class, 'descargar'])
         ->name('descargar-pagos.pdf');
 

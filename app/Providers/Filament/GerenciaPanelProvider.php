@@ -155,6 +155,18 @@ class GerenciaPanelProvider extends PanelProvider
                 GerenciaDashboard::class,
                 GerenciaReportes::class,
             ])
+            ->navigationItems([
+                \Filament\Navigation\NavigationItem::make('Balance diario')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->group('Reportes')
+                    ->sort(1)
+                    ->url('#balance-diario')
+                    ->visible(fn (): bool => auth()->user()?->puedeAccederAGerencia() ?? false),
+            ])
+            ->renderHook(
+                \Filament\View\PanelsRenderHook::BODY_END,
+                fn (): string => \Illuminate\Support\Facades\Blade::render('@livewire(\App\Livewire\BalanceDiarioModal::class)')
+            )
             ->databaseTransactions()
             ->widgets([
                 CustomAccountWidget::class,
