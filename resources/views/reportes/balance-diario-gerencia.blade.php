@@ -4,32 +4,43 @@
     <meta charset="utf-8">
     <title>Balance diario de Gerencia</title>
     <style>
-        @page { margin: 18px; }
-        body { font-family: DejaVu Sans, sans-serif; color: #202820; font-size: 9px; }
-        .header { border-bottom: 2px solid #8fbd2c; margin-bottom: 14px; padding-bottom: 8px; }
-        .title { font-size: 17px; font-weight: bold; color: #26351d; }
-        .subtitle { margin-top: 4px; color: #687268; font-size: 9px; }
+        @page { margin: 10mm 8mm; }
+        body { font-family: 'Courier New', Courier, monospace; color: #000; font-size: 8.5px; line-height: 1.35; margin: 0; padding: 0; }
+        .header { width: 100%; margin-bottom: 10px; }
+        .header-table, .datos-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+        .header-table { border: none; }
+        .header-table td { border: none; padding: 0; vertical-align: top; }
+        .header-left { text-align: left; font-size: 11px; font-weight: bold; }
+        .header-right { text-align: right; font-size: 8.5px; }
+        .titulo { text-align: center; margin: 15px 0 5px; font-size: 11px; font-weight: bold; }
+        .titulo-separador { text-align: center; margin-bottom: 15px; }
+        .seccion-titulo { margin-top: 10px; margin-bottom: 2px; font-size: 11px; font-weight: bold; page-break-after: avoid; }
+        .seccion-subrayado { margin-bottom: 5px; }
+        .datos-table { font-size: 8px; }
+        .datos-table th { border: none; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 2px; text-align: left; font-size: 8px; font-weight: bold; }
+        .datos-table td { border: none; padding: 2px; vertical-align: top; font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .datos-table .number { text-align: right; padding-right: 5px; }
+        .opening td { font-weight: bold; padding-top: 5px; }
+        .closing td { border-top: 1px solid #000; padding-top: 5px; font-weight: bold; font-size: 9px; }
+        .reconcile td { border-top: 1px solid #000; padding-top: 5px; font-weight: bold; }
+        .empty { padding: 5px; text-align: center; }
+        .totals { margin-top: 7px; text-align: right; }
         .account { margin-top: 14px; }
-        .account-title { background: #8fbd2c; color: #17200d; padding: 7px 8px; font-size: 12px; font-weight: bold; }
-        .section-title { background: #f4e0d5; padding: 5px 7px; margin-top: 7px; font-weight: bold; color: #253024; page-break-after: avoid; }
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { border: 1px solid #d8ddd4; padding: 4px 5px; vertical-align: top; }
-        th { background: #f0f2ed; text-align: left; font-weight: bold; }
-        .number { text-align: right; white-space: nowrap; }
-        .muted { color: #768076; }
-        .opening td { background: #fbf4ef; font-weight: bold; }
-        .closing td { background: #8fbd2c; color: #14200a; font-weight: bold; font-size: 10px; }
-        .reconcile td { background: #f3f3f3; font-weight: bold; }
-        .empty { color: #7a8179; text-align: center; padding: 7px; }
-        .totals { margin-top: 7px; color: #53604e; text-align: right; }
-        .footer { margin-top: 15px; padding-top: 5px; border-top: 1px solid #d8ddd4; color: #778075; font-size: 8px; }
+        .account + .account { page-break-before: auto; }
+        .footer { margin-top: 15px; padding-top: 5px; border-top: 1px solid #000; font-size: 8px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="title">BALANCE DIARIO DE CAJA - GERENCIA</div>
-        <div class="subtitle">Sede: {{ $sede->Nombre }} &nbsp; | &nbsp; Fecha: {{ $fecha->format('d/m/Y') }}</div>
+        <table class="header-table">
+            <tr>
+                <td class="header-left" style="width: 50%;">JALUD SAC<br>&nbsp;&nbsp;{{ $sede->Nombre }}</td>
+                <td class="header-right" style="width: 50%;">Pagina : 001<br>Emision: {{ $generadoEn->format('d/m/Y') }}<br>Hora&nbsp;&nbsp;&nbsp;: {{ $generadoEn->format('H:i:s') }}</td>
+            </tr>
+        </table>
     </div>
+    <div class="titulo">BALANCE DIARIO DE CAJA - GERENCIA - {{ $fecha->format('d/m/Y') }}</div>
+    <div class="titulo-separador">----------------------------------------</div>
 
     @php
         $estadosCuenta = array_merge([$caja], $cuentas);
@@ -44,8 +55,9 @@
 
     @foreach ($estadosCuenta as $indice => $estado)
         <section class="account">
-            <div class="account-title">{{ $indice === 0 ? 'CAJA GERENCIA' : strtoupper($estado['nombre']) }}</div>
-            <table>
+            <div class="seccion-titulo">{{ $indice === 0 ? 'CAJA GERENCIA' : strtoupper($estado['nombre']) }}</div>
+            <div class="seccion-subrayado">&nbsp;==============================</div>
+            <table class="datos-table">
                 <colgroup>
                     <col style="width: 6%"><col style="width: 8%"><col style="width: 13%"><col style="width: 13%">
                     <col style="width: 12%"><col style="width: 22%"><col style="width: 8%"><col style="width: 8%"><col style="width: 10%">
@@ -58,20 +70,25 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="opening">
-                        <td colspan="8">SALDO INICIAL</td>
-                        <td class="number">{{ number_format($estado['saldo_inicial'], 2) }}</td>
-                    </tr>
+                    <tr class="opening"><td colspan="8">SALDO INICIAL:</td><td class="number">{{ number_format($estado['saldo_inicial'], 2) }}</td></tr>
                 </tbody>
             </table>
 
             @foreach ($titulosSeccion as $clave => $titulo)
-                <div class="section-title">{{ $titulo }}</div>
-                <table>
+                <div class="seccion-titulo">{{ $titulo }}</div>
+                <div class="seccion-subrayado">&nbsp;==============================</div>
+                <table class="datos-table">
                     <colgroup>
                         <col style="width: 6%"><col style="width: 8%"><col style="width: 13%"><col style="width: 13%">
                         <col style="width: 12%"><col style="width: 22%"><col style="width: 8%"><col style="width: 8%"><col style="width: 10%">
                     </colgroup>
+                    <thead>
+                        <tr>
+                            <th style="width: 6%;">N.º</th><th style="width: 8%;">FECHA</th><th style="width: 13%;">SEDE / ORIGEN</th><th style="width: 13%;">SEDE / DESTINO</th>
+                            <th style="width: 12%;">CAJA / CUENTA</th><th style="width: 22%;">CONCEPTO</th><th class="number" style="width: 8%;">INGRESO</th>
+                            <th class="number" style="width: 8%;">SALIDA</th><th class="number" style="width: 10%;">SALDO</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         @forelse ($estado['secciones'][$clave] as $movimiento)
                             @php
@@ -99,7 +116,7 @@
             @endforeach
 
             @if ($indice === 0 && abs($estado['excedente']) >= 0.01)
-                <table>
+                <table class="datos-table">
                     <tbody>
                         <tr class="reconcile">
                             <td colspan="6">{{ $estado['excedente'] > 0 ? 'EXCEDENTE DE CAJA' : 'FALTANTE DE CAJA' }} (diferencia de conciliación)</td>
@@ -111,7 +128,7 @@
                 </table>
             @endif
 
-            <table>
+            <table class="datos-table">
                 <tbody>
                     <tr class="closing">
                         <td colspan="8">{{ $indice === 0 ? 'TOTAL EFECTIVO' : 'SALDO FINAL ' . strtoupper($estado['nombre']) }}</td>
