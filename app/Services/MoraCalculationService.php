@@ -14,6 +14,10 @@ class MoraCalculationService
         Carbon|string $hasta,
         Carbon|string|null $desde = null,
     ): array {
+        if ($credito->EsMigracionHistorica) {
+            return ['creadas' => 0, 'omitidas' => 0, 'monto' => 0.0];
+        }
+
         $hasta = $this->normalizarFecha($hasta);
         $inicio = Carbon::parse($credito->FechaVencimiento)->startOfDay()->addDay();
 

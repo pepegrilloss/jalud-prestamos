@@ -46,6 +46,8 @@ class DashboardMiTotalPrestadoWidget extends BaseWidget
         }
 
         $query = \App\Models\ProposicionCredito::whereHas('credito', function ($q) use ($sedeIdOverride, $esTodas) {
+            $q->where('EsMigracionHistorica', false);
+
             if ($sedeIdOverride !== null || $esTodas) {
                 $q->withoutGlobalScope('sede');
             }

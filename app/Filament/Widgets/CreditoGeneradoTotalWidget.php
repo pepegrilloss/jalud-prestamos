@@ -45,6 +45,7 @@ class CreditoGeneradoTotalWidget extends BaseWidget
 
         $query = Credito::withoutGlobalScope('sede')
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->where('Credito.EsMigracionHistorica', false)
             ->where('ProposicionCredito.FueRefinanciada', 0);
         
         if ($fecha) {

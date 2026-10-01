@@ -37,6 +37,23 @@ class SaldoPendienteService
             return 0;
         }
 
+        if ($credito->EsMigracionHistorica) {
+            DB::table('ProposicionCredito')
+                ->where('ProposicionCreditoID', $proposicionCreditoID)
+                ->update(['SaldoPendiente' => 0]);
+
+            if ($credito->EstatusCreditoFinal !== 'SALDADO' || ! $credito->FechaSaldamiento) {
+                DB::table('Credito')
+                    ->where('CreditoID', $credito->CreditoID)
+                    ->update([
+                        'EstatusCreditoFinal' => 'SALDADO',
+                        'FechaSaldamiento' => $credito->FechaSaldamiento ?? $credito->FechaGeneracion,
+                    ]);
+            }
+
+            return 0.0;
+        }
+
         // Calcular total pagado (1 query)
         // Incluye todos los pagos (incluso trasladados) y resta el monto trasladado
         $tablaSolicitudes = (new \App\Models\SolicitudResolucionExcedente)->getTable();
