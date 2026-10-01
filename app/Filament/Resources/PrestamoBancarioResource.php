@@ -254,7 +254,7 @@ class PrestamoBancarioResource extends Resource
                     Infolists\Components\TextEntry::make('FechaSaldamientoHistorico')
                         ->label('Saldado fuera del sistema el')
                         ->date('d/m/Y')
-                        ->visible(fn (PrestamoBancario $record): bool => $record->EsSaldadoHistorico),
+                        ->visible(fn (PrestamoBancario $record): bool => (bool) $record->EsSaldadoHistorico),
                     Infolists\Components\TextEntry::make('CapitalPendiente')->label('Capital pendiente')->money('PEN'),
                     Infolists\Components\TextEntry::make('Observaciones')->placeholder('Sin observaciones')->columnSpanFull(),
                 ])->columns(4),
