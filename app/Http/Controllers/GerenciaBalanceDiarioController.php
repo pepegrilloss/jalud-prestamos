@@ -18,12 +18,12 @@ class GerenciaBalanceDiarioController extends Controller
 
         $data = $service->generar($validated['fecha']);
         $pdf = Pdf::loadView('reportes.balance-diario-gerencia', $data)
-            ->setPaper('a4', 'landscape')
+            ->setPaper('a4', 'portrait')
             ->setOptions([
-                'margin-top' => 18,
-                'margin-bottom' => 18,
-                'margin-left' => 18,
-                'margin-right' => 18,
+                'margin-top' => 20,
+                'margin-bottom' => 20,
+                'margin-left' => 20,
+                'margin-right' => 20,
             ]);
 
         return $pdf->stream('Balance_Gerencia_' . $data['fecha']->format('d-m-Y') . '.pdf');
