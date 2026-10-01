@@ -44,8 +44,7 @@ class CreditoGeneradoCantidadWidget extends BaseWidget
 
         $query = Credito::whereHas('proposicion', function ($q) {
                 $q->where('FueRefinanciada', 0);
-            })
-            ->where('EsMigracionHistorica', false);
+            });
         
         if ($fecha) {
             $query->whereDate('FechaGeneracion', $fecha);

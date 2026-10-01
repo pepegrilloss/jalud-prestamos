@@ -17,15 +17,6 @@ class CreditoCronogramaService
         int $numeroCuotas,
         float $montoCuota
     ): array {
-        if ($credito->EsMigracionHistorica) {
-            return [
-                'creadas' => 0,
-                'actualizadas' => 0,
-                'eliminadas_sin_pago' => 0,
-                'desactivadas_con_pago' => 0,
-            ];
-        }
-
         $numeroCuotas = max(1, $numeroCuotas);
         $cronograma = CreditoFechaService::generarCronogramaPorCuotasLaborables(
             $credito->FechaGeneracion,

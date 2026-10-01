@@ -143,7 +143,7 @@ class ReporteExportController extends Controller
             ->orderBy('pago.PagoID')->get();
         $totalMoras = $moras->sum('MontoPagado');
 
-        $creditos = Credito::withoutGlobalScopes()->where('Credito.Activo', true)->where('Credito.EsMigracionHistorica', false)->whereDate('Credito.FechaGeneracion', $fecha)
+        $creditos = Credito::withoutGlobalScopes()->where('Credito.Activo', true)->whereDate('Credito.FechaGeneracion', $fecha)
             ->when($sedeId, fn($q) => $q->where('Credito.SedeID', $sedeId))
             ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
             ->join('Cliente', 'ProposicionCredito.ClienteID', '=', 'Cliente.ClienteID')
@@ -276,7 +276,7 @@ class ReporteExportController extends Controller
                         return (float) $p->MontoPagado;
                     });
                 $cr = Credito::withoutGlobalScopes()->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
-                    ->where('Credito.Activo', true)->where('Credito.EsMigracionHistorica', false)->where('Credito.SedeID', $sedeId)->where('Credito.FechaGeneracion', '<=', $limite)->sum('ProposicionCredito.MontoTotal');
+                    ->where('Credito.Activo', true)->where('Credito.SedeID', $sedeId)->where('Credito.FechaGeneracion', '<=', $limite)->sum('ProposicionCredito.MontoTotal');
                 $ot = \App\Models\MovimientoFondo::withoutGlobalScopes()->where('SedeID', $sedeId)->where('FechaMovimiento', '<=', $limite)
                     ->whereIn('Tipo', ['INGRESO_CAPITAL', 'TRASLADO_CA_A_CC', 'TRASLADO_CC_A_CA', 'EGRESO_DEVOLUCION_EFECTIVO'])->get();
                 $in = $ot->where('Tipo', 'INGRESO_CAPITAL')->sum('Monto');

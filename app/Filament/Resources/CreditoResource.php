@@ -180,12 +180,6 @@ class CreditoResource extends Resource
                     ->money('PEN')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('EsMigracionHistorica')
-                    ->label('Origen')
-                    ->badge()
-                    ->formatStateUsing(fn ($state) => $state ? 'Histórico pagado fuera de JALUD' : 'JALUD')
-                    ->color(fn ($state) => $state ? 'info' : 'gray'),
-
                 Tables\Columns\TextColumn::make('FechaVencimiento')
                     ->label('Fecha Vencimiento')
                     ->date('d/m/Y')
@@ -365,21 +359,18 @@ class CreditoResource extends Resource
                     ->label('Excel')
                     ->tooltip('Descargar Libreta de Pagos (Excel)')
                     ->icon('heroicon-o-document-arrow-down')
-                    ->visible(fn ($record) => ! $record->EsMigracionHistorica)
                     ->url(fn ($record) => route('libreta-pagos.descargar', $record->CreditoID))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('descargar_libreta_html')
                     ->label('Imprimir')
                     ->tooltip('Ver Libreta de Pagos para Imprimir')
                     ->icon('heroicon-o-printer')
-                    ->visible(fn ($record) => ! $record->EsMigracionHistorica)
                     ->url(fn ($record) => route('libreta-pagos.html', $record->CreditoID))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('descargar_ticket')
                     ->label('Descargar Ticket')
                     ->icon('heroicon-o-ticket')
                     ->color('danger')
-                    ->visible(fn ($record) => ! $record->EsMigracionHistorica)
                     ->url(fn ($record) => route('ticket.descargar', $record->CreditoID))
                     ->openUrlInNewTab(),
             ])
@@ -639,21 +630,10 @@ class CreditoResource extends Resource
                 ->icon('heroicon-m-check-badge')
                 ->collapsed()
                 ->schema([
-                    Infolists\Components\TextEntry::make('EsMigracionHistorica')
-                        ->label('Origen del registro')
-                        ->badge()
-                        ->formatStateUsing(fn ($state) => $state ? 'Histórico pagado fuera de JALUD' : 'Generado en JALUD')
-                        ->color(fn ($state) => $state ? 'info' : 'gray'),
-
                     Infolists\Components\TextEntry::make('FechaGeneracion')
                         ->label('Fecha de Generación')
                         ->icon('heroicon-m-clock')
                         ->dateTime('d/m/Y H:i A'),
-
-                    Infolists\Components\TextEntry::make('FechaSaldamiento')
-                        ->label('Fecha real de cancelación')
-                        ->dateTime('d/m/Y')
-                        ->visible(fn ($record) => (bool) $record->EsMigracionHistorica),
 
                     Infolists\Components\TextEntry::make('tipoPago.Nombre')
                         ->label('Tipo de Desembolso')

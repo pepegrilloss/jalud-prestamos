@@ -41,8 +41,7 @@ class ViewCredito extends ViewRecord
                 ->label('Editar Capital / Tasa')
                 ->icon('heroicon-o-pencil-square')
                 ->color('warning')
-                ->visible(fn () => (auth()->user()?->can('editar_capital_tasa') ?? false)
-                    && ! $this->record->EsMigracionHistorica)
+                ->visible(fn () => auth()->user()?->can('editar_capital_tasa') ?? false)
                 ->modalHeading('Editar Capital y Tasa de Interés')
                 ->modalDescription('Modificar el capital solicitado y la tasa de interés. Se recalcularán los montos automáticamente.')
                 ->form([
@@ -142,8 +141,6 @@ class ViewCredito extends ViewRecord
                     ];
                 })
                 ->action(function (array $data) {
-                    abort_if($this->record->EsMigracionHistorica, 403, 'Los créditos históricos saldados no se pueden editar.');
-
                     $prop = $this->record->proposicion;
                     if (! $prop) {
                         Notification::make()->danger()->title('Error')->body('No se encontró la proposición de crédito.')->send();
@@ -288,7 +285,6 @@ class ViewCredito extends ViewRecord
             Action::make('descargar_pagos')
                 ->label('Descargar Pagos (PDF)')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->visible(fn () => ! $this->record->EsMigracionHistorica)
                 ->url(fn () => route('descargar-pagos.pdf', $this->record->CreditoID))
                 ->openUrlInNewTab(),
 

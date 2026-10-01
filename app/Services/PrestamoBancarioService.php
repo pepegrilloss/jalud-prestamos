@@ -10,6 +10,7 @@ use App\Models\PagoPrestamoBancario;
 use App\Models\PrestamoBancario;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class PrestamoBancarioService
@@ -325,6 +326,67 @@ class PrestamoBancarioService
             $this->actualizarEstadoPrestamo($prestamo);
 
             return $pago;
+        });
+    }
+
+    public function registrarSaldamientoHistorico(
+        PrestamoBancario $prestamo,
+        array $data
+    ): PrestamoBancario {
+        $datosValidados = Validator::make($data, [
+            'FechaSaldamientoHistorico' => ['required', 'date', 'before_or_equal:today'],
+        ])->validate();
+        $fechaSaldamiento = Carbon::parse($datosValidados['FechaSaldamientoHistorico'])->startOfDay();
+
+        return DB::transaction(function () use ($prestamo, $fechaSaldamiento) {
+            $prestamo = PrestamoBancario::lockForUpdate()
+                ->findOrFail($prestamo->PrestamoBancarioID);
+
+            if ($prestamo->Estado !== PrestamoBancario::ESTADO_VIGENTE || $prestamo->EsSaldadoHistorico) {
+                throw ValidationException::withMessages([
+                    'prestamo' => 'Solo se puede registrar como saldado históricamente un préstamo vigente.',
+                ]);
+            }
+
+            if ($fechaSaldamiento->lt($prestamo->FechaDesembolso->copy()->startOfDay())) {
+                throw ValidationException::withMessages([
+                    'FechaSaldamientoHistorico' => 'La fecha de saldamiento no puede ser anterior al desembolso.',
+                ]);
+            }
+
+            if (PagoPrestamoBancario::where('PrestamoBancarioID', $prestamo->PrestamoBancarioID)->exists()) {
+                throw ValidationException::withMessages([
+                    'prestamo' => 'Este préstamo ya tiene movimientos de pago registrados; no puede marcarse como saldado fuera del sistema.',
+                ]);
+            }
+
+            $cuotas = $prestamo->cuotas()->lockForUpdate()->get();
+            if ($cuotas->count() !== (int) $prestamo->NumeroCuotas || $cuotas->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'prestamo' => 'El cronograma del préstamo está incompleto y no se puede cerrar como histórico.',
+                ]);
+            }
+
+            foreach ($cuotas as $cuota) {
+                if ($cuota->Estado !== CuotaPrestamoBancario::ESTADO_PENDIENTE) {
+                    throw ValidationException::withMessages([
+                        'prestamo' => 'El cronograma contiene cuotas con otro estado; revise el préstamo antes de continuar.',
+                    ]);
+                }
+            }
+
+            $cuotas->each(fn (CuotaPrestamoBancario $cuota) => $cuota->update([
+                'Estado' => CuotaPrestamoBancario::ESTADO_SALDADA_HISTORICA,
+                'FechaPago' => null,
+            ]));
+
+            $prestamo->update([
+                'Estado' => PrestamoBancario::ESTADO_CANCELADO,
+                'EsSaldadoHistorico' => true,
+                'FechaSaldamientoHistorico' => $fechaSaldamiento->toDateString(),
+            ]);
+
+            return $prestamo->fresh();
         });
     }
 

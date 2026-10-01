@@ -12,9 +12,7 @@ class CreditoObserver
 {
     public function created(Credito $credito)
     {
-        if (! $credito->EsMigracionHistorica) {
-            $this->generarCuotas($credito);
-        }
+        $this->generarCuotas($credito);
 
         try {
             \App\Services\SaldoPendienteService::recalcular($credito->ProposicionCreditoID);
@@ -31,11 +29,9 @@ class CreditoObserver
                 $codigo = $proposicion->CodigoCredito;
 
                 User::notificarAdmin(
-                    $credito->EsMigracionHistorica ? 'Crédito histórico registrado' : 'Credito desembolsado',
-                    $credito->EsMigracionHistorica
-                        ? "{$codigo} - {$nombre} - S/ {$monto}. Pagado fuera de JALUD; sin movimiento de caja ni cuotas."
-                        : "{$codigo} - {$nombre} - S/ {$monto}",
-                    $credito->EsMigracionHistorica ? 'heroicon-o-archive-box' : 'heroicon-o-banknotes',
+                    'Credito desembolsado',
+                    "{$codigo} - {$nombre} - S/ {$monto}",
+                    'heroicon-o-banknotes',
                     $proposicion->SedeID
                 );
             }

@@ -30,11 +30,12 @@ class CuotasRelationManager extends RelationManager
             Tables\Columns\BadgeColumn::make('Estado')->colors([
                 'success' => CuotaPrestamoBancario::ESTADO_CANCELADA,
                 'warning' => CuotaPrestamoBancario::ESTADO_PENDIENTE,
-                'gray' => CuotaPrestamoBancario::ESTADO_ANULADA_ANTICIPADA,
+                'gray' => [CuotaPrestamoBancario::ESTADO_ANULADA_ANTICIPADA, CuotaPrestamoBancario::ESTADO_SALDADA_HISTORICA],
             ])->formatStateUsing(fn (string $state) => match ($state) {
                 CuotaPrestamoBancario::ESTADO_CANCELADA => 'Cancelada',
                 CuotaPrestamoBancario::ESTADO_PENDIENTE => 'Por pagar',
                 CuotaPrestamoBancario::ESTADO_ANULADA_ANTICIPADA => 'Anulada por cancelación anticipada',
+                CuotaPrestamoBancario::ESTADO_SALDADA_HISTORICA => 'Saldada fuera del sistema',
                 default => $state,
             }),
             Tables\Columns\TextColumn::make('FechaPago')->label('Pagada el')->date('d/m/Y')->placeholder('-'),

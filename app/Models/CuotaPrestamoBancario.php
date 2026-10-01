@@ -14,6 +14,8 @@ class CuotaPrestamoBancario extends Model
 
     public const ESTADO_ANULADA_ANTICIPADA = 'ANULADA_ANTICIPADA';
 
+    public const ESTADO_SALDADA_HISTORICA = 'SALDADA_HISTORICA';
+
     protected $table = 'tesoreria_prestamo_cuotas';
 
     protected $primaryKey = 'CuotaPrestamoBancarioID';

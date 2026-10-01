@@ -199,7 +199,7 @@
                 <span class="label">ESTADO</span><br>
                 <span class="value">{{ match($prestamo->Estado) {
                     'VIGENTE' => 'VIGENTE',
-                    'CANCELADO' => 'CANCELADO',
+                    'CANCELADO' => $prestamo->EsSaldadoHistorico ? 'SALDADO FUERA DEL SISTEMA' : 'CANCELADO',
                     'CANCELADO_ANTICIPADO' => 'CANCELADO ANTIC.',
                     default => $prestamo->Estado,
                 } }}</span>
@@ -241,6 +241,14 @@
                 <span class="value">{{ $prestamo->FuentePago }}</span>
             </td>
         </tr>
+        @if($prestamo->EsSaldadoHistorico)
+        <tr>
+            <td colspan="4">
+                <span class="label">FECHA DE SALDAMIENTO HISTORICO</span><br>
+                <span class="value">{{ $prestamo->FechaSaldamientoHistorico?->format('d/m/Y') }}</span>
+            </td>
+        </tr>
+        @endif
         @if($prestamo->Observaciones)
         <tr>
             <td colspan="4">

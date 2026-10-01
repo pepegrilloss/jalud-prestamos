@@ -191,7 +191,9 @@ class PrestamoBancarioResource extends Resource
                 'success' => PrestamoBancario::ESTADO_VIGENTE,
                 'gray' => PrestamoBancario::ESTADO_CANCELADO,
                 'warning' => PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO,
-            ])->formatStateUsing(fn (string $state) => match ($state) {
+            ])->formatStateUsing(fn (string $state, PrestamoBancario $record) => $record->EsSaldadoHistorico
+                ? 'Saldado fuera del sistema'
+                : match ($state) {
                 PrestamoBancario::ESTADO_VIGENTE => 'Vigente',
                 PrestamoBancario::ESTADO_CANCELADO => 'Cancelado',
                 PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO => 'Cancelado anticipadamente',
@@ -241,12 +243,18 @@ class PrestamoBancarioResource extends Resource
                     Infolists\Components\TextEntry::make('TEA')->suffix('%'),
                     Infolists\Components\TextEntry::make('TED')->suffix('%'),
                     Infolists\Components\TextEntry::make('Estado')->badge()
-                        ->formatStateUsing(fn (string $state) => match ($state) {
-                            PrestamoBancario::ESTADO_VIGENTE => 'Vigente',
-                            PrestamoBancario::ESTADO_CANCELADO => 'Cancelado',
-                            PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO => 'Cancelado anticipadamente',
-                            default => $state,
-                        }),
+                        ->formatStateUsing(fn (string $state, PrestamoBancario $record) => $record->EsSaldadoHistorico
+                            ? 'Saldado fuera del sistema'
+                            : match ($state) {
+                                PrestamoBancario::ESTADO_VIGENTE => 'Vigente',
+                                PrestamoBancario::ESTADO_CANCELADO => 'Cancelado',
+                                PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO => 'Cancelado anticipadamente',
+                                default => $state,
+                            }),
+                    Infolists\Components\TextEntry::make('FechaSaldamientoHistorico')
+                        ->label('Saldado fuera del sistema el')
+                        ->date('d/m/Y')
+                        ->visible(fn (PrestamoBancario $record): bool => $record->EsSaldadoHistorico),
                     Infolists\Components\TextEntry::make('CapitalPendiente')->label('Capital pendiente')->money('PEN'),
                     Infolists\Components\TextEntry::make('Observaciones')->placeholder('Sin observaciones')->columnSpanFull(),
                 ])->columns(4),

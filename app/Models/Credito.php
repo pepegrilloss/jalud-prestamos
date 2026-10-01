@@ -27,7 +27,6 @@ class Credito extends Model
         'FechaCierre' => 'datetime',
         'FechaSaldamiento' => 'datetime',
         'Activo' => 'boolean',
-        'EsMigracionHistorica' => 'boolean',
     ];
 
     protected static function booted(): void

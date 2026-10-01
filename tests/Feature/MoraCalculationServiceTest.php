@@ -28,7 +28,6 @@ class MoraCalculationServiceTest extends TestCase
             $table->date('FechaVencimiento');
             $table->boolean('Activo')->default(true);
             $table->string('EstatusCreditoFinal')->default('ACTIVO');
-            $table->boolean('EsMigracionHistorica')->default(false);
             $table->unsignedInteger('SedeID');
         });
 
@@ -189,24 +188,6 @@ class MoraCalculationServiceTest extends TestCase
         $this->assertSame(19.0, (float) $moras[1]->MoraAcumulada);
     }
 
-    public function test_no_calcula_mora_para_creditos_historicos_aunque_se_procese_directamente(): void
-    {
-        $credito = $this->crearCredito(
-            vencimiento: '2026-08-10',
-            total: 1000,
-            saldo: 1000,
-            tasaCredito: 1,
-            tasaCliente: null,
-            esHistorico: true,
-        );
-
-        $resultado = app(MoraCalculationService::class)
-            ->procesarCreditoHasta($credito, '2026-08-12');
-
-        $this->assertSame(['creadas' => 0, 'omitidas' => 0, 'monto' => 0.0], $resultado);
-        $this->assertSame(0, DB::table('mora')->where('CreditoID', $credito->CreditoID)->count());
-    }
-
     public function test_el_calculo_automatico_solo_procesa_la_sede_abierta(): void
     {
         $creditoChiclayo = $this->crearCredito('2026-08-22', 1000, 500, 0.5, null, 1);
@@ -236,7 +217,6 @@ class MoraCalculationServiceTest extends TestCase
         ?float $tasaCredito,
         ?float $tasaCliente,
         int $sedeId = 2,
-        bool $esHistorico = false,
     ): Credito {
         $tasaMoraId = null;
         if ($tasaCliente !== null) {
@@ -266,7 +246,6 @@ class MoraCalculationServiceTest extends TestCase
             'FechaVencimiento' => $vencimiento,
             'Activo' => true,
             'EstatusCreditoFinal' => 'ACTIVO',
-            'EsMigracionHistorica' => $esHistorico,
             'SedeID' => $sedeId,
         ]);
 

@@ -24,13 +24,15 @@ class PrestamoBancario extends Model
 
     protected $fillable = [
         'CuentaTesoreriaID', 'TipoPrestamista', 'Banco', 'Cliente', 'CuentaPrestamo', 'Operacion', 'MontoPrestamo',
-        'FechaDesembolso', 'FechaVencimiento', 'NumeroCuotas', 'DiaPago', 'PagoMensual',
+        'FechaDesembolso', 'FechaVencimiento', 'NumeroCuotas', 'DiaPago', 'PagoMensual', 'EsSaldadoHistorico',
+        'FechaSaldamientoHistorico',
         'TEA', 'TED', 'Estado', 'Observaciones',
     ];
 
     protected $casts = [
         'MontoPrestamo' => 'decimal:2', 'FechaDesembolso' => 'date', 'FechaVencimiento' => 'date',
         'PagoMensual' => 'decimal:2', 'TEA' => 'decimal:6', 'TED' => 'decimal:6',
+        'EsSaldadoHistorico' => 'boolean', 'FechaSaldamientoHistorico' => 'date',
     ];
 
     public function cuentaTesoreria(): BelongsTo

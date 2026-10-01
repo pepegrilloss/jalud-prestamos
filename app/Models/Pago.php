@@ -23,20 +23,13 @@ class Pago extends Model
             }
 
             if ($model->CreditoID) {
-                $credito = \App\Models\Credito::withoutGlobalScope('sede')
+                $creditoSedeID = \App\Models\Credito::withoutGlobalScope('sede')
                     ->where('CreditoID', $model->CreditoID)
-                    ->first();
-                $creditoSedeID = $credito?->SedeID;
+                    ->value('SedeID');
 
                 if (!$creditoSedeID) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
                         'CreditoID' => 'No se encontro el credito del pago.',
-                    ]);
-                }
-
-                if ($credito->EsMigracionHistorica) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'CreditoID' => 'Este crédito histórico ya fue pagado fuera de JALUD y no admite nuevos pagos.',
                     ]);
                 }
 

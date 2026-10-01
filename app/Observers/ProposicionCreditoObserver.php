@@ -24,10 +24,6 @@ class ProposicionCreditoObserver
             ->where('ProposicionCreditoID', $proposicionId)
             ->first();
 
-        if ($credito?->EsMigracionHistorica) {
-            return;
-        }
-
         if ($credito) {
             CreditoFechaService::validarCatalogoFeriados(
                 $credito->FechaGeneracion,
@@ -90,7 +86,7 @@ class ProposicionCreditoObserver
             ->where('ProposicionCreditoID', $proposicionId)
             ->first();
 
-        if (! $credito || $credito->EsMigracionHistorica) {
+        if (! $credito) {
             return;
         }
 

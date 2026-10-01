@@ -85,6 +85,32 @@ class ViewPrestamoBancario extends ViewRecord
                     $this->record->refresh();
                     Notification::make()->success()->title('Préstamo cancelado anticipadamente')->send();
                 }),
+            Actions\Action::make('registrarSaldadoHistorico')
+                ->label('Registrar saldado fuera del sistema')
+                ->icon('heroicon-o-archive-box')
+                ->color('gray')
+                ->visible(fn (): bool => $this->record->Estado === PrestamoBancario::ESTADO_VIGENTE
+                    && ! $this->record->EsSaldadoHistorico
+                    && ! $this->record->pagos()->exists())
+                ->modalSubmitActionLabel('Registrar como saldado')
+                ->modalHeading('Registrar préstamo ya saldado')
+                ->modalDescription('El préstamo quedará registrado como saldado fuera del sistema. No se crearán pagos ni movimientos, y no se modificarán los saldos de Caja Gerencia o cuentas bancarias.')
+                ->form([
+                    Forms\Components\DatePicker::make('FechaSaldamientoHistorico')
+                        ->label('Fecha en que se terminó de pagar')
+                        ->minDate(fn (): ?string => $this->record->FechaDesembolso?->toDateString())
+                        ->maxDate(now())
+                        ->default(now())
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    app(PrestamoBancarioService::class)->registrarSaldamientoHistorico(
+                        $this->record,
+                        $data
+                    );
+                    $this->record->refresh();
+                    Notification::make()->success()->title('Préstamo registrado como saldado fuera del sistema')->send();
+                }),
         ];
     }
 }

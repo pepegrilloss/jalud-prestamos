@@ -123,6 +123,41 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         $this->assertSame(PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO, $prestamo->fresh()->Estado);
     }
 
+    public function test_saldamiento_historico_no_crea_pagos_ni_afecta_saldos(): void
+    {
+        [$prestamo, $cuota, $cuenta, $fondo] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+
+        $actualizado = app(PrestamoBancarioService::class)->registrarSaldamientoHistorico($prestamo, [
+            'FechaSaldamientoHistorico' => '2026-07-15',
+        ]);
+
+        $this->assertSame(PrestamoBancario::ESTADO_CANCELADO, $actualizado->Estado);
+        $this->assertTrue($actualizado->EsSaldadoHistorico);
+        $this->assertSame('2026-07-15', $actualizado->FechaSaldamientoHistorico->toDateString());
+        $this->assertSame(CuotaPrestamoBancario::ESTADO_SALDADA_HISTORICA, $cuota->fresh()->Estado);
+        $this->assertSame(0, PagoPrestamoBancario::count());
+        $this->assertSame(0, MovimientoTesoreria::count());
+        $this->assertSame(500.0, (float) $cuenta->fresh()->SaldoActual);
+        $this->assertSame(1000.0, (float) $fondo->fresh()->Saldo);
+    }
+
+    public function test_saldamiento_historico_rechaza_un_prestamo_que_ya_tiene_pagos(): void
+    {
+        [$prestamo, $cuota] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        app(PrestamoBancarioService::class)->pagarCuota($cuota, [
+            'FechaContable' => '2026-07-15',
+        ], 13);
+
+        try {
+            app(PrestamoBancarioService::class)->registrarSaldamientoHistorico($prestamo, [
+                'FechaSaldamientoHistorico' => '2026-07-15',
+            ]);
+            $this->fail('Se esperaba que el préstamo con pago registrado no pudiera marcarse como histórico.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('prestamo', $exception->errors());
+        }
+    }
+
     public function test_extorno_de_cancelacion_restituye_el_origen_y_reabre_el_prestamo(): void
     {
         [$prestamo, $cuota, $cuenta] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
@@ -226,6 +261,8 @@ class PrestamoBancarioTesoreriaTest extends TestCase
             $table->decimal('TEA', 9, 6);
             $table->decimal('TED', 9, 6);
             $table->string('Estado');
+            $table->boolean('EsSaldadoHistorico')->default(false);
+            $table->date('FechaSaldamientoHistorico')->nullable();
             $table->text('Observaciones')->nullable();
             $table->timestamps();
         });

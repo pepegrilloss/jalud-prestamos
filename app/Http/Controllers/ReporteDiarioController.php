@@ -313,7 +313,6 @@ class ReporteDiarioController extends Controller
         // ─── 5. CREDITOS EMITIDOS ───
         $creditosQuery = Credito::withoutGlobalScopes()
             ->where('Credito.Activo', true)
-            ->where('Credito.EsMigracionHistorica', false)
             ->whereDate('Credito.FechaGeneracion', $fecha);
 
         if ($sedeId) {
@@ -425,7 +424,6 @@ class ReporteDiarioController extends Controller
                 $creditos = \App\Models\Credito::withoutGlobalScopes()
                     ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
                     ->where('Credito.Activo', true)
-                    ->where('Credito.EsMigracionHistorica', false)
                     ->where('Credito.SedeID', $sedeId)
                     ->where('Credito.FechaGeneracion', '<=', $fechaLimite)
                     ->sum('ProposicionCredito.MontoTotal'); // El capital prestado
