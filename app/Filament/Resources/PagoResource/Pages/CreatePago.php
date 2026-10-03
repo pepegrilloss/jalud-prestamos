@@ -466,21 +466,15 @@ class CreatePago extends CreateRecord
             throw new \Exception('La fecha del pago no puede ser más de 30 días anterior. Por favor contacta a administración para registros históricos.');
         }
 
-        // Validar que la fecha esté dentro del período del crédito
+        // Impedir pagos anteriores a la generación del crédito.
         $creditoID = $data['CreditoID'] ?? null;
         if ($creditoID) {
             $credito = \App\Models\Credito::find($creditoID);
             if ($credito) {
                 $fechaGeneracion = $credito->FechaGeneracion ? Carbon::parse($credito->FechaGeneracion)->startOfDay() : Carbon::parse($credito->FechaInicio)->startOfDay();
-                $fechaVencimiento = Carbon::parse($credito->FechaVencimiento);
 
                 if (Carbon::parse($fechaPago)->startOfDay()->lt($fechaGeneracion)) {
                     throw new \Exception('No se puede registrar un pago antes de la fecha de creación del crédito.');
-                }
-
-                // Permitir pagos después del vencimiento (para mora), pero alertar
-                if (Carbon::parse($fechaPago)->gt($fechaVencimiento->addDays(365))) {
-                    throw new \Exception('Fecha de pago fuera del rango permitido del crédito. Contacta a administración.');
                 }
             }
         }

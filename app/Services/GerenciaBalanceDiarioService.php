@@ -263,6 +263,7 @@ class GerenciaBalanceDiarioService
             'saldo_inicial' => round($opening, 2),
             'saldo_cierre' => round($closing, 2),
             'excedente' => $excedente,
+            'movimientos' => $dia,
             'secciones' => $secciones,
             'total_ingresos' => round(array_sum(array_column($dia, 'ingreso')), 2),
             'total_salidas' => round(array_sum(array_column($dia, 'salida')), 2),

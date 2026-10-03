@@ -90,57 +90,64 @@
                 </tbody>
             </table>
 
-            @foreach ($titulosSeccion as $clave => $titulo)
-                @php
-                    $movimientosSeccion = $estado['secciones'][$clave];
-                    $totalIngresosSeccion = round(array_sum(array_column($movimientosSeccion, 'ingreso')), 2);
-                    $totalSalidasSeccion = round(array_sum(array_column($movimientosSeccion, 'salida')), 2);
-                @endphp
-                <div class="seccion-titulo">{{ $titulo }}</div>
-                <div class="seccion-subrayado">&nbsp;==============================</div>
-                <table class="datos-table">
-                    <colgroup>
-                        <col style="width: 6%"><col style="width: 9%"><col style="width: 11%"><col style="width: 11%">
-                        <col style="width: 9%"><col style="width: 24%"><col style="width: 9%"><col style="width: 9%"><col style="width: 12%">
-                    </colgroup>
-                    <thead>
+            <div class="seccion-titulo">MOVIMIENTOS EN ORDEN CRONOLÓGICO</div>
+            <div class="seccion-subrayado">&nbsp;==============================</div>
+            <table class="datos-table">
+                <colgroup>
+                    <col style="width: 6%"><col style="width: 9%"><col style="width: 11%"><col style="width: 11%">
+                    <col style="width: 9%"><col style="width: 24%"><col style="width: 9%"><col style="width: 9%"><col style="width: 12%">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>N.º</th><th>FECHA</th><th>SEDE / ORIGEN</th><th>SEDE / DESTINO</th>
+                        <th>CAJA / CUENTA</th><th>CONCEPTO</th><th class="number">INGRESO</th>
+                        <th class="number">SALIDA</th><th class="number">SALDO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($estado['movimientos'] as $movimiento)
+                        @php
+                            $entrada = $movimiento['monto'] > 0;
+                            $esRemesa = $movimiento['categoria'] === 'remesa';
+                            $origen = $esRemesa ? ($entrada ? $movimiento['contraparte'] : $estado['nombre']) : $estado['nombre'];
+                            $destino = $esRemesa ? ($entrada ? $estado['nombre'] : $movimiento['contraparte']) : $movimiento['concepto'];
+                            $etiquetasMovimiento = [
+                                'remesa' => $entrada ? 'REMESA RECIBIDA' : 'REMESA ENVIADA',
+                                'gastos' => 'GASTO',
+                                'compras' => 'COMPRA',
+                                'otros' => 'OTRO',
+                            ];
+                            $concepto = ($etiquetasMovimiento[$movimiento['categoria']] ?? strtoupper($movimiento['categoria'])) . ': ' . $movimiento['concepto'];
+                        @endphp
                         <tr>
-                            <th style="width: 6%;">N.º</th><th style="width: 9%;">FECHA</th><th style="width: 11%;">SEDE / ORIGEN</th><th style="width: 11%;">SEDE / DESTINO</th>
-                            <th style="width: 9%;">CAJA / CUENTA</th><th style="width: 24%;">CONCEPTO</th><th class="number" style="width: 9%;">INGRESO</th>
-                            <th class="number" style="width: 9%;">SALIDA</th><th class="number" style="width: 12%;">SALDO</th>
+                            <td>{{ $movimiento['numero'] }}</td>
+                            <td>{{ \Carbon\Carbon::parse($movimiento['fecha'])->format('d/m/Y') }}</td>
+                            <td>{{ $origen }}</td>
+                            <td>{{ $destino }}</td>
+                            <td>{{ $movimiento['cuenta'] }}</td>
+                            <td>{{ $concepto }}</td>
+                            <td class="number">{{ $movimiento['ingreso'] ? number_format($movimiento['ingreso'], 2) : '-' }}</td>
+                            <td class="number">{{ $movimiento['salida'] ? number_format($movimiento['salida'], 2) : '-' }}</td>
+                            <td class="number">{{ number_format($movimiento['saldo'], 2) }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($movimientosSeccion as $movimiento)
-                            @php
-                                $entrada = $movimiento['monto'] > 0;
-                                $esRemesa = $movimiento['categoria'] === 'remesa';
-                                $origen = $esRemesa ? ($entrada ? $movimiento['contraparte'] : $estado['nombre']) : $estado['nombre'];
-                                $destino = $esRemesa ? ($entrada ? $estado['nombre'] : $movimiento['contraparte']) : $movimiento['concepto'];
-                            @endphp
-                            <tr>
-                                <td>{{ $movimiento['numero'] }}</td>
-                                <td>{{ \Carbon\Carbon::parse($movimiento['fecha'])->format('d/m/Y') }}</td>
-                                <td>{{ $origen }}</td>
-                                <td>{{ $destino }}</td>
-                                <td>{{ $movimiento['cuenta'] }}</td>
-                                <td>{{ $movimiento['concepto'] }}</td>
-                                <td class="number">{{ $movimiento['ingreso'] ? number_format($movimiento['ingreso'], 2) : '-' }}</td>
-                                <td class="number">{{ $movimiento['salida'] ? number_format($movimiento['salida'], 2) : '-' }}</td>
-                                <td class="number">{{ number_format($movimiento['saldo'], 2) }}</td>
-                            </tr>
-                        @empty
-                            <tr><td class="empty" colspan="9">Sin movimientos</td></tr>
-                        @endforelse
+                    @empty
+                        <tr><td class="empty" colspan="9">Sin movimientos</td></tr>
+                    @endforelse
+                    @foreach ($titulosSeccion as $clave => $titulo)
+                        @php
+                            $movimientosSeccion = $estado['secciones'][$clave];
+                            $totalIngresosSeccion = round(array_sum(array_column($movimientosSeccion, 'ingreso')), 2);
+                            $totalSalidasSeccion = round(array_sum(array_column($movimientosSeccion, 'salida')), 2);
+                        @endphp
                         <tr class="section-total">
                             <td colspan="6">TOTAL {{ $titulo }}</td>
                             <td class="number">{{ number_format($totalIngresosSeccion, 2) }}</td>
                             <td class="number">{{ number_format($totalSalidasSeccion, 2) }}</td>
                             <td class="number">-</td>
                         </tr>
-                    </tbody>
-                </table>
-            @endforeach
+                    @endforeach
+                </tbody>
+            </table>
 
             @if ($indice === 0 && abs($estado['excedente']) >= 0.01)
                 <table class="datos-table">
