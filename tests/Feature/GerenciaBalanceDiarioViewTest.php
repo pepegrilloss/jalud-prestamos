@@ -56,6 +56,39 @@ class GerenciaBalanceDiarioViewTest extends TestCase
         $this->assertStringContainsString('134,490.09', $html);
     }
 
+    public function test_muestra_reintegros_de_gastos_y_compras_en_el_resumen_final(): void
+    {
+        $caja = [
+            'nombre' => 'Caja Gerencia',
+            'saldo_inicial' => 1000.00,
+            'saldo_cierre' => 1125.50,
+            'excedente' => 0.0,
+            'movimientos' => [],
+            'secciones' => [
+                'remesas_entrada' => [],
+                'remesas_salida' => [],
+                'gastos' => [['ingreso' => 100.00, 'salida' => 0.0]],
+                'compras' => [['ingreso' => 25.50, 'salida' => 0.0]],
+                'otros' => [],
+            ],
+            'total_ingresos' => 125.50,
+            'total_salidas' => 0.0,
+        ];
+
+        $html = view('reportes.balance-diario-gerencia', [
+            'sede' => (object) ['Nombre' => 'Gerencia'],
+            'fecha' => Carbon::parse('2026-08-19'),
+            'generadoEn' => Carbon::parse('2026-08-19 17:00:00'),
+            'caja' => $caja,
+            'cuentas' => [],
+        ])->render();
+
+        $this->assertStringContainsString('Reintegros / ajustes de gastos (+):', $html);
+        $this->assertStringContainsString('+100.00', $html);
+        $this->assertStringContainsString('Reintegros / ajustes de compras (+):', $html);
+        $this->assertStringContainsString('+25.50', $html);
+    }
+
     private function movimiento(int $numero, string $contraparte, float $monto, float $saldo): array
     {
         return [

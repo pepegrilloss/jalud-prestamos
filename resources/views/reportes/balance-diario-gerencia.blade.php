@@ -178,7 +178,9 @@
         $sumarImporte = static fn (array $movimientos, string $campo): float => round(array_sum(array_column($movimientos, $campo)), 2);
         $remesasRecibidas = $sumarImporte($caja['secciones']['remesas_entrada'], 'ingreso');
         $remesasEnviadas = $sumarImporte($caja['secciones']['remesas_salida'], 'salida');
+        $reintegrosGastos = $sumarImporte($caja['secciones']['gastos'], 'ingreso');
         $gastosGerencia = $sumarImporte($caja['secciones']['gastos'], 'salida');
+        $reintegrosCompras = $sumarImporte($caja['secciones']['compras'], 'ingreso');
         $comprasGerencia = $sumarImporte($caja['secciones']['compras'], 'salida');
         $otrosIngresosGerencia = $sumarImporte($caja['secciones']['otros'], 'ingreso');
         $otrosEgresosGerencia = $sumarImporte($caja['secciones']['otros'], 'salida');
@@ -204,7 +206,9 @@
                                 <tr><td>Saldo inicial:</td><td class="importe">{{ number_format($caja['saldo_inicial'], 2) }}</td></tr>
                                 <tr class="resumen-remesa"><td>Ingreso de remesas (+):</td><td class="importe">+{{ number_format($remesasRecibidas, 2) }}</td></tr>
                                 <tr class="resumen-remesa"><td>Salida de remesas (-):</td><td class="importe">-{{ number_format($remesasEnviadas, 2) }}</td></tr>
+                                <tr class="resumen-positivo"><td>Reintegros / ajustes de gastos (+):</td><td class="importe">+{{ number_format($reintegrosGastos, 2) }}</td></tr>
                                 <tr class="resumen-negativo"><td>Gastos (-):</td><td class="importe">-{{ number_format($gastosGerencia, 2) }}</td></tr>
+                                <tr class="resumen-positivo"><td>Reintegros / ajustes de compras (+):</td><td class="importe">+{{ number_format($reintegrosCompras, 2) }}</td></tr>
                                 <tr class="resumen-negativo"><td>Compras (-):</td><td class="importe">-{{ number_format($comprasGerencia, 2) }}</td></tr>
                                 <tr class="resumen-positivo"><td>Otros ingresos (+):</td><td class="importe">+{{ number_format($otrosIngresosGerencia, 2) }}</td></tr>
                                 <tr class="resumen-negativo"><td>Otros egresos (-):</td><td class="importe">-{{ number_format($otrosEgresosGerencia, 2) }}</td></tr>

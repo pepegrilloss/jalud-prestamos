@@ -23,10 +23,27 @@ class GerenciaBalanceDiarioService
             ->firstOrFail();
 
         $movimientos = MovimientoTesoreria::query()
-            ->with(['gasto.motivo', 'compra.proveedor'])
+            ->with(['compra.proveedor'])
             ->orderBy('FechaContable')
             ->orderBy('MovimientoTesoreriaID')
             ->get();
+        $gastosVinculados = $movimientos->pluck('GastoID')->filter()->map(fn ($id) => (int) $id)->unique();
+        $gastos = Gasto::withoutGlobalScopes()
+            ->whereIn('GastoID', $gastosVinculados->isEmpty() ? [0] : $gastosVinculados)
+            ->with('motivo')
+            ->get()
+            ->keyBy('GastoID');
+        $movimientos->each(fn (MovimientoTesoreria $movimiento) => $movimiento->setRelation(
+            'gasto',
+            $gastos->get($movimiento->GastoID)
+        ));
+        $gastosReemplazados = $this->detectarGastosReemplazados($gastos, $movimientos);
+        $movimientosBalance = $movimientos
+            ->reject(fn (MovimientoTesoreria $movimiento): bool => isset(
+                $gastosReemplazados['omitir'][(int) $movimiento->GastoID]
+            ))
+            ->values();
+        $extornosPorGasto = $this->extornosPorGasto($movimientos);
 
         $movimientosFondo = MovimientoFondo::withoutGlobalScopes()
             ->where('SedeID', $sedeGerencia->SedeID)
@@ -51,7 +68,7 @@ class GerenciaBalanceDiarioService
             ->where('SedeID', $sedeGerencia->SedeID)
             ->first();
 
-        $gastosVinculados = $movimientos->pluck('GastoID')->filter()->map(fn ($id) => (int) $id)->all();
+        $gastosVinculados = $gastosVinculados->all();
         $comprasVinculadas = $movimientos->pluck('CompraID')->filter()->map(fn ($id) => (int) $id)->all();
 
         $gastosAntiguos = Gasto::withoutGlobalScopes()
@@ -76,11 +93,13 @@ class GerenciaBalanceDiarioService
             cuentaId: null,
             saldoActual: (float) ($fondo?->Saldo ?? 0),
             fecha: $fecha,
-            movimientos: $movimientos,
+            movimientos: $movimientosBalance,
             movimientosFondo: $movimientosFondo,
             transferencias: $transferencias,
             gastosAntiguos: $gastosAntiguos,
             comprasAntiguas: $comprasAntiguas,
+            extornosPorGasto: $extornosPorGasto,
+            gastosReemplazados: $gastosReemplazados['activos'],
             sedeGerenciaId: (int) $sedeGerencia->SedeID,
         );
 
@@ -94,11 +113,13 @@ class GerenciaBalanceDiarioService
                 cuentaId: (int) $cuenta->CuentaTesoreriaID,
                 saldoActual: (float) $cuenta->SaldoActual,
                 fecha: $fecha,
-                movimientos: $movimientos,
+                movimientos: $movimientosBalance,
                 movimientosFondo: collect(),
                 transferencias: $transferencias,
                 gastosAntiguos: collect(),
                 comprasAntiguas: collect(),
+                extornosPorGasto: $extornosPorGasto,
+                gastosReemplazados: $gastosReemplazados['activos'],
                 sedeGerenciaId: (int) $sedeGerencia->SedeID,
             ))
             ->all();
@@ -123,6 +144,8 @@ class GerenciaBalanceDiarioService
         $transferencias,
         $gastosAntiguos,
         $comprasAntiguas,
+        $extornosPorGasto,
+        array $gastosReemplazados,
         int $sedeGerenciaId,
     ): array {
         $transacciones = [];
@@ -143,7 +166,34 @@ class GerenciaBalanceDiarioService
 
             if ($movimiento->GastoID) {
                 $categoria = 'gastos';
-                $concepto = $movimiento->gasto?->motivo?->Nombre ?: $concepto;
+                $gasto = $movimiento->gasto;
+                $esAjusteGasto = in_array($movimiento->Tipo, [
+                    MovimientoTesoreria::TIPO_AJUSTE_GASTO,
+                    MovimientoTesoreria::TIPO_EXTORNO_GASTO,
+                ], true);
+
+                if (! $esAjusteGasto) {
+                    $concepto = ($gasto?->motivo?->Nombre ?: 'Gasto') . " #{$movimiento->GastoID}";
+                }
+
+                if (isset($gastosReemplazados[(int) $movimiento->GastoID])) {
+                    $concepto .= ' (reemplaza registro anulado #'
+                        . $gastosReemplazados[(int) $movimiento->GastoID] . ')';
+                }
+
+                if ($movimiento->Tipo === MovimientoTesoreria::TIPO_EGRESO_GASTO && $gasto) {
+                    $diferenciaDocumento = round((float) $movimiento->Monto - (float) $gasto->Total, 2);
+                    if (abs($diferenciaDocumento) >= 0.01) {
+                        $concepto .= ' (documento S/ ' . number_format((float) $gasto->Total, 2, '.', ',') . ')';
+                    }
+
+                    if (! $gasto->Activo) {
+                        $extornos = $extornosPorGasto->get((int) $movimiento->GastoID);
+                        $concepto .= $extornos
+                            ? ' - ANULADO; extorno(s): ' . $extornos
+                            : ' - INACTIVO SIN EXTORNO';
+                    }
+                }
             } elseif ($movimiento->CompraID) {
                 $categoria = 'compras';
                 $concepto = $movimiento->compra?->proveedor?->Nombre ?: $concepto;
@@ -186,7 +236,11 @@ class GerenciaBalanceDiarioService
                 'id_orden' => (int) $movimiento->MovimientoID,
                 'numero' => (string) ($movimiento->TransferenciaID ?: $movimiento->MovimientoID),
                 'categoria' => $esRemesa ? 'remesa' : 'otros',
-                'concepto' => $transferencia ? 'Remesa ' . strtolower(str_replace('_', ' ', $movimiento->Tipo)) : ($movimiento->Observacion ?: $movimiento->Tipo),
+                'concepto' => $transferencia
+                    ? 'Remesa ' . strtolower(str_replace('_', ' ', $movimiento->Tipo))
+                    : ($movimiento->Tipo === 'AJUSTE_CONCILIACION_CAJA'
+                        ? 'Ajuste de conciliación de Caja Gerencia'
+                        : ($movimiento->Observacion ?: $movimiento->Tipo)),
                 'contraparte' => $contraparte ?: 'Caja Gerencia',
                 'cuenta' => 'Caja Abierta',
                 'monto' => (float) $movimiento->Monto,
@@ -319,30 +373,13 @@ class GerenciaBalanceDiarioService
 
     private function calcularSaldoInicial(array $transacciones, string $fecha, float $saldoActual): float
     {
-        $snapshotIndex = null;
-        foreach ($transacciones as $index => $transaccion) {
-            if ($transaccion['fecha'] < $fecha && $transaccion['saldo_despues'] !== null) {
-                $snapshotIndex = $index;
-            }
-        }
-
-        if ($snapshotIndex !== null) {
-            $saldo = (float) $transacciones[$snapshotIndex]['saldo_despues'];
-            foreach ($transacciones as $index => $transaccion) {
-                if ($index > $snapshotIndex && $transaccion['fecha'] < $fecha) {
-                    $saldo += $transaccion['monto'];
-                }
-            }
-
-            return round($saldo, 2);
-        }
-
-        $movimientosDesdeFecha = array_sum(array_map(
-            fn (array $transaccion): float => $transaccion['fecha'] >= $fecha ? $transaccion['monto'] : 0,
+        $saldoCierre = $this->calcularSaldoCierre($transacciones, $fecha, $saldoActual);
+        $movimientosDelDia = array_sum(array_map(
+            fn (array $transaccion): float => $transaccion['fecha'] === $fecha ? $transaccion['monto'] : 0,
             $transacciones,
         ));
 
-        return round($saldoActual - $movimientosDesdeFecha, 2);
+        return round($saldoCierre - $movimientosDelDia, 2);
     }
 
     private function calcularSaldoCierre(array $transacciones, string $fecha, float $saldoActual): float
@@ -352,17 +389,121 @@ class GerenciaBalanceDiarioService
             return round($saldoActual, 2);
         }
 
-        foreach ($transacciones as $transaccion) {
-            if ($transaccion['fecha'] > $fecha && $transaccion['saldo_antes'] !== null) {
-                return round((float) $transaccion['saldo_antes'], 2);
-            }
-        }
-
         $saldoPorFlujos = $saldoActual - array_sum(array_map(
             fn (array $transaccion): float => $transaccion['fecha'] > $fecha ? $transaccion['monto'] : 0,
             $transacciones,
         ));
 
         return round($saldoPorFlujos, 2);
+    }
+
+    private function extornosPorGasto($movimientos)
+    {
+        return $movimientos
+            ->filter(fn (MovimientoTesoreria $movimiento): bool =>
+                $movimiento->Tipo === MovimientoTesoreria::TIPO_EXTORNO_GASTO
+                && $movimiento->GastoID !== null
+            )
+            ->groupBy('GastoID')
+            ->map(fn ($extornos): string => $extornos
+                ->map(fn (MovimientoTesoreria $extorno): string => '#'
+                    . $extorno->MovimientoTesoreriaID
+                    . ' (' . Carbon::parse($extorno->FechaContable)->format('d/m/Y') . ')'
+                )
+                ->implode(', ')
+            );
+    }
+
+    private function detectarGastosReemplazados($gastos, $movimientos): array
+    {
+        $grupos = $gastos->groupBy(fn (Gasto $gasto): ?string => $this->claveDocumentoGasto($gasto));
+        $omitir = [];
+        $activos = [];
+
+        foreach ($grupos as $clave => $grupo) {
+            if ($clave === '' || $clave === null) {
+                continue;
+            }
+
+            $anulados = $grupo->filter(fn (Gasto $gasto): bool => ! $gasto->Activo)->values();
+            $vigentes = $grupo->filter(fn (Gasto $gasto): bool => $gasto->Activo)->values();
+
+            if ($anulados->count() !== 1 || $vigentes->count() !== 1) {
+                continue;
+            }
+
+            $anulado = $anulados->first();
+            $vigente = $vigentes->first();
+            $movimientosAnulados = $movimientos->filter(
+                fn (MovimientoTesoreria $movimiento): bool => (int) $movimiento->GastoID === (int) $anulado->GastoID
+            );
+
+            if (! $this->gastoAnuladoQuedoExtornado($movimientosAnulados)) {
+                continue;
+            }
+
+            $omitir[(int) $anulado->GastoID] = true;
+            $activos[(int) $vigente->GastoID] = (int) $anulado->GastoID;
+        }
+
+        return ['omitir' => $omitir, 'activos' => $activos];
+    }
+
+    private function claveDocumentoGasto(Gasto $gasto): ?string
+    {
+        if (blank($gasto->Numero) || $gasto->ProveedorID === null || $gasto->FechaEmision === null) {
+            return null;
+        }
+
+        return implode('|', [
+            (int) $gasto->TipoComprobanteGastoID,
+            mb_strtoupper(trim((string) $gasto->Numero)),
+            Carbon::parse($gasto->FechaEmision)->toDateString(),
+            (int) $gasto->ProveedorID,
+            mb_strtoupper(trim((string) $gasto->motivo?->Nombre)),
+            number_format((float) $gasto->Total, 2, '.', ''),
+            (string) $gasto->OrigenTesoreriaTipo,
+            (int) $gasto->CuentaTesoreriaID,
+        ]);
+    }
+
+    private function gastoAnuladoQuedoExtornado($movimientos): bool
+    {
+        $tieneEgreso = $movimientos->contains(
+            fn (MovimientoTesoreria $movimiento): bool => $movimiento->Tipo === MovimientoTesoreria::TIPO_EGRESO_GASTO
+        );
+        $tieneExtorno = $movimientos->contains(
+            fn (MovimientoTesoreria $movimiento): bool => $movimiento->Tipo === MovimientoTesoreria::TIPO_EXTORNO_GASTO
+        );
+
+        if (! $tieneEgreso || ! $tieneExtorno) {
+            return false;
+        }
+
+        $netoPorCuenta = [];
+        foreach ($movimientos as $movimiento) {
+            $monto = (float) $movimiento->Monto;
+            if ($movimiento->OrigenTipo === MovimientoTesoreria::CAJA_GERENCIA) {
+                $netoPorCuenta['caja'] = ($netoPorCuenta['caja'] ?? 0) - $monto;
+            } elseif ($movimiento->OrigenTipo === MovimientoTesoreria::CUENTA_BANCARIA) {
+                $key = 'banco:' . (int) $movimiento->CuentaOrigenID;
+                $netoPorCuenta[$key] = ($netoPorCuenta[$key] ?? 0) - $monto;
+            }
+
+            if ($movimiento->DestinoTipo === MovimientoTesoreria::CAJA_GERENCIA) {
+                $netoPorCuenta['caja'] = ($netoPorCuenta['caja'] ?? 0) + $monto;
+            } elseif ($movimiento->DestinoTipo === MovimientoTesoreria::CUENTA_BANCARIA) {
+                $key = 'banco:' . (int) $movimiento->CuentaDestinoID;
+                $netoPorCuenta[$key] = ($netoPorCuenta[$key] ?? 0) + $monto;
+            }
+        }
+
+        foreach ($netoPorCuenta as $neto) {
+            if (abs(round($neto, 2)) >= 0.01) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
