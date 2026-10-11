@@ -11,6 +11,7 @@ use App\Models\MovimientoTesoreria;
 use App\Models\Sede;
 use App\Models\TransferenciaSede;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class GerenciaBalanceDiarioService
 {
@@ -37,12 +38,7 @@ class GerenciaBalanceDiarioService
             'gasto',
             $gastos->get($movimiento->GastoID)
         ));
-        $gastosReemplazados = $this->detectarGastosReemplazados($gastos, $movimientos);
-        $movimientosBalance = $movimientos
-            ->reject(fn (MovimientoTesoreria $movimiento): bool => isset(
-                $gastosReemplazados['omitir'][(int) $movimiento->GastoID]
-            ))
-            ->values();
+        $movimientosBalance = $this->movimientosParaBalance($movimientos);
         $extornosPorGasto = $this->extornosPorGasto($movimientos);
 
         $movimientosFondo = MovimientoFondo::withoutGlobalScopes()
@@ -99,7 +95,6 @@ class GerenciaBalanceDiarioService
             gastosAntiguos: $gastosAntiguos,
             comprasAntiguas: $comprasAntiguas,
             extornosPorGasto: $extornosPorGasto,
-            gastosReemplazados: $gastosReemplazados['activos'],
             sedeGerenciaId: (int) $sedeGerencia->SedeID,
         );
 
@@ -119,7 +114,6 @@ class GerenciaBalanceDiarioService
                 gastosAntiguos: collect(),
                 comprasAntiguas: collect(),
                 extornosPorGasto: $extornosPorGasto,
-                gastosReemplazados: $gastosReemplazados['activos'],
                 sedeGerenciaId: (int) $sedeGerencia->SedeID,
             ))
             ->all();
@@ -145,7 +139,6 @@ class GerenciaBalanceDiarioService
         $gastosAntiguos,
         $comprasAntiguas,
         $extornosPorGasto,
-        array $gastosReemplazados,
         int $sedeGerenciaId,
     ): array {
         $transacciones = [];
@@ -174,11 +167,6 @@ class GerenciaBalanceDiarioService
 
                 if (! $esAjusteGasto) {
                     $concepto = ($gasto?->motivo?->Nombre ?: 'Gasto') . " #{$movimiento->GastoID}";
-                }
-
-                if (isset($gastosReemplazados[(int) $movimiento->GastoID])) {
-                    $concepto .= ' (reemplaza registro anulado #'
-                        . $gastosReemplazados[(int) $movimiento->GastoID] . ')';
                 }
 
                 if ($movimiento->Tipo === MovimientoTesoreria::TIPO_EGRESO_GASTO && $gasto) {
@@ -414,96 +402,8 @@ class GerenciaBalanceDiarioService
             );
     }
 
-    private function detectarGastosReemplazados($gastos, $movimientos): array
+    private function movimientosParaBalance(Collection $movimientos): Collection
     {
-        $grupos = $gastos->groupBy(fn (Gasto $gasto): ?string => $this->claveDocumentoGasto($gasto));
-        $omitir = [];
-        $activos = [];
-
-        foreach ($grupos as $clave => $grupo) {
-            if ($clave === '' || $clave === null) {
-                continue;
-            }
-
-            $anulados = $grupo->filter(fn (Gasto $gasto): bool => ! $gasto->Activo)->values();
-            $vigentes = $grupo->filter(fn (Gasto $gasto): bool => $gasto->Activo)->values();
-
-            if ($anulados->count() !== 1 || $vigentes->count() !== 1) {
-                continue;
-            }
-
-            $anulado = $anulados->first();
-            $vigente = $vigentes->first();
-            $movimientosAnulados = $movimientos->filter(
-                fn (MovimientoTesoreria $movimiento): bool => (int) $movimiento->GastoID === (int) $anulado->GastoID
-            );
-
-            if (! $this->gastoAnuladoQuedoExtornado($movimientosAnulados)) {
-                continue;
-            }
-
-            $omitir[(int) $anulado->GastoID] = true;
-            $activos[(int) $vigente->GastoID] = (int) $anulado->GastoID;
-        }
-
-        return ['omitir' => $omitir, 'activos' => $activos];
-    }
-
-    private function claveDocumentoGasto(Gasto $gasto): ?string
-    {
-        if (blank($gasto->Numero) || $gasto->ProveedorID === null || $gasto->FechaEmision === null) {
-            return null;
-        }
-
-        return implode('|', [
-            (int) $gasto->TipoComprobanteGastoID,
-            mb_strtoupper(trim((string) $gasto->Numero)),
-            Carbon::parse($gasto->FechaEmision)->toDateString(),
-            (int) $gasto->ProveedorID,
-            mb_strtoupper(trim((string) $gasto->motivo?->Nombre)),
-            number_format((float) $gasto->Total, 2, '.', ''),
-            (string) $gasto->OrigenTesoreriaTipo,
-            (int) $gasto->CuentaTesoreriaID,
-        ]);
-    }
-
-    private function gastoAnuladoQuedoExtornado($movimientos): bool
-    {
-        $tieneEgreso = $movimientos->contains(
-            fn (MovimientoTesoreria $movimiento): bool => $movimiento->Tipo === MovimientoTesoreria::TIPO_EGRESO_GASTO
-        );
-        $tieneExtorno = $movimientos->contains(
-            fn (MovimientoTesoreria $movimiento): bool => $movimiento->Tipo === MovimientoTesoreria::TIPO_EXTORNO_GASTO
-        );
-
-        if (! $tieneEgreso || ! $tieneExtorno) {
-            return false;
-        }
-
-        $netoPorCuenta = [];
-        foreach ($movimientos as $movimiento) {
-            $monto = (float) $movimiento->Monto;
-            if ($movimiento->OrigenTipo === MovimientoTesoreria::CAJA_GERENCIA) {
-                $netoPorCuenta['caja'] = ($netoPorCuenta['caja'] ?? 0) - $monto;
-            } elseif ($movimiento->OrigenTipo === MovimientoTesoreria::CUENTA_BANCARIA) {
-                $key = 'banco:' . (int) $movimiento->CuentaOrigenID;
-                $netoPorCuenta[$key] = ($netoPorCuenta[$key] ?? 0) - $monto;
-            }
-
-            if ($movimiento->DestinoTipo === MovimientoTesoreria::CAJA_GERENCIA) {
-                $netoPorCuenta['caja'] = ($netoPorCuenta['caja'] ?? 0) + $monto;
-            } elseif ($movimiento->DestinoTipo === MovimientoTesoreria::CUENTA_BANCARIA) {
-                $key = 'banco:' . (int) $movimiento->CuentaDestinoID;
-                $netoPorCuenta[$key] = ($netoPorCuenta[$key] ?? 0) + $monto;
-            }
-        }
-
-        foreach ($netoPorCuenta as $neto) {
-            if (abs(round($neto, 2)) >= 0.01) {
-                return false;
-            }
-        }
-
-        return true;
+        return $movimientos->values();
     }
 }

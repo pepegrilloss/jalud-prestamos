@@ -53,45 +53,63 @@ class GerenciaBalanceDiarioServiceTest extends TestCase
         $this->assertSame('#7 (09/10/2026)', $resultado->get(271));
     }
 
-    public function test_consolida_gasto_anulado_con_su_reemplazo_solo_si_el_extorno_es_completo(): void
+    public function test_conserva_el_gasto_anulado_y_su_extorno_junto_al_gasto_vigente(): void
     {
         $anulado = $this->gasto(271, false, 15);
         $vigente = $this->gasto(272, true, 16);
         $movimientos = collect([
-            new MovimientoTesoreria([
-                'Tipo' => MovimientoTesoreria::TIPO_EGRESO_GASTO,
-                'OrigenTipo' => MovimientoTesoreria::CAJA_GERENCIA,
-                'DestinoTipo' => MovimientoTesoreria::GASTO,
-                'GastoID' => 271,
-                'Monto' => 124.37,
-            ]),
-            new MovimientoTesoreria([
-                'Tipo' => MovimientoTesoreria::TIPO_EXTORNO_GASTO,
-                'OrigenTipo' => MovimientoTesoreria::GASTO,
-                'DestinoTipo' => MovimientoTesoreria::CAJA_GERENCIA,
-                'GastoID' => 271,
-                'Monto' => 124.37,
-            ]),
+            $this->movimiento(6, MovimientoTesoreria::TIPO_EGRESO_GASTO, MovimientoTesoreria::CAJA_GERENCIA, MovimientoTesoreria::GASTO, 271, $anulado),
+            $this->movimiento(7, MovimientoTesoreria::TIPO_EXTORNO_GASTO, MovimientoTesoreria::GASTO, MovimientoTesoreria::CAJA_GERENCIA, 271, $anulado),
+            $this->movimiento(8, MovimientoTesoreria::TIPO_EGRESO_GASTO, MovimientoTesoreria::CAJA_GERENCIA, MovimientoTesoreria::GASTO, 272, $vigente),
         ]);
 
-        $resultado = $this->detectarReemplazos(collect([$anulado, $vigente]), $movimientos);
+        $service = new GerenciaBalanceDiarioService();
+        $metodoMovimientos = new ReflectionMethod($service, 'movimientosParaBalance');
+        $movimientos = $metodoMovimientos->invoke($service, $movimientos);
+        $this->assertSame([6, 7, 8], $movimientos->map(fn (MovimientoTesoreria $movimiento): int => $movimiento->MovimientoTesoreriaID)->all());
 
-        $this->assertSame([271 => true], $resultado['omitir']);
-        $this->assertSame([272 => 271], $resultado['activos']);
+        $metodoExtornos = new ReflectionMethod($service, 'extornosPorGasto');
+        $extornos = $metodoExtornos->invoke($service, $movimientos);
+        $metodoBalance = new ReflectionMethod($service, 'crearEstadoCuenta');
+        $resultado = $metodoBalance->invoke(
+            $service,
+            'Caja Gerencia',
+            MovimientoTesoreria::CAJA_GERENCIA,
+            null,
+            5000.00,
+            '2026-10-01',
+            $movimientos,
+            collect(),
+            collect(),
+            collect(),
+            collect(),
+            $extornos,
+            1,
+        );
 
-        $movimientos[1]->Monto = 100.00;
-        $resultado = $this->detectarReemplazos(collect([$anulado, $vigente]), $movimientos);
-
-        $this->assertSame([], $resultado['omitir']);
-        $this->assertSame([], $resultado['activos']);
+        $this->assertSame([6, 7, 8], array_column($resultado['movimientos'], 'id_orden'));
+        $this->assertSame([-124.37, 124.37, -124.37], array_column($resultado['movimientos'], 'monto'));
+        $this->assertStringContainsString('extorno(s): #7 (01/10/2026)', $resultado['movimientos'][0]['concepto']);
+        $this->assertSame(124.37, $resultado['total_ingresos']);
+        $this->assertSame(248.74, $resultado['total_salidas']);
     }
 
-    private function detectarReemplazos($gastos, $movimientos): array
+    private function movimiento(int $id, string $tipo, string $origen, string $destino, int $gastoId, Gasto $gasto): MovimientoTesoreria
     {
-        $service = new GerenciaBalanceDiarioService();
-        $metodo = new ReflectionMethod($service, 'detectarGastosReemplazados');
+        $movimiento = new MovimientoTesoreria([
+            'Tipo' => $tipo,
+            'OrigenTipo' => $origen,
+            'DestinoTipo' => $destino,
+            'GastoID' => $gastoId,
+            'Monto' => 124.37,
+            'FechaContable' => '2026-10-01',
+            'FechaMovimiento' => Carbon::parse('2026-10-01 08:00:00')->addMinutes($id),
+            'Concepto' => $tipo === MovimientoTesoreria::TIPO_EXTORNO_GASTO ? 'Extorno de gasto #271' : 'Gasto #'.$gastoId,
+        ]);
+        $movimiento->MovimientoTesoreriaID = $id;
+        $movimiento->setRelation('gasto', $gasto);
 
-        return $metodo->invoke($service, $gastos->keyBy('GastoID'), $movimientos);
+        return $movimiento;
     }
 
     private function gasto(int $id, bool $activo, int $motivoId): Gasto
