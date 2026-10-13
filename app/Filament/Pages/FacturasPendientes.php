@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\CompraResource;
 use App\Models\Compra;
 use App\Models\FondoSede;
-use App\Models\MovimientoTesoreria;
 use App\Models\Sede;
 use App\Services\DateFieldResolver;
 use App\Services\FondoSedeService;
@@ -16,6 +15,7 @@ use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class FacturasPendientes extends Page implements Tables\Contracts\HasTable
 {
@@ -117,33 +117,20 @@ class FacturasPendientes extends Page implements Tables\Contracts\HasTable
                     ->action(function (Compra $record, array $data) {
                         if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
                             try {
-                                DB::transaction(function () use ($record, $data): void {
-                                    $origen = $data['OrigenTesoreria'] ?? TesoreriaGerenciaService::CAJA_GERENCIA_KEY;
-                                    $fechaPago = DateFieldResolver::getFechaAbierta() ?? now();
-                                    $service = app(TesoreriaGerenciaService::class);
-                                    $service->registrarEgresoDocumento([
-                                        'Origen' => $origen,
-                                        'Monto' => $record->Total,
-                                        'FechaContable' => $fechaPago->toDateString(),
-                                        'TipoDocumento' => MovimientoTesoreria::COMPRA,
-                                        'DocumentoID' => $record->CompraID,
-                                        'Concepto' => "Pago de compra al crédito #{$record->CompraID}",
-                                        'Observaciones' => $record->Observaciones,
-                                    ], auth()->id());
-                                    $record->update(array_merge(
-                                        [
-                                            'EstadoPago' => 'PAGADO',
-                                            'FechaPago' => $fechaPago,
-                                            'UsuarioPagoID' => auth()->id(),
-                                        ],
-                                        $service->descomponerReferencia($origen)
-                                    ));
-                                });
+                                $origen = $data['OrigenTesoreria'] ?? TesoreriaGerenciaService::CAJA_GERENCIA_KEY;
+                                app(TesoreriaGerenciaService::class)->pagarCompraCredito(
+                                    $record,
+                                    $origen,
+                                    (int) auth()->id(),
+                                );
                             } catch (\Exception $e) {
+                                $mensaje = $e instanceof ValidationException
+                                    ? ($e->errors()['factura'][0] ?? $e->errors()['Estado'][0] ?? $e->getMessage())
+                                    : $e->getMessage();
                                 Notification::make()
                                     ->danger()
                                     ->title('Error al pagar factura')
-                                    ->body($e->getMessage())
+                                    ->body($mensaje)
                                     ->persistent()
                                     ->send();
 

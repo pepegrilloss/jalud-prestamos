@@ -22,7 +22,7 @@ class ListCuentaTesorerias extends ListRecords
                     Forms\Components\TextInput::make('Banco')->required()->maxLength(100),
                     Forms\Components\TextInput::make('NumeroCuenta')->label('Numero de cuenta')->required()->maxLength(100)->unique('tesoreria_cuentas', 'NumeroCuenta'),
                     Forms\Components\TextInput::make('SaldoInicial')->label('Saldo inicial')->numeric()->minValue(0)->default(0)->prefix('S/')->required(),
-                    Forms\Components\DatePicker::make('FechaContable')->label('Fecha contable de apertura')->default(now())->maxDate(now())->required(),
+                    Forms\Components\DatePicker::make('FechaContable')->label('Fecha contable de apertura')->default(fn () => \App\Services\DateFieldResolver::getFechaAbierta() ?? now())->maxDate(now())->required(),
                     Forms\Components\Textarea::make('Observaciones')->label('Observaciones')->maxLength(1000),
                 ])
                 ->using(fn (array $data, TesoreriaGerenciaService $service) => $service->crearCuentaBancaria($data, auth()->id()))

@@ -62,7 +62,7 @@ class CuotasRelationManager extends RelationManager
                         ->required(fn (CuotaPrestamoBancario $record): bool => $record->prestamo->EsPrestamoTercero),
                     Forms\Components\DatePicker::make('FechaContable')
                         ->label('Fecha contable')
-                        ->default(now())
+                        ->default(fn () => \App\Services\DateFieldResolver::getFechaAbierta() ?? now())
                         ->maxDate(now())
                         ->required(),
                     Forms\Components\TextInput::make('Concepto')->maxLength(255),

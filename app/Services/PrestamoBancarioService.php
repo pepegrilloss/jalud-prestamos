@@ -276,7 +276,7 @@ class PrestamoBancarioService
                 throw ValidationException::withMessages(['cuota' => 'La cuota ya se encuentra cancelada.']);
             }
 
-            $fechaContable = $this->resolverFechaContable($data['FechaContable'] ?? now()->toDateString());
+            $fechaContable = $this->resolverFechaContableOperativa($data);
             $montoProgramado = round((float) $cuota->MontoCuota, 2);
             $monto = $prestamo->EsPrestamoTercero
                 ? round((float) ($data['Monto'] ?? $montoProgramado), 2)
@@ -504,7 +504,7 @@ class PrestamoBancarioService
                 ->with('cuentaTesoreria')
                 ->findOrFail($pago->PrestamoBancarioID);
             $cuota = CuotaPrestamoBancario::lockForUpdate()->findOrFail($pago->CuotaPrestamoBancarioID);
-            $fechaContable = $this->resolverFechaContable($data['FechaContable'] ?? now()->toDateString());
+            $fechaContable = $this->resolverFechaContableOperativa($data);
             $ahora = now();
             $origenOriginal = $this->obtenerOrigenMovimientoBloqueado($pago->movimiento);
             [$saldoAnterior, $saldoNuevo] = $this->acreditarOrigen($origenOriginal, (float) $pago->Monto, $ahora);
@@ -604,7 +604,7 @@ class PrestamoBancarioService
                 ]);
             }
 
-            $fechaContable = $this->resolverFechaContable($data['FechaContable'] ?? now()->toDateString());
+            $fechaContable = $this->resolverFechaContableOperativa($data);
             $ahora = now();
             $origen = $this->obtenerOrigenPagoBloqueado($prestamo);
             [$saldoAnterior, $saldoNuevo] = $this->debitarOrigen($origen, $capitalPendiente, $ahora);
@@ -689,7 +689,7 @@ class PrestamoBancarioService
                 ]);
             }
 
-            $fechaContable = $this->resolverFechaContable($data['FechaContable'] ?? now()->toDateString());
+            $fechaContable = $this->resolverFechaContableOperativa($data);
             $ahora = now();
             $origenOriginal = $this->obtenerOrigenMovimientoBloqueado($pago->movimiento);
             [$saldoAnterior, $saldoNuevo] = $this->acreditarOrigen($origenOriginal, (float) $pago->Monto, $ahora);
@@ -939,5 +939,13 @@ class PrestamoBancarioService
         }
 
         return $fechaContable;
+    }
+
+    private function resolverFechaContableOperativa(array $data): Carbon
+    {
+        $fecha = DateFieldResolver::getFechaAbierta()?->toDateString()
+            ?? ($data['FechaContable'] ?? now()->toDateString());
+
+        return $this->resolverFechaContable($fecha);
     }
 }

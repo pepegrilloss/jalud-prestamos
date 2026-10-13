@@ -67,7 +67,7 @@ class ViewPrestamoBancario extends ViewRecord
                 ->form([
                     Forms\Components\DatePicker::make('FechaContable')
                         ->label('Fecha contable')
-                        ->default(now())
+                        ->default(fn () => \App\Services\DateFieldResolver::getFechaAbierta() ?? now())
                         ->maxDate(now())
                         ->required(),
                     Forms\Components\TextInput::make('Concepto')

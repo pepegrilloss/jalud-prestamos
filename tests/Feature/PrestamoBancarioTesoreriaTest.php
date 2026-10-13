@@ -9,7 +9,11 @@ use App\Models\MovimientoTesoreria;
 use App\Models\PagoPrestamoBancario;
 use App\Models\PrestamoBancario;
 use App\Services\PrestamoBancarioService;
+use App\Services\TesoreriaGerenciaService;
+use Carbon\Carbon;
+use Filament\Facades\Filament;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use PDO;
 use Tests\TestCase;
@@ -36,6 +40,13 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         ] as $modelo) {
             $modelo::flushEventListeners();
         }
+    }
+
+    protected function tearDown(): void
+    {
+        Filament::setCurrentPanel(null);
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_pago_de_cuota_descuenta_la_cuenta_bancaria_asociada_y_no_la_caja_gerencia(): void
@@ -121,6 +132,97 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         $this->assertSame(500.0, (float) $cuenta->fresh()->SaldoActual);
         $this->assertSame(920.0, (float) $fondo->fresh()->Saldo);
         $this->assertSame(PrestamoBancario::ESTADO_CANCELADO_ANTICIPADO, $prestamo->fresh()->Estado);
+    }
+
+    public function test_fecha_operativa_prevalece_en_pago_de_cuota_y_conserva_fecha_real_del_movimiento(): void
+    {
+        Carbon::setTestNow('2026-10-12 16:45:00');
+        [, $cuota] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        $this->abrirDiaGerencia('2026-10-02');
+
+        $pago = app(PrestamoBancarioService::class)->pagarCuota($cuota, [
+            'FechaContable' => '2026-10-12',
+        ], 13);
+        $movimiento = MovimientoTesoreria::findOrFail($pago->MovimientoTesoreriaID);
+
+        $this->assertSame('2026-10-02', $pago->FechaContable->toDateString());
+        $this->assertSame('2026-10-02', $movimiento->FechaContable->toDateString());
+        $this->assertSame('2026-10-12 16:45:00', $movimiento->FechaMovimiento->format('Y-m-d H:i:s'));
+    }
+
+    public function test_fecha_operativa_prevalece_en_cancelacion_anticipada(): void
+    {
+        Carbon::setTestNow('2026-10-12 16:45:00');
+        [$prestamo] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        $this->abrirDiaGerencia('2026-10-02');
+
+        $pago = app(PrestamoBancarioService::class)->cancelarAnticipadamente($prestamo, [
+            'FechaContable' => '2026-10-12',
+        ], 13);
+        $movimiento = MovimientoTesoreria::findOrFail($pago->MovimientoTesoreriaID);
+
+        $this->assertSame('2026-10-02', $pago->FechaContable->toDateString());
+        $this->assertSame('2026-10-02', $movimiento->FechaContable->toDateString());
+        $this->assertSame('2026-10-12 16:45:00', $movimiento->FechaMovimiento->format('Y-m-d H:i:s'));
+    }
+
+    public function test_fecha_operativa_prevalece_en_extorno_de_pago_de_cuota(): void
+    {
+        Carbon::setTestNow('2026-10-12 16:45:00');
+        [, $cuota] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        $this->abrirDiaGerencia('2026-10-02');
+        $pagoOriginal = app(PrestamoBancarioService::class)->pagarCuota($cuota, [
+            'FechaContable' => '2026-10-12',
+        ], 13);
+
+        $extorno = app(PrestamoBancarioService::class)->extornarPago($pagoOriginal, [
+            'FechaContable' => '2026-10-12',
+        ], 13);
+        $movimiento = MovimientoTesoreria::findOrFail($extorno->MovimientoTesoreriaID);
+
+        $this->assertSame('2026-10-02', $extorno->FechaContable->toDateString());
+        $this->assertSame('2026-10-02', $movimiento->FechaContable->toDateString());
+        $this->assertSame('2026-10-12 16:45:00', $movimiento->FechaMovimiento->format('Y-m-d H:i:s'));
+    }
+
+    public function test_fecha_operativa_prevalece_en_extorno_de_cancelacion_anticipada(): void
+    {
+        Carbon::setTestNow('2026-10-12 16:45:00');
+        [$prestamo] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        $this->abrirDiaGerencia('2026-10-02');
+        $cancelacion = app(PrestamoBancarioService::class)->cancelarAnticipadamente($prestamo, [
+            'FechaContable' => '2026-10-12',
+        ], 13);
+
+        $extorno = app(PrestamoBancarioService::class)->extornarCancelacionAnticipada($cancelacion, [
+            'FechaContable' => '2026-10-12',
+        ], 13);
+        $movimiento = MovimientoTesoreria::findOrFail($extorno->MovimientoTesoreriaID);
+
+        $this->assertSame('2026-10-02', $extorno->FechaContable->toDateString());
+        $this->assertSame('2026-10-02', $movimiento->FechaContable->toDateString());
+        $this->assertSame('2026-10-12 16:45:00', $movimiento->FechaMovimiento->format('Y-m-d H:i:s'));
+    }
+
+    public function test_apertura_de_cuenta_tesoreria_usa_fecha_operativa_y_hora_real(): void
+    {
+        Carbon::setTestNow('2026-10-12 16:45:00');
+        $this->abrirDiaGerencia('2026-10-02');
+
+        $cuenta = app(TesoreriaGerenciaService::class)->crearCuentaBancaria([
+            'Banco' => 'BCP',
+            'NumeroCuenta' => 'CTA-FECHA-TEST',
+            'SaldoInicial' => 10000,
+            'FechaContable' => '2026-10-12',
+        ], 13);
+        $movimiento = MovimientoTesoreria::query()
+            ->where('Tipo', MovimientoTesoreria::TIPO_APERTURA)
+            ->firstOrFail();
+
+        $this->assertSame(10000.0, (float) $cuenta->SaldoActual);
+        $this->assertSame(10000.0, (float) $movimiento->Monto);
+        $this->assertSame('2026-10-02', $movimiento->FechaContable->toDateString());
+        $this->assertSame('2026-10-12 16:45:00', $movimiento->FechaMovimiento->format('Y-m-d H:i:s'));
     }
 
     public function test_saldamiento_historico_no_crea_pagos_ni_afecta_saldos(): void
@@ -290,11 +392,29 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         return [$prestamo, $cuota, $cuenta, $fondo];
     }
 
+    private function abrirDiaGerencia(string $fecha): void
+    {
+        DB::table('apertura_cierre_dia')->insert([
+            'SedeID' => 1,
+            'Fecha' => $fecha,
+            'EstadoDia' => 'ABIERTO',
+        ]);
+        Filament::setCurrentPanel(Filament::getPanel('gerencia'));
+        session(['sede_activa' => 1]);
+    }
+
     private function crearEsquemaMinimo(): void
     {
         Schema::create('Sede', function (Blueprint $table): void {
             $table->id('SedeID');
             $table->string('Nombre');
+        });
+        Schema::create('apertura_cierre_dia', function (Blueprint $table): void {
+            $table->id('AperturaCierreDiaID');
+            $table->unsignedBigInteger('SedeID');
+            $table->date('Fecha');
+            $table->string('EstadoDia');
+            $table->timestamps();
         });
         Schema::create('fondo_sedes', function (Blueprint $table): void {
             $table->id('FondoSedeID');

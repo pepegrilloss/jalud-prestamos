@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Compra;
 use App\Models\CuentaTesoreria;
 use App\Models\FondoSede;
 use App\Models\MovimientoTesoreria;
@@ -19,7 +20,10 @@ class TesoreriaGerenciaService
         if ($montoInicial < 0) {
             throw ValidationException::withMessages(['SaldoInicial' => 'El saldo inicial no puede ser negativo.']);
         }
-        $fechaContable = $this->resolverFechaContable($data['FechaContable'] ?? now()->toDateString());
+        $fechaContable = $this->resolverFechaContable(
+            DateFieldResolver::getFechaAbierta()?->toDateString()
+                ?? ($data['FechaContable'] ?? now()->toDateString())
+        );
 
         return DB::transaction(function () use ($data, $usuarioId, $montoInicial, $fechaContable) {
             $cuenta = CuentaTesoreria::create([
@@ -54,20 +58,72 @@ class TesoreriaGerenciaService
 
     public function actualizarCuenta(CuentaTesoreria $cuenta, array $data): CuentaTesoreria
     {
-        if (($data['Estado'] ?? $cuenta->Estado) === CuentaTesoreria::ESTADO_INACTIVA && (float) $cuenta->SaldoActual !== 0.0) {
-            throw ValidationException::withMessages([
-                'Estado' => 'No se puede inactivar una cuenta con saldo distinto de cero.',
+        return DB::transaction(function () use ($cuenta, $data): CuentaTesoreria {
+            $cuentaActual = CuentaTesoreria::query()
+                ->whereKey($cuenta->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $estado = $data['Estado'] ?? $cuentaActual->Estado;
+            if ($estado === CuentaTesoreria::ESTADO_INACTIVA && round((float) $cuentaActual->SaldoActual, 2) !== 0.0) {
+                throw ValidationException::withMessages([
+                    'Estado' => 'No se puede inactivar una cuenta con saldo distinto de cero.',
+                ]);
+            }
+
+            $cuentaActual->fill([
+                'Banco' => trim($data['Banco']),
+                'NumeroCuenta' => trim($data['NumeroCuenta']),
+                'Estado' => $estado,
             ]);
-        }
+            $cuentaActual->save();
 
-        $cuenta->fill([
-            'Banco' => trim($data['Banco']),
-            'NumeroCuenta' => trim($data['NumeroCuenta']),
-            'Estado' => $data['Estado'],
-        ]);
-        $cuenta->save();
+            return $cuentaActual;
+        });
+    }
 
-        return $cuenta;
+    public function pagarCompraCredito(Compra $compra, string|int $origen, int $usuarioId): Compra
+    {
+        $compraId = (int) $compra->getKey();
+
+        return DB::transaction(function () use ($compraId, $origen, $usuarioId): Compra {
+            $compraActual = Compra::query()
+                ->whereKey($compraId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $compraActual
+                || ! $compraActual->Activo
+                || $compraActual->TipoCompra !== 'CREDITO'
+                || $compraActual->EstadoPago !== 'PENDIENTE') {
+                throw ValidationException::withMessages([
+                    'factura' => 'La factura ya no está pendiente o dejó de estar disponible para pago.',
+                ]);
+            }
+
+            $fechaPago = DateFieldResolver::getFechaAbierta() ?? now();
+            $this->ejecutarEgresoDocumento([
+                'Origen' => $origen,
+                'Monto' => $compraActual->Total,
+                'FechaContable' => $fechaPago->toDateString(),
+                'TipoDocumento' => MovimientoTesoreria::COMPRA,
+                'DocumentoID' => $compraId,
+                'Concepto' => "Pago de compra al crédito #{$compraId}",
+                'Observaciones' => $compraActual->Observaciones,
+            ], $usuarioId, $this->tipoMovimientoDocumento(MovimientoTesoreria::COMPRA, 'EGRESO'));
+
+            $compraActual->fill(array_merge(
+                [
+                    'EstadoPago' => 'PAGADO',
+                    'FechaPago' => $fechaPago,
+                    'UsuarioPagoID' => $usuarioId,
+                ],
+                $this->descomponerReferencia($origen)
+            ));
+            $compraActual->save();
+
+            return $compraActual;
+        });
     }
 
     public function transferir(array $data, int $usuarioId): MovimientoTesoreria
@@ -81,29 +137,36 @@ class TesoreriaGerenciaService
 
     public function extornar(MovimientoTesoreria $original, array $data, int $usuarioId): MovimientoTesoreria
     {
-        if ($original->Tipo !== MovimientoTesoreria::TIPO_TRANSFERENCIA || $original->MovimientoOriginalID) {
-            throw ValidationException::withMessages([
-                'movimiento' => 'Solo se pueden extornar transferencias originales.',
-            ]);
-        }
+        return DB::transaction(function () use ($original, $data, $usuarioId): MovimientoTesoreria {
+            $originalActual = MovimientoTesoreria::query()
+                ->whereKey($original->getKey())
+                ->lockForUpdate()
+                ->first();
 
-        if ($original->extorno()->exists()) {
-            throw ValidationException::withMessages([
-                'movimiento' => 'Esta transferencia ya cuenta con un extorno.',
-            ]);
-        }
+            if (! $originalActual
+                || $originalActual->Tipo !== MovimientoTesoreria::TIPO_TRANSFERENCIA
+                || $originalActual->MovimientoOriginalID) {
+                throw ValidationException::withMessages([
+                    'movimiento' => 'Solo se pueden extornar transferencias originales.',
+                ]);
+            }
 
-        return DB::transaction(function () use ($original, $data, $usuarioId) {
+            if ($originalActual->extorno()->exists()) {
+                throw ValidationException::withMessages([
+                    'movimiento' => 'Esta transferencia ya cuenta con un extorno.',
+                ]);
+            }
+
             return $this->ejecutarMovimiento([
-                'CuentaOrigen' => $this->referenciaDesdeMovimiento($original->DestinoTipo, $original->CuentaDestinoID),
-                'CuentaDestino' => $this->referenciaDesdeMovimiento($original->OrigenTipo, $original->CuentaOrigenID),
-                'Monto' => $original->Monto,
+                'CuentaOrigen' => $this->referenciaDesdeMovimiento($originalActual->DestinoTipo, $originalActual->CuentaDestinoID),
+                'CuentaDestino' => $this->referenciaDesdeMovimiento($originalActual->OrigenTipo, $originalActual->CuentaOrigenID),
+                'Monto' => $originalActual->Monto,
                 'FechaContable' => DateFieldResolver::getFechaAbierta()?->toDateString()
                     ?? $data['FechaContable'] ?? now()->toDateString(),
-                'Concepto' => $data['Concepto'] ?? "Extorno de transferencia #{$original->MovimientoTesoreriaID}",
+                'Concepto' => $data['Concepto'] ?? "Extorno de transferencia #{$originalActual->MovimientoTesoreriaID}",
                 'Observaciones' => $data['Observaciones'] ?? null,
-                'MovimientoOriginalID' => $original->MovimientoTesoreriaID,
-            ], $usuarioId, MovimientoTesoreria::TIPO_EXTORNO);
+                'MovimientoOriginalID' => $originalActual->MovimientoTesoreriaID,
+            ], $usuarioId, MovimientoTesoreria::TIPO_EXTORNO, true);
         });
     }
 
@@ -213,7 +276,12 @@ class TesoreriaGerenciaService
         return $opciones;
     }
 
-    private function ejecutarMovimiento(array $data, int $usuarioId, string $tipo): MovimientoTesoreria
+    private function ejecutarMovimiento(
+        array $data,
+        int $usuarioId,
+        string $tipo,
+        bool $permitirCuentasInactivas = false
+    ): MovimientoTesoreria
     {
         $monto = $this->normalizarMonto($data['Monto']);
         $fechaContable = $this->resolverFechaContable($data['FechaContable']);
@@ -235,8 +303,9 @@ class TesoreriaGerenciaService
             $fondoGerencia = $this->obtenerFondoGerenciaBloqueado();
         }
 
-        $origen = $this->hidratarCuenta($origen, $cuentas, $fondoGerencia);
-        $destino = $this->hidratarCuenta($destino, $cuentas, $fondoGerencia);
+        $requiereCuentaActiva = ! $permitirCuentasInactivas;
+        $origen = $this->hidratarCuenta($origen, $cuentas, $fondoGerencia, $requiereCuentaActiva);
+        $destino = $this->hidratarCuenta($destino, $cuentas, $fondoGerencia, $requiereCuentaActiva);
 
         if ($origen['saldo'] < $monto) {
             throw ValidationException::withMessages([
