@@ -74,7 +74,7 @@ class CreateGasto extends CreateRecord
             app(TesoreriaGerenciaService::class)->registrarEgresoDocumento([
                 'Origen' => $this->origenTesoreria,
                 'Monto' => $total,
-                'FechaContable' => $record->FechaEmision->toDateString(),
+                'FechaContable' => (\App\Services\DateFieldResolver::getFechaAbierta() ?? $record->FechaCreacion)->toDateString(),
                 'TipoDocumento' => MovimientoTesoreria::GASTO,
                 'DocumentoID' => $record->GastoID,
                 'Concepto' => "Gasto #{$record->GastoID} - {$record->Numero}",

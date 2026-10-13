@@ -134,6 +134,10 @@ class TesoreriaGerenciaService
 
     public function registrarEgresoDocumento(array $data, int $usuarioId): MovimientoTesoreria
     {
+        if ($fechaAbierta = DateFieldResolver::getFechaAbierta()) {
+            $data['FechaContable'] = $fechaAbierta->toDateString();
+        }
+
         return DB::transaction(fn () => $this->ejecutarEgresoDocumento(
             $data,
             $usuarioId,

@@ -101,10 +101,12 @@ class GerenciaFechaAperturadaTest extends TestCase
             $table->string('Observaciones')->nullable();
             $table->unsignedBigInteger('UsuarioID');
             $table->unsignedBigInteger('MovimientoOriginalID')->nullable();
+            $table->unsignedBigInteger('CompraID')->nullable();
+            $table->unsignedBigInteger('GastoID')->nullable();
             $table->decimal('SaldoAnteriorOrigen', 14, 2);
             $table->decimal('SaldoNuevoOrigen', 14, 2);
-            $table->decimal('SaldoAnteriorDestino', 14, 2);
-            $table->decimal('SaldoNuevoDestino', 14, 2);
+            $table->decimal('SaldoAnteriorDestino', 14, 2)->nullable();
+            $table->decimal('SaldoNuevoDestino', 14, 2)->nullable();
             $table->timestamps();
         });
         Schema::create('logs', function (Blueprint $table) {
@@ -121,6 +123,22 @@ class GerenciaFechaAperturadaTest extends TestCase
             $table->string('platform')->nullable();
             $table->dateTime('created_at');
             $table->unsignedBigInteger('SedeID')->nullable();
+        });
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+        });
+        Schema::create('Compra', function (Blueprint $table) {
+            $table->id('CompraID');
+            $table->unsignedBigInteger('SedeID');
+            $table->string('Numero');
+            $table->dateTime('FechaEmision');
+            $table->dateTime('FechaCreacion');
+            $table->decimal('Total', 14, 2);
+            $table->string('TipoCompra');
+            $table->string('EstadoPago');
+            $table->boolean('Activo');
+            $table->string('OrigenTesoreriaTipo');
+            $table->unsignedBigInteger('CuentaTesoreriaID')->nullable();
         });
 
         Carbon::setTestNow('2026-10-12 10:30:00');
@@ -204,5 +222,93 @@ class GerenciaFechaAperturadaTest extends TestCase
         $this->assertSame(MovimientoTesoreria::TIPO_TRANSFERENCIA, $movimiento->Tipo);
         $this->assertSame('2026-10-02', $movimiento->FechaContable->toDateString());
         $this->assertSame('2026-10-12', $movimiento->FechaMovimiento->toDateString());
+    }
+
+    public function test_compra_y_gasto_usan_fecha_de_apertura_aunque_el_comprobante_sea_anterior(): void
+    {
+        $cuenta = CuentaTesoreria::create([
+            'Banco' => 'BCP', 'NumeroCuenta' => '1', 'TipoCuenta' => 'BANCO',
+            'SaldoActual' => 500, 'Estado' => CuentaTesoreria::ESTADO_ACTIVA,
+        ]);
+
+        foreach ([
+            [MovimientoTesoreria::COMPRA, 31, '2026-09-24'],
+            [MovimientoTesoreria::GASTO, 32, '2026-09-22'],
+        ] as [$tipo, $documentoId, $fechaEmision]) {
+            $movimiento = app(TesoreriaGerenciaService::class)->registrarEgresoDocumento([
+                'Origen' => $cuenta->CuentaTesoreriaID,
+                'Monto' => 100,
+                'FechaContable' => $fechaEmision,
+                'TipoDocumento' => $tipo,
+                'DocumentoID' => $documentoId,
+                'Concepto' => 'Documento pagado',
+            ], 7);
+
+            $this->assertSame('2026-10-02', $movimiento->FechaContable->toDateString());
+            $this->assertSame('2026-10-12', $movimiento->FechaMovimiento->toDateString());
+        }
+
+        $this->assertSame(300.0, (float) $cuenta->fresh()->SaldoActual);
+    }
+
+    public function test_correccion_de_compras_exige_dos_comprobantes_y_no_modifica_saldos(): void
+    {
+        DB::table('users')->insert(['id' => 7]);
+        DB::table('Compra')->insert([
+            ['CompraID' => 31, 'SedeID' => 1, 'Numero' => 'FF02-00473810', 'FechaEmision' => '2026-09-24', 'FechaCreacion' => '2026-10-02', 'Total' => 351.88, 'TipoCompra' => 'CONTADO', 'EstadoPago' => 'PAGADO', 'Activo' => 1, 'OrigenTesoreriaTipo' => 'CAJA_GERENCIA', 'CuentaTesoreriaID' => null],
+            ['CompraID' => 32, 'SedeID' => 1, 'Numero' => 'S002-235430331', 'FechaEmision' => '2026-09-22', 'FechaCreacion' => '2026-10-02', 'Total' => 590.08, 'TipoCompra' => 'CONTADO', 'EstadoPago' => 'PAGADO', 'Activo' => 1, 'OrigenTesoreriaTipo' => 'CUENTA_BANCARIA', 'CuentaTesoreriaID' => 5],
+        ]);
+        foreach ([
+            [31, 351.88, '2026-09-24', 'CAJA_GERENCIA', null],
+            [32, 590.08, '2026-09-22', 'CUENTA_BANCARIA', 5],
+        ] as [$id, $monto, $fecha, $origen, $cuentaId]) {
+            DB::table('tesoreria_movimientos')->insert([
+                'Tipo' => 'EGRESO_COMPRA', 'OrigenTipo' => $origen, 'CuentaOrigenID' => $cuentaId,
+                'CuentaOrigenNombre' => 'Origen', 'DestinoTipo' => 'COMPRA', 'CuentaDestinoNombre' => 'Compra',
+                'Monto' => $monto, 'FechaContable' => $fecha, 'FechaMovimiento' => '2026-10-12 10:30:00',
+                'Concepto' => 'Compra', 'UsuarioID' => 7, 'CompraID' => $id,
+                'SaldoAnteriorOrigen' => 1000, 'SaldoNuevoOrigen' => 1000 - $monto,
+            ]);
+        }
+
+        $opciones = ['--compra' => [31, 32]];
+        $this->artisan('gerencia:corregir-fechas-compras-octubre-2026', $opciones)->assertExitCode(0);
+        $this->assertSame(0, DB::table('tesoreria_movimientos')->where('FechaContable', '2026-10-02')->count());
+
+        $this->artisan('gerencia:corregir-fechas-compras-octubre-2026', $opciones + [
+            '--aplicar' => true, '--usuario-id' => 7, '--confirmar' => 'APLICAR-COMPRAS-GERENCIA-2026-10-02',
+        ])->assertExitCode(0);
+
+        $this->assertSame(2, DB::table('tesoreria_movimientos')->where('FechaContable', '2026-10-02')->count());
+        $this->assertSame(2, DB::table('tesoreria_movimientos')->where('FechaMovimiento', '2026-10-12 10:30:00')->count());
+        $this->assertSame(2, DB::table('logs')->where('modelo', 'MovimientoTesoreria')->count());
+        $this->assertEquals(351.88, DB::table('Compra')->where('CompraID', 31)->value('Total'));
+        $this->assertEquals(590.08, DB::table('Compra')->where('CompraID', 32)->value('Total'));
+
+        $this->artisan('gerencia:corregir-fechas-compras-octubre-2026', $opciones + [
+            '--aplicar' => true, '--usuario-id' => 7, '--confirmar' => 'APLICAR-COMPRAS-GERENCIA-2026-10-02',
+        ])->assertExitCode(0);
+        $this->assertSame(2, DB::table('logs')->count());
+    }
+
+    public function test_correccion_rechaza_compras_que_no_corresponden_a_los_importes_reportados(): void
+    {
+        DB::table('Compra')->insert([
+            ['CompraID' => 31, 'SedeID' => 1, 'Numero' => 'A', 'FechaEmision' => '2026-09-24', 'FechaCreacion' => '2026-10-02', 'Total' => 351.88, 'TipoCompra' => 'CONTADO', 'EstadoPago' => 'PAGADO', 'Activo' => 1, 'OrigenTesoreriaTipo' => 'CAJA_GERENCIA', 'CuentaTesoreriaID' => null],
+            ['CompraID' => 32, 'SedeID' => 1, 'Numero' => 'B', 'FechaEmision' => '2026-09-22', 'FechaCreacion' => '2026-10-02', 'Total' => 590.09, 'TipoCompra' => 'CONTADO', 'EstadoPago' => 'PAGADO', 'Activo' => 1, 'OrigenTesoreriaTipo' => 'CAJA_GERENCIA', 'CuentaTesoreriaID' => null],
+        ]);
+        foreach ([31 => ['2026-09-24', 351.88], 32 => ['2026-09-22', 590.09]] as $id => [$fecha, $monto]) {
+            DB::table('tesoreria_movimientos')->insert([
+                'Tipo' => 'EGRESO_COMPRA', 'OrigenTipo' => 'CAJA_GERENCIA', 'CuentaOrigenNombre' => 'Caja',
+                'DestinoTipo' => 'COMPRA', 'CuentaDestinoNombre' => 'Compra', 'Monto' => $monto,
+                'FechaContable' => $fecha, 'FechaMovimiento' => '2026-10-12 10:30:00',
+                'Concepto' => 'Compra', 'UsuarioID' => 7, 'CompraID' => $id,
+                'SaldoAnteriorOrigen' => 1000, 'SaldoNuevoOrigen' => 1000 - $monto,
+            ]);
+        }
+
+        $this->artisan('gerencia:corregir-fechas-compras-octubre-2026', ['--compra' => [31, 32]])
+            ->assertExitCode(1);
+        $this->assertSame(0, DB::table('tesoreria_movimientos')->where('FechaContable', '2026-10-02')->count());
     }
 }
