@@ -158,6 +158,75 @@ class PrestamoBancarioTesoreriaTest extends TestCase
         }
     }
 
+    public function test_registro_historico_parcial_no_crea_movimientos_y_deja_vigente_el_prestamo(): void
+    {
+        [$prestamo, $cuotaUno, $cuenta, $fondo] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        $prestamo->update(['NumeroCuotas' => 3]);
+        foreach ([2, 3] as $numero) {
+            $prestamo->cuotas()->create([
+                'Numero' => $numero,
+                'FechaVencimiento' => '2026-08-30',
+                'Capital' => 80,
+                'Interes' => 20,
+                'Comision' => 0,
+                'Seguros' => 0,
+                'MontoCuota' => 100,
+                'SaldoDeuda' => 0,
+                'Estado' => CuotaPrestamoBancario::ESTADO_PENDIENTE,
+            ]);
+        }
+
+        $resultado = app(PrestamoBancarioService::class)->registrarCuotasSaldadasHistoricamente($prestamo, 2);
+
+        $this->assertFalse($resultado['ya_registradas']);
+        $this->assertSame(CuotaPrestamoBancario::ESTADO_SALDADA_HISTORICA, $cuotaUno->fresh()->Estado);
+        $this->assertNull($cuotaUno->fresh()->FechaPago);
+        $this->assertSame(CuotaPrestamoBancario::ESTADO_SALDADA_HISTORICA, $prestamo->cuotas()->where('Numero', 2)->first()->Estado);
+        $this->assertSame(CuotaPrestamoBancario::ESTADO_PENDIENTE, $prestamo->cuotas()->where('Numero', 3)->first()->Estado);
+        $this->assertSame(PrestamoBancario::ESTADO_VIGENTE, $prestamo->fresh()->Estado);
+        $this->assertSame(0, PagoPrestamoBancario::count());
+        $this->assertSame(0, MovimientoTesoreria::count());
+        $this->assertSame(500.0, (float) $cuenta->fresh()->SaldoActual);
+        $this->assertSame(1000.0, (float) $fondo->fresh()->Saldo);
+
+        $segundoIntento = app(PrestamoBancarioService::class)->registrarCuotasSaldadasHistoricamente($prestamo, 2);
+        $this->assertTrue($segundoIntento['ya_registradas']);
+        $this->assertSame(0, PagoPrestamoBancario::count());
+        $this->assertSame(0, MovimientoTesoreria::count());
+    }
+
+    public function test_registro_historico_parcial_rechaza_cuotas_con_pago_y_no_cambia_las_demas(): void
+    {
+        [$prestamo, $cuotaUno] = $this->crearPrestamoConUnaCuota(100, 500, 1000);
+        $prestamo->update(['NumeroCuotas' => 3]);
+        foreach ([2, 3] as $numero) {
+            $prestamo->cuotas()->create([
+                'Numero' => $numero,
+                'FechaVencimiento' => '2026-08-30',
+                'Capital' => 80,
+                'Interes' => 20,
+                'Comision' => 0,
+                'Seguros' => 0,
+                'MontoCuota' => 100,
+                'SaldoDeuda' => 0,
+                'Estado' => CuotaPrestamoBancario::ESTADO_PENDIENTE,
+            ]);
+        }
+        app(PrestamoBancarioService::class)->pagarCuota($cuotaUno, ['FechaContable' => '2026-07-30'], 13);
+
+        try {
+            app(PrestamoBancarioService::class)->registrarCuotasSaldadasHistoricamente($prestamo, 2);
+            $this->fail('No se deben registrar cuotas con pagos de tesorería como saldadas históricamente.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertArrayHasKey('cuotas', $exception->errors());
+        }
+
+        $this->assertSame(CuotaPrestamoBancario::ESTADO_CANCELADA, $cuotaUno->fresh()->Estado);
+        $this->assertSame(CuotaPrestamoBancario::ESTADO_PENDIENTE, $prestamo->cuotas()->where('Numero', 2)->first()->Estado);
+        $this->assertSame(1, PagoPrestamoBancario::count());
+        $this->assertSame(1, MovimientoTesoreria::count());
+    }
+
     public function test_extorno_de_cancelacion_restituye_el_origen_y_reabre_el_prestamo(): void
     {
         [$prestamo, $cuota, $cuenta] = $this->crearPrestamoConUnaCuota(100, 500, 1000);

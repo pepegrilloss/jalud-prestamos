@@ -390,6 +390,106 @@ class PrestamoBancarioService
         });
     }
 
+    /**
+     * @return array{prestamo: PrestamoBancario, cuotas: \Illuminate\Support\Collection, ya_registradas: bool}
+     */
+    public function previsualizarCuotasSaldadasHistoricamente(int $prestamoId, int $hastaCuota): array
+    {
+        if ($hastaCuota < 1) {
+            throw ValidationException::withMessages(['cuotas' => 'Indique un número de cuota mayor que cero.']);
+        }
+
+        $prestamo = PrestamoBancario::query()->findOrFail($prestamoId);
+
+        return $this->validarPlanCuotasHistoricas($prestamo, $hastaCuota);
+    }
+
+    /**
+     * Registra como históricamente pagadas las cuotas consecutivas desde la primera,
+     * sin crear pagos de tesorería ni alterar saldos.
+     *
+     * @return array{prestamo: PrestamoBancario, cuotas: \Illuminate\Support\Collection, ya_registradas: bool}
+     */
+    public function registrarCuotasSaldadasHistoricamente(PrestamoBancario $prestamo, int $hastaCuota): array
+    {
+        if ($hastaCuota < 1) {
+            throw ValidationException::withMessages(['cuotas' => 'Indique un número de cuota mayor que cero.']);
+        }
+
+        return DB::transaction(function () use ($prestamo, $hastaCuota): array {
+            $prestamo = PrestamoBancario::query()
+                ->lockForUpdate()
+                ->findOrFail($prestamo->PrestamoBancarioID);
+            $plan = $this->validarPlanCuotasHistoricas($prestamo, $hastaCuota, true);
+
+            if ($plan['ya_registradas']) {
+                return $plan;
+            }
+
+            $plan['cuotas']->each(fn (CuotaPrestamoBancario $cuota) => $cuota->update([
+                'Estado' => CuotaPrestamoBancario::ESTADO_SALDADA_HISTORICA,
+            ]));
+
+            return [
+                'prestamo' => $prestamo->fresh(),
+                'cuotas' => $plan['cuotas']->fresh(),
+                'ya_registradas' => false,
+            ];
+        }, 3);
+    }
+
+    /**
+     * @return array{prestamo: PrestamoBancario, cuotas: \Illuminate\Support\Collection, ya_registradas: bool}
+     */
+    private function validarPlanCuotasHistoricas(PrestamoBancario $prestamo, int $hastaCuota, bool $bloquear = false): array
+    {
+        if ($prestamo->Estado !== PrestamoBancario::ESTADO_VIGENTE || $prestamo->EsSaldadoHistorico) {
+            throw ValidationException::withMessages(['prestamo' => 'Solo se pueden registrar cuotas históricas de un préstamo vigente.']);
+        }
+
+        if ($hastaCuota >= (int) $prestamo->NumeroCuotas) {
+            throw ValidationException::withMessages([
+                'cuotas' => 'Este comando es para saldamiento parcial. Para cerrar todo el préstamo use el flujo de saldado histórico completo.',
+            ]);
+        }
+
+        $consultaCuotas = $prestamo->cuotas()
+            ->where('Numero', '<=', $hastaCuota)
+            ->orderBy('Numero');
+
+        if ($bloquear) {
+            $consultaCuotas->lockForUpdate();
+        }
+
+        $cuotas = $consultaCuotas->get();
+        if ($cuotas->count() !== $hastaCuota
+            || $cuotas->values()->contains(fn (CuotaPrestamoBancario $cuota, int $index): bool => (int) $cuota->Numero !== $index + 1)) {
+            throw ValidationException::withMessages(['cuotas' => 'No existe un cronograma completo desde la cuota 1 hasta la cuota indicada.']);
+        }
+
+        if (PagoPrestamoBancario::query()
+            ->where('PrestamoBancarioID', $prestamo->PrestamoBancarioID)
+            ->whereIn('CuotaPrestamoBancarioID', $cuotas->pluck('CuotaPrestamoBancarioID'))
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'cuotas' => 'Una o más cuotas ya tienen movimientos de pago registrados; no se marcarán como históricas.',
+            ]);
+        }
+
+        $estados = $cuotas->pluck('Estado')->unique();
+        if ($estados->count() === 1 && $estados->first() === CuotaPrestamoBancario::ESTADO_SALDADA_HISTORICA) {
+            return ['prestamo' => $prestamo, 'cuotas' => $cuotas, 'ya_registradas' => true];
+        }
+
+        if ($cuotas->contains(fn (CuotaPrestamoBancario $cuota): bool => $cuota->Estado !== CuotaPrestamoBancario::ESTADO_PENDIENTE)) {
+            throw ValidationException::withMessages([
+                'cuotas' => 'Todas las cuotas seleccionadas deben estar pendientes; revise el cronograma antes de continuar.',
+            ]);
+        }
+
+        return ['prestamo' => $prestamo, 'cuotas' => $cuotas, 'ya_registradas' => false];
+    }
+
     public function extornarPago(PagoPrestamoBancario $pago, array $data, int $usuarioId): PagoPrestamoBancario
     {
         return DB::transaction(function () use ($pago, $data, $usuarioId) {
