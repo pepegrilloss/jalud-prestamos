@@ -72,6 +72,10 @@ class TesoreriaGerenciaService
 
     public function transferir(array $data, int $usuarioId): MovimientoTesoreria
     {
+        if ($fechaAbierta = DateFieldResolver::getFechaAbierta()) {
+            $data['FechaContable'] = $fechaAbierta->toDateString();
+        }
+
         return DB::transaction(fn () => $this->ejecutarMovimiento($data, $usuarioId, MovimientoTesoreria::TIPO_TRANSFERENCIA));
     }
 
@@ -94,7 +98,8 @@ class TesoreriaGerenciaService
                 'CuentaOrigen' => $this->referenciaDesdeMovimiento($original->DestinoTipo, $original->CuentaDestinoID),
                 'CuentaDestino' => $this->referenciaDesdeMovimiento($original->OrigenTipo, $original->CuentaOrigenID),
                 'Monto' => $original->Monto,
-                'FechaContable' => $data['FechaContable'] ?? now()->toDateString(),
+                'FechaContable' => DateFieldResolver::getFechaAbierta()?->toDateString()
+                    ?? $data['FechaContable'] ?? now()->toDateString(),
                 'Concepto' => $data['Concepto'] ?? "Extorno de transferencia #{$original->MovimientoTesoreriaID}",
                 'Observaciones' => $data['Observaciones'] ?? null,
                 'MovimientoOriginalID' => $original->MovimientoTesoreriaID,

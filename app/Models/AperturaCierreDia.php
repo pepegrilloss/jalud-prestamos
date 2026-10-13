@@ -102,6 +102,16 @@ class AperturaCierreDia extends Model
      */
     public static function getDiaAbierto(?int $sedeId = null): ?self
     {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia' && session('sede_activa')) {
+            $sedeId ??= (int) session('sede_activa');
+
+            return self::withoutGlobalScope('sede')
+                ->where('SedeID', $sedeId)
+                ->where('EstadoDia', 'ABIERTO')
+                ->orderByDesc('Fecha')
+                ->first();
+        }
+
         $query = self::where('EstadoDia', 'ABIERTO');
 
         if ($sedeId) {
@@ -116,6 +126,10 @@ class AperturaCierreDia extends Model
      */
     public static function estadoDiaActual(): string
     {
+        if (filament()->getCurrentPanel()?->getId() === 'gerencia' && session('sede_activa')) {
+            return self::getDiaAbierto() ? 'ABIERTO' : 'CERRADO';
+        }
+
         $hoy = self::hoyOHoy();
 
         return $hoy?->EstadoDia ?? 'CERRADO';

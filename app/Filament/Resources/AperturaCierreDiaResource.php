@@ -181,7 +181,7 @@ class AperturaCierreDiaResource extends Resource
                     ->icon('heroicon-o-lock-closed')
                     ->color('danger')
                     ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'ABIERTO' && auth()->user()->can('cerrar_dia_apertura'))
-                    ->action(function (AperturaCierreDia $record) {
+                    ->action(function (AperturaCierreDia $record, \Livewire\Component $livewire) {
                         $logger = new AperturaCierreDiaLogger();
 
                         try {
@@ -224,6 +224,10 @@ class AperturaCierreDiaResource extends Resource
                                 ->persistent()
                                 ->send();
 
+                            if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                                $livewire->redirect(self::getUrl('index'), navigate: false);
+                            }
+
                         } catch (\Exception $e) {
                             $logger->error('[APERTURA_CIERRE] Error al cerrar día', [
                                 'error' => $e->getMessage(),
@@ -243,7 +247,7 @@ class AperturaCierreDiaResource extends Resource
                     ->label('Abrir Fecha')
                     ->icon('heroicon-o-lock-open')
                     ->visible(fn(AperturaCierreDia $record) => $record->EstadoDia === 'CERRADO' && auth()->user()->can('abrir_dia_apertura'))
-                    ->action(function (AperturaCierreDia $record) {
+                    ->action(function (AperturaCierreDia $record, \Livewire\Component $livewire) {
                         $logger = new AperturaCierreDiaLogger();
 
                         // Validar contra Calendario No Moroso
@@ -306,6 +310,10 @@ class AperturaCierreDiaResource extends Resource
                                 ->body("La fecha {$record->Fecha->format('d/m/Y')} ha sido abierta para operaciones.")
                                 ->persistent()
                                 ->send();
+
+                            if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                                $livewire->redirect(self::getUrl('index'), navigate: false);
+                            }
 
                         } catch (UniqueConstraintViolationException $e) {
                             $logger->error('[APERTURA_CIERRE] Constraint violation en abrirFecha');

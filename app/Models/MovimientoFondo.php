@@ -19,8 +19,10 @@ class MovimientoFondo extends Model
             if ($fechaAbierta) {
                 $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
                 $model->FechaMovimiento = $fecha;
-                $model->created_at = $fecha;
-                $model->updated_at = $fecha;
+                if (filament()->getCurrentPanel()?->getId() !== 'gerencia') {
+                    $model->created_at = $fecha;
+                    $model->updated_at = $fecha;
+                }
             }
         });
 
@@ -28,7 +30,9 @@ class MovimientoFondo extends Model
             $fechaAbierta = \App\Services\DateFieldResolver::getFechaAbierta();
             if ($fechaAbierta) {
                 $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
-                $model->updated_at = $fecha;
+                if (filament()->getCurrentPanel()?->getId() !== 'gerencia') {
+                    $model->updated_at = $fecha;
+                }
             }
         });
     }

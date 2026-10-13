@@ -235,7 +235,8 @@ class FondoSedeService
             'Monto' => $monto,
             'Estado' => 'PENDIENTE',
             'Observacion' => $observacion,
-            'FechaTransferencia' => now(),
+            'FechaTransferencia' => (\App\Services\DateFieldResolver::getFechaAbierta() ?? now())
+                ->copy()->setTime(now()->hour, now()->minute, now()->second),
         ];
 
         if ($voucherImagen) {

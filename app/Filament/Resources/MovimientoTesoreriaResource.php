@@ -227,7 +227,7 @@ class MovimientoTesoreriaResource extends Resource
                     ->modalHeading('Extornar transferencia')
                     ->modalDescription('Se registrará una transferencia inversa. El movimiento original no se modificará.')
                     ->form([
-                        Forms\Components\DatePicker::make('FechaContable')->label('Fecha contable')->default(now())->maxDate(now())->required(),
+                        Forms\Components\DatePicker::make('FechaContable')->label('Fecha contable')->default(fn () => \App\Services\DateFieldResolver::getFechaAbierta() ?? now())->maxDate(now())->required(),
                         Forms\Components\TextInput::make('Concepto')->required()->maxLength(255),
                         Forms\Components\Textarea::make('Observaciones')->maxLength(1000),
                     ])
@@ -281,7 +281,7 @@ class MovimientoTesoreriaResource extends Resource
                 ->searchable()
                 ->required(),
             Forms\Components\TextInput::make('Monto')->numeric()->prefix('S/')->minValue(0.01)->required(),
-            Forms\Components\DatePicker::make('FechaContable')->label('Fecha contable')->default(now())->maxDate(now())->required(),
+            Forms\Components\DatePicker::make('FechaContable')->label('Fecha contable')->default(fn () => \App\Services\DateFieldResolver::getFechaAbierta() ?? now())->maxDate(now())->required(),
             Forms\Components\TextInput::make('Concepto')->required()->maxLength(255),
             Forms\Components\Textarea::make('Observaciones')->maxLength(1000)->columnSpanFull(),
         ];

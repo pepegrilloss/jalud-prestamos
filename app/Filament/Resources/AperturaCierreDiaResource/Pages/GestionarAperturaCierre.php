@@ -20,6 +20,11 @@ class GestionarAperturaCierre extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
+                ->after(function (): void {
+                    if (filament()->getCurrentPanel()?->getId() === 'gerencia') {
+                        $this->redirect(AperturaCierreDiaResource::getUrl('index'), navigate: false);
+                    }
+                })
                 ->using(function (array $data): Model {
                     $logger = new AperturaCierreDiaLogger;
 

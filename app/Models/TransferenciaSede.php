@@ -55,8 +55,10 @@ class TransferenciaSede extends Model
             if ($fechaAbierta) {
                 $fecha = $fechaAbierta->copy()->setTime(now()->hour, now()->minute, now()->second);
                 $model->FechaTransferencia = $fecha;
-                $model->created_at = $fecha;
-                $model->updated_at = $fecha;
+                if (filament()->getCurrentPanel()?->getId() !== 'gerencia') {
+                    $model->created_at = $fecha;
+                    $model->updated_at = $fecha;
+                }
             }
         });
 
@@ -67,7 +69,9 @@ class TransferenciaSede extends Model
                 if ($model->isDirty('FechaRespuesta')) {
                     $model->FechaRespuesta = $fecha;
                 }
-                $model->updated_at = $fecha;
+                if (filament()->getCurrentPanel()?->getId() !== 'gerencia') {
+                    $model->updated_at = $fecha;
+                }
             }
         });
     }
