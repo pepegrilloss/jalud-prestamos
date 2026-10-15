@@ -69,7 +69,9 @@ class GastoResource extends Resource
                         Forms\Components\Select::make('ProveedorID')
                             ->prefixIcon('heroicon-m-building-storefront')
                             ->label('Proveedor')
-                            ->options(Proveedor::where('Activo', true)->pluck('Nombre', 'ProveedorID'))
+                            ->options(fn () => Proveedor::where('Activo', true)
+                                ->when(static::esPanelGerencia(), fn ($query) => $query->orderBy('Nombre'))
+                                ->pluck('Nombre', 'ProveedorID'))
                             ->required()
                             ->searchable()
                             ->createOptionForm([
@@ -101,7 +103,9 @@ class GastoResource extends Resource
                         Forms\Components\Select::make('MotivoID')
                             ->prefixIcon('heroicon-m-tag')
                             ->label('Motivo')
-                            ->options(Motivo::where('Activo', true)->pluck('Nombre', 'MotivoID'))
+                            ->options(fn () => Motivo::where('Activo', true)
+                                ->when(static::esPanelGerencia(), fn ($query) => $query->orderBy('Nombre'))
+                                ->pluck('Nombre', 'MotivoID'))
                             ->required()
                             ->searchable()
                             ->createOptionForm([
@@ -210,6 +214,11 @@ class GastoResource extends Resource
                     ->label('Fecha Emisión')
                     ->date('d/m/Y')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('FechaCreacion')
+                    ->label('Fecha de registro')
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->visible(fn () => static::esPanelGerencia()),
                 Tables\Columns\TextColumn::make('tipoComprobanteGasto.Nombre')
                     ->label('Tipo Comprobante')
                     ->searchable()
@@ -285,6 +294,26 @@ class GastoResource extends Resource
                                 fn ($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
                             );
                     }),
+                Tables\Filters\Filter::make('FechaCreacion')
+                    ->label('Fecha de registro')
+                    ->form([
+                        Forms\Components\DatePicker::make('fecha_desde')
+                            ->label('Desde'),
+                        Forms\Components\DatePicker::make('fecha_hasta')
+                            ->label('Hasta'),
+                    ])
+                    ->query(function ($query, array $data): void {
+                        $query
+                            ->when(
+                                $data['fecha_desde'] ?? null,
+                                fn ($q) => $q->whereDate('FechaCreacion', '>=', $data['fecha_desde'])
+                            )
+                            ->when(
+                                $data['fecha_hasta'] ?? null,
+                                fn ($q) => $q->whereDate('FechaCreacion', '<=', $data['fecha_hasta'])
+                            );
+                    })
+                    ->visible(fn () => static::esPanelGerencia()),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Models\Compra;
+use App\Models\Credito;
 use App\Models\CuentaTesoreria;
+use App\Models\Excedente;
 use App\Models\FondoSede;
 use App\Models\Gasto;
 use App\Models\MovimientoFondo;
 use App\Models\MovimientoTesoreria;
+use App\Models\Pago;
 use App\Models\Sede;
 use App\Models\TransferenciaSede;
 use Carbon\Carbon;
@@ -123,8 +126,189 @@ class GerenciaBalanceDiarioService
             'sede' => $sedeGerencia,
             'caja' => $caja,
             'cuentas' => $cuentas,
+            'saldosSedes' => $this->saldosSedes($fecha, (int) $sedeGerencia->SedeID),
             'generadoEn' => now(),
         ];
+    }
+
+    private function saldosSedes(string $fecha, int $sedeGerenciaId): array
+    {
+        $limite = Carbon::parse($fecha)->endOfDay();
+
+        return Sede::query()
+            ->where('Activo', true)
+            ->where('SedeID', '<>', $sedeGerenciaId)
+            ->orderBy('Nombre')
+            ->get()
+            ->map(fn (Sede $sede): array => [
+                'nombre' => $sede->Nombre,
+                'caja_abierta' => $this->saldoCajaAbiertaHasta((int) $sede->SedeID, $limite),
+                'caja_chica' => $this->saldoCajaChicaHasta((int) $sede->SedeID, $limite),
+            ])
+            ->all();
+    }
+
+    private function saldoCajaAbiertaHasta(int $sedeId, Carbon $limite): float
+    {
+        $transferenciasRecibidas = $this->transferenciasHasta($sedeId, $limite, 'CAJA_ABIERTA', true);
+        $transferenciasEnviadas = $this->transferenciasHasta($sedeId, $limite, 'CAJA_ABIERTA', false);
+
+        $pagos = Pago::withoutGlobalScopes()
+            ->where('Activo', true)
+            ->where('ExcluirBalanceDiario', false)
+            ->whereNull('SolicitudResolucionID')
+            ->where('EsPagoAMayorPorMora', false)
+            ->where(fn ($query) => $query->whereNull('TipoConcepto')->orWhere('TipoConcepto', 'C'))
+            ->where('FechaPago', '<=', $limite)
+            ->where('SedeID', $sedeId)
+            ->get(['MontoPagado', 'Comentario'])
+            ->sum(function (Pago $pago): float {
+                if ($pago->Comentario && preg_match('/Pago original:\s*S\/\s*([\d,]+(?:\.\d{2})?)/', $pago->Comentario, $coincidencia)) {
+                    return (float) str_replace(',', '', $coincidencia[1]);
+                }
+
+                return (float) $pago->MontoPagado;
+            });
+
+        $creditos = (float) Credito::withoutGlobalScopes()
+            ->join('ProposicionCredito', 'Credito.ProposicionCreditoID', '=', 'ProposicionCredito.ProposicionCreditoID')
+            ->where('Credito.Activo', true)
+            ->where('Credito.SedeID', $sedeId)
+            ->where('Credito.FechaGeneracion', '<=', $limite)
+            ->sum('ProposicionCredito.MontoTotal');
+
+        $otrosMovimientos = MovimientoFondo::withoutGlobalScopes()
+            ->where('SedeID', $sedeId)
+            ->where('FechaMovimiento', '<=', $limite)
+            ->whereIn('Tipo', [
+                'INGRESO_CAPITAL',
+                'TRASLADO_CA_A_CC',
+                'TRASLADO_CC_A_CA',
+                'EGRESO_DEVOLUCION_EFECTIVO',
+            ])
+            ->get(['Tipo', 'Monto']);
+
+        $inyecciones = (float) $otrosMovimientos->where('Tipo', 'INGRESO_CAPITAL')->sum('Monto');
+        $trasladosEntrada = (float) $otrosMovimientos->where('Tipo', 'TRASLADO_CC_A_CA')->sum(fn (MovimientoFondo $movimiento): float => abs((float) $movimiento->Monto));
+        $trasladosSalida = (float) $otrosMovimientos->where('Tipo', 'TRASLADO_CA_A_CC')->sum(fn (MovimientoFondo $movimiento): float => abs((float) $movimiento->Monto));
+        $devolucionesEfectivo = (float) $otrosMovimientos->where('Tipo', 'EGRESO_DEVOLUCION_EFECTIVO')->sum(fn (MovimientoFondo $movimiento): float => abs((float) $movimiento->Monto));
+
+        $excedentes = Excedente::withoutGlobalScopes()
+            ->where('SedeID', $sedeId)
+            ->where('Activo', true)
+            ->where(fn ($query) => $query->where('Cuenta', 'Caja Abierta')->orWhereNull('Cuenta'))
+            ->where('Fecha', '<=', $limite)
+            ->withSum(['resoluciones as monto_aplicado' => fn ($query) => $query
+                ->withoutGlobalScopes()
+                ->where('Estado', 'APROBADA')], 'MontoAplicar')
+            ->get()
+            ->sum(fn (Excedente $excedente): float => (float) $excedente->Monto + (float) ($excedente->monto_aplicado ?? 0));
+
+        $moras = (float) Pago::withoutGlobalScopes()
+            ->where('Activo', true)
+            ->where('EsPagoAMayorPorMora', true)
+            ->where('FechaPago', '<=', $limite)
+            ->where('SedeID', $sedeId)
+            ->sum('MontoPagado');
+
+        return round(
+            $transferenciasRecibidas + $pagos + $inyecciones + $trasladosEntrada + $excedentes + $moras
+                - $transferenciasEnviadas - $creditos - $trasladosSalida - $devolucionesEfectivo,
+            2
+        );
+    }
+
+    private function saldoCajaChicaHasta(int $sedeId, Carbon $limite): float
+    {
+        $movimientosChica = MovimientoFondo::withoutGlobalScopes()
+            ->where('SedeID', $sedeId)
+            ->where('FechaMovimiento', '<=', $limite)
+            ->get(['Tipo', 'Monto', 'Observacion', 'TransferenciaID']);
+
+        $ingresosHistoricosChica = $movimientosChica
+            ->whereIn('Tipo', ['INGRESO_CAJA_CHICA', 'TRASLADO_CA_A_CC'])
+            ->filter(function (MovimientoFondo $movimiento): bool {
+                $observacion = mb_strtolower((string) $movimiento->Observacion, 'UTF-8');
+
+                return $movimiento->Observacion !== null
+                    && !str_contains($observacion, 'ajuste')
+                    && !str_contains($observacion, 'reversión');
+            });
+
+        $ingresosManuales = (float) $ingresosHistoricosChica->where('Tipo', 'INGRESO_CAJA_CHICA')->sum('Monto');
+
+        $trasladosEntrada = (float) $ingresosHistoricosChica
+            ->where('Tipo', 'TRASLADO_CA_A_CC')
+            ->sum(fn (MovimientoFondo $movimiento): float => abs((float) $movimiento->Monto));
+
+        $transferenciasRecibidas = $this->movimientosTransferenciaCajaChicaHasta($sedeId, $limite, 'RECEPCION_TRANSFERENCIA', 'CuentaDestino')
+            ->sum(fn (MovimientoFondo $movimiento): float => (float) $movimiento->Monto);
+
+        $gastos = (float) Gasto::withoutGlobalScopes()
+            ->where('SedeID', $sedeId)
+            ->where('Activo', true)
+            ->where('MetodoGasto', 'CAJA CHICA')
+            ->where('FechaEmision', '<=', $limite)
+            ->sum('Total');
+
+        $compras = (float) Compra::withoutGlobalScopes()
+            ->where('SedeID', $sedeId)
+            ->where('Activo', true)
+            ->where('TipoCompra', 'CONTADO')
+            ->where('FechaEmision', '<=', $limite)
+            ->sum('Total');
+
+        $trasladosSalida = (float) $movimientosChica
+            ->where('Tipo', 'TRASLADO_CC_A_CA')
+            ->sum(fn (MovimientoFondo $movimiento): float => abs((float) $movimiento->Monto));
+
+        $transferenciasEnviadas = $this->movimientosTransferenciaCajaChicaHasta($sedeId, $limite, 'ENVIO_TRANSFERENCIA', 'CuentaOrigen')
+            ->sum(fn (MovimientoFondo $movimiento): float => abs((float) $movimiento->Monto));
+
+        return round(
+            $ingresosManuales + $trasladosEntrada + $transferenciasRecibidas
+                - $gastos - $compras - $trasladosSalida - $transferenciasEnviadas,
+            2
+        );
+    }
+
+    private function movimientosTransferenciaCajaChicaHasta(int $sedeId, Carbon $limite, string $tipo, string $campoCuenta): Collection
+    {
+        $consulta = MovimientoFondo::withoutGlobalScopes()
+            ->where('movimientos_fondo.SedeID', $sedeId)
+            ->where('movimientos_fondo.Tipo', $tipo)
+            ->where('movimientos_fondo.FechaMovimiento', '<=', $limite)
+            ->join('transferencia_sedes', 'movimientos_fondo.TransferenciaID', '=', 'transferencia_sedes.TransferenciaID')
+            ->where("transferencia_sedes.{$campoCuenta}", 'CAJA_CHICA');
+
+        if ($tipo === 'RECEPCION_TRANSFERENCIA') {
+            $consulta->where('movimientos_fondo.Observacion', 'NOT LIKE', '%Ajuste%')
+                ->where('movimientos_fondo.Observacion', 'NOT LIKE', '%Reversión%');
+        }
+
+        return $consulta->get(['movimientos_fondo.Tipo', 'movimientos_fondo.Monto', 'movimientos_fondo.Observacion']);
+    }
+
+    private function transferenciasHasta(int $sedeId, Carbon $limite, string $cuenta, bool $recibidas): float
+    {
+        $consulta = TransferenciaSede::withoutGlobalScopes()
+            ->where('Estado', 'ACEPTADO')
+            ->where($recibidas ? 'CuentaDestino' : 'CuentaOrigen', $cuenta)
+            ->where(function ($query) use ($limite): void {
+                $query->where('FechaRespuesta', '<=', $limite)
+                    ->orWhere(fn ($q) => $q->whereNull('FechaRespuesta')->where('FechaTransferencia', '<=', $limite));
+            })
+            ->where(function ($query) use ($sedeId, $recibidas): void {
+                $solicitudGerencia = $recibidas ? 'SedeOrigenID' : 'SedeDestinoID';
+                $transferenciaNormal = $recibidas ? 'SedeDestinoID' : 'SedeOrigenID';
+
+                $query->where(fn ($q) => $q->where('EsSolicitudGerencia', true)->where($solicitudGerencia, $sedeId))
+                    ->orWhere(fn ($q) => $q
+                        ->where(fn ($q2) => $q2->where('EsSolicitudGerencia', false)->orWhereNull('EsSolicitudGerencia'))
+                        ->where($transferenciaNormal, $sedeId));
+            });
+
+        return (float) $consulta->sum('Monto');
     }
 
     private function crearEstadoCuenta(
