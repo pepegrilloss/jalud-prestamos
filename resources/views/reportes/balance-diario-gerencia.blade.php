@@ -42,12 +42,12 @@
         .resumen-positivo td { color: #00aa00; font-weight: bold; }
         .resumen-negativo td { color: #dd0000; font-weight: bold; }
         .resumen-remesa td { color: #006688; font-weight: bold; }
-        .saldos-sedes { margin-top: 18px; page-break-inside: avoid; }
+        .saldos-sedes { margin-top: 12px; page-break-inside: avoid; }
         .saldos-sedes-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .saldos-sedes-grid > tbody > tr > td { width: 50%; border: 1px solid #000; padding: 7px 10px; vertical-align: top; }
-        .saldos-sedes-titulo { font-family: Arial, sans-serif; font-size: 12px; font-weight: normal; margin-bottom: 8px; }
-        .saldos-sedes-detalle { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: Arial, sans-serif; font-size: 11px; }
-        .saldos-sedes-detalle td { border: none; padding: 5px 0; }
+        .saldos-sedes-grid > tbody > tr > td { width: 50%; border: 1px solid #000; padding: 5px 7px; vertical-align: top; }
+        .saldos-sedes-titulo { font-size: 9px; font-weight: bold; margin-bottom: 4px; }
+        .saldos-sedes-detalle { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8.5px; }
+        .saldos-sedes-detalle td { border: none; padding: 2px 0; }
         .saldos-sedes-detalle .importe { text-align: right; white-space: nowrap; }
         .linea-separadora-doble { border: none; border-top: 1px solid #000; margin: 1px 0; }
         .footer { margin-top: 15px; padding-top: 5px; border-top: 1px solid #000; font-size: 8px; }
