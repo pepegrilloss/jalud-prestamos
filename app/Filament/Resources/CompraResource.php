@@ -242,15 +242,15 @@ class CompraResource extends Resource
         return $table
             ->modifyQueryUsing(fn ($query) => $query->activos()->with('tipoComprobante', 'proveedor', 'detalles', 'cuentaTesoreria'))
             ->columns([
-                Tables\Columns\TextColumn::make('FechaEmision')
-                    ->label('Fecha Emisión')
-                    ->date('d/m/Y')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('FechaCreacion')
                     ->label('Fecha de registro')
                     ->date('d/m/Y')
                     ->sortable()
                     ->visible(fn () => static::esPanelGerencia()),
+                Tables\Columns\TextColumn::make('FechaEmision')
+                    ->label('Fecha Emisión')
+                    ->date('d/m/Y')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('tipoComprobante.Nombre')
                     ->label('Tipo Comprobante')
                     ->searchable()
@@ -346,7 +346,8 @@ class CompraResource extends Resource
                                 $data['fecha_hasta'],
                                 fn ($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
                             );
-                    }),
+                    })
+                    ->visible(fn () => ! static::esPanelGerencia()),
                 Tables\Filters\Filter::make('FechaCreacion')
                     ->label('Fecha de registro')
                     ->form([

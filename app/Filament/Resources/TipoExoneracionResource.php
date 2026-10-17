@@ -9,6 +9,7 @@ use App\Models\TipoExoneracion;
 use App\Models\AperturaCierreDia;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -33,6 +34,10 @@ class TipoExoneracionResource extends Resource implements HasShieldPermissions
 
     public static function shouldRegisterNavigation(): bool
     {
+        if (Filament::getCurrentPanel()?->getId() === 'gerencia') {
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
+        }
+
         if (!parent::shouldRegisterNavigation()) { return false; }
 
         $user = auth()->user();
@@ -45,6 +50,10 @@ class TipoExoneracionResource extends Resource implements HasShieldPermissions
 
     public static function canViewAny(): bool
     {
+        if (Filament::getCurrentPanel()?->getId() === 'gerencia') {
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
+        }
+
         if (!parent::canViewAny()) { return false; }
 
         $user = auth()->user();

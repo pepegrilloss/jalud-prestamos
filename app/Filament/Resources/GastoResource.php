@@ -210,15 +210,15 @@ class GastoResource extends Resource
         return $table
             ->modifyQueryUsing(fn ($query) => $query->activos()->with('proveedor', 'detalles', 'tipoComprobanteGasto', 'motivo', 'cuentaTesoreria'))
             ->columns([
-                Tables\Columns\TextColumn::make('FechaEmision')
-                    ->label('Fecha Emisión')
-                    ->date('d/m/Y')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('FechaCreacion')
                     ->label('Fecha de registro')
                     ->date('d/m/Y')
                     ->sortable()
                     ->visible(fn () => static::esPanelGerencia()),
+                Tables\Columns\TextColumn::make('FechaEmision')
+                    ->label('Fecha Emisión')
+                    ->date('d/m/Y')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('tipoComprobanteGasto.Nombre')
                     ->label('Tipo Comprobante')
                     ->searchable()
@@ -293,7 +293,8 @@ class GastoResource extends Resource
                                 $data['fecha_hasta'],
                                 fn ($q) => $q->whereDate('FechaEmision', '<=', $data['fecha_hasta'])
                             );
-                    }),
+                    })
+                    ->visible(fn () => ! static::esPanelGerencia()),
                 Tables\Filters\Filter::make('FechaCreacion')
                     ->label('Fecha de registro')
                     ->form([

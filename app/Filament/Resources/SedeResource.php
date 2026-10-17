@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SedeResource\Pages;
 use App\Models\Sede;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -90,6 +91,10 @@ class SedeResource extends Resource
 
     public static function canAccess(): bool
     {
+        if (Filament::getCurrentPanel()?->getId() === 'gerencia') {
+            return auth()->user()?->puedeAccederAGerencia() ?? false;
+        }
+
         return auth()->user()?->esAdmin() ?? false;
     }
 }
