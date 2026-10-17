@@ -22,7 +22,8 @@ class ListMotivos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\CreateAction::make(),
+            \Filament\Actions\CreateAction::make()
+                ->visible(fn () => AperturaCierreDia::estaAbierto()),
         ];
     }
 }

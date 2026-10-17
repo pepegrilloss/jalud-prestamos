@@ -14,6 +14,7 @@ class ListTipoIgvs extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
+                ->visible(fn () => TipoIgvResource::dayAllowsGerenciaMutation())
                 ->modalWidth('md')
                 ->modalHeading('Nuevo Tipo IGV'),
         ];

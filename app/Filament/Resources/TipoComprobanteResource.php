@@ -114,6 +114,11 @@ class TipoComprobanteResource extends Resource implements HasShieldPermissions
         return parent::canDelete(...func_get_args()) && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
+    public static function canDeleteAny(): bool
+    {
+        return parent::canDeleteAny() && AperturaCierreDia::estaAbierto();
+    }
+
     public static function getPages(): array
     {
         return [

@@ -84,6 +84,7 @@ class TipoComprobanteGastoResource extends Resource
                     ->visible(fn() => AperturaCierreDia::estaAbierto()),
                 Tables\Actions\Action::make('toggleActive')
                     ->visible(fn() => AperturaCierreDia::estaAbierto())
+                    ->authorize(fn ($record) => static::canEdit($record))
                     ->label(fn($record) => $record->Activo ? 'Desactivar' : 'Activar')
                     ->color(fn($record) => $record->Activo ? 'danger' : 'success')
                     ->icon(fn($record) => $record->Activo ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')

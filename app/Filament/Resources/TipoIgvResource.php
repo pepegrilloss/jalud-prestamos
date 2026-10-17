@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\TipoIgvResource\Pages;
+use App\Models\AperturaCierreDia;
 use App\Models\TipoIgv;
 use BezhanSalleh\FilamentShield\Contracts\HasShieldPermissions;
 use Filament\Forms;
@@ -82,11 +83,38 @@ class TipoIgvResource extends Resource implements HasShieldPermissions
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
+                    ->visible(fn () => static::dayAllowsGerenciaMutation())
                     ->modalWidth('md')
                     ->modalHeading('Editar Tipo IGV'),
             ])
             ->bulkActions([])
             ->defaultSort('Porcentaje', 'asc');
+    }
+
+    public static function canCreate(): bool
+    {
+        return parent::canCreate() && static::dayAllowsGerenciaMutation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return parent::canEdit(...func_get_args()) && static::dayAllowsGerenciaMutation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return parent::canDelete(...func_get_args()) && static::dayAllowsGerenciaMutation();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return parent::canDeleteAny() && static::dayAllowsGerenciaMutation();
+    }
+
+    public static function dayAllowsGerenciaMutation(): bool
+    {
+        return filament()->getCurrentPanel()?->getId() !== 'gerencia'
+            || AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array

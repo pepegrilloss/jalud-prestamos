@@ -90,7 +90,7 @@ class MotivoResource extends Resource implements HasShieldPermissions
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => static::esPanelGerencia() || AperturaCierreDia::estaAbierto()),
+                        ->visible(fn() => AperturaCierreDia::estaAbierto()),
                 ]),
             ])
             ->recordUrl(null)
@@ -103,24 +103,24 @@ class MotivoResource extends Resource implements HasShieldPermissions
             return false;
         }
 
-        return static::esPanelGerencia() || \App\Models\AperturaCierreDia::estaAbierto();
+        return \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canEdit($record): bool
     {
         return parent::canEdit(...func_get_args())
-            && (static::esPanelGerencia() || \App\Models\AperturaCierreDia::estaAbierto());
+            && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
     public static function canDelete($record): bool
     {
         return parent::canDelete(...func_get_args())
-            && (static::esPanelGerencia() || \App\Models\AperturaCierreDia::estaAbierto());
+            && \App\Models\AperturaCierreDia::estaAbierto();
     }
 
-    public static function esPanelGerencia(): bool
+    public static function canDeleteAny(): bool
     {
-        return filament()->getCurrentPanel()?->getId() === 'gerencia';
+        return parent::canDeleteAny() && AperturaCierreDia::estaAbierto();
     }
 
     public static function getPages(): array

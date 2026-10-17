@@ -131,6 +131,7 @@ class ProveedorResource extends Resource implements HasShieldPermissions
                     ->color('danger')
                     ->icon('heroicon-o-trash')
                     ->visible(fn() => AperturaCierreDia::estaAbierto())
+                    ->authorize(fn ($record) => static::canDelete($record))
                     ->action(fn($record) => $record->update([
                         'Activo' => false,
                         'FechaModificacion' => now(),
