@@ -16,6 +16,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\BalanceCajaGerencia;
 use App\Filament\Pages\FacturasPendientes;
@@ -186,6 +187,7 @@ class GerenciaPanelProvider extends PanelProvider
                 FacturasPendientes::class,
                 GerenciaDashboard::class,
                 GerenciaReportes::class,
+                Mantenimiento::class,
             ])
             ->navigationItems([
                 \Filament\Navigation\NavigationItem::make('Balance diario')

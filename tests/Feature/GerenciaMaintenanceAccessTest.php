@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Clusters\Mantenimiento\Resources\TipoComprobanteGastoResource;
+use App\Filament\Clusters\Mantenimiento;
 use App\Filament\Resources\CiudadResource;
 use App\Filament\Resources\GiroResource;
 use App\Filament\Resources\NivelAprobacionResource;
@@ -30,7 +31,10 @@ class GerenciaMaintenanceAccessTest extends TestCase
 {
     public function test_gerencia_panel_registers_only_the_maintenance_resources(): void
     {
-        $resources = Filament::getPanel('gerencia')->getResources();
+        $panel = Filament::getPanel('gerencia');
+        $resources = $panel->getResources();
+
+        $this->assertContains(Mantenimiento::class, $panel->getPages());
 
         foreach ([
             CiudadResource::class,
@@ -74,6 +78,7 @@ class GerenciaMaintenanceAccessTest extends TestCase
 
         $this->assertTrue(Gate::forUser($user)->allows('viewAny', TipoIgv::class));
         $this->assertFalse(Gate::forUser($user)->allows('update', new TipoIgv()));
+        $this->assertTrue(Mantenimiento::shouldRegisterNavigation());
         $this->assertTrue(SedeResource::canAccess());
         $this->assertTrue(TipoExoneracionResource::shouldRegisterNavigation());
         $this->assertTrue(TipoExoneracionResource::canViewAny());
