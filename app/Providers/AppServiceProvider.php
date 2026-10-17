@@ -42,23 +42,11 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $maintenanceModels = [
-                \App\Models\Ciudad::class,
-                \App\Models\Giro::class,
-                \App\Models\NivelAprobacion::class,
                 \App\Models\Motivo::class,
-                \App\Models\PromotorCobrador::class,
                 \App\Models\Proveedor::class,
-                \App\Models\Sede::class,
-                \App\Models\SubGiro::class,
-                \App\Models\Tasa::class,
-                \App\Models\TasaMora::class,
-                \App\Models\TipoCredito::class,
                 \App\Models\TipoComprobante::class,
                 \App\Models\TipoComprobanteGasto::class,
-                \App\Models\TipoExoneracion::class,
                 \App\Models\TipoIgv::class,
-                \App\Models\TipoPago::class,
-                \App\Models\Zona::class,
             ];
 
             $subject = $arguments[0] ?? null;

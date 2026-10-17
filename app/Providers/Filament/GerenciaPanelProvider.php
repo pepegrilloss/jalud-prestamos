@@ -24,30 +24,18 @@ use App\Filament\Pages\GerenciaDashboard;
 use App\Filament\Pages\GerenciaReportes;
 use App\Filament\Clusters\Mantenimiento\Resources\TipoComprobanteGastoResource;
 use App\Filament\Resources\AperturaCierreDiaResource;
-use App\Filament\Resources\CiudadResource;
 use App\Filament\Resources\CompraResource;
 use App\Filament\Resources\CuentaTesoreriaResource;
 use App\Filament\Resources\FondoSedeResource;
-use App\Filament\Resources\GiroResource;
 use App\Filament\Resources\GastoResource;
 use App\Filament\Resources\LogResource;
-use App\Filament\Resources\NivelAprobacionResource;
 use App\Filament\Resources\MotivoResource;
 use App\Filament\Resources\MovimientoTesoreriaResource;
 use App\Filament\Resources\PrestamoBancarioResource;
-use App\Filament\Resources\PromotorCobradorResource;
 use App\Filament\Resources\ProveedorResource;
-use App\Filament\Resources\SedeResource;
-use App\Filament\Resources\SubGiroResource;
-use App\Filament\Resources\TasaMoraResource;
-use App\Filament\Resources\TasaResource;
-use App\Filament\Resources\TipoCreditoResource;
 use App\Filament\Resources\TipoComprobanteResource;
-use App\Filament\Resources\TipoExoneracionResource;
 use App\Filament\Resources\TipoIgvResource;
-use App\Filament\Resources\TipoPagoResource;
 use App\Filament\Resources\TransferenciaSedeResource;
-use App\Filament\Resources\ZonaResource;
 use App\Filament\Widgets\CajaAbiertaWidget;
 use App\Filament\Widgets\CajaChicaWidget;
 use App\Filament\Widgets\CustomAccountWidget;
@@ -156,31 +144,19 @@ class GerenciaPanelProvider extends PanelProvider
             ])
             ->resources([
                 AperturaCierreDiaResource::class,
-                CiudadResource::class,
                 CompraResource::class,
                 CuentaTesoreriaResource::class,
                 FondoSedeResource::class,
-                GiroResource::class,
                 GastoResource::class,
                 LogResource::class,
                 MotivoResource::class,
                 MovimientoTesoreriaResource::class,
-                NivelAprobacionResource::class,
                 PrestamoBancarioResource::class,
-                PromotorCobradorResource::class,
                 ProveedorResource::class,
-                SedeResource::class,
-                SubGiroResource::class,
-                TasaMoraResource::class,
-                TasaResource::class,
                 TipoComprobanteGastoResource::class,
                 TipoComprobanteResource::class,
-                TipoCreditoResource::class,
-                TipoExoneracionResource::class,
                 TipoIgvResource::class,
-                TipoPagoResource::class,
                 TransferenciaSedeResource::class,
-                ZonaResource::class,
             ])
             ->pages([
                 BalanceCajaGerencia::class,

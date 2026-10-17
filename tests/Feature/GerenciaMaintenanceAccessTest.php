@@ -2,25 +2,15 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Clusters\Mantenimiento\Resources\TipoComprobanteGastoResource;
 use App\Filament\Clusters\Mantenimiento;
-use App\Filament\Resources\CiudadResource;
-use App\Filament\Resources\GiroResource;
-use App\Filament\Resources\NivelAprobacionResource;
+use App\Filament\Clusters\Mantenimiento\Resources\TipoComprobanteGastoResource;
 use App\Filament\Resources\MotivoResource;
-use App\Filament\Resources\PromotorCobradorResource;
 use App\Filament\Resources\ProveedorResource;
 use App\Filament\Resources\SedeResource;
-use App\Filament\Resources\SubGiroResource;
-use App\Filament\Resources\TasaMoraResource;
-use App\Filament\Resources\TasaResource;
-use App\Filament\Resources\TipoCreditoResource;
 use App\Filament\Resources\TipoComprobanteResource;
-use App\Filament\Resources\TipoExoneracionResource;
 use App\Filament\Resources\TipoIgvResource;
-use App\Filament\Resources\TipoPagoResource;
-use App\Filament\Resources\ZonaResource;
 use App\Models\TipoIgv;
+use App\Models\TipoExoneracion;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Gate;
@@ -29,7 +19,7 @@ use Tests\TestCase;
 
 class GerenciaMaintenanceAccessTest extends TestCase
 {
-    public function test_gerencia_panel_registers_only_the_maintenance_resources(): void
+    public function test_gerencia_panel_registers_only_maintenance_resources_relevant_to_expenses_and_purchases(): void
     {
         $panel = Filament::getPanel('gerencia');
         $resources = $panel->getResources();
@@ -37,25 +27,30 @@ class GerenciaMaintenanceAccessTest extends TestCase
         $this->assertContains(Mantenimiento::class, $panel->getPages());
 
         foreach ([
-            CiudadResource::class,
-            GiroResource::class,
-            NivelAprobacionResource::class,
             MotivoResource::class,
-            PromotorCobradorResource::class,
             ProveedorResource::class,
-            SedeResource::class,
-            SubGiroResource::class,
-            TasaMoraResource::class,
-            TasaResource::class,
-            TipoCreditoResource::class,
             TipoComprobanteResource::class,
             TipoComprobanteGastoResource::class,
-            TipoExoneracionResource::class,
             TipoIgvResource::class,
-            TipoPagoResource::class,
-            ZonaResource::class,
         ] as $resource) {
             $this->assertContains($resource, $resources);
+        }
+
+        foreach ([
+            \App\Filament\Resources\CiudadResource::class,
+            \App\Filament\Resources\GiroResource::class,
+            \App\Filament\Resources\NivelAprobacionResource::class,
+            \App\Filament\Resources\PromotorCobradorResource::class,
+            SedeResource::class,
+            \App\Filament\Resources\SubGiroResource::class,
+            \App\Filament\Resources\TasaMoraResource::class,
+            \App\Filament\Resources\TasaResource::class,
+            \App\Filament\Resources\TipoCreditoResource::class,
+            \App\Filament\Resources\TipoExoneracionResource::class,
+            \App\Filament\Resources\TipoPagoResource::class,
+            \App\Filament\Resources\ZonaResource::class,
+        ] as $resource) {
+            $this->assertNotContains($resource, $resources);
         }
 
         $this->assertNotContains(
@@ -77,11 +72,10 @@ class GerenciaMaintenanceAccessTest extends TestCase
         auth()->setUser($user);
 
         $this->assertTrue(Gate::forUser($user)->allows('viewAny', TipoIgv::class));
+        $this->assertFalse(Gate::forUser($user)->allows('viewAny', TipoExoneracion::class));
         $this->assertFalse(Gate::forUser($user)->allows('update', new TipoIgv()));
         $this->assertTrue(Mantenimiento::shouldRegisterNavigation());
         $this->assertTrue(SedeResource::canAccess());
-        $this->assertTrue(TipoExoneracionResource::shouldRegisterNavigation());
-        $this->assertTrue(TipoExoneracionResource::canViewAny());
     }
 
     public function test_gerencia_read_access_does_not_change_admin_panel_permissions(): void
