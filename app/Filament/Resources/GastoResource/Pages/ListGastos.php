@@ -24,7 +24,13 @@ class ListGastos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\CreateAction::make(),
+            GastoResource::esPanelGerencia()
+                ? Actions\Action::make('crear_gasto')
+                    ->label('Crear Gasto')
+                    ->icon('heroicon-o-plus')
+                    ->color('primary')
+                    ->url(fn (): string => GastoResource::getUrl('create'))
+                : Actions\CreateAction::make(),
             Actions\Action::make('descargar_excel')
                 ->label('Descargar Excel')
                 ->icon('heroicon-o-arrow-down-tray')

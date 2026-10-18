@@ -6,14 +6,51 @@ use App\Filament\Resources\GastoResource;
 use App\Models\MovimientoTesoreria;
 use App\Services\FondoSedeService;
 use App\Services\TesoreriaGerenciaService;
+use Filament\Forms\Components\Repeater;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Validation\ValidationException;
 
 class CreateGasto extends CreateRecord
 {
     protected static string $resource = GastoResource::class;
 
     private string|int|null $origenTesoreria = null;
+
+    public function create(bool $another = false): void
+    {
+        try {
+            parent::create($another);
+        } catch (ValidationException $exception) {
+            if (! GastoResource::esPanelGerencia() || ! $this->record) {
+                throw $exception;
+            }
+
+            // Filament already rolled back; do not hydrate that deleted ID on the next request.
+            $this->record = null;
+            $this->form->model($this->getModel());
+            foreach ($this->form->getFlatComponents() as $component) {
+                if ($component instanceof Repeater) {
+                    $component->clearCachedExistingRecords();
+                }
+            }
+
+            Notification::make()
+                ->danger()
+                ->title('No se pudo registrar el gasto')
+                ->body(collect($exception->errors())->flatten()->implode(' '))
+                ->persistent()
+                ->send();
+
+            $errors = [];
+            foreach ($exception->errors() as $field => $messages) {
+                $field = $field === 'CuentaOrigen' ? 'OrigenTesoreria' : $field;
+                $errors[str_starts_with($field, 'data.') ? $field : 'data.'.$field] = $messages;
+            }
+
+            throw ValidationException::withMessages($errors);
+        }
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
