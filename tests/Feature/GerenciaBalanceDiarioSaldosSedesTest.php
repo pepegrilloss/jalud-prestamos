@@ -51,6 +51,7 @@ class GerenciaBalanceDiarioSaldosSedesTest extends TestCase
         $saldo = $this->invocarSaldo('saldoCajaAbiertaHasta');
 
         $this->assertSame(77.0, $saldo);
+        $this->assertSame(-149923.0, $this->invocarSaldo('saldoCajaAbiertaParaResumenGerencia'));
     }
 
     public function test_reconstruye_caja_chica_hasta_la_fecha_solicitada_y_excluye_ajustes(): void

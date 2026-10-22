@@ -18,6 +18,8 @@ use Illuminate\Support\Collection;
 
 class GerenciaBalanceDiarioService
 {
+    private const AJUSTE_CAJA_ABIERTA_SEDE = 150000.00;
+
     public function generar(string $fecha): array
     {
         $fecha = Carbon::parse($fecha)->toDateString();
@@ -142,10 +144,19 @@ class GerenciaBalanceDiarioService
             ->get()
             ->map(fn (Sede $sede): array => [
                 'nombre' => $sede->Nombre,
-                'caja_abierta' => $this->saldoCajaAbiertaHasta((int) $sede->SedeID, $limite),
+                'caja_abierta' => $this->saldoCajaAbiertaParaResumenGerencia((int) $sede->SedeID, $limite),
                 'caja_chica' => $this->saldoCajaChicaHasta((int) $sede->SedeID, $limite),
             ])
             ->all();
+    }
+
+    private function saldoCajaAbiertaParaResumenGerencia(int $sedeId, Carbon $limite): float
+    {
+        // El reporte individual por sede descuenta este mismo ajuste fijo.
+        return round(
+            $this->saldoCajaAbiertaHasta($sedeId, $limite) - self::AJUSTE_CAJA_ABIERTA_SEDE,
+            2
+        );
     }
 
     private function saldoCajaAbiertaHasta(int $sedeId, Carbon $limite): float
