@@ -44,6 +44,7 @@ $creditoId = 484;
 $sedeId = 1;
 $montoActual = 1021.00;
 $montoCorregido = 1012.00;
+$fechaPagoEsperada = '2026-10-22 11:54:24';
 $diferencia = 9.00;
 $proposicionId = 484;
 $saldoEsperado = 81.00;
@@ -83,7 +84,7 @@ if (!$proposicion || (int) $proposicion->Activo !== 1 || $proposicion->CodigoCre
         throw new RuntimeException('La proposición o su saldo cambiaron. No se aplicó la corrección.');
     }
 
-if (!$pago || (int) $pago->CreditoID !== $creditoId || (int) $pago->SedeID !== $sedeId || (int) $pago->Activo !== 1 || (int) $pago->EsMora !== 0 || (int) $pago->EsPagoForzado !== 1 || $pago->TipoConcepto !== 'C' || substr((string) $pago->FechaPago, 0, 10) !== '2026-10-22' || round((float) $pago->MontoPagado, 2) !== $montoActual) {
+if (!$pago || (int) $pago->CreditoID !== $creditoId || (int) $pago->SedeID !== $sedeId || (int) $pago->Activo !== 1 || (int) $pago->EsMora !== 0 || (int) $pago->EsPagoForzado !== 1 || $pago->TipoConcepto !== 'C' || substr((string) $pago->FechaPago, 0, 19) !== $fechaPagoEsperada || round((float) $pago->MontoPagado, 2) !== $montoActual) {
         throw new RuntimeException('El pago ya cambió o no coincide con los datos esperados. No se aplicó la corrección.');
     }
 
@@ -152,6 +153,7 @@ if ($reversionesPrevias > 0) {
         'base_de_datos' => $actualDatabase,
         'pago_id' => $pagoId,
         'monto_pago' => [$montoActual, $montoCorregido],
+        'fecha_pago' => $fechaPagoEsperada,
         'saldo_credito' => [$saldoEsperado, $saldoCorregido],
         'caja_sede_1' => [$saldoCajaAnterior, $saldoCajaNuevo],
         'fecha_contable_movimiento' => $fechaMovimiento->toDateTimeString(),
@@ -170,9 +172,11 @@ if ($reversionesPrevias > 0) {
     $pagoActualizado = DB::table('pago')
         ->where('PagoID', $pagoId)
         ->where('MontoPagado', $montoActual)
+        ->where('FechaPago', $fechaPagoEsperada)
         ->where('Activo', 1)
         ->update([
             'MontoPagado' => $montoCorregido,
+            'FechaPago' => $fechaPagoEsperada,
             'UserModificacionID' => $userId,
             'FechaModificacion' => $fechaMovimiento,
         ]);
